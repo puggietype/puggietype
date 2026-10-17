@@ -5,7 +5,7 @@ import { isFunboxActive } from "../test/funbox/list";
 import { showNoticeNotification } from "../states/notifications";
 import { navigationEvent, type NavigateOptions } from "../events/navigation";
 import { authEvent } from "../events/auth";
-import { isStandalone } from "../utils/env";
+import { isRouteHidden } from "../constants/standalone";
 import { isRaceActive } from "../multiplayer/engine-hooks";
 import { leaveRoom } from "../multiplayer/race";
 import {
@@ -66,10 +66,6 @@ const routes: Route[] = [
   {
     path: "/leaderboards",
     load: async (_params, options) => {
-      if (isStandalone()) {
-        await navigate("/", options);
-        return;
-      }
       await PageController.change("leaderboards", options);
     },
   },
@@ -130,20 +126,12 @@ const routes: Route[] = [
   {
     path: "/profile",
     load: async (_params, options) => {
-      if (isStandalone()) {
-        await navigate("/", options);
-        return;
-      }
       await PageController.change("profileSearch", options);
     },
   },
   {
     path: "/profile/:uidOrName",
     load: async (params, options) => {
-      if (isStandalone()) {
-        await navigate("/", options);
-        return;
-      }
       await PageController.change("profile", {
         ...options,
         force: true,
@@ -248,12 +236,15 @@ export async function navigate(
 }
 
 async function router(options = {} as NavigateOptions): Promise<void> {
-  const matches = routes.map((r) => {
-    return {
-      route: r,
-      result: location.pathname.match(pathToRegex(r.path)),
-    };
-  });
+  // standalone builds have no account routes: they fall through to 404
+  const matches = routes
+    .filter((r) => !isRouteHidden(r.path))
+    .map((r) => {
+      return {
+        route: r,
+        result: location.pathname.match(pathToRegex(r.path)),
+      };
+    });
 
   const match = matches.find((m) => m.result !== null) as {
     route: Route;

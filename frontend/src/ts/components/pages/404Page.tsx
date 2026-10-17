@@ -11,18 +11,26 @@ export function NotFoundPage() {
         </div>
         <div class="flex max-w-md flex-col items-center gap-4">
           <H2 text="404" class="pb-0 text-7xl text-main" />
-          <p class="text-center">
-            Ooops! Looks like this page
-            <br />
-            or resource doesn&apos;t exist.
+          <p class="text-center text-2xl">page not found</p>
+          <p class="text-center text-sub">
+            This pug sniffed around, but there&apos;s nothing here.
           </p>
-          <Button
-            fa={{ icon: "fa-home" }}
-            text="Go Home"
-            router-link
-            href="/"
-            class="px-8 py-4"
-          />
+          <div class="flex flex-wrap justify-center gap-4">
+            <Button
+              fa={{ icon: "fa-home" }}
+              text="Go Home"
+              router-link
+              href="/"
+              class="px-8 py-4"
+            />
+            <Button
+              fa={{ icon: "fa-flag-checkered" }}
+              text="Race a friend"
+              router-link
+              href="/race"
+              class="px-8 py-4"
+            />
+          </div>
         </div>
       </div>
     </div>
