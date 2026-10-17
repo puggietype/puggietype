@@ -21,6 +21,18 @@ export function parseSourceUrlMode(value: string | undefined): SourceUrlMode {
   return value === "tarball" ? "tarball" : "github";
 }
 
+/**
+ * Skip the self-hosted tarball on Cloudflare Pages (25 MiB per-file limit)
+ * or when SOURCE_TARBALL=0. Links then point at the GitHub tree instead.
+ */
+export function shouldSkipTarball(env: NodeJS.ProcessEnv): boolean {
+  const cf = env["CF_PAGES"];
+  return (
+    (cf !== undefined && cf !== "" && cf !== "0") ||
+    env["SOURCE_TARBALL"] === "0"
+  );
+}
+
 export function tarballName(commitHash: string): string {
   return `puggietype-${commitHash.slice(0, 7)}.tar.gz`;
 }
@@ -28,8 +40,10 @@ export function tarballName(commitHash: string): string {
 export function getSourceLinks(options: {
   commitHash: string | undefined;
   mode: SourceUrlMode;
+  skipTarball?: boolean;
 }): SourceLinks {
-  const { commitHash, mode } = options;
+  const { commitHash, skipTarball = false } = options;
+  const mode = skipTarball ? "github" : options.mode;
   if (commitHash === undefined) {
     return {
       commitHash,
@@ -44,7 +58,7 @@ export function getSourceLinks(options: {
       sourceUrl: `${REPO_URL}/tree/${commitHash}`,
       licenseUrl: `${REPO_URL}/blob/${commitHash}/LICENSE`,
       // still ship /source/<tarball> as a backup copy of the source
-      tarballName: tarballName(commitHash),
+      tarballName: skipTarball ? undefined : tarballName(commitHash),
     };
   }
   const name = tarballName(commitHash);
@@ -56,7 +70,12 @@ export function getSourceLinks(options: {
   };
 }
 
-export function getCommitHash(): string | undefined {
+export function getCommitHash(
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  const cfSha = env["CF_PAGES_COMMIT_SHA"];
+  if (cfSha !== undefined && /^[0-9a-f]{7,40}$/i.test(cfSha)) return cfSha;
+  if (shouldSkipTarball(env) && env["CF_PAGES"] !== undefined) return undefined;
   try {
     return childProcess
       .execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })

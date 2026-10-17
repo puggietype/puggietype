@@ -25,6 +25,7 @@ import {
   getCommitHash,
   getSourceLinks,
   parseSourceUrlMode,
+  shouldSkipTarball,
   sourceTarball,
 } from "./vite-plugins/source-links";
 import Inspect from "vite-plugin-inspect";
@@ -103,6 +104,7 @@ function getPlugins({
   const sourceLinks = getSourceLinks({
     commitHash: getCommitHash(),
     mode: parseSourceUrlMode(env["SOURCE_URL_MODE"]),
+    skipTarball: shouldSkipTarball(process.env),
   });
 
   const plugins: PluginOption[] = [

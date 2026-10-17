@@ -54,6 +54,9 @@
         "BACKEND_URL",
         "RECAPTCHA_SITE_KEY",
         "SOURCE_URL_MODE",
+        "SOURCE_TARBALL",
+        "CF_PAGES",
+        "CF_PAGES_COMMIT_SHA",
         "VITE_WS_URL",
         "VITE_MULTIPLAYER",
         "VITE_PUBLIC_MATCHES"

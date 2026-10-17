@@ -6,6 +6,7 @@ import {
   getSourceLinks,
   gitArchive,
   parseSourceUrlMode,
+  shouldSkipTarball,
   tarballName,
 } from "../../vite-plugins/source-links";
 
@@ -39,6 +40,28 @@ describe("source-links", () => {
       licenseUrl: `https://github.com/puggietype/puggietype/blob/${hash}/LICENSE`,
       tarballName: "puggietype-0123456.tar.gz",
     });
+  });
+
+  it("skips the tarball on Cloudflare Pages or SOURCE_TARBALL=0", () => {
+    expect(shouldSkipTarball({ CF_PAGES: "1" })).toBe(true);
+    expect(shouldSkipTarball({ SOURCE_TARBALL: "0" })).toBe(true);
+    expect(shouldSkipTarball({})).toBe(false);
+    const links = getSourceLinks({
+      commitHash: hash,
+      mode: "tarball",
+      skipTarball: true,
+    });
+    expect(links.sourceUrl).toBe(
+      `https://github.com/puggietype/puggietype/tree/${hash}`,
+    );
+    expect(links.tarballName).toBeUndefined();
+  });
+
+  it("prefers CF_PAGES_COMMIT_SHA, else main on Pages", () => {
+    expect(getCommitHash({ CF_PAGES: "1", CF_PAGES_COMMIT_SHA: hash })).toBe(
+      hash,
+    );
+    expect(getCommitHash({ CF_PAGES: "1" })).toBeUndefined();
   });
 
   it("falls back to main without a commit hash", () => {
