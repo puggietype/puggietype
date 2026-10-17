@@ -2,22 +2,22 @@
 @import "core.scss";
 
 @font-face {
-  font-family: "Roboto Mono";
+  font-family: "JetBrains Mono";
   font-style: normal;
   font-weight: 400;
   font-display: block;
-  src: url("/webfonts/RobotoMono-Regular.woff2") format("woff2");
+  src: url("/webfonts/JetBrainsMono-Regular.woff2") format("woff2");
 }
 @font-face {
-  font-family: "Lexend Deca";
+  font-family: "Lexend";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 600;
   font-display: block;
-  src: url("/webfonts/LexendDeca-Regular.woff2") format("woff2");
+  src: url("/webfonts/Lexend-SemiBold.woff2") format("woff2");
 }
 
 :root {
-  --font: "Roboto Mono", monospace;
+  --font: "JetBrains Mono", monospace;
   --bg-color: #323437;
   --main-color: #e2b714;
   --caret-color: #e2b714;
@@ -83,7 +83,8 @@ header {
       position: relative;
       font-size: 2rem;
       line-height: 2rem;
-      font-family: "Lexend Deca", sans-serif;
+      font-family: "Lexend", sans-serif;
+      font-weight: 600;
       transition: color 0.25s;
       font-weight: unset;
       margin-block-start: unset;

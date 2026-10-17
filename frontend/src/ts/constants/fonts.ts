@@ -49,6 +49,9 @@ export const Fonts: Record<KnownFontName, FontConfig> = {
   Lexend_Deca: {
     fileName: "LexendDeca-Regular.woff2",
   },
+  Lexend: {
+    fileName: "Lexend-Regular.woff2",
+  },
   Comic_Sans_MS: {
     display: "Helvetica",
     systemFont: true,

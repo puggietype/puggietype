@@ -1,6 +1,8 @@
 :root {
   --roundness: 0.5rem;
-  --font: "Roboto Mono", "Vazirharf", monospace;
+  --font: "JetBrains Mono", "Vazirharf", monospace;
+  // ui chrome uses lexend, typing area and stats use the configured --font
+  --ui-font: "Lexend", "Vazirharf", sans-serif;
   // scroll-behavior: smooth;
   scroll-padding-top: 2rem;
   font-weight: 400;
@@ -168,7 +170,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  font-family: var(--font);
+  font-family: var(--ui-font);
   color: var(--text-color);
   overflow-x: hidden;
   background: var(--bg-color);

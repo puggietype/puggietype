@@ -14,6 +14,7 @@ export const KnownFontNameSchema = z.enum(
     "Montserrat",
     "Titillium_Web",
     "Lexend_Deca",
+    "Lexend",
     "Comic_Sans_MS",
     "Oxygen",
     "Nunito",

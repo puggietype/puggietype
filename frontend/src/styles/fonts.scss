@@ -8,6 +8,15 @@
   src: url("/webfonts/Vazirharf-NL-Regular.woff2") format("woff2");
 }
 
+// ui font (wordmark weight); 400 comes from the $fonts map below
+@font-face {
+  font-family: "Lexend";
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url("/webfonts/Lexend-SemiBold.woff2") format("woff2");
+}
+
 @each $font, $config in $fonts {
   $dir: "webfonts";
   $previewDir: "webfonts-preview";
