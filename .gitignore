@@ -136,3 +136,7 @@ frontend/.env.sentry-build-plugin
 .pnpm-store
 keylogs
 frontend/scripts/keylog-report.ts
+
+# playwright
+test-results/
+playwright-report/

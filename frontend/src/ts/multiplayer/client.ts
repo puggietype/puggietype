@@ -15,6 +15,8 @@ type Session = { playerId: string; sessionToken: string };
 type Handlers = {
   onMessage: (msg: ServerMessage) => void;
   onStatus: (status: ConnectionStatus) => void;
+  /** the server ended the session for good (replaced by another tab, full) */
+  onTerminated: (code: number) => void;
 };
 
 function loadSession(): Session | undefined {
@@ -79,10 +81,17 @@ export class MultiplayerClient {
     this.open("connecting");
   }
 
-  /** queued until the hello round trip is done */
+  /**
+   * Sent now, or queued until the hello round trip is done. Progress is never
+   * queued (stale and rate limited), and only the latest of each type is kept.
+   */
   send(msg: ClientMessage): void {
-    if (this.connected) this.sendNow(msg);
-    else this.queue.push(msg);
+    if (this.connected) {
+      this.sendNow(msg);
+      return;
+    }
+    if (msg.type === "race:progress") return;
+    this.queue = [...this.queue.filter((q) => q.type !== msg.type), msg];
   }
 
   close(): void {
@@ -101,6 +110,7 @@ export class MultiplayerClient {
   }
 
   private open(status: ConnectionStatus): void {
+    clearTimeout(this.reconnectTimer);
     this.handlers.onStatus(status);
     this.helloDone = false;
     this.samples = [];
@@ -133,8 +143,14 @@ export class MultiplayerClient {
       if (this.ws !== ws) return;
       this.ws = undefined;
       this.helloDone = false;
-      if (this.closedByUser || NO_RECONNECT_CODES.has(event.code)) {
+      if (this.closedByUser) {
         this.handlers.onStatus("idle");
+        return;
+      }
+      if (NO_RECONNECT_CODES.has(event.code)) {
+        this.queue = [];
+        this.handlers.onStatus("idle");
+        this.handlers.onTerminated(event.code);
         return;
       }
       this.scheduleReconnect();

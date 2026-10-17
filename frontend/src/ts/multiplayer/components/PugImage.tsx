@@ -18,7 +18,10 @@ async function loadSvg(file: string): Promise<string> {
   }
 }
 
-/** a pug frame by filename, inlined so theme colours apply */
+/**
+ * A pug frame by filename, inlined so theme colours apply. `file` must be one
+ * of our static frame names, never user or network input.
+ */
 export function PugImage(props: {
   file: string;
   class?: string;

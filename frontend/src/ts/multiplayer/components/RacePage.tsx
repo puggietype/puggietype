@@ -7,13 +7,15 @@ import {
   Switch,
 } from "solid-js";
 
+import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
-import { connect, joinRoom, resumeSession } from "../race";
+import { connect, joinRoom, leaveRoom, resumeSession } from "../race";
 import {
   connectionStatus,
   inviteCode,
   loadNickname,
   race,
+  raceFinished,
   results,
   room,
   saveNickname,
@@ -63,12 +65,27 @@ export function RacePage(): JSXElement {
             <Match when={results()}>
               {(res) => <Podium room={r()} results={res()} />}
             </Match>
-            <Match when={race()}>
+            <Match when={race() && raceFinished()}>
               <div class="grid gap-4" data-testid="mp-waiting">
                 <div class="text-center text-xl text-sub">
                   you finished! waiting for the others...
                 </div>
                 <RaceProgressBars />
+              </div>
+            </Match>
+            <Match when={race()}>
+              <div class="grid gap-4" data-testid="mp-left-race">
+                <div class="text-center text-xl text-sub">
+                  a race is running without you
+                </div>
+                <RaceProgressBars />
+                <Button
+                  text="leave the room"
+                  fa={{ icon: "fa-sign-out-alt" }}
+                  class="mx-auto px-5 py-3"
+                  dataset={{ "data-testid": "mp-leave" }}
+                  onClick={() => leaveRoom()}
+                />
               </div>
             </Match>
           </Switch>

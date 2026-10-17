@@ -1,4 +1,11 @@
-import { For, JSXElement, onCleanup, onMount, Show } from "solid-js";
+import {
+  createMemo,
+  For,
+  JSXElement,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { Portal } from "solid-js/web";
 
 import { cn } from "../../utils/cn";
@@ -60,32 +67,34 @@ function measure(
  * work; movement along a line is smoothed.
  */
 export function OpponentCarets(): JSXElement {
-  const opponents = () =>
-    (room()?.players ?? []).filter((p) => p.id !== myId());
+  // ids only, so carets survive room:state updates (which replace players)
+  const opponentIds = createMemo(
+    () =>
+      (room()?.players ?? []).filter((p) => p.id !== myId()).map((p) => p.id),
+    [],
+    { equals: (a, b) => a.join() === b.join() },
+  );
+  const player = (id: string) => room()?.players.find((p) => p.id === id);
   const elements = new Map<string, HTMLDivElement>();
   const positions = new Map<string, Point>();
   let frame = 0;
   let last = performance.now();
 
   const tick = (now: number): void => {
+    frame = requestAnimationFrame(tick);
     const dt = now - last;
     last = now;
     const info = race();
-    const progress = opponentProgress();
-    const stacks = stackIndexes(
-      progress.map((p) => ({
-        id: p.id,
-        wordIndex: p.wordIndex,
-        charIndex: p.charIndex,
-      })),
-    );
+    if (info === undefined || !showOpponentCarets()) return;
+    const opponents = opponentProgress().filter((p) => p.id !== myId());
+    const stacks = stackIndexes(opponents);
     for (const [id, el] of elements) {
-      const p = progress.find((pp) => pp.id === id);
+      const p = opponents.find((pp) => pp.id === id);
       const m =
-        info !== undefined && p !== undefined
+        p !== undefined && !p.finished
           ? measure(info.words, p.wordIndex, p.charIndex)
           : undefined;
-      if (m === undefined || !m.visible || p?.finished === true) {
+      if (p === undefined || m === undefined || !m.visible) {
         el.dataset["visible"] = "false";
         el.classList.add("opacity-0");
         positions.delete(id);
@@ -95,7 +104,7 @@ export function OpponentCarets(): JSXElement {
       const next = smoothToward(prev, { x: m.x, y: m.y }, dt, SMOOTH_TAU_MS);
       positions.set(id, next);
       el.dataset["visible"] = "true";
-      el.dataset["wordIndex"] = String(p?.wordIndex ?? 0);
+      el.dataset["wordIndex"] = String(p.wordIndex);
       el.classList.remove("opacity-0");
       el.style.transform = `translate(${next.x - 1}px, ${next.y}px)`;
       el.style.height = `${m.height}px`;
@@ -104,7 +113,6 @@ export function OpponentCarets(): JSXElement {
         `${-(stacks[id] ?? 0) * TAG_STACK_PX}px`,
       );
     }
-    frame = requestAnimationFrame(tick);
   };
 
   onMount(() => {
@@ -115,28 +123,35 @@ export function OpponentCarets(): JSXElement {
   return (
     <Portal>
       <Show when={showOpponentCarets()}>
-        <For each={opponents()}>
-          {(p) => (
+        <For each={opponentIds()}>
+          {(id) => (
             <div
               ref={(el) => {
-                elements.set(p.id, el);
-                onCleanup(() => elements.delete(p.id));
+                elements.set(id, el);
+                onCleanup(() => {
+                  if (elements.get(id) === el) elements.delete(id);
+                });
               }}
               class="pointer-events-none fixed top-0 left-0 z-50 w-0.5 rounded-full opacity-0 transition-opacity"
               data-testid="mp-opponent-caret"
-              data-player-id={p.id}
+              data-player-id={id}
               data-visible="false"
             >
-              <div class={cn("h-full w-full rounded-full", PLAYER_BG[p.color])}>
+              <div
+                class={cn(
+                  "h-full w-full rounded-full",
+                  PLAYER_BG[player(id)?.color ?? "opp1"],
+                )}
+              >
                 <span
                   class={cn(
                     "absolute bottom-full left-0 mb-0.5 translate-y-(--tag-offset) rounded px-1.5 py-px text-[0.7rem] leading-tight font-(--ui-font) font-semibold whitespace-nowrap text-bg",
-                    PLAYER_BG[p.color],
-                    !p.connected && "opacity-50",
+                    PLAYER_BG[player(id)?.color ?? "opp1"],
+                    player(id)?.connected === false && "opacity-50",
                   )}
                   data-testid="mp-opponent-tag"
                 >
-                  {p.name}
+                  {player(id)?.name}
                 </span>
               </div>
             </div>

@@ -18,6 +18,7 @@ let raceWords: readonly string[] | undefined;
 let inputLocked = false;
 let restartLocked = false;
 let finishHandler: ((data: RaceFinishData) => void) | undefined;
+let discardNextFinish = false;
 
 /** while set, the words generator returns these words in order */
 export function setRaceWords(words: readonly string[] | undefined): void {
@@ -26,6 +27,11 @@ export function setRaceWords(words: readonly string[] | undefined): void {
 
 export function isRaceActive(): boolean {
   return raceWords !== undefined;
+}
+
+/** length of the race word list, undefined outside a race */
+export function getRaceWordCount(): number | undefined {
+  return raceWords?.length;
 }
 
 /** the server word for this index, undefined outside a race or past the list */
@@ -58,10 +64,22 @@ export function onRaceFinish(
 }
 
 /**
+ * The race ended while the engine was already computing a result: swallow
+ * that result once instead of letting it become a solo test.
+ */
+export function discardPendingRaceFinish(): void {
+  discardNextFinish = true;
+}
+
+/**
  * Called by test-logic finish(). Returns true when the race took the result,
  * in which case the engine must not save it or show the result screen.
  */
 export function handleRaceFinish(data: RaceFinishData): boolean {
+  if (discardNextFinish) {
+    discardNextFinish = false;
+    return true;
+  }
   if (raceWords === undefined || finishHandler === undefined) return false;
   finishHandler(data);
   return true;

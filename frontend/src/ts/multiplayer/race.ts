@@ -1,8 +1,8 @@
 import { batch } from "solid-js";
 
-import type { Language } from "@monkeytype/schemas/languages";
 import { setConfig } from "../config/setters";
 import { Config } from "../config/store";
+import { saveFullConfigToLocalStorage } from "../config/persistence";
 import { navigationEvent } from "../events/navigation";
 import { getActivePage } from "../states/core";
 import {
@@ -11,15 +11,19 @@ import {
 } from "../states/notifications";
 import {
   getActiveWordIndex,
+  isResultCalculating,
   isTestActive,
   isTestRestarting,
 } from "../states/test";
 import { getCurrentInput } from "../test/events/data";
 import { getLiveCachedIncorrectInputs } from "../test/events/live-cache";
-import { restart, startTest } from "../test/test-logic";
+import { restart, startTest, stop as stopTest } from "../test/test-logic";
 import { focusWords, isMounted as isTestUIMounted } from "../test/test-ui";
+import { words as testWords } from "../test/test-words";
 import { MultiplayerClient } from "./client";
 import {
+  discardPendingRaceFinish,
+  isRaceActive,
   onRaceFinish,
   setRaceInputLocked,
   setRaceRestartLocked,
@@ -30,11 +34,14 @@ import {
   finishInput,
   progressChanged,
   progressWpm,
-  raceConfigFromSettings,
+  RACE_CONFIG_KEYS,
+  raceConfigOverrides,
+  type ConfigEntry,
   type ProgressPayload,
 } from "./helpers";
 import type { ClientMessage, ServerMessage, SettingsPatch } from "./protocol";
 import {
+  myId,
   race,
   room,
   setConnectionStatus,
@@ -43,6 +50,7 @@ import {
   setMyId,
   setOpponentProgress,
   setRace,
+  setRaceFinished,
   setResults,
   setRoom,
   type RaceInfo,
@@ -50,13 +58,9 @@ import {
 
 const PROGRESS_INTERVAL_MS = 100;
 const ROOM_KEY = "puggie-mp-room";
+/** the user's own config while a race overrides it; survives reloads */
+const SAVED_CONFIG_KEY = "puggie-mp-saved-config";
 
-type SavedConfig = Pick<
-  typeof Config,
-  "mode" | "time" | "words" | "punctuation" | "numbers" | "language"
->;
-
-let savedConfig: SavedConfig | undefined;
 let startTimer: ReturnType<typeof setTimeout> | undefined;
 let countdownTimer: ReturnType<typeof setInterval> | undefined;
 let progressTimer: ReturnType<typeof setInterval> | undefined;
@@ -69,6 +73,14 @@ let raceToken = 0;
 const client = new MultiplayerClient({
   onMessage: handleMessage,
   onStatus: setConnectionStatus,
+  onTerminated: (code) => {
+    dropRoom();
+    showNoticeNotification(
+      code === 4000
+        ? "This race continued in another tab."
+        : "The race server is full, try again later.",
+    );
+  },
 });
 
 export function serverNow(): number {
@@ -91,12 +103,7 @@ export function joinRoom(code: string): void {
 
 export function leaveRoom(): void {
   send({ type: "room:leave" });
-  sessionStorage.removeItem(ROOM_KEY);
-  endRace();
-  batch(() => {
-    setRoom(undefined);
-    setResults(undefined);
-  });
+  dropRoom();
 }
 
 export function setReady(ready: boolean): void {
@@ -115,9 +122,15 @@ export function rematch(): void {
   send({ type: "race:rematch" });
 }
 
-/** after a reload: rejoin the room this tab was in (the server keeps us 20 s) */
+/**
+ * After a reload: rejoin the room this tab was in (the server keeps us for
+ * 20 s), and put back config a race had overridden.
+ */
 export function resumeSession(name: string): boolean {
-  if (sessionStorage.getItem(ROOM_KEY) === null || name === "") return false;
+  if (sessionStorage.getItem(ROOM_KEY) === null || name === "") {
+    restoreConfig();
+    return false;
+  }
   client.connect(name);
   return true;
 }
@@ -125,6 +138,16 @@ export function resumeSession(name: string): boolean {
 function send(msg: ClientMessage): void {
   setLastError(undefined);
   client.send(msg);
+}
+
+/** forget the room locally (left, kicked out or session taken over) */
+function dropRoom(): void {
+  sessionStorage.removeItem(ROOM_KEY);
+  endRace();
+  batch(() => {
+    setRoom(undefined);
+    setResults(undefined);
+  });
 }
 
 // ---------------------------------------------------------------- inbound
@@ -147,7 +170,7 @@ function handleMessage(msg: ServerMessage): void {
       return;
     }
     case "race:countdown":
-      void beginRace({
+      onCountdown({
         startAt: msg.startAt,
         words: msg.words,
         settings: msg.settings,
@@ -157,8 +180,8 @@ function handleMessage(msg: ServerMessage): void {
       setOpponentProgress(msg.players);
       return;
     case "race:results":
-      setResults(msg.results);
       endRace();
+      setResults(msg.results);
       if (getActivePage() !== "race") goTo(`/r/${room()?.code ?? ""}`);
       return;
     case "error":
@@ -175,15 +198,36 @@ function handleMessage(msg: ServerMessage): void {
   }
 }
 
+function onCountdown(info: RaceInfo): void {
+  // a reconnect re-sends the countdown of the race we're already in
+  if (race()?.startAt === info.startAt) return;
+  const me = room()?.players.find((p) => p.id === myId());
+  if (me?.finished === true) {
+    // reloaded after finishing: just wait for the results
+    batch(() => {
+      setRace(info);
+      setRaceFinished(true);
+    });
+    return;
+  }
+  void beginRace(info);
+}
+
 function goTo(url: string): void {
   navigationEvent.dispatch({ url, options: { force: true } });
 }
 
-async function waitFor(check: () => boolean, timeoutMs = 5000): Promise<void> {
+/** polls until check() passes; false on timeout */
+async function waitFor(
+  check: () => boolean,
+  timeoutMs = 5000,
+): Promise<boolean> {
   const until = Date.now() + timeoutMs;
-  while (!check() && Date.now() < until) {
+  while (!check()) {
+    if (Date.now() >= until) return false;
     await new Promise((r) => setTimeout(r, 20));
   }
+  return true;
 }
 
 // ---------------------------------------------------------------- race
@@ -195,25 +239,36 @@ async function beginRace(info: RaceInfo): Promise<void> {
   lastProgress = undefined;
   batch(() => {
     setRace(info);
+    setRaceFinished(false);
     setResults(undefined);
     setOpponentProgress([]);
-    setCountdown(Math.ceil((info.startAt - serverNow()) / 1000));
+    setCountdown(Math.max(0, Math.ceil((info.startAt - serverNow()) / 1000)));
   });
 
-  applyRaceConfig(info);
+  if (!applyRaceConfig(info)) {
+    abortRace("Couldn't apply the race settings.");
+    return;
+  }
   setRaceWords(info.words);
   setRaceInputLocked(true);
   setRaceRestartLocked(false);
   onRaceFinish(sendFinish);
 
   if (getActivePage() !== "test") goTo("/");
-  await waitFor(() => getActivePage() === "test" && isTestUIMounted());
-  await waitFor(() => !isTestRestarting());
+  const ready =
+    (await waitFor(() => getActivePage() === "test" && isTestUIMounted())) &&
+    (await waitFor(() => !isTestRestarting()));
   if (token !== raceToken) return;
-  // regenerate the test from the race words with the room settings
-  await restart({ noAnim: true });
-  await waitFor(() => !isTestRestarting());
-  if (token !== raceToken) return;
+  if (ready) {
+    // regenerate the test from the race words with the room settings
+    await restart({ noAnim: true });
+    await waitFor(() => !isTestRestarting());
+    if (token !== raceToken) return;
+  }
+  if (!ready || testWords.get(0)?.text !== info.words[0]) {
+    abortRace("Couldn't load the race words.");
+    return;
+  }
   setRaceRestartLocked(true);
 
   countdownTimer = setInterval(updateCountdown, 100);
@@ -222,6 +277,11 @@ async function beginRace(info: RaceInfo): Promise<void> {
     () => goRace(token),
     Math.max(0, info.startAt - serverNow()),
   );
+}
+
+function abortRace(message: string): void {
+  showErrorNotification(`Multiplayer: ${message}`);
+  leaveRoom();
 }
 
 function updateCountdown(): void {
@@ -269,6 +329,7 @@ function sendProgress(): void {
 function sendFinish(data: RaceFinishData): void {
   if (finishSent) return;
   finishSent = true;
+  setRaceFinished(true);
   clearInterval(progressTimer);
   client.send({
     type: "race:finish",
@@ -280,42 +341,58 @@ function sendFinish(data: RaceFinishData): void {
     keyCount: data.keyCount,
   });
   // the test is done for us: unhook the engine and wait on the race page
-  releaseEngine();
+  releaseEngine({ finished: true });
   goTo(`/r/${room()?.code ?? ""}`);
-  showNoticeNotification("Finished! Waiting for the others...");
 }
 
-function applyRaceConfig(info: RaceInfo): void {
-  savedConfig ??= {
-    mode: Config.mode,
-    time: Config.time,
-    words: Config.words,
-    punctuation: Config.punctuation,
-    numbers: Config.numbers,
-    language: Config.language,
-  };
-  const cfg = raceConfigFromSettings(info.settings);
-  const nosave = { nosave: true };
-  setConfig("mode", cfg.mode, nosave);
-  if (cfg.time !== undefined) setConfig("time", cfg.time, nosave);
-  if (cfg.words !== undefined) setConfig("words", cfg.words, nosave);
-  setConfig("punctuation", cfg.punctuation, nosave);
-  setConfig("numbers", cfg.numbers, nosave);
-  setConfig("language", cfg.language as Language, nosave);
+// ---------------------------------------------------------------- config
+
+function loadSavedConfig(): ConfigEntry[] | undefined {
+  const raw = sessionStorage.getItem(SAVED_CONFIG_KEY);
+  if (raw === null) return undefined;
+  try {
+    return JSON.parse(raw) as ConfigEntry[];
+  } catch {
+    return undefined;
+  }
+}
+
+function applyEntry(entry: ConfigEntry): boolean {
+  const [key, value] = entry;
+  // the tuple type keeps key and value paired; setConfig can't see that
+  return setConfig(key, value as never, { nosave: true });
+}
+
+/** override race-affecting config without persisting it; false on failure */
+function applyRaceConfig(info: RaceInfo): boolean {
+  if (loadSavedConfig() === undefined) {
+    const saved = RACE_CONFIG_KEYS.map(
+      (key) => [key, structuredClone(Config[key])] as ConfigEntry,
+    );
+    sessionStorage.setItem(SAVED_CONFIG_KEY, JSON.stringify(saved));
+  }
+  const overrides = raceConfigOverrides(info.settings);
+  if (overrides === undefined) return false;
+  for (const entry of overrides) {
+    // setConfig returns false for a no-op too, so compare the result
+    applyEntry(entry);
+    if (JSON.stringify(Config[entry[0]]) !== JSON.stringify(entry[1])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function restoreConfig(): void {
-  const saved = savedConfig;
+  const saved = loadSavedConfig();
   if (saved === undefined) return;
-  savedConfig = undefined;
-  // saved normally, so race values that leaked into storage get overwritten
-  setConfig("language", saved.language);
-  setConfig("punctuation", saved.punctuation);
-  setConfig("numbers", saved.numbers);
-  setConfig("time", saved.time);
-  setConfig("words", saved.words);
-  setConfig("mode", saved.mode);
+  sessionStorage.removeItem(SAVED_CONFIG_KEY);
+  for (const entry of [...saved].reverse()) applyEntry(entry);
+  // one write, so race values that leaked into storage are overwritten
+  saveFullConfigToLocalStorage(true);
 }
+
+// ---------------------------------------------------------------- teardown
 
 function clearTimers(): void {
   clearTimeout(startTimer);
@@ -324,8 +401,13 @@ function clearTimers(): void {
 }
 
 /** stop feeding race words and locks into the engine, restore settings */
-function releaseEngine(): void {
+function releaseEngine(options: { finished?: boolean } = {}): void {
   clearTimers();
+  // a race ending under us (results, leave) must not become a solo result
+  if (isRaceActive() && options.finished !== true) {
+    if (isResultCalculating()) discardPendingRaceFinish();
+    else if (isTestActive()) stopTest();
+  }
   setRaceInputLocked(false);
   setRaceRestartLocked(false);
   setRaceWords(undefined);
@@ -335,9 +417,11 @@ function releaseEngine(): void {
 
 function endRace(): void {
   raceToken++;
+  finishSent = false;
   releaseEngine();
   batch(() => {
     setRace(undefined);
+    setRaceFinished(false);
     setCountdown(undefined);
     setOpponentProgress([]);
   });

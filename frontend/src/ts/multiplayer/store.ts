@@ -25,6 +25,8 @@ export const [race, setRace] = createSignal<RaceInfo | undefined>();
 export const [opponentProgress, setOpponentProgress] = createSignal<
   PlayerProgress[]
 >([]);
+/** our race:finish went out (or the server says we already finished) */
+export const [raceFinished, setRaceFinished] = createSignal(false);
 export const [results, setResults] = createSignal<RaceResult[] | undefined>();
 export const [lastError, setLastError] = createSignal<string | undefined>();
 /** room code from an /r/CODE invite link, consumed by the race page */

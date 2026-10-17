@@ -1,3 +1,6 @@
+import type { Config as ConfigSchema } from "@monkeytype/schemas/configs";
+import { LanguageSchema } from "@monkeytype/schemas/languages";
+
 import {
   ROOM_CODE_ALPHABET,
   ROOM_CODE_LENGTH,
@@ -36,26 +39,54 @@ export function canStartRace(room: RoomState, myId: string): boolean {
   );
 }
 
-export type RaceConfig = {
-  mode: Settings["mode"];
-  time?: number;
-  words?: number;
-  punctuation: boolean;
-  numbers: boolean;
-  language: string;
-};
+export type ConfigEntry = {
+  [K in keyof ConfigSchema]: [K, ConfigSchema[K]];
+}[keyof ConfigSchema];
 
-/** the local config keys a room's settings override during a race */
-export function raceConfigFromSettings(settings: Settings): RaceConfig {
-  return {
-    mode: settings.mode,
-    ...(settings.mode === "time"
-      ? { time: settings.mode2 }
-      : { words: settings.mode2 }),
-    punctuation: settings.punctuation,
-    numbers: settings.numbers,
-    language: settings.language,
-  };
+/** every config key a race may override, saved before and restored after */
+export const RACE_CONFIG_KEYS = [
+  "funbox",
+  "lazyMode",
+  "difficulty",
+  "minWpm",
+  "minAcc",
+  "minBurst",
+  "stopOnError",
+  "mode",
+  "time",
+  "words",
+  "punctuation",
+  "numbers",
+  "language",
+] as const satisfies readonly (keyof ConfigSchema)[];
+
+/**
+ * Local config for a race, in apply order: the room's settings, plus neutral
+ * values for anything that changes the words or can fail or alter a result
+ * the server recomputes. Funboxes go first so they can't block mode changes.
+ * Undefined if this client doesn't know the room's language.
+ */
+export function raceConfigOverrides(
+  settings: Settings,
+): ConfigEntry[] | undefined {
+  const language = LanguageSchema.safeParse(settings.language);
+  if (!language.success) return undefined;
+  return [
+    ["funbox", []],
+    ["lazyMode", false],
+    ["difficulty", "normal"],
+    ["minWpm", "off"],
+    ["minAcc", "off"],
+    ["minBurst", "off"],
+    ["stopOnError", "off"],
+    ["mode", settings.mode],
+    settings.mode === "time"
+      ? ["time", settings.mode2]
+      : ["words", settings.mode2],
+    ["punctuation", settings.punctuation],
+    ["numbers", settings.numbers],
+    ["language", language.data],
+  ];
 }
 
 export type ProgressPayload = {

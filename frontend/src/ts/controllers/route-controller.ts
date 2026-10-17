@@ -6,6 +6,7 @@ import { showNoticeNotification } from "../states/notifications";
 import { navigationEvent, type NavigateOptions } from "../events/navigation";
 import { authEvent } from "../events/auth";
 import { isStandalone } from "../utils/env";
+import { isRaceActive } from "../multiplayer/engine-hooks";
 import {
   isTestRestarting,
   isResultCalculating,
@@ -199,6 +200,14 @@ export async function navigate(
   ) {
     console.debug(
       `navigate: ${url} ignored, page is busy (testRestarting: ${isTestRestarting()}, resultCalculating: ${isResultCalculating()}, navigating: ${PageController.isNavigating()})`,
+    );
+    return;
+  }
+
+  // multiplayer hook: stay on the test page until the race is done
+  if (!options.force && isRaceActive()) {
+    showNoticeNotification(
+      "Finish the race first, or leave it from the race bar.",
     );
     return;
   }

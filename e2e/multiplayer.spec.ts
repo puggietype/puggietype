@@ -1,6 +1,9 @@
+import { mkdirSync } from "node:fs";
+
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const SCREENS = process.env["SCREENS_DIR"] ?? "/workspace/puggietype/screens";
+mkdirSync(SCREENS, { recursive: true });
 const FAST_DELAY_MS = 25;
 const SLOW_DELAY_MS = 140;
 
@@ -50,9 +53,20 @@ test("two players race, see each other, get a podium and rematch", async ({
   });
   const a = await ctxA.newPage();
   const b = await ctxB.newPage();
+  const pageErrors: string[] = [];
   for (const p of [a, b]) {
-    p.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
+    p.on("pageerror", (e) => pageErrors.push(e.message));
   }
+  const configOf = async (p: Page, key: string): Promise<unknown> =>
+    p.evaluate(
+      (k) =>
+        (
+          window as unknown as {
+            __mt?: { getConfig: Record<string, unknown> };
+          }
+        ).__mt?.getConfig[k],
+      key,
+    );
 
   // A: home -> race page via the header button, create a words-10 lobby
   await a.goto("/");
@@ -90,8 +104,15 @@ test("two players race, see each other, get a podium and rematch", async ({
   await a.screenshot({ path: `${SCREENS}/lobby.png` });
 
   // race
+  const modeBefore = await configOf(a, "mode");
   await byTestId(a, "mp-start").click();
+  // typing during the countdown is ignored
+  await expect(byTestId(b, "mp-countdown")).toBeVisible();
+  await b.keyboard.type("xyz");
   await Promise.all([waitForRaceStart(a), waitForRaceStart(b)]);
+  await expect(
+    b.locator("#words letter.correct, #words letter.incorrect"),
+  ).toHaveCount(0);
 
   const words = await renderedWords(a);
   expect(words).toHaveLength(10);
@@ -138,6 +159,8 @@ test("two players race, see each other, get a podium and rematch", async ({
   await expect(byTestId(a, "mp-pug-winner").locator("svg")).toBeVisible();
   await expect(byTestId(b, "mp-waiting-host")).toBeVisible();
   await a.screenshot({ path: `${SCREENS}/results.png` });
+  // the room's settings were only borrowed for the race
+  expect(await configOf(a, "mode")).toBe(modeBefore);
 
   // rematch: everyone back in the lobby, un-readied
   await byTestId(a, "mp-rematch").click();
@@ -145,6 +168,7 @@ test("two players race, see each other, get a podium and rematch", async ({
   await expect(byTestId(b, "mp-lobby")).toBeVisible();
   await expect(byTestId(b, "mp-ready")).toContainText("ready up");
 
+  expect(pageErrors).toEqual([]);
   await ctxA.close();
   await ctxB.close();
 });

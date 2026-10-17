@@ -8,7 +8,8 @@ import {
   parseInvitePath,
   progressChanged,
   progressWpm,
-  raceConfigFromSettings,
+  RACE_CONFIG_KEYS,
+  raceConfigOverrides,
   wsUrl,
 } from "../../src/ts/multiplayer/helpers";
 import type { RoomState } from "../../src/ts/multiplayer/protocol";
@@ -89,28 +90,67 @@ describe("canStartRace", () => {
   });
 });
 
-describe("raceConfigFromSettings", () => {
-  it("maps time settings", () => {
+function overrides(
+  settings: Parameters<typeof raceConfigOverrides>[0],
+): NonNullable<ReturnType<typeof raceConfigOverrides>> {
+  const entries = raceConfigOverrides(settings);
+  if (entries === undefined) throw new Error("expected overrides");
+  return entries;
+}
+
+describe("raceConfigOverrides", () => {
+  it("is undefined for a language this client doesn't ship", () => {
     expect(
-      raceConfigFromSettings({
+      raceConfigOverrides({ ...DEFAULT_SETTINGS, language: "klingon_9k" }),
+    ).toBeUndefined();
+  });
+  it("applies the room settings for time mode", () => {
+    const entries = new Map<string, unknown>(
+      overrides({
         mode: "time",
         mode2: 15,
         punctuation: true,
         numbers: false,
         language: "english_1k",
       }),
-    ).toEqual({
-      mode: "time",
-      time: 15,
-      punctuation: true,
-      numbers: false,
-      language: "english_1k",
-    });
+    );
+    expect(entries.get("mode")).toBe("time");
+    expect(entries.get("time")).toBe(15);
+    expect(entries.has("words")).toBe(false);
+    expect(entries.get("punctuation")).toBe(true);
+    expect(entries.get("numbers")).toBe(false);
+    expect(entries.get("language")).toBe("english_1k");
   });
-  it("maps words settings", () => {
-    expect(
-      raceConfigFromSettings({ ...DEFAULT_SETTINGS, mode: "words", mode2: 10 }),
-    ).toMatchObject({ mode: "words", words: 10 });
+  it("applies words mode", () => {
+    const entries = new Map<string, unknown>(
+      overrides({ ...DEFAULT_SETTINGS, mode: "words", mode2: 10 }),
+    );
+    expect(entries.get("mode")).toBe("words");
+    expect(entries.get("words")).toBe(10);
+  });
+  it("neutralises settings that change or fail a result", () => {
+    const entries = new Map<string, unknown>(overrides(DEFAULT_SETTINGS));
+    expect(entries.get("funbox")).toEqual([]);
+    expect(entries.get("lazyMode")).toBe(false);
+    expect(entries.get("difficulty")).toBe("normal");
+    expect(entries.get("minWpm")).toBe("off");
+    expect(entries.get("minAcc")).toBe("off");
+    expect(entries.get("minBurst")).toBe("off");
+    expect(entries.get("stopOnError")).toBe("off");
+  });
+  it("clears funboxes before changing the mode", () => {
+    const keys = overrides(DEFAULT_SETTINGS).map(([k]) => k);
+    expect(keys.indexOf("funbox")).toBeLessThan(keys.indexOf("mode"));
+  });
+});
+
+describe("RACE_CONFIG_KEYS", () => {
+  it("covers every overridden key plus both lengths", () => {
+    for (const [key] of overrides(DEFAULT_SETTINGS)) {
+      expect(RACE_CONFIG_KEYS).toContain(key);
+    }
+    expect(RACE_CONFIG_KEYS).toContain("time");
+    expect(RACE_CONFIG_KEYS).toContain("words");
   });
 });
 

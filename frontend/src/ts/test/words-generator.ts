@@ -34,7 +34,7 @@ import {
   setCurrentQuote,
 } from "../states/test";
 import * as TestWords from "./test-words";
-import { getRaceWord } from "../multiplayer/engine-hooks";
+import { getRaceWord, getRaceWordCount } from "../multiplayer/engine-hooks";
 
 //pin implementation
 const random = Math.random;
@@ -1010,6 +1010,11 @@ export function appendCommitCharacter(word: string): string {
 }
 
 export function areAllWordsGenerated(): boolean {
+  // multiplayer hook: the race ends with the server's list, in every mode
+  const raceWordCount = getRaceWordCount();
+  if (raceWordCount !== undefined) {
+    return TestWords.words.length >= raceWordCount;
+  }
   return (
     (Config.mode === "words" &&
       TestWords.words.length >= Config.words &&

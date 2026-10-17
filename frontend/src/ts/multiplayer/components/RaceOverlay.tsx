@@ -1,8 +1,10 @@
-import { JSXElement, Show } from "solid-js";
+import { JSXElement, onMount, Show } from "solid-js";
 
 import { Button } from "../../components/common/Button";
+import { leaveRoom, resumeSession } from "../race";
 import {
   countdown,
+  loadNickname,
   race,
   room,
   setShowOpponentCarets,
@@ -14,6 +16,11 @@ import { settingsSummary } from "./ui";
 
 /** race chrome on the test page: info line, progress bars, 3-2-1, carets */
 export function RaceOverlay(): JSXElement {
+  // a reload on the test page mid-race rejoins (and restores overridden config)
+  onMount(() => {
+    if (room() === undefined) resumeSession(loadNickname());
+  });
+
   return (
     <Show when={race()}>
       {(info) => (
@@ -22,6 +29,15 @@ export function RaceOverlay(): JSXElement {
             <span>
               private · {room()?.code} · {settingsSummary(info().settings)}
             </span>
+            <span class="grow"></span>
+            <Button
+              variant="text"
+              text="leave race"
+              fa={{ icon: "fa-sign-out-alt" }}
+              class="py-1 text-sm"
+              dataset={{ "data-testid": "mp-leave-race" }}
+              onClick={() => leaveRoom()}
+            />
             <Button
               variant="text"
               text={showOpponentCarets() ? "carets on" : "carets off"}

@@ -155,6 +155,7 @@ import { resetModifierState } from "../states/modifiers";
 import { nthElementFromArray } from "../utils/arrays";
 import {
   handleRaceFinish,
+  isRaceActive,
   isRaceRestartLocked,
 } from "../multiplayer/engine-hooks";
 
@@ -191,6 +192,8 @@ export function startTest(now: number): boolean {
 
 function recordIncompleteTest(): void {
   if (!Config.resultSaving) return;
+  // multiplayer hook: abandoned races aren't solo tests
+  if (isRaceActive()) return;
   // Finalize the abandoned test before measuring it: logging the timer
   // "end" event gives getAfkDuration its interval boundaries, so idle time
   // is actually subtracted. Without it AFK is always 0 and the full
