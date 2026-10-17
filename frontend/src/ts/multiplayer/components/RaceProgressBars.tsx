@@ -47,13 +47,19 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
 
   return (
     <div
-      class={cn("grid gap-2 rounded-lg bg-sub-alt px-5 py-4", props.class)}
+      class={cn(
+        "grid rounded-lg bg-sub-alt",
+        (room()?.players.length ?? 0) > 4
+          ? "gap-x-8 gap-y-1.5 px-4 py-3 md:grid-cols-2"
+          : "gap-2 px-5 py-4",
+        props.class,
+      )}
       data-testid="mp-progress"
     >
       <For each={room()?.players ?? []}>
         {(player) => (
           <div
-            class="grid grid-cols-[8rem_1fr_3rem] items-center gap-4 text-sm font-(--font)"
+            class="grid min-w-0 grid-cols-[7.5rem_1fr_2.5rem] items-center gap-3 text-sm font-(--font)"
             data-testid="mp-progress-row"
             data-player-id={player.id}
           >

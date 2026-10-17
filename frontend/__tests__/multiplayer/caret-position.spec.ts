@@ -4,6 +4,7 @@ import {
   caretTarget,
   smoothToward,
   stackIndexes,
+  stackTagLevels,
 } from "../../src/ts/multiplayer/caret-position";
 
 const words = ["the", "quick", "fox"];
@@ -96,5 +97,53 @@ describe("stackIndexes", () => {
         { id: "d", wordIndex: 0, charIndex: 1 },
       ]),
     ).toEqual({ a: 0, b: 1, c: 0, d: 2 });
+  });
+});
+
+describe("stackTagLevels", () => {
+  it("keeps 7 nearby tags on one line from overlapping", () => {
+    const tags = Array.from({ length: 7 }, (_, i) => ({
+      id: `p${i}`,
+      x: 100 + i * 12,
+      y: 50,
+      width: 80,
+    }));
+    const levels = stackTagLevels(tags);
+    for (const a of tags) {
+      for (const b of tags) {
+        if (a.id >= b.id || levels[a.id] !== levels[b.id]) continue;
+        expect(a.x + a.width <= b.x || b.x + b.width <= a.x).toBe(true);
+      }
+    }
+    expect(new Set(Object.values(levels)).size).toBeGreaterThan(1);
+  });
+
+  it("reuses level 0 for far-apart tags and separate lines", () => {
+    expect(
+      stackTagLevels([
+        { id: "a", x: 0, y: 0, width: 50 },
+        { id: "b", x: 200, y: 0, width: 50 },
+        { id: "c", x: 10, y: 40, width: 50 },
+      ]),
+    ).toEqual({ a: 0, b: 0, c: 0 });
+  });
+
+  it("doesn't let a lower line's lifted tag hit the line above", () => {
+    const levels = stackTagLevels([
+      { id: "top", x: 0, y: 0, width: 80 },
+      { id: "low1", x: 10, y: 40, width: 80 },
+      { id: "low2", x: 20, y: 40, width: 80 },
+      { id: "low3", x: 30, y: 40, width: 80 },
+    ]);
+    expect(levels).toEqual({ top: 0, low1: 0, low2: 1, low3: 4 });
+  });
+
+  it("hides tags beyond maxLevels", () => {
+    const tags = [0, 1, 2].map((i) => ({ id: `p${i}`, x: i, y: 0, width: 60 }));
+    expect(stackTagLevels(tags, 18, 16, 4, 2)).toEqual({
+      p0: 0,
+      p1: 1,
+      p2: -1,
+    });
   });
 });

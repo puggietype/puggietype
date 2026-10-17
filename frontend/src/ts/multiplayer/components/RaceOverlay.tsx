@@ -24,11 +24,11 @@ export function RaceOverlay(): JSXElement {
     <Show when={race()}>
       {(info) => (
         <div class="grid gap-3 pb-12" data-testid="mp-race">
-          <div class="flex items-center justify-between gap-4 text-sm font-(--font) text-sub">
-            <span>
+          <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm font-(--font) text-sub">
+            <span class="min-w-0 basis-full truncate sm:basis-auto">
               private · {room()?.code} · {settingsSummary(info().settings)}
             </span>
-            <span class="grow"></span>
+            <span class="hidden grow sm:block"></span>
             <Button
               variant="text"
               text="leave race"

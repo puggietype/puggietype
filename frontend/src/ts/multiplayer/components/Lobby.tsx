@@ -219,12 +219,19 @@ export function Lobby(props: { room: RoomState }): JSXElement {
         <div class={LABEL}>
           players · {props.room.players.length}/{MAX_PLAYERS}
         </div>
-        <ul class="grid gap-2">
+        <ul
+          class={cn(
+            "grid",
+            props.room.players.length > 4 ? "gap-1.5" : "gap-2",
+          )}
+          data-testid="mp-player-list"
+        >
           <For each={props.room.players}>
             {(p) => (
               <li
                 class={cn(
-                  "flex items-center gap-3 rounded bg-bg px-4 py-3",
+                  "flex min-w-0 items-center gap-3 rounded bg-bg px-4",
+                  props.room.players.length > 4 ? "py-2" : "py-3",
                   !p.connected && "opacity-50",
                 )}
                 data-testid="mp-player"
@@ -237,9 +244,11 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     PLAYER_BG[p.color],
                   )}
                 ></span>
-                <span class="truncate font-(--font) text-text">{p.name}</span>
+                <span class="min-w-0 truncate font-(--font) text-text">
+                  {p.name}
+                </span>
                 <Show when={p.id === myId()}>
-                  <span class="text-sm text-sub">(you)</span>
+                  <span class="shrink-0 text-sm text-sub">(you)</span>
                 </Show>
                 <Show when={p.id === props.room.hostId}>
                   <span
@@ -253,11 +262,11 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                 <span class="grow"></span>
                 <Show
                   when={p.id !== props.room.hostId}
-                  fallback={<span class="text-sm text-sub">host</span>}
+                  fallback={<span class="shrink-0 text-sm text-sub">host</span>}
                 >
                   <span
                     class={cn(
-                      "rounded-full px-3 py-0.5 text-xs font-(--font)",
+                      "shrink-0 rounded-full px-3 py-0.5 text-xs font-(--font) whitespace-nowrap",
                       p.ready ? "bg-opp2 text-bg" : "bg-sub-alt text-sub",
                     )}
                   >

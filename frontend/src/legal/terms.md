@@ -6,7 +6,7 @@ _Launch draft v1.3 for attorney review. Effective date: **October 17, 2026**. In
 PuggieType's solo typing test needs no account and collects no account data. You must be **at least 13 years old** to use multiplayer. If you are under 18, or under the age of majority where you live, use multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.
 
 ## 2. Private lobbies
-Multiplayer races take place in private lobbies of up to 4 players. When you create a lobby you get an invite link and a lobby code. **Anyone who has the link or code can join the lobby while it is open**, so share it only with people you want to race. Lobbies close when everyone leaves. Public matchmaking isn't available yet.
+Multiplayer races take place in private lobbies of up to 8 players. When you create a lobby you get an invite link and a lobby code. **Anyone who has the link or code can join the lobby while it is open**, so share it only with people you want to race. Lobbies close when everyone leaves. Public matchmaking isn't available yet.
 
 ## 3. Nicknames
 In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown only to the other players in your lobby and is not stored after the lobby closes. There is no chat, and players can't send each other messages.

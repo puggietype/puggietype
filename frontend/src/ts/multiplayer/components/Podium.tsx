@@ -35,6 +35,7 @@ export function Podium(props: {
   const colorOf = (id: string) =>
     props.room.players.find((p) => p.id === id)?.color ?? "opp1";
   const winner = () => props.results[0];
+  const dense = () => props.results.length > 4;
   const mine = () => props.results.find((r) => r.playerId === myId());
 
   return (
@@ -44,7 +45,10 @@ export function Podium(props: {
     >
       <PugImage
         file={PUG_WINNER_FILE}
-        class="mx-auto aspect-square w-full max-w-80"
+        class={cn(
+          "mx-auto aspect-square w-full",
+          dense() ? "max-w-48 md:max-w-80" : "max-w-80",
+        )}
         testId="mp-pug-winner"
       />
       <div class="grid gap-4">
@@ -54,7 +58,10 @@ export function Podium(props: {
         </div>
         <Show when={winner()}>
           {(w) => (
-            <h2 class="text-5xl leading-tight" data-testid="mp-winner">
+            <h2
+              class="text-4xl leading-tight break-words sm:text-5xl"
+              data-testid="mp-winner"
+            >
               <span class={PLAYER_TEXT[colorOf(w().playerId)]}>{w().name}</span>{" "}
               <span class="text-text">wins!</span>
             </h2>
@@ -71,16 +78,20 @@ export function Podium(props: {
             </div>
           )}
         </Show>
-        <div class="overflow-x-auto rounded-lg bg-sub-alt px-4 py-2">
+        <div class="overflow-x-auto rounded-lg bg-sub-alt px-2 py-2 sm:px-4">
           <table class="w-full font-(--font)" data-testid="mp-results-table">
             <thead>
               <tr class="text-left text-xs text-sub">
-                <th class="px-3 py-3 font-normal">#</th>
-                <th class="px-3 py-3 font-normal">typist</th>
-                <th class="px-3 py-3 text-right font-normal">wpm</th>
-                <th class="px-3 py-3 text-right font-normal">raw</th>
-                <th class="px-3 py-3 text-right font-normal">acc</th>
-                <th class="px-3 py-3 text-right font-normal">flagged</th>
+                <th class="px-2 py-3 font-normal sm:px-3">#</th>
+                <th class="w-full px-2 py-3 font-normal sm:px-3">typist</th>
+                <th class="px-2 py-3 text-right font-normal sm:px-3">wpm</th>
+                <th class="hidden px-2 py-3 text-right font-normal sm:table-cell sm:px-3">
+                  raw
+                </th>
+                <th class="px-2 py-3 text-right font-normal sm:px-3">acc</th>
+                <th class="hidden px-3 py-3 text-right font-normal sm:table-cell">
+                  flagged
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -94,14 +105,20 @@ export function Podium(props: {
                   >
                     <td
                       class={cn(
-                        "px-3 py-3 text-lg",
+                        "px-2 text-lg sm:px-3",
+                        dense() ? "py-1.5" : "py-3",
                         PLAYER_TEXT[colorOf(r.playerId)],
                       )}
                     >
                       {r.place}
                     </td>
-                    <td class="px-3 py-3">
-                      <span class="flex items-center gap-2">
+                    <td
+                      class={cn(
+                        "max-w-0 px-2 sm:px-3",
+                        dense() ? "py-1.5" : "py-3",
+                      )}
+                    >
+                      <span class="flex min-w-0 items-center gap-2">
                         <span
                           class={cn(
                             "h-2.5 w-2.5 shrink-0 rounded-full",
@@ -110,10 +127,20 @@ export function Podium(props: {
                         ></span>
                         <span class="truncate text-text">{r.name}</span>
                         <Show when={r.playerId === myId()}>
-                          <span class="text-sm text-sub">(you)</span>
+                          <span class="shrink-0 text-sm text-sub">(you)</span>
                         </Show>
                         <Show when={!r.finished}>
-                          <span class="text-sm text-sub">dnf</span>
+                          <span class="shrink-0 text-sm text-sub">dnf</span>
+                        </Show>
+                        <Show when={r.flagged}>
+                          <span
+                            class="shrink-0 text-sm text-error sm:hidden"
+                            title={r.reasons
+                              .map((x) => REASON_TEXT[x])
+                              .join(", ")}
+                          >
+                            <Fa icon="fa-flag" />
+                          </span>
                         </Show>
                         <KickButton
                           room={props.room}
@@ -123,18 +150,36 @@ export function Podium(props: {
                       </span>
                     </td>
                     <td
-                      class="px-3 py-3 text-right text-text"
+                      class={cn(
+                        "px-2 text-right text-text sm:px-3",
+                        dense() ? "py-1.5" : "py-3",
+                      )}
                       data-testid="mp-result-wpm"
                     >
                       {Math.round(r.wpm)}
                     </td>
-                    <td class="px-3 py-3 text-right text-sub">
+                    <td
+                      class={cn(
+                        "hidden px-2 text-right text-sub sm:table-cell sm:px-3",
+                        dense() ? "py-1.5" : "py-3",
+                      )}
+                    >
                       {Math.round(r.raw)}
                     </td>
-                    <td class="px-3 py-3 text-right text-text">
+                    <td
+                      class={cn(
+                        "px-2 text-right text-text sm:px-3",
+                        dense() ? "py-1.5" : "py-3",
+                      )}
+                    >
                       {r.acc.toFixed(1)}%
                     </td>
-                    <td class="px-3 py-3 text-right">
+                    <td
+                      class={cn(
+                        "hidden px-3 text-right sm:table-cell",
+                        dense() ? "py-1.5" : "py-3",
+                      )}
+                    >
                       <Show
                         when={r.flagged}
                         fallback={<span class="text-sub">-</span>}
