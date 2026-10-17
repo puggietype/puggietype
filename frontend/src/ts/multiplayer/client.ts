@@ -1,5 +1,6 @@
 import { isAgeConfirmed } from "./age-gate";
 import { computeClockOffset, type ClockSample } from "./clock";
+import { CONFIGURED_WS_URL } from "./flags";
 import { wsUrl } from "./helpers";
 import type { ClientMessage, ServerMessage } from "./protocol";
 
@@ -113,7 +114,7 @@ export class MultiplayerClient {
     this.helloDone = false;
     this.samples = [];
     this.pingSentAt.clear();
-    const ws = new WebSocket(wsUrl(window.location));
+    const ws = new WebSocket(wsUrl(window.location, CONFIGURED_WS_URL));
     this.ws = ws;
 
     ws.addEventListener("open", () => {

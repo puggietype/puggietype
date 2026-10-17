@@ -24,9 +24,27 @@ export function parseInvitePath(pathname: string): string | undefined {
   return match?.[1] !== undefined ? normalizeRoomCode(match[1]) : undefined;
 }
 
-export function wsUrl(location: { protocol: string; host: string }): string {
+export const PRODUCTION_WS_URL = "wss://ws.puggietype.com/ws";
+const PRODUCTION_HOSTS = new Set(["puggietype.com", "www.puggietype.com"]);
+
+/**
+ * The build-time VITE_WS_URL if set, else the production server on
+ * puggietype.com, else same-origin /ws (dev server / local preview proxy).
+ */
+export function wsUrl(
+  location: { protocol: string; host: string; hostname: string },
+  configured?: string,
+): string {
+  if (configured !== undefined && configured !== "") return configured;
+  if (PRODUCTION_HOSTS.has(location.hostname)) return PRODUCTION_WS_URL;
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   return `${scheme}://${location.host}/ws`;
+}
+
+/** a build-time boolean env var: unset/empty -> fallback */
+export function envFlag(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined || value === "") return fallback;
+  return !["false", "0", "off", "no"].includes(value.toLowerCase());
 }
 
 /** mirrors the server's race:start rules */

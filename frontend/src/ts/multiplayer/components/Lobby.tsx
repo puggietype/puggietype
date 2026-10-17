@@ -10,6 +10,7 @@ import {
 import { cn } from "../../utils/cn";
 import { canStartRace, inviteLink } from "../helpers";
 import {
+  MAX_PLAYERS,
   TIME_MODE2,
   WORDS_MODE2,
   type RoomState,
@@ -110,7 +111,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             />
           </div>
           <div class="text-sub">
-            share the code or link · up to 4 typists ·{" "}
+            share the code or link · up to {MAX_PLAYERS} typists ·{" "}
             <span class="text-main" data-testid="mp-settings-summary">
               {settingsSummary(s())}
             </span>
@@ -214,7 +215,9 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             </div>
           )}
         </Show>
-        <div class={LABEL}>players · {props.room.players.length}/4</div>
+        <div class={LABEL}>
+          players · {props.room.players.length}/{MAX_PLAYERS}
+        </div>
         <ul class="grid gap-2">
           <For each={props.room.players}>
             {(p) => (

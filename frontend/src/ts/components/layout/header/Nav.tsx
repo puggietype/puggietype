@@ -11,6 +11,7 @@ import { usePendingConnectionsQuery } from "../../../collections/connections";
 import { restartTestEvent } from "../../../events/test";
 import { createEffectOn } from "../../../hooks/effects";
 import { useRefWithUtils } from "../../../hooks/useRefWithUtils";
+import { MULTIPLAYER_ENABLED } from "../../../multiplayer/flags";
 import { prefetchLeaderboardPage } from "../../../queries/prefetch";
 import { getServerConfigurationQueryOptions } from "../../../queries/server-configuration";
 import { getActivePage } from "../../../states/core";
@@ -95,21 +96,23 @@ export function Nav(): JSXElement {
           if (getActivePage() === "test") restartTestEvent.dispatch();
         }}
       />
-      <Button
-        variant="text"
-        fa={{
-          icon: "fa-flag-checkered",
-          fixedWidth: true,
-        }}
-        router-link
-        href="/race"
-        class={buttonClass()}
-        balloon={{ text: "race", position: "down" }}
-        dataset={{
-          "data-nav-item": "race",
-          "data-testid": "nav-race",
-        }}
-      />
+      <Show when={MULTIPLAYER_ENABLED}>
+        <Button
+          variant="text"
+          fa={{
+            icon: "fa-flag-checkered",
+            fixedWidth: true,
+          }}
+          router-link
+          href="/race"
+          class={buttonClass()}
+          balloon={{ text: "race", position: "down" }}
+          dataset={{
+            "data-nav-item": "race",
+            "data-testid": "nav-race",
+          }}
+        />
+      </Show>
       <Show when={!isStandalone()}>
         <Button
           variant="text"

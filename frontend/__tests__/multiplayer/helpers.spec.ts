@@ -13,6 +13,7 @@ import {
   raceConfigOverrides,
   resumeText,
   wsUrl,
+  envFlag,
 } from "../../src/ts/multiplayer/helpers";
 import type { RoomState } from "../../src/ts/multiplayer/protocol";
 import {
@@ -47,11 +48,48 @@ describe("invite links", () => {
 });
 
 describe("wsUrl", () => {
-  it("uses ws on http and wss on https", () => {
-    expect(wsUrl({ protocol: "http:", host: "localhost:3000" })).toBe(
-      "ws://localhost:3000/ws",
+  const local = {
+    protocol: "http:",
+    host: "localhost:3000",
+    hostname: "localhost",
+  };
+  it("uses same-origin /ws (ws on http, wss on https) when unset", () => {
+    expect(wsUrl(local)).toBe("ws://localhost:3000/ws");
+    expect(
+      wsUrl({
+        protocol: "https:",
+        host: "x.ngrok.app",
+        hostname: "x.ngrok.app",
+      }),
+    ).toBe("wss://x.ngrok.app/ws");
+  });
+  it("prefers the build-time VITE_WS_URL", () => {
+    expect(wsUrl(local, "wss://ws.example.com/ws")).toBe(
+      "wss://ws.example.com/ws",
     );
-    expect(wsUrl({ protocol: "https:", host: "x.dev" })).toBe("wss://x.dev/ws");
+    expect(wsUrl(local, "")).toBe("ws://localhost:3000/ws");
+  });
+  it("defaults to the production server on puggietype.com", () => {
+    for (const hostname of ["puggietype.com", "www.puggietype.com"]) {
+      expect(wsUrl({ protocol: "https:", host: hostname, hostname })).toBe(
+        "wss://ws.puggietype.com/ws",
+      );
+    }
+  });
+});
+
+describe("envFlag", () => {
+  it("falls back to the default when unset or empty", () => {
+    expect(envFlag(undefined, true)).toBe(true);
+    expect(envFlag("", false)).toBe(false);
+  });
+  it("reads common true/false spellings", () => {
+    for (const v of ["false", "0", "off", "no", "FALSE"]) {
+      expect(envFlag(v, true)).toBe(false);
+    }
+    for (const v of ["true", "1", "on", "yes"]) {
+      expect(envFlag(v, false)).toBe(true);
+    }
   });
 });
 

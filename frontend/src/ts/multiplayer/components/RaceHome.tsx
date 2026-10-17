@@ -1,9 +1,12 @@
-import { createSignal, JSXElement, untrack } from "solid-js";
+import { createSignal, JSXElement, Show, untrack } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { PugHead } from "../../components/common/PugHead";
+import { showNoticeNotification } from "../../states/notifications";
 import { cn } from "../../utils/cn";
+import { PUBLIC_MATCHES_ENABLED } from "../flags";
 import { normalizeRoomCode } from "../helpers";
+import { MAX_PLAYERS } from "../protocol";
 import { connect, createRoom, joinRoom } from "../race";
 import { connectionStatus } from "../store";
 import { PRIMARY_BUTTON } from "./ui";
@@ -32,8 +35,8 @@ export function RaceHome(props: { code?: string }): JSXElement {
           <div class={LABEL}>private match</div>
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="text-sub">
-              race up to 4 friends with an invite link. you get a random pug
-              name.
+              race up to {MAX_PLAYERS} typists with an invite link. you get a
+              random pug name.
             </div>
             <Button
               text="create private lobby"
@@ -81,13 +84,25 @@ export function RaceHome(props: { code?: string }): JSXElement {
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div class="text-lg text-text">public match</div>
-              <div class="text-sm font-(--font) text-sub">coming soon</div>
+              <Show when={!PUBLIC_MATCHES_ENABLED}>
+                <div
+                  class="text-sm font-(--font) text-sub"
+                  data-testid="mp-public-soon"
+                >
+                  coming soon
+                </div>
+              </Show>
             </div>
             <Button
               text="find match"
               fa={{ icon: "fa-globe" }}
-              disabled
+              disabled={!PUBLIC_MATCHES_ENABLED}
               dataset={{ "data-testid": "mp-public" }}
+              onClick={() =>
+                showNoticeNotification(
+                  "Public matchmaking isn't on this server yet.",
+                )
+              }
             />
           </div>
         </section>
