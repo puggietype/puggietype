@@ -118,12 +118,19 @@ function getPlugins({
     }),
   ];
 
+  // The type-aware oxlint checker spawns tsgolint processes of ~2 GB each;
+  // several dev servers at once exhausted the box's memory. Opt in with
+  // OXLINT_CHECKER=1 (lint-staged still lints on commit).
   const devPlugins: PluginOption[] = [
-    oxlintChecker({
-      debounceDelay: 125,
-      typeAware: true,
-      overlay: isDevelopment,
-    }),
+    ...(process.env["OXLINT_CHECKER"] === "1"
+      ? [
+          oxlintChecker({
+            debounceDelay: 125,
+            typeAware: true,
+            overlay: isDevelopment,
+          }),
+        ]
+      : []),
     Inspect(),
   ];
 
@@ -355,7 +362,11 @@ export default defineConfig(({ mode }): UserConfig => {
       // hmr: no port set, so the client reuses the page's host/port/protocol
       // (works through https tunnels on 443)
       proxy: {
-        "/ws": { target: "ws://localhost:2567", ws: true },
+        // MP_WS_TARGET points a second dev server at a test WS server
+        "/ws": {
+          target: process.env["MP_WS_TARGET"] ?? "ws://localhost:2567",
+          ws: true,
+        },
       },
       watch: {
         //we rebuild the whole contracts package when a file changes
