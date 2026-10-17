@@ -215,7 +215,7 @@ function getBuildOptions({
     assetsInlineLimit: 0, //dont inline small files as data
     rolldownOptions: {
       input: {
-        monkeytype: path.resolve(__dirname, "src/index.html"),
+        puggietype: path.resolve(__dirname, "src/index.html"),
         email: path.resolve(__dirname, "src/email-handler.html"),
         privacy: path.resolve(__dirname, "src/privacy-policy.html"),
         security: path.resolve(__dirname, "src/security-policy.html"),
@@ -264,7 +264,7 @@ function getBuildOptions({
               test: /node_modules\/@tanstack\//,
             },
             {
-              name: "monkeytype-packages",
+              name: "puggietype-packages",
               test: /monkeytype\/packages\//,
             },
             {
@@ -272,7 +272,7 @@ function getBuildOptions({
               test: /node_modules\/chart/,
             },
             {
-              name: "monkeytype-utils",
+              name: "puggietype-utils",
               test: /src\/ts\/utils\//,
             },
             {

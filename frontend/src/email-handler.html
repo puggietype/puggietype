@@ -179,11 +179,14 @@
       getAuth,
     } from "firebase/auth";
     import { initializeApp } from "firebase/app";
-    import { firebaseConfig } from "./ts/constants/firebase-config";
+    import { loadFirebaseConfig } from "./ts/constants/load-firebase-config";
     import { qs, onDOMReady } from "./ts/utils/dom";
 
-    const app = initializeApp(firebaseConfig);
-    const Auth = getAuth(app);
+    // accounts are disabled when no firebase config is bundled
+    const firebaseConfig = await loadFirebaseConfig();
+    const app =
+      firebaseConfig === undefined ? undefined : initializeApp(firebaseConfig);
+    const Auth = app === undefined ? undefined : getAuth(app);
 
     function isPasswordStrong(password) {
       const hasCapital = !!password.match(/[A-Z]/);

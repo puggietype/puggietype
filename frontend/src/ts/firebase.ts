@@ -1,7 +1,6 @@
 import {
   FirebaseApp,
   FirebaseError,
-  FirebaseOptions,
   getApp,
   getApps,
   initializeApp,
@@ -22,6 +21,7 @@ import {
   indexedDBLocalPersistence,
   getAdditionalUserInfo,
 } from "firebase/auth";
+import { loadFirebaseConfig } from "./constants/load-firebase-config";
 import { promiseWithResolvers } from "./utils/misc";
 import { isDevEnvironment, isStandalone } from "./utils/env";
 import { createErrorMessage } from "./utils/error";
@@ -53,16 +53,8 @@ export async function init(callback: ReadyCallback): Promise<void> {
   try {
     if (isStandalone()) throw new Error("standalone mode, auth disabled");
 
-    // glob so a missing (gitignored) config file doesn't break the build
-    const configs = import.meta.glob<{ firebaseConfig: FirebaseOptions }>([
-      "./constants/firebase-config.ts",
-      "./constants/firebase-config-live.ts",
-    ]);
-    const loadConfig = isDevEnvironment()
-      ? configs["./constants/firebase-config.ts"]
-      : configs["./constants/firebase-config-live.ts"];
-    if (loadConfig === undefined) throw new Error("firebase config missing");
-    const firebaseConfig = (await loadConfig()).firebaseConfig;
+    const firebaseConfig = await loadFirebaseConfig();
+    if (firebaseConfig === undefined) throw new Error("no firebase config");
 
     readyCallback = callback;
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
