@@ -9,12 +9,21 @@
 import { z } from "zod";
 
 export const PROTOCOL_VERSION = 1;
-export const MAX_PLAYERS = 4;
+export const MAX_PLAYERS = 8;
 /** 31^8 ≈ 8.5e11 codes; with join rate limits, guessing a live lobby is impractical. */
 export const ROOM_CODE_LENGTH = 8;
 /** Unambiguous alphabet: no 0/O, 1/I/L. */
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-export const PLAYER_COLORS = ["opp1", "opp2", "opp3", "opp4"] as const;
+export const PLAYER_COLORS = [
+  "opp1",
+  "opp2",
+  "opp3",
+  "opp4",
+  "opp5",
+  "opp6",
+  "opp7",
+  "opp8",
+] as const;
 export const TIME_MODE2 = [15, 30, 60, 120] as const;
 export const WORDS_MODE2 = [10, 25, 50, 100] as const;
 

@@ -6,6 +6,10 @@ export const PLAYER_BG: Record<PlayerColor, string> = {
   opp2: "bg-opp2",
   opp3: "bg-opp3",
   opp4: "bg-opp4",
+  opp5: "bg-opp5",
+  opp6: "bg-opp6",
+  opp7: "bg-opp7",
+  opp8: "bg-opp8",
 };
 
 export const PLAYER_TEXT: Record<PlayerColor, string> = {
@@ -13,6 +17,10 @@ export const PLAYER_TEXT: Record<PlayerColor, string> = {
   opp2: "text-opp2",
   opp3: "text-opp3",
   opp4: "text-opp4",
+  opp5: "text-opp5",
+  opp6: "text-opp6",
+  opp7: "text-opp7",
+  opp8: "text-opp8",
 };
 
 export function ordinal(n: number): string {

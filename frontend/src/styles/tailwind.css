@@ -16,6 +16,10 @@
   --color-opp2: var(--opp2);
   --color-opp3: var(--opp3);
   --color-opp4: var(--opp4);
+  --color-opp5: var(--opp5);
+  --color-opp6: var(--opp6);
+  --color-opp7: var(--opp7);
+  --color-opp8: var(--opp8);
 
   /* decide on rem or em */
   --spacing: 0.25rem;
