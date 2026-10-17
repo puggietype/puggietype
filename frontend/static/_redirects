@@ -4,3 +4,15 @@
 /privacy-policy /privacy 301
 /security-policy.html /terms 301
 /security-policy /terms 301
+/verify /index.html 200
+/leaderboards /index.html 200
+/about /index.html 200
+/settings /index.html 200
+/login /index.html 200
+/account /index.html 200
+/account-settings /index.html 200
+/profile /index.html 200
+/profile/* /index.html 200
+/race /index.html 200
+/r/* /index.html 200
+/friends /index.html 200
