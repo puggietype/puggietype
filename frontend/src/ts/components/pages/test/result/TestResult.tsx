@@ -1,5 +1,13 @@
 import { format } from "date-fns/format";
-import { createMemo, JSXElement, onCleanup, onMount, Show } from "solid-js";
+import {
+  createMemo,
+  JSXElement,
+  lazy,
+  onCleanup,
+  onMount,
+  Show,
+  Suspense,
+} from "solid-js";
 
 import { getAdProvider, noopAdProvider } from "../../../../ads/provider";
 import { getConfig } from "../../../../config/store";
@@ -21,11 +29,15 @@ import { Button } from "../../../common/Button";
 import { Fa } from "../../../common/Fa";
 import { UserFlags } from "../../../common/UserFlags";
 import { ResultButtons } from "./ResultButtons";
-import { ResultChart } from "./ResultChart";
 import { ResultMainStats } from "./ResultMainStats";
 import { ResultReplay } from "./ResultReplay";
 import { ResultSecondaryStats } from "./ResultSecondaryStats";
 import { ResultWordsHistory } from "./ResultWordsHistory";
+
+// chart.js (~85 KB gzip) is only needed once a result is shown
+const ResultChart = lazy(async () =>
+  import("./ResultChart").then((m) => ({ default: m.ResultChart })),
+);
 
 export function TestResult(): JSXElement {
   const lastTest = createMemo(() => {
@@ -78,10 +90,12 @@ export function TestResult(): JSXElement {
                   result={test().result}
                   eventLog={test().eventLog}
                 />
-                <ResultChart
-                  result={test().result}
-                  eventLog={test().eventLog}
-                />
+                <Suspense fallback={<div class="h-50 w-full"></div>}>
+                  <ResultChart
+                    result={test().result}
+                    eventLog={test().eventLog}
+                  />
+                </Suspense>
               </div>
               <ResultSecondaryStats result={test().result} />
               <ResultWordsHistory eventLog={test().eventLog} />

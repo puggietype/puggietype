@@ -4,21 +4,14 @@ import UnpluginInjectPreload from "unplugin-inject-preload/vite";
 import { basename } from "node:path";
 export function injectPreload(): Plugin {
   const base = UnpluginInjectPreload({
+    // no font preloads: on slow mobile links five fonts (~260 KB, mostly icon
+    // fonts) competed with the boot JS; the css discovers the ones a page uses
     files: [
       {
         outputMatch: /css\/.*\.css$/,
         attributes: {
           as: "style",
           type: "text/css",
-          rel: "preload",
-          crossorigin: true,
-        },
-      },
-      {
-        outputMatch: /.*\.woff2$/,
-        attributes: {
-          as: "font",
-          type: "font/woff2",
           rel: "preload",
           crossorigin: true,
         },
