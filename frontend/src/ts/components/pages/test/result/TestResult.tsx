@@ -2,6 +2,7 @@ import { format } from "date-fns/format";
 import { createMemo, JSXElement, onCleanup, onMount, Show } from "solid-js";
 
 import { getConfig } from "../../../../config/store";
+import { isAuthAvailable } from "../../../../firebase";
 import { useRefWithUtils } from "../../../../hooks/useRefWithUtils";
 import { getIsScreenshotting, isAuthenticated } from "../../../../states/core";
 import { getGlarsesMode } from "../../../../states/glarses-mode";
@@ -100,7 +101,9 @@ export function TestResult(): JSXElement {
 
 function LoginPrompt(): JSXElement {
   return (
-    <Show when={!isAuthenticated() && !getIsScreenshotting()}>
+    <Show
+      when={isAuthAvailable() && !isAuthenticated() && !getIsScreenshotting()}
+    >
       <div class="mb-4 text-center text-sub">
         <a href="/login" router-link>
           Sign in

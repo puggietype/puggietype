@@ -14,6 +14,7 @@ import {
   previewClick,
   previewError,
 } from "../../../controllers/sound-controller";
+import { isAuthAvailable } from "../../../firebase";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import { isAuthenticated } from "../../../states/core";
 import { showModal } from "../../../states/modals";
@@ -290,7 +291,7 @@ function AccountSettingsNotice(): JSXElement {
     fallback: false,
   });
   return (
-    <Show when={!dismissed()}>
+    <Show when={!dismissed() && isAuthAvailable()}>
       <div
         class={cn(
           "grid grid-cols-[auto_1fr] items-center gap-4 rounded px-4 py-4 ring-4 ring-sub-alt md:grid-cols-[auto_1fr_auto] md:gap-8",
