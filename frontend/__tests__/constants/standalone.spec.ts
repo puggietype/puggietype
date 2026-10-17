@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import type { Config } from "@monkeytype/schemas/configs";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({ standalone: true }));
 vi.mock("../../src/ts/utils/env", () => ({
@@ -10,7 +11,13 @@ import {
   isConfigKeyHidden,
   isPaceCaretHidden,
   isRouteHidden,
+  resetAccountOnlyConfig,
 } from "../../src/ts/constants/standalone";
+import { getDefaultConfig } from "../../src/ts/constants/default-config";
+
+afterEach(() => {
+  env.standalone = true;
+});
 
 describe("standalone visibility", () => {
   it("hides account routes but not the rest", () => {
@@ -52,6 +59,35 @@ describe("standalone visibility", () => {
     expect(isConfigKeyHidden("showAverage")).toBe(false);
     expect(isPaceCaretHidden("pb")).toBe(false);
     expect(isCommandHidden("viewAccount")).toBe(false);
-    env.standalone = true;
+  });
+});
+
+describe("resetAccountOnlyConfig", () => {
+  it("resets account-only values left over in a stored config", () => {
+    const config = {
+      ...getDefaultConfig(),
+      paceCaret: "pb",
+      resultSaving: false,
+      showAverage: "both",
+      showPb: true,
+      punctuation: true,
+    } as Config;
+    const reset = resetAccountOnlyConfig(config);
+    expect(reset.paceCaret).toBe("off");
+    expect(reset.resultSaving).toBe(true);
+    expect(reset.showAverage).toBe("off");
+    expect(reset.showPb).toBe(false);
+    expect(reset.punctuation).toBe(true);
+  });
+
+  it("keeps modes that work without an account", () => {
+    const config = { ...getDefaultConfig(), paceCaret: "last" } as Config;
+    expect(resetAccountOnlyConfig(config).paceCaret).toBe("last");
+  });
+
+  it("keeps everything when a backend is configured", () => {
+    env.standalone = false;
+    const config = { ...getDefaultConfig(), paceCaret: "pb" } as Config;
+    expect(resetAccountOnlyConfig(config).paceCaret).toBe("pb");
   });
 });

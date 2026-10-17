@@ -1,6 +1,7 @@
-import type { ConfigKey, PaceCaret } from "@monkeytype/schemas/configs";
+import type { Config, ConfigKey, PaceCaret } from "@monkeytype/schemas/configs";
 
 import { isStandalone } from "../utils/env";
+import { getDefaultConfig } from "./default-config";
 
 /** routes that need an account or the backend; 404 in standalone builds */
 const BACKEND_ROUTES: readonly string[] = [
@@ -51,4 +52,19 @@ export function isPaceCaretHidden(mode: PaceCaret): boolean {
 
 export function isCommandHidden(id: string): boolean {
   return isStandalone() && BACKEND_COMMAND_IDS.includes(id);
+}
+
+/**
+ * Resets account-only values a stored or imported config may carry (e.g.
+ * from Monkeytype): their settings are hidden, so users couldn't undo them.
+ */
+export function resetAccountOnlyConfig(config: Config): Config {
+  if (!isStandalone()) return config;
+  const defaults = getDefaultConfig();
+  const reset = { ...config };
+  for (const key of ACCOUNT_ONLY_CONFIG_KEYS) {
+    (reset as Record<ConfigKey, unknown>)[key] = defaults[key];
+  }
+  if (isPaceCaretHidden(reset.paceCaret)) reset.paceCaret = "off";
+  return reset;
 }

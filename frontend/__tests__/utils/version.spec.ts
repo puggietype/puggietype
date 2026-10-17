@@ -12,6 +12,7 @@ describe("getBuildVersion", () => {
   afterEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
+    env.isDevelopment = false;
   });
 
   it("returns the static build version without any network request", () => {
@@ -33,6 +34,5 @@ describe("getBuildVersion", () => {
   it("returns null in development", () => {
     env.isDevelopment = true;
     expect(getBuildVersion()).toBeNull();
-    env.isDevelopment = false;
   });
 });

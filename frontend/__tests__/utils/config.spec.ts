@@ -1,4 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// legacy migrations are tested with a backend; standalone resets are tested
+// in constants/standalone.spec.ts
+vi.mock("../../src/ts/utils/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/ts/utils/env")>()),
+  isStandalone: () => false,
+}));
 import { getDefaultConfig } from "../../src/ts/constants/default-config";
 import { migrateConfig } from "../../src/ts/config/utils";
 import { PartialConfig } from "@monkeytype/schemas/configs";
