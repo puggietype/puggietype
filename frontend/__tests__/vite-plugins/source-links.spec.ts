@@ -1,7 +1,10 @@
+import childProcess from "node:child_process";
 import { describe, it, expect } from "vitest";
 
 import {
+  getCommitHash,
   getSourceLinks,
+  gitArchive,
   parseSourceUrlMode,
   tarballName,
 } from "../../vite-plugins/source-links";
@@ -50,4 +53,21 @@ describe("source-links", () => {
       expect(links.tarballName).toBeUndefined();
     }
   });
+
+  it("archives the whole repo, including LICENSE and NOTICE", () => {
+    const commitHash = getCommitHash();
+    expect(commitHash).toMatch(/^[0-9a-f]{40}$/);
+    if (commitHash === undefined) return;
+    const files = childProcess
+      .execFileSync("tar", ["-tz"], {
+        input: gitArchive(commitHash),
+        maxBuffer: 64 * 1024 * 1024,
+      })
+      .toString()
+      .split("\n");
+    const prefix = `puggietype-${commitHash.slice(0, 7)}/`;
+    expect(files).toContain(`${prefix}LICENSE`);
+    expect(files).toContain(`${prefix}NOTICE`);
+    expect(files).toContain(`${prefix}frontend/vite.config.ts`);
+  }, 60_000);
 });

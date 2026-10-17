@@ -66,12 +66,20 @@ export function getCommitHash(): string | undefined {
   }
 }
 
-function gitArchive(commitHash: string): Buffer {
+function repoRoot(): string {
+  return childProcess
+    .execFileSync("git", ["rev-parse", "--show-toplevel"])
+    .toString()
+    .trim();
+}
+
+export function gitArchive(commitHash: string): Buffer {
   const prefix = `puggietype-${commitHash.slice(0, 7)}/`;
+  // run from the repo root: from a subdirectory git archives only that subtree
   return childProcess.execFileSync(
     "git",
     ["archive", "--format=tar.gz", `--prefix=${prefix}`, commitHash],
-    { maxBuffer: 1024 * 1024 * 1024 },
+    { cwd: repoRoot(), maxBuffer: 1024 * 1024 * 1024 },
   );
 }
 
