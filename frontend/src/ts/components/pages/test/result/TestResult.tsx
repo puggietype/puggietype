@@ -1,6 +1,7 @@
 import { format } from "date-fns/format";
 import { createMemo, JSXElement, onCleanup, onMount, Show } from "solid-js";
 
+import { getAdProvider, noopAdProvider } from "../../../../ads/provider";
 import { getConfig } from "../../../../config/store";
 import { isAuthAvailable } from "../../../../firebase";
 import { useRefWithUtils } from "../../../../hooks/useRefWithUtils";
@@ -161,13 +162,17 @@ function Watermark(): JSXElement {
 }
 
 /**
- * Ad slots are filled and removed by the ad controllers, so the markup must stay static.
+ * The ad slot is filled and cleared by the ad provider, so the markup must stay static.
+ * Hidden while no provider is wired so no empty box shows.
  */
 function ResultAds(): JSXElement {
   return (
     <div
       class={cn("full-width mt-4", {
-        hidden: getIsScreenshotting() || getConfig.ads === "off",
+        hidden:
+          getIsScreenshotting() ||
+          getConfig.ads === "off" ||
+          getAdProvider() === noopAdProvider,
       })}
     >
       <div id="ad-result-wrapper" class="ad full-width advertisement ad-h">
@@ -178,12 +183,6 @@ function ResultAds(): JSXElement {
           <div class="text textRight"></div>
         </div>
         <div id="ad-result"></div>
-      </div>
-      <div id="ad-result-small-wrapper" class="ad advertisement ad-h-s">
-        <div class="icon small">
-          <Fa icon="fa-ad" />
-        </div>
-        <div id="ad-result-small"></div>
       </div>
     </div>
   );
