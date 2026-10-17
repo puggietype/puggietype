@@ -16,6 +16,9 @@ function stubVirtualEnvConfig(): Plugin {
           isDevelopment: true,
           backendUrl: "http://localhost:5005",
           clientVersion: "storybook",
+          sourceUrl: "https://github.com/puggietype/puggietype/tree/main",
+          licenseUrl:
+            "https://github.com/puggietype/puggietype/blob/main/LICENSE",
           recaptchaSiteKey: "",
           quickLoginEmail: undefined,
           quickLoginPassword: undefined,

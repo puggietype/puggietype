@@ -1,4 +1,5 @@
 import { JSXElement } from "solid-js";
+import { envConfig } from "virtual:env-config";
 
 import { getIsScreenshotting } from "../../../states/core";
 import { getFocus } from "../../../states/test";
@@ -7,6 +8,8 @@ import { Button } from "../../common/Button";
 import { Keytips } from "./Keytips";
 import { ThemeIndicator } from "./ThemeIndicator";
 import { VersionButton } from "./VersionButton";
+
+const linkClass = "text-sub underline hover:text-text";
 
 export function Footer(): JSXElement {
   return (
@@ -23,15 +26,6 @@ export function Footer(): JSXElement {
         })}
       >
         <div class="grid grid-cols-1 justify-items-start xs:grid-cols-2 sm:grid-cols-4 lg:flex">
-          <Button
-            variant="text"
-            text="source"
-            fa={{
-              icon: "fa-code",
-              fixedWidth: true,
-            }}
-            href="https://github.com/shoyru-ai/puggietype"
-          />
           <Button
             variant="text"
             text="terms"
@@ -59,18 +53,30 @@ export function Footer(): JSXElement {
               fixedWidth: true,
             }}
           />
-          <div class="flex items-center p-2">
+          <div class="flex items-center p-2" data-testid="legal-notice">
             <span>
-              puggietype is based on{" "}
+              Based on{" "}
               <a
-                class="text-sub underline hover:text-text"
+                class={linkClass}
                 href="https://github.com/monkeytypegame/monkeytype"
                 target="_blank"
                 rel="noopener"
               >
                 Monkeytype
-              </a>{" "}
-              (GPL-3.0)
+              </a>
+              ,{" "}
+              <a
+                class={linkClass}
+                href={envConfig.licenseUrl}
+                target="_blank"
+                rel="noopener"
+              >
+                GPL-3.0
+              </a>
+              , no warranty,{" "}
+              <a class={linkClass} href={envConfig.sourceUrl}>
+                source
+              </a>
             </span>
           </div>
         </div>

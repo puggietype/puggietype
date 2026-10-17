@@ -19,6 +19,12 @@ import { minifyJson } from "./vite-plugins/minify-json";
 import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
+import {
+  getCommitHash,
+  getSourceLinks,
+  parseSourceUrlMode,
+  sourceTarball,
+} from "./vite-plugins/source-links";
 import Inspect from "vite-plugin-inspect";
 import { ViteMinifyPlugin } from "vite-plugin-minify";
 import { VitePWA } from "vite-plugin-pwa";
@@ -92,9 +98,14 @@ function getPlugins({
   env: Record<string, string>;
 }): PluginOption[] {
   const clientVersion = getClientVersion(isDevelopment);
+  const sourceLinks = getSourceLinks({
+    commitHash: getCommitHash(),
+    mode: parseSourceUrlMode(env["SOURCE_URL_MODE"]),
+  });
 
   const plugins: PluginOption[] = [
-    envConfig({ isDevelopment, clientVersion, env }),
+    envConfig({ isDevelopment, clientVersion, env, sourceLinks }),
+    sourceTarball(sourceLinks),
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
     tailwindcss(),

@@ -1,5 +1,6 @@
 import { Plugin } from "vite";
 import { EnvConfig } from "virtual:env-config";
+import { getSourceLinks, SourceLinks } from "./source-links";
 
 const virtualModuleId = "virtual:env-config";
 const resolvedVirtualModuleId = `\0${virtualModuleId}`;
@@ -13,7 +14,11 @@ export function envConfig(options: {
   isDevelopment: boolean;
   clientVersion: string;
   env: Record<string, string>;
+  sourceLinks?: SourceLinks;
 }): Plugin {
+  const { sourceUrl, licenseUrl } =
+    options.sourceLinks ??
+    getSourceLinks({ commitHash: undefined, mode: "github" });
   return {
     name: "virtual-env-config",
     resolveId(id) {
@@ -33,6 +38,8 @@ export function envConfig(options: {
             "http://localhost:5005",
           ),
           clientVersion: options.clientVersion,
+          sourceUrl,
+          licenseUrl,
           recaptchaSiteKey: "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
           quickLoginEmail: options.env["QUICK_LOGIN_EMAIL"],
           quickLoginPassword: options.env["QUICK_LOGIN_PASSWORD"],
@@ -49,6 +56,8 @@ export function envConfig(options: {
           quickLoginEmail: undefined,
           quickLoginPassword: undefined,
           clientVersion: options.clientVersion,
+          sourceUrl,
+          licenseUrl,
         };
 
         const envConfig = options.isDevelopment ? devConfig : prodConfig;

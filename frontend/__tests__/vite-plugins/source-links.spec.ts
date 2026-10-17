@@ -1,0 +1,53 @@
+import { describe, it, expect } from "vitest";
+
+import {
+  getSourceLinks,
+  parseSourceUrlMode,
+  tarballName,
+} from "../../vite-plugins/source-links";
+
+const hash = "0123456789abcdef0123456789abcdef01234567";
+
+describe("source-links", () => {
+  it("defaults SOURCE_URL_MODE to tarball", () => {
+    expect(parseSourceUrlMode(undefined)).toBe("tarball");
+    expect(parseSourceUrlMode("")).toBe("tarball");
+    expect(parseSourceUrlMode("tarball")).toBe("tarball");
+    expect(parseSourceUrlMode("github")).toBe("github");
+  });
+
+  it("names the tarball after the short hash", () => {
+    expect(tarballName(hash)).toBe("puggietype-0123456.tar.gz");
+  });
+
+  it("tarball mode links the self-hosted tarball and license", () => {
+    expect(getSourceLinks({ commitHash: hash, mode: "tarball" })).toEqual({
+      commitHash: hash,
+      sourceUrl: "/source/puggietype-0123456.tar.gz",
+      licenseUrl: "/source/LICENSE.txt",
+      tarballName: "puggietype-0123456.tar.gz",
+    });
+  });
+
+  it("github mode links the tree and LICENSE at the commit", () => {
+    expect(getSourceLinks({ commitHash: hash, mode: "github" })).toEqual({
+      commitHash: hash,
+      sourceUrl: `https://github.com/puggietype/puggietype/tree/${hash}`,
+      licenseUrl: `https://github.com/puggietype/puggietype/blob/${hash}/LICENSE`,
+      tarballName: undefined,
+    });
+  });
+
+  it("falls back to main without a commit hash", () => {
+    for (const mode of ["tarball", "github"] as const) {
+      const links = getSourceLinks({ commitHash: undefined, mode });
+      expect(links.sourceUrl).toBe(
+        "https://github.com/puggietype/puggietype/tree/main",
+      );
+      expect(links.licenseUrl).toBe(
+        "https://github.com/puggietype/puggietype/blob/main/LICENSE",
+      );
+      expect(links.tarballName).toBeUndefined();
+    }
+  });
+});
