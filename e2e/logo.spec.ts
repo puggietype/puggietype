@@ -36,6 +36,15 @@ async function open(
     .locator("[data-ui-element='logoSubtext']")
     .waitFor({ state: "attached" });
   await page.evaluate(async () => document.fonts.ready);
+  // the app fades in over the static shell: measure once fully shown
+  await page.waitForFunction(() => {
+    const app = document.querySelector("#app");
+    return (
+      document.querySelector("#appShell") === null &&
+      app !== null &&
+      getComputedStyle(app).opacity === "1"
+    );
+  });
   return page;
 }
 
