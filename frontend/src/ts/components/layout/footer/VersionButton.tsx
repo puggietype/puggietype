@@ -4,7 +4,6 @@ import { envConfig } from "virtual:env-config";
 
 import { lastSeenServerCompatibility } from "../../../ape/adapters/ts-rest-adapter";
 import { getVersion } from "../../../states/core";
-import { showModal } from "../../../states/modals";
 import { isDevEnvironment } from "../../../utils/env";
 import { Fa } from "../../common/Fa";
 
@@ -31,7 +30,6 @@ export function VersionButton(): JSXElement {
         ),
       );
     } else {
-      showModal("VersionHistory");
       setIndicatorVisible(false);
     }
   };

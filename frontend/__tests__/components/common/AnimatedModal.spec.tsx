@@ -6,7 +6,7 @@ import { hideModal, showModal } from "../../../src/ts/states/modals";
 
 describe("AnimatedModal", () => {
   beforeEach(() => {
-    showModal("VersionHistory");
+    showModal("EventLogViewer");
     vi.clearAllMocks();
 
     // Mock dialog methods that don't exist in jsdom
@@ -30,7 +30,7 @@ describe("AnimatedModal", () => {
     modalDiv: HTMLDivElement;
   } {
     const { container } = render(() => (
-      <AnimatedModal id="VersionHistory" {...props}>
+      <AnimatedModal id="EventLogViewer" {...props}>
         <div data-testid="modal-content">Test Content</div>
       </AnimatedModal>
     ));
@@ -48,7 +48,7 @@ describe("AnimatedModal", () => {
   it("renders dialog with correct id and class", () => {
     const { dialog } = renderModal({});
 
-    expect(dialog).toHaveAttribute("id", "VersionHistoryModal");
+    expect(dialog).toHaveAttribute("id", "EventLogViewerModal");
   });
 
   it("renders children inside modal div", () => {
@@ -60,7 +60,7 @@ describe("AnimatedModal", () => {
   });
 
   it("doesnt render children if not open", () => {
-    hideModal("VersionHistory");
+    hideModal("EventLogViewer");
     const { modalDiv } = renderModal({});
 
     expect(modalDiv).not.toBeInTheDocument();
@@ -91,6 +91,6 @@ describe("AnimatedModal", () => {
       animationMode: "none",
     });
 
-    expect(dialog).toHaveAttribute("id", "VersionHistoryModal");
+    expect(dialog).toHaveAttribute("id", "EventLogViewerModal");
   });
 });

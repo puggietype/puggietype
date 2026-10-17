@@ -1,7 +1,6 @@
 import { createStore } from "solid-js/store";
 
 export type ModalId =
-  | "VersionHistory"
   | "Commandline"
   | "DevOptions"
   | "DevInboxPicker"

@@ -1,14 +1,9 @@
-import { infiniteQueryOptions, queryOptions } from "@tanstack/solid-query";
+import { queryOptions } from "@tanstack/solid-query";
 import { intervalToDuration } from "date-fns";
 import Ape from "../ape";
-import {
-  getContributorsList,
-  getReleasesFromGitHub,
-  getSupportersList,
-} from "../utils/json-data";
+import { getContributorsList, getSupportersList } from "../utils/json-data";
 import { getNumberWithMagnitude, numberWithSpaces } from "../utils/numbers";
 import { baseKey } from "./utils/keys";
-import { format as dateFormat } from "date-fns/format";
 
 const queryKeys = {
   root: () => baseKey("public"),
@@ -16,7 +11,6 @@ const queryKeys = {
   supporters: () => [...queryKeys.root(), "supporters"],
   typingStats: () => [...queryKeys.root(), "typingStats"],
   speedHistogram: () => [...queryKeys.root(), "speedHistogram"],
-  versionHistory: () => [...queryKeys.root(), "versionHistory"],
 };
 
 //cache results for one hour
@@ -52,16 +46,6 @@ export const getSpeedHistogramQueryOptions = () =>
     queryKey: queryKeys.speedHistogram(),
     queryFn: fetchSpeedHistogram,
     staleTime,
-  });
-
-// oxlint-disable-next-line typescript/explicit-function-return-type
-export const getVersionHistoryQueryOptions = () =>
-  infiniteQueryOptions({
-    queryKey: queryKeys.versionHistory(),
-    queryFn: fetchVersionHistory,
-    staleTime,
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-    initialPageParam: 1,
   });
 
 async function fetchSpeedHistogram(): Promise<
@@ -168,44 +152,4 @@ async function fetchTypingStats(): Promise<{
     },
   };
   return result;
-}
-
-async function fetchVersionHistory(options: { pageParam: number }): Promise<{
-  nextCursor: number | undefined;
-  releases: { name: string; publishedAt: string; bodyHTML: string }[];
-}> {
-  const releases = await getReleasesFromGitHub({ page: options.pageParam });
-  const data = [];
-  for (const release of releases) {
-    if (release.draft || release.prerelease) continue;
-
-    let body = release.body;
-
-    body = body.replace(/\r\n/g, "<br>");
-    //replace ### title with h3 title h3
-    body = body.replace(
-      /### (.*?)<br>/g,
-      '<h3 class="text-sub mb-2 text-xl">$1</h3>',
-    );
-    body = body.replace(/<\/h3><br>/gi, "</h3>");
-    //remove - at the start of a line
-    body = body.replace(/^- /gm, "");
-    //replace **bold** with bold
-    body = body.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
-    //replace links with a tags
-    body = body.replace(
-      /\[(.*?)\]\((.*?)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
-    );
-
-    data.push({
-      name: release.name,
-      publishedAt: dateFormat(new Date(release.published_at), "dd MMM yyyy"),
-      bodyHTML: body,
-    });
-  }
-  return {
-    nextCursor: data.length > 0 ? options.pageParam + 1 : undefined,
-    releases: data,
-  };
 }

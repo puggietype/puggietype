@@ -1,9 +1,7 @@
+import { envConfig } from "virtual:env-config";
 import { z } from "zod";
-import { getLatestReleaseFromGitHub } from "./json-data";
 import { LocalStorageWithSchema } from "./local-storage-with-schema";
-import { tryCatch } from "@monkeytype/util/trycatch";
 import { isDevEnvironment } from "./env";
-import { createErrorMessage } from "./error";
 
 const memoryLS = new LocalStorageWithSchema({
   key: "lastSeenVersion",
@@ -18,25 +16,14 @@ function purgeCaches(): void {
   });
 }
 
-export async function fetchLatestVersion(): Promise<{
+/** the version baked in at build time (no network request) */
+export function getBuildVersion(): {
   text: string;
   isNew: boolean;
-} | null> {
+} | null {
   if (isDevEnvironment()) return null;
 
-  const { data: currentVersion, error } = await tryCatch(
-    getLatestReleaseFromGitHub(),
-  );
-
-  if (error) {
-    const msg = createErrorMessage(
-      error,
-      "Failed to fetch version number from GitHub",
-    );
-    console.error(msg);
-    return null;
-  }
-
+  const currentVersion = envConfig.clientVersion;
   const memoryVersion = memoryLS.get();
   const isNew = memoryVersion === "" ? false : memoryVersion !== currentVersion;
 

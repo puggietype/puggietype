@@ -23,7 +23,7 @@ import "./legacy-states/connection";
 import "./test/tts";
 import { addToGlobal } from "./utils/misc";
 import * as Focus from "./test/focus";
-import { fetchLatestVersion } from "./utils/version";
+import { getBuildVersion } from "./utils/version";
 import * as Cookies from "./cookies";
 import { isStandalone } from "./utils/env";
 import "./elements/psa";
@@ -70,10 +70,8 @@ render(() => <App />, document.body);
 
 applyEngineSettings();
 void loadFromLocalStorage();
-void fetchLatestVersion().then((data) => {
-  if (data === null) return;
-  setVersion(data);
-});
+const buildVersion = getBuildVersion();
+if (buildVersion !== null) setVersion(buildVersion);
 
 Focus.set(true, true);
 const accepted = Cookies.getAcceptedCookies();

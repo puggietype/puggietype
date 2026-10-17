@@ -25,14 +25,12 @@ import { SimpleModal } from "./SimpleModal";
 import { StreakHourOffsetModal } from "./StreakHourOffsetModal";
 import { TheRestModal } from "./TheRestModal";
 import { UserReportModal } from "./UserReportModal";
-import { VersionHistoryModal } from "./VersionHistoryModal";
 
 export function Modals(): JSXElement {
   return (
     <>
       <CommandlineModal />
       <AlertsModal />
-      <VersionHistoryModal />
       <RegisterCaptchaModal />
       <SimpleModal />
       <CustomTextModal />

@@ -46,9 +46,9 @@ export const Default = meta.story({
 export const NoAnimation = meta.story({
   render: () => (
     <>
-      <ModalTrigger modalId="VersionHistory" label="Open No Animation Modal" />
+      <ModalTrigger modalId="EventLogViewer" label="Open No Animation Modal" />
       <AnimatedModal
-        id="VersionHistory"
+        id="EventLogViewer"
         title="No Animation Modal"
         animationMode="none"
       >
