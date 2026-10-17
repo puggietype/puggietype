@@ -23,7 +23,9 @@ export function Overlays(): JSXElement {
         type="button"
         id="commandLineMobileButton"
         class={cn(
-          "fixed bottom-8 left-8 z-99 hidden h-12 w-12 rounded-full bg-main text-center leading-12 text-bg",
+          // bottom right: result stats are left-aligned on phones. #app gets
+          // matching bottom padding on touch devices (media-queries.scss)
+          "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-99 hidden h-12 w-12 rounded-full bg-main text-center leading-12 text-bg",
           {
             "opacity-0": getIsScreenshotting(),
           },
@@ -32,6 +34,7 @@ export function Overlays(): JSXElement {
           showCommandline();
         }}
         tabIndex="-1"
+        aria-label="open command line"
       >
         <Fa icon="fa-terminal" />
       </button>

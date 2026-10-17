@@ -62,4 +62,9 @@ body {
   #commandLineMobileButton {
     display: grid !important;
   }
+  // keep the end of the page (footer legal line) clear of the floating
+  // command line button: 1rem offset + 3rem button + 1rem gap
+  #app {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
 }
