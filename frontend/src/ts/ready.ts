@@ -4,7 +4,7 @@ import * as ServerConfiguration from "./ape/server-configuration";
 import { configLoadPromise } from "./config/lifecycle";
 import { authPromise } from "./firebase";
 import { animate } from "animejs";
-import { onDOMReady, qs } from "./utils/dom";
+import { onDOMReady, onWindowLoad, qs } from "./utils/dom";
 import { isDevEnvironment } from "./utils/env";
 
 onDOMReady(async () => {
@@ -19,6 +19,7 @@ onDOMReady(async () => {
 
   const app = document.querySelector("#app") as HTMLElement;
   app?.classList.remove("hidden");
+  document.querySelector("#appShell")?.remove();
   animate(app, {
     opacity: [0, 1],
     duration: Misc.applyReducedMotion(250),
@@ -38,7 +39,7 @@ onDOMReady(async () => {
       });
   } else {
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
+      onWindowLoad(() => {
         navigator.serviceWorker
           .register("/sw.js", { scope: "/" })
           .then((registration) => {

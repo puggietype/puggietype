@@ -1,4 +1,5 @@
 import * as PageController from "./page-controller";
+import { onDOMReady } from "../utils/dom";
 import { isAuthAvailable } from "../firebase";
 import { isAuthenticated } from "../states/core";
 import { isFunboxActive } from "../test/funbox/list";
@@ -281,7 +282,7 @@ window.addEventListener("popstate", () => {
   void router();
 });
 
-document.addEventListener("DOMContentLoaded", () => {
+onDOMReady(() => {
   document.body.addEventListener("click", (e) => {
     const target = e?.target as HTMLLinkElement;
     if (target.matches("[router-link]") && target?.href) {

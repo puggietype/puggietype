@@ -1,8 +1,9 @@
 import { createEvent } from "../hooks/createEvent";
+import { onWindowLoad } from "../utils/dom";
 
 export const connectionEvent = createEvent<boolean>();
 
-window.addEventListener("load", () => {
+onWindowLoad(() => {
   window.addEventListener("online", () => {
     connectionEvent.dispatch(true);
   });
