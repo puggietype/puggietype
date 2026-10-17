@@ -14,8 +14,6 @@ export default defineConfig({
     baseURL: process.env["BASE_URL"] ?? "http://localhost:3000",
     headless: true,
     trace: "retain-on-failure",
-    // skip the ngrok free-tier browser interstitial when testing via a public URL
-    extraHTTPHeaders: { "ngrok-skip-browser-warning": "1" },
   },
   projects: [
     {

@@ -2,6 +2,8 @@ import { mkdirSync } from "node:fs";
 
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { skipNgrokWarning } from "./tunnel";
+
 /** SCREENS_DIR, else the brand workspace if present, else test-results */
 function screensDir(): string {
   for (const dir of [
@@ -64,6 +66,8 @@ test("two players race, see each other, get a podium and rematch", async ({
 }) => {
   const ctxA = await browser.newContext();
   const ctxB = await browser.newContext();
+  await skipNgrokWarning(ctxA);
+  await skipNgrokWarning(ctxB);
   await ctxB.addInitScript(() => {
     localStorage.setItem("puggie-mp-name", "bob");
   });
@@ -87,6 +91,9 @@ test("two players race, see each other, get a podium and rematch", async ({
   // A: home -> race page via the header button, create a words-10 lobby
   await a.goto("/");
   await waitForApp(a);
+  // over a slow public tunnel the router may not be ready yet; wait for the
+  // test page to render before navigating
+  await a.locator("#words .word").first().waitFor({ timeout: 60_000 });
   await byTestId(a, "nav-race").click();
   await expect(byTestId(a, "race-page")).toBeVisible();
   await byTestId(a, "mp-nickname").fill("alice");
