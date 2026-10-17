@@ -106,7 +106,12 @@ test("commandline has no account-only commands", async ({ page }) => {
     if (c.shown !== "") {
       await expect(rows.filter({ hasText: c.shown }).first()).toBeVisible();
     } else {
-      await page.waitForTimeout(500);
+      // no control row: solid re-renders synchronously on input, so one
+      // frame after the value lands the list is current
+      await expect(input).toHaveValue(c.query);
+      await page.evaluate(
+        async () => new Promise((resolve) => requestAnimationFrame(resolve)),
+      );
     }
     const texts = await rows.allTextContents();
     expect(
