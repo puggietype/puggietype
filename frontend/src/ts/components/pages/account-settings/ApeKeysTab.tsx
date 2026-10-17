@@ -31,15 +31,7 @@ export function ApeKeysTab() {
       <Section
         title="ape keys"
         fa={{ icon: "fa-key" }}
-        description=<>
-          Generate Ape Keys to access certain API endpoints (
-          <Button
-            text="documentation"
-            href="https://api.monkeytype.com/docs"
-            variant="text"
-          />
-          ).
-        </>
+        description="Generate Ape Keys to access certain API endpoints."
         button={{
           text: "generate new key",
           onClick: addNewKey,

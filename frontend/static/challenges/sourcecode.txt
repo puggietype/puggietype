@@ -1,6 +1,6 @@
 
 ==> ./monkeytype/README.md <==
-[![](https://github.com/Miodec/monkeytype/blob/master/static/images/githubbanner2.png?raw=true)](https://monkeytype.com/)
+[![](https://github.com/Miodec/monkeytype/blob/master/static/images/githubbanner2.png?raw=true)](https://puggietype.com/)
 <br />
 
 <img align="left" alt="JavaScript" width="26px" src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/javascript/javascript.png" />
@@ -3816,7 +3816,7 @@ backend/anticheat
     />
     <link rel="manifest" href="manifest.json" />
     <meta name="name" content="Monkeytype" />
-    <meta name="image" content="https://monkeytype.com/images/mtsocial.png" />
+    <meta name="image" content="https://puggietype.com/images/mtsocial.png" />
     <meta
       name="description"
       content="A minimalistic, customisable typing website. Test yourself in various modes, track your progress and improve your typing speed."
@@ -3827,11 +3827,11 @@ backend/anticheat
     />
     <meta name="author" content="Miodec" />
     <meta property="og:title" content="Monkeytype" />
-    <meta property="og:url" content="https://monkeytype.com/" />
+    <meta property="og:url" content="https://puggietype.com/" />
     <meta property="og:type" content="website" />
     <meta
       property="og:image"
-      content="https://monkeytype.com/images/mtsocial.png"
+      content="https://puggietype.com/images/mtsocial.png"
     />
     <meta
       property="og:description"
@@ -3840,7 +3840,7 @@ backend/anticheat
     <meta name="twitter:title" content="Monkeytype" />
     <meta
       name="twitter:image"
-      content="https://monkeytype.com/images/mtsocial.png"
+      content="https://puggietype.com/images/mtsocial.png"
     />
     <meta name="twitter:card" content="summary_large_image" />
     <!-- <script type="text/javascript">
@@ -3940,7 +3940,7 @@ backend/anticheat
           It seems like the CSS failed to load. Please clear your cache to
           redownload the styles. If that doesn't help contact support.
           <br />
-          (jack@monkeytype.com or discord.gg/monkeytype)
+          (jack@puggietype.com or discord.gg/monkeytype)
         </span>
         <span>(ctrl/cmd + shift + r on Chromium browsers)</span>
         <span>
@@ -4535,7 +4535,7 @@ backend/anticheat
       <div id="contactPopup">
         <div class="title">Contact</div>
         <div class="text">
-          Feel free to send an email to jack@monkeytype.com (the buttons below
+          Feel free to send an email to jack@puggietype.com (the buttons below
           will open the default mail client).
           <br />
           <br />
@@ -4548,7 +4548,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@monkeytype.com?subject=[Question] "
+            href="mailto:jack@puggietype.com?subject=[Question] "
           >
             <div class="icon"><i class="fas fa-question-circle"></i></div>
             <div class="textGroup">
@@ -4559,7 +4559,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@monkeytype.com?subject=[Feedback] "
+            href="mailto:jack@puggietype.com?subject=[Feedback] "
           >
             <div class="icon"><i class="fas fa-comment-dots"></i></div>
             <div class="textGroup">
@@ -4570,7 +4570,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@monkeytype.com?subject=[Bug] "
+            href="mailto:jack@puggietype.com?subject=[Bug] "
           >
             <div class="icon"><i class="fas fa-bug"></i></div>
             <div class="textGroup">
@@ -4581,7 +4581,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@monkeytype.com?subject=[Account] "
+            href="mailto:jack@puggietype.com?subject=[Account] "
           >
             <div class="icon"><i class="fas fa-user-circle"></i></div>
             <div class="textGroup">
@@ -4592,7 +4592,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@monkeytype.com?subject=[Business] "
+            href="mailto:jack@puggietype.com?subject=[Business] "
           >
             <div class="icon"><i class="fas fa-briefcase"></i></div>
             <div class="textGroup">
@@ -4603,7 +4603,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@monkeytype.com?subject=[Other] "
+            href="mailto:jack@puggietype.com?subject=[Other] "
           >
             <div class="icon"><i class="fas fa-ellipsis-h"></i></div>
             <div class="textGroup">
@@ -5361,7 +5361,7 @@ backend/anticheat
                   </div>
                 </div>
               </div>
-              <div class="ssWatermark hidden">monkeytype.com</div>
+              <div class="ssWatermark hidden">puggietype.com</div>
             </div>
           </div>
           <div class="page pageAbout hidden">
@@ -5507,7 +5507,7 @@ backend/anticheat
               <div class="contactButtons">
                 <a
                   class="button"
-                  href="mailto:jack@monkeytype.com"
+                  href="mailto:jack@puggietype.com"
                   target="_blank"
                 >
                   <div class="fas fa-envelope"></div>
@@ -5646,7 +5646,7 @@ backend/anticheat
                 <div class="buttons">
                   <a
                     class="button"
-                    href="https://discord.com/api/oauth2/authorize?client_id=798272335035498557&redirect_uri=https%3A%2F%2Fmonkeytype.com%2Fverify&response_type=token&scope=identify"
+                    href="https://discord.com/api/oauth2/authorize?client_id=798272335035498557&redirect_uri=https%3A%2F%2Fpuggietype.com%2Fverify&response_type=token&scope=identify"
                     style="text-decoration: none"
                   >
                     Link with Discord
@@ -8502,7 +8502,7 @@ backend/anticheat
     <link id="favicon" rel="shortcut icon" href="images/fav.png" />
     <link rel="shortcut icon" href="images/fav.png" />
     <meta name="name" content="Monkeytype" />
-    <meta name="image" content="https://monkeytype.com/mtsocial.png" />
+    <meta name="image" content="https://puggietype.com/mtsocial.png" />
     <meta
       name="description"
       content="A minimalistic, customisable typing website. Test yourself in various modes, track your progress and improve your typing speed."
@@ -8513,16 +8513,16 @@ backend/anticheat
     />
     <meta name="author" content="Miodec" />
     <meta property="og:title" content="Monkeytype" />
-    <meta property="og:url" content="https://monkeytype.com/" />
+    <meta property="og:url" content="https://puggietype.com/" />
     <meta property="og:type" content="website" />
     <meta
       property="og:description"
       content="A minimalistic, customisable typing website. Test yourself in various modes, track your progress and improve your typing speed."
     />
-    <meta property="og:image" content="https://monkeytype.com/mtsocial.png" />
+    <meta property="og:image" content="https://puggietype.com/mtsocial.png" />
     <meta name="theme-color" content="#e2b714" id="metaThemeColor" />
     <meta name="twitter:title" content="Monkeytype" />
-    <meta name="twitter:image" content="https://monkeytype.com/mtsocial.png" />
+    <meta name="twitter:image" content="https://puggietype.com/mtsocial.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <style>
       #top {
@@ -8735,7 +8735,7 @@ backend/anticheat
             organization, or directly to you, under certain conditions.
           </li>
         </ul>
-        <!-- <p>If you make a request, we have one month to respond to you. If you would like to exercise any of these rights, please contact us at our email: jack@monkeytype.com</p> -->
+        <!-- <p>If you make a request, we have one month to respond to you. If you would like to exercise any of these rights, please contact us at our email: jack@puggietype.com</p> -->
 
         <h1 id="Log_Data">What log data do we collect?</h1>
         <p>
@@ -8820,11 +8820,11 @@ backend/anticheat
         <p>
           Email:
           <a
-            href="mailto: jack@monkeytype.com"
+            href="mailto: jack@puggietype.com"
             target="_blank"
             rel="noopener noreferrer"
           >
-            jack@monkeytype.com
+            jack@puggietype.com
           </a>
         </p>
         Discord:
@@ -8859,12 +8859,12 @@ backend/anticheat
 ==> ./monkeytype/static/.well-known <==
 
 ==> ./monkeytype/static/.well-known/security.txt <==
-Contact: mailto:jack@monkeytype.com
+Contact: mailto:jack@puggietype.com
 Contact: message @Miodec on discord.gg/monkeytype
 Expires: 2022-06-03T21:00:00.000Z
 Preferred-Languages: en
-Canonical: https://monkeytype.com/.well-known/security.txt
-Policy: https://monkeytype.com/security-policy
+Canonical: https://puggietype.com/.well-known/security.txt
+Policy: https://puggietype.com/security-policy
 
 ==> ./monkeytype/static/funbox/earthquake.css <==
 @keyframes shake_dat_ass {
@@ -9070,7 +9070,7 @@ letter {
       referrerpolicy="no-referrer"
     />
     <meta name="name" content="Monkeytype" />
-    <meta name="image" content="https://monkeytype.com/mtsocial.png" />
+    <meta name="image" content="https://puggietype.com/mtsocial.png" />
     <meta
       name="description"
       content="A minimalistic, customisable typing website. Test yourself in various modes, track your progress and improve your typing speed."
@@ -9081,16 +9081,16 @@ letter {
     />
     <meta name="author" content="Miodec" />
     <meta property="og:title" content="Monkeytype" />
-    <meta property="og:url" content="https://monkeytype.com/" />
+    <meta property="og:url" content="https://puggietype.com/" />
     <meta property="og:type" content="website" />
     <meta
       property="og:description"
       content="A minimalistic, customisable typing website. Test yourself in various modes, track your progress and improve your typing speed."
     />
-    <meta property="og:image" content="https://monkeytype.com/mtsocial.png" />
+    <meta property="og:image" content="https://puggietype.com/mtsocial.png" />
     <meta name="theme-color" content="#e2b714" id="metaThemeColor" />
     <meta name="twitter:title" content="Monkeytype" />
-    <meta name="twitter:image" content="https://monkeytype.com/mtsocial.png" />
+    <meta name="twitter:image" content="https://puggietype.com/mtsocial.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <style>
       #top {
@@ -9441,7 +9441,7 @@ letter {
     <link id="favicon" rel="shortcut icon" href="images/fav.png" />
     <link rel="shortcut icon" href="images/fav.png" />
     <meta name="name" content="Monkeytype" />
-    <meta name="image" content="https://monkeytype.com/mtsocial.png" />
+    <meta name="image" content="https://puggietype.com/mtsocial.png" />
     <meta
       name="description"
       content="A minimalistic, customisable typing website. Test yourself in various modes, track your progress and improve your typing speed."
@@ -9452,16 +9452,16 @@ letter {
     />
     <meta name="author" content="Miodec" />
     <meta property="og:title" content="Monkeytype" />
-    <meta property="og:url" content="https://monkeytype.com/" />
+    <meta property="og:url" content="https://puggietype.com/" />
     <meta property="og:type" content="website" />
     <meta
       property="og:description"
       content="A minimalistic, customisable typing website. Test yourself in various modes, track your progress and improve your typing speed."
     />
-    <meta property="og:image" content="https://monkeytype.com/mtsocial.png" />
+    <meta property="og:image" content="https://puggietype.com/mtsocial.png" />
     <meta name="theme-color" content="#e2b714" id="metaThemeColor" />
     <meta name="twitter:title" content="Monkeytype" />
-    <meta name="twitter:image" content="https://monkeytype.com/mtsocial.png" />
+    <meta name="twitter:image" content="https://puggietype.com/mtsocial.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <style>
       #top {
@@ -9540,7 +9540,7 @@ letter {
         <p>These terms of service were last updated on September 11, 2021.</p>
         <h1>Agreement</h1>
         <p>
-          By accessing this Website, accessible from monkeytype.com, you are
+          By accessing this Website, accessible from puggietype.com, you are
           agreeing to be bound by these Website Terms of Service and agree that
           you are responsible for the agreement in accordance with any
           applicable local laws.
@@ -9646,7 +9646,7 @@ letter {
         <h1>Privacy Policy</h1>
         If you use our Services, you must abide by our Privacy Policy. You
         acknowledge that you have read our
-        <a href="https://monkeytype.com/privacy-policy" target="_blank">
+        <a href="https://puggietype.com/privacy-policy" target="_blank">
           Privacy Policy
         </a>
         and understand that it sets forth how we collect, use, and store your
@@ -9759,11 +9759,11 @@ letter {
         <p>
           Email:
           <a
-            href="mailto:jack@monkeytype.com"
+            href="mailto:jack@puggietype.com"
             target="_blank"
             rel="noopener noreferrer"
           >
-            jack@monkeytype.com
+            jack@puggietype.com
           </a>
         </p>
         Discord:
@@ -9818,7 +9818,7 @@ Disallow:
     <link id="favicon" rel="shortcut icon" href="images/fav.png" />
     <link rel="shortcut icon" href="images/fav.png" />
     <meta name="name" content="Monkeytype" />
-    <meta name="image" content="https://monkeytype.com/mtsocial.png" />
+    <meta name="image" content="https://puggietype.com/mtsocial.png" />
     <meta
       name="description"
       content="A minimalistic, customisable typing website. Test yourself in various modes, track your progress and improve your typing speed."
@@ -9829,16 +9829,16 @@ Disallow:
     />
     <meta name="author" content="Miodec" />
     <meta property="og:title" content="Monkeytype" />
-    <meta property="og:url" content="https://monkeytype.com/" />
+    <meta property="og:url" content="https://puggietype.com/" />
     <meta property="og:type" content="website" />
     <meta
       property="og:description"
       content="A minimalistic, customisable typing website. Test yourself in various modes, track your progress and improve your typing speed."
     />
-    <meta property="og:image" content="https://monkeytype.com/mtsocial.png" />
+    <meta property="og:image" content="https://puggietype.com/mtsocial.png" />
     <meta name="theme-color" content="#e2b714" id="metaThemeColor" />
     <meta name="twitter:title" content="Monkeytype" />
-    <meta name="twitter:image" content="https://monkeytype.com/mtsocial.png" />
+    <meta name="twitter:image" content="https://puggietype.com/mtsocial.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <style>
       #top {
@@ -9939,7 +9939,7 @@ Disallow:
           For vulnerabilities that impact the confidentiality, integrity, and
           availability of Monkeytype services, please send your disclosure via
           (1)
-          <a href="mailto:jack@monkeytype.com">email</a>
+          <a href="mailto:jack@puggietype.com">email</a>
           , or (2) ping
           <span
             aria-label="Click To Copy"
@@ -12981,7 +12981,7 @@ self.addEventListener("fetch", async (event) => {
   if (
     [
       "localhost:5005",
-      "api.monkeytype.com",
+      "api.puggietype.com",
       "api.github.com",
       "www.google-analytics.com",
     ].includes(host) ||
@@ -20707,7 +20707,7 @@ let baseURL;
 if (window.location.hostname === "localhost") {
   baseURL = "http://localhost:5005" + apiPath;
 } else {
-  baseURL = "https://api.monkeytype.com" + apiPath;
+  baseURL = "https://api.puggietype.com" + apiPath;
 }
 
 const axiosInstance = axios.create({
@@ -24391,7 +24391,7 @@ export async function screenshot() {
     $("#notificationCenter").removeClass("hidden");
     $("#commandLineMobileButton").removeClass("hidden");
     $(".pageTest .ssWatermark").addClass("hidden");
-    $(".pageTest .ssWatermark").text("monkeytype.com");
+    $(".pageTest .ssWatermark").text("puggietype.com");
     $(".pageTest .buttons").removeClass("hidden");
     if (revealReplay) $("#resultReplay").removeClass("hidden");
     if (firebase.auth().currentUser == null)
@@ -24405,14 +24405,14 @@ export async function screenshot() {
   $("#resultReplay").addClass("hidden");
   $(".pageTest .ssWatermark").removeClass("hidden");
   $(".pageTest .ssWatermark").text(
-    moment(Date.now()).format("DD MMM YYYY HH:mm") + " | monkeytype.com "
+    moment(Date.now()).format("DD MMM YYYY HH:mm") + " | puggietype.com "
   );
   if (firebase.auth().currentUser != null) {
     $(".pageTest .ssWatermark").text(
       DB.getSnapshot().name +
         " | " +
         moment(Date.now()).format("DD MMM YYYY HH:mm") +
-        " | monkeytype.com  "
+        " | puggietype.com  "
     );
   }
   $(".pageTest .buttons").addClass("hidden");
