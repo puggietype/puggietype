@@ -284,7 +284,7 @@ window.addEventListener("popstate", () => {
     }
     // leave once off the test page, so it doesn't regenerate a solo test
     // under the page transition
-    void router().then(leaveRoom);
+    void router().finally(leaveRoom);
     return;
   }
   void router();

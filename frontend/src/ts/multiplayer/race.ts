@@ -326,22 +326,26 @@ async function goRace(token: number): Promise<void> {
   }
   clearInterval(countdownTimer);
   setCountdown(0);
-  setRaceInputLocked(false);
   // run on the shared race clock: a rejoin after a reload lands mid-race
   raceStartedAt = performance.now() + left;
   if (!isTestActive()) startTest(raceStartedAt);
-  const resume = ownServerPosition();
-  if (resume !== undefined) {
+  const resume = ownServerPosition(info.words);
+  // the timer's catch-up may have already ended a late rejoin
+  if (resume !== undefined && isTestActive()) {
     resumeFloor = resume;
     await fastForward(info.words, resume);
     if (token !== raceToken) return;
   }
+  setRaceInputLocked(false);
   focusWords(true);
   progressTimer = setInterval(sendProgress, PROGRESS_INTERVAL_MS);
 }
 
-/** our position as the server last saw it (rejoin snapshot), if past the start */
-function ownServerPosition(): RacePosition | undefined {
+/**
+ * our position as the server last saw it (rejoin snapshot), if past the start.
+ * charIndex is clamped to the word: extra letters aren't replayed.
+ */
+function ownServerPosition(words: readonly string[]): RacePosition | undefined {
   const id = myId();
   const candidates = [
     opponentProgress().find((p) => p.id === id),
@@ -350,22 +354,35 @@ function ownServerPosition(): RacePosition | undefined {
   let best: RacePosition | undefined;
   for (const p of candidates) {
     if (p === undefined || (p.wordIndex === 0 && p.charIndex === 0)) continue;
-    if (best === undefined || isBehind(best, p)) {
-      best = { wordIndex: p.wordIndex, charIndex: p.charIndex };
-    }
+    const pos = {
+      wordIndex: p.wordIndex,
+      charIndex: Math.min(p.charIndex, words[p.wordIndex]?.length ?? 0),
+    };
+    if (best === undefined || isBehind(best, pos)) best = pos;
   }
   return best;
 }
 
-/** replay the race text up to a position through the engine, as typed input */
+/**
+ * replay the race text up to a position through the engine, as typed input.
+ * Real typing stays locked out: the lock only lifts for the synchronous lock
+ * check at the start of each replayed insert.
+ */
 async function fastForward(
   words: readonly string[],
   to: RacePosition,
 ): Promise<void> {
   const token = raceToken;
   for (const data of resumeText(words, to.wordIndex, to.charIndex)) {
-    if (token !== raceToken || finishSent) return;
-    await emulateInsertText({ data, now: performance.now(), automatic: true });
+    if (token !== raceToken || finishSent || !isTestActive()) return;
+    setRaceInputLocked(false);
+    const inserted = emulateInsertText({
+      data,
+      now: performance.now(),
+      automatic: true,
+    });
+    setRaceInputLocked(true);
+    await inserted;
   }
 }
 

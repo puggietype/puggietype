@@ -52,6 +52,7 @@ export const RACE_CONFIG_KEYS = [
   "minAcc",
   "minBurst",
   "stopOnError",
+  "oppositeShiftMode",
   "mode",
   "time",
   "words",
@@ -79,6 +80,8 @@ export function raceConfigOverrides(
     ["minAcc", "off"],
     ["minBurst", "off"],
     ["stopOnError", "off"],
+    // a resume replays capitals without a shift key
+    ["oppositeShiftMode", "off"],
     ["mode", settings.mode],
     settings.mode === "time"
       ? ["time", settings.mode2]

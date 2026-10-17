@@ -139,6 +139,8 @@ describe("raceConfigOverrides", () => {
     expect(entries.get("minAcc")).toBe("off");
     expect(entries.get("minBurst")).toBe("off");
     expect(entries.get("stopOnError")).toBe("off");
+    // a resume replays capitals without a shift key (MP-002)
+    expect(entries.get("oppositeShiftMode")).toBe("off");
   });
   it("clears funboxes before changing the mode", () => {
     const keys = overrides(DEFAULT_SETTINGS).map(([k]) => k);

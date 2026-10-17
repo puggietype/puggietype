@@ -36,6 +36,7 @@ import {
   setLayoutfluidTimerVisible,
 } from "../states/test";
 import { capitalizeFirstLetter } from "../utils/strings";
+import { isRaceActive } from "../multiplayer/engine-hooks";
 
 let emittedTicks = 0;
 let stopped = true;
@@ -320,6 +321,9 @@ function timerStep(now: number, catchingUp: boolean): void {
 
 function checkIfTimerIsSlow(drift: number): void {
   if (!slowTimerFailEnabled) return;
+  // multiplayer hook: the server owns race time and missed ticks catch up; a
+  // blocking leave dialog mustn't fail the race as a slow timer
+  if (isRaceActive()) return;
   if (
     (Config.mode === "time" && Config.time < 130 && Config.time > 0) ||
     (Config.mode === "words" && Config.words < 250 && Config.words > 0)
@@ -383,6 +387,7 @@ async function _startNew(now: number): Promise<void> {
       catchup: true,
     });
   }
+  if (stopped) return;
   newTimer.duration = Math.max(0, now + (emittedTicks + 1) * 1000 - realNow);
   newTimer.play();
 }

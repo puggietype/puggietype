@@ -16,6 +16,10 @@ const engine = vi.hoisted(() => ({
   wordIndex: 0,
   input: "",
   emulated: [] as string[],
+  /** race input lock as seen inside / after the sync part of each replayed insert */
+  lockedInCall: [] as boolean[],
+  lockedAfterCall: [] as boolean[],
+  isLocked: (() => false) as () => boolean,
   restart: vi.fn(async () => undefined),
   startTest: vi.fn((_now: number) => true),
   stop: vi.fn(),
@@ -87,6 +91,9 @@ vi.mock("../../src/ts/test/test-logic", () => ({
 vi.mock("../../src/ts/input/handlers/insert-text", () => ({
   emulateInsertText: async ({ data }: { data: string }) => {
     engine.emulated.push(data);
+    engine.lockedInCall.push(engine.isLocked());
+    await Promise.resolve();
+    engine.lockedAfterCall.push(engine.isLocked());
   },
 }));
 vi.mock("../../src/ts/test/test-ui", () => ({
@@ -100,6 +107,7 @@ vi.mock("../../src/ts/test/test-words", () => ({
 const Race = await import("../../src/ts/multiplayer/race");
 const Hooks = await import("../../src/ts/multiplayer/engine-hooks");
 const Store = await import("../../src/ts/multiplayer/store");
+engine.isLocked = Hooks.isRaceInputLocked;
 
 // ---- helpers
 
@@ -197,6 +205,8 @@ describe("race lifecycle", () => {
     engine.wordIndex = 0;
     engine.input = "";
     engine.emulated = [];
+    engine.lockedInCall = [];
+    engine.lockedAfterCall = [];
     engine.restart.mockClear();
     engine.startTest.mockReset();
     engine.startTest.mockImplementation(() => true);
@@ -264,12 +274,11 @@ describe("race lifecycle", () => {
     expect(Store.raceFinished()).toBe(true);
   });
 
-  it("resumes a rejoined race at our server position on the race clock (MP-002)", async () => {
-    const startAt = Date.now() - 5000;
-    engine.startTest.mockImplementation(() => {
-      engine.testActive = true;
-      return true;
-    });
+  async function rejoinAt(
+    wordIndex: number,
+    charIndex: number,
+    startAt = Date.now() - 5000,
+  ): Promise<void> {
     receive({
       type: "welcome",
       playerId: "me",
@@ -280,11 +289,22 @@ describe("race lifecycle", () => {
     const state = roomState({ phase: "racing" });
     const me = state.type === "room:state" ? state.players[0] : undefined;
     if (me !== undefined) {
-      me.progress = { wordIndex: 1, charIndex: 2, testMs: 4000, wpm: 50 };
+      me.progress = { wordIndex, charIndex, testMs: 4000, wpm: 50 };
     }
     receive(state);
     receive(countdown(startAt));
     await flush();
+  }
+  const startTestActivates = (): void => {
+    engine.startTest.mockImplementation(() => {
+      engine.testActive = true;
+      return true;
+    });
+  };
+
+  it("resumes a rejoined race at our server position on the race clock (MP-002)", async () => {
+    startTestActivates();
+    await rejoinAt(1, 2);
 
     expect(engine.startTest).toHaveBeenCalledTimes(1);
     const startedAt = engine.startTest.mock.calls[0]?.[0] ?? 0;
@@ -304,6 +324,33 @@ describe("race lifecycle", () => {
     expect(progress.at(-1)).toMatchObject({ wordIndex: 1, charIndex: 3 });
     const testMs = (progress.at(-1) as { testMs: number }).testMs;
     expect(testMs).toBeGreaterThanOrEqual(5000);
+  });
+
+  it("keeps real typing locked out while the resume replays", async () => {
+    startTestActivates();
+    await rejoinAt(1, 2);
+    expect(engine.lockedInCall).toEqual(engine.emulated.map(() => false));
+    expect(engine.lockedAfterCall).toEqual(engine.emulated.map(() => true));
+    expect(Hooks.isRaceInputLocked()).toBe(false);
+  });
+
+  it("clamps a resume position past the word's end (extra letters)", async () => {
+    startTestActivates();
+    await rejoinAt(1, 9);
+    expect(engine.emulated.join("")).toBe("the quick");
+    engine.wordIndex = 1;
+    engine.input = "quick";
+    await vi.advanceTimersByTimeAsync(150);
+    expect(
+      fakeClient.sent.filter((m) => m.type === "race:progress").at(-1),
+    ).toMatchObject({ wordIndex: 1, charIndex: 5 });
+  });
+
+  it("doesn't replay when the race time already ran out on rejoin", async () => {
+    // startTest's timer catch-up finished the test straight away
+    await rejoinAt(1, 2);
+    expect(engine.startTest).toHaveBeenCalledTimes(1);
+    expect(engine.emulated).toEqual([]);
   });
 
   it("starts a race joined on time at word 0 without fast-forwarding", async () => {

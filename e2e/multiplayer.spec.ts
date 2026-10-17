@@ -355,7 +355,8 @@ test("browser Back mid-race asks first and leaves the race only if confirmed (MP
   const dismissed = new Promise<string>((resolve) =>
     a.once("dialog", (d) => {
       resolve(d.message());
-      void d.dismiss();
+      // a hesitating user: the dialog blocks the page and the race timer
+      setTimeout(() => void d.dismiss(), 1500);
     }),
   );
   await a.goBack();
@@ -365,6 +366,8 @@ test("browser Back mid-race asks first and leaves the race only if confirmed (MP
   await typeWords(a, 1, 60);
   await expect.poll(() => progressOf(sentByA).at(-1)?.wordIndex).toBe(4);
   expect(leaves()).toBe(0);
+  // the blocked timer didn't end the race as a "slow timer"
+  expect(sentByA.some((m) => m["type"] === "race:finish")).toBe(false);
 
   // confirm: leaves the room and goes back
   a.once("dialog", (d) => void d.accept());

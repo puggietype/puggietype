@@ -57,7 +57,7 @@ Engine hook points are kept small and marked `// multiplayer hook`.
 - Reloading mid-race resumes at the last position the server saw, on the race clock; the
   words before it are replayed as typed correctly (mistakes before the reload are lost).
   After finishing, a reload just waits for the results.
-- Browser back mid-race bypasses the navigation guard; the race page then offers to leave.
+- Browser back mid-race asks to leave (confirm); closing/reloading the tab prompts too.
 - Public matchmaking is a stub. Results are never saved.
 
 ## Dev
