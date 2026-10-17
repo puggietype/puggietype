@@ -25,7 +25,6 @@ import { addToGlobal } from "./utils/misc";
 import * as Focus from "./test/focus";
 import { getBuildVersion } from "./utils/version";
 import * as Cookies from "./cookies";
-import { isStandalone } from "./utils/env";
 import "./elements/psa";
 import "./controllers/url-handler";
 import { applyEngineSettings } from "./anim";
@@ -76,7 +75,7 @@ if (buildVersion !== null) setVersion(buildVersion);
 Focus.set(true, true);
 const accepted = Cookies.getAcceptedCookies();
 // standalone builds have no backend, so no captcha and nothing to consent to
-if (!isStandalone()) {
+if (!__STANDALONE__) {
   if (accepted === null) showModal("Cookies");
   const recaptcha = document.createElement("script");
   recaptcha.src = "https://www.google.com/recaptcha/api.js?render=explicit";

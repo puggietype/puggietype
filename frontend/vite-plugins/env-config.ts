@@ -48,10 +48,7 @@ export function envConfig(options: {
         const prodConfig: EnvConfig = {
           isDevelopment: false,
           standalone,
-          backendUrl: fallback(
-            options.env["BACKEND_URL"],
-            "http://localhost:5005",
-          ),
+          backendUrl: options.env["BACKEND_URL"] ?? "",
           recaptchaSiteKey: options.env["RECAPTCHA_SITE_KEY"] ?? "",
           quickLoginEmail: undefined,
           quickLoginPassword: undefined,

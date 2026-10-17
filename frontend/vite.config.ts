@@ -348,8 +348,22 @@ export default defineConfig(({ mode }): UserConfig => {
     }
   }
 
+  // no BACKEND_URL => no auth/api: swap the Firebase SDK for a stub and let
+  // the minifier drop backend-only code (reCAPTCHA loader) behind __STANDALONE__
+  const standalone = (env["BACKEND_URL"] ?? "") === "";
+  const firebaseStub = path.resolve(
+    __dirname,
+    "src/ts/standalone/firebase-stub.ts",
+  );
+
   return {
     plugins: getPlugins({ isDevelopment, env }),
+    define: { __STANDALONE__: JSON.stringify(standalone) },
+    resolve: {
+      alias: standalone
+        ? { "firebase/app": firebaseStub, "firebase/auth": firebaseStub }
+        : {},
+    },
     build: getBuildOptions({ enableSourceMaps: false }),
     css: getCssOptions({ isDevelopment }),
     server: {
