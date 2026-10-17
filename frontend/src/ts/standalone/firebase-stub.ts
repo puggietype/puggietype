@@ -1,6 +1,7 @@
-// Stands in for "firebase/app" and "firebase/auth" in standalone builds (no
-// BACKEND_URL, see vite.config.ts) so the Firebase SDK, its config and its
-// Google endpoints are not bundled. Auth is never available there.
+// Stands in for "firebase/app", "firebase/auth" and load-firebase-config in
+// standalone builds (no BACKEND_URL, see vite.config.ts) so the Firebase SDK,
+// its config and its Google endpoints are not bundled. Auth is never
+// available there.
 
 function unavailable(): never {
   throw new Error("auth is not available in standalone mode");
@@ -51,3 +52,8 @@ export const checkActionCode = unavailable;
 export const confirmPasswordReset = unavailable;
 export const sendPasswordResetEmail = unavailable;
 export const verifyPasswordResetCode = unavailable;
+
+// replaces constants/load-firebase-config: no config is bundled
+export async function loadFirebaseConfig(): Promise<undefined> {
+  return undefined;
+}

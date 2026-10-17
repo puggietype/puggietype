@@ -361,8 +361,11 @@ export default defineConfig(({ mode }): UserConfig => {
     define: { __STANDALONE__: JSON.stringify(standalone) },
     resolve: {
       alias: standalone
-        ? { "firebase/app": firebaseStub, "firebase/auth": firebaseStub }
-        : {},
+        ? [
+            { find: /^firebase\/(app|auth)$/, replacement: firebaseStub },
+            { find: /^.*\/load-firebase-config$/, replacement: firebaseStub },
+          ]
+        : [],
     },
     build: getBuildOptions({ enableSourceMaps: false }),
     css: getCssOptions({ isDevelopment }),
