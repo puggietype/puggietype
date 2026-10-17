@@ -6,7 +6,7 @@
 
 puggietype is a fork of [Monkeytype](https://github.com/monkeytypegame/monkeytype) (created by Miodec and contributors) and, like it, is licensed under [GPL-3.0](LICENSE). It is not affiliated with or endorsed by Monkeytype. All puggietype branding (name, pug mascot, logo, themes `puggie_dark`, `puggie_light`, `midnight_chow`) is original work.
 
-Source: https://github.com/shoyru-ai/puggietype
+Source: https://github.com/puggietype/puggietype (fork notice and list of changes: [NOTICE](NOTICE))
 
 ## Run locally (no backend needed)
 

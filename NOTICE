@@ -1,0 +1,38 @@
+PuggieType
+Copyright (C) 2026 the PuggieType team
+
+PuggieType is a modified version of Monkeytype
+<https://github.com/monkeytypegame/monkeytype>,
+Copyright (C) Miodec and the Monkeytype contributors,
+licensed under the GNU General Public License, version 3.
+
+PuggieType is a fork of Monkeytype, forked from upstream commit 0addedb
+on 2026-10-16 (imported here as commit 9ed43ca).
+
+Modified by the PuggieType team since 2026-10-16. Main changes:
+- new name, original pug mascot, logo, favicons and themes;
+- accounts and the upstream backend removed or disabled; the frontend
+  runs standalone as a static site;
+- a private-lobby multiplayer client added (random server-assigned
+  nicknames, no chat);
+- PuggieType Terms of Service and Privacy Policy, footer legal notice,
+  robots.txt, sitemap and canonical URLs pointing at puggietype.com;
+- Sentry, Google Analytics and Firebase analytics removed; ad code
+  replaced by a no-op hook; reCAPTCHA loaded only with a backend;
+- upstream CI workflows removed.
+The full list of changes is in the git history.
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, version 3 of the License.
+
+This program is distributed WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the LICENSE file for details.
+
+Source code: https://github.com/puggietype/puggietype
+
+PuggieType is an independent project and is not affiliated with or
+endorsed by Monkeytype.
+
+This NOTICE was last updated on 2026-10-17.
