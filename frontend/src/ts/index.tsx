@@ -27,6 +27,7 @@ import * as Focus from "./test/focus";
 import { fetchLatestVersion } from "./utils/version";
 import * as Sentry from "./sentry";
 import * as Cookies from "./cookies";
+import { isStandalone } from "./utils/env";
 import "./elements/psa";
 import "./controllers/url-handler";
 import { applyEngineSettings } from "./anim";
@@ -78,7 +79,8 @@ void fetchLatestVersion().then((data) => {
 
 Focus.set(true, true);
 const accepted = Cookies.getAcceptedCookies();
-if (accepted === null) {
+// standalone builds have no analytics/ads, so there is nothing to consent to
+if (accepted === null && !isStandalone()) {
   showModal("Cookies");
 }
 void init(onAuthStateChanged).then(() => {

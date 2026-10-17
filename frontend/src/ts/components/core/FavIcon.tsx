@@ -6,28 +6,31 @@ import { isDevEnvironment } from "../../utils/env";
 
 export function FavIcon(props: { theme: Theme }): JSXElement {
   const icon = createMemo<string>(() => {
-    let { main, bg } = props.theme;
+    // pug head on a theme-coloured tile: tile = main, ink = bg, fill = text
+    let { main: tile, bg: ink, text: fill } = props.theme;
     if (isDevEnvironment()) {
-      [main, bg] = [bg, main];
+      [tile, ink] = [ink, tile];
     }
-    if (bg === main) {
-      bg = "#111";
-      main = "#eee";
+    if (tile === ink) {
+      tile = "#E8A96B";
+      ink = "#161514";
+      fill = "#F0D9B5";
     }
 
-    const svgPre = `
+    const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-      <style>
-        #bg{fill:${bg};}
-        path{fill:${main};}
-      </style>
-      <g>
-        <path id="bg" d="M0 16Q0 0 16 0h32q16 0 16 16v32q0 16-16 16H16Q0 64 0 48"/>
-        <path d="M9.09 24.1v21.2h5.12V33.1q.256-4.61 4.48-4.61 3.46.384 3.46 3.84v12.9h5.12v-11.5q-.128-5.25 4.48-5.25 3.46.384 3.46 3.84v12.9h5.12v-12.2q0-9.47-7.04-9.47-4.22 0-7.04 3.46-2.18-3.46-6.02-3.46-3.46 0-6.02 2.43v-2.05M47 18.9v5.12h-4.61v5.12H47v16.1h5.12v-16.1h4.61v-5.12h-4.61V18.9"/>
+      <rect width="64" height="64" rx="14" fill="${tile}"/>
+      <g stroke="${ink}" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M5,52 C4,30 16,14 32,14 C48,14 60,30 59,52 Z" fill="${fill}" stroke-width="3.4"/>
+        <path d="M20,20 C13,18 7,23 7,31 C7,36 10,38 13.5,36 C16,34 17,29 22,26 Z M44,20 C51,18 57,23 57,31 C57,36 54,38 50.5,36 C48,34 47,29 42,26 Z" fill="${ink}" stroke-width="3.4"/>
+        <path d="M28,24 q4,-2 8,0" fill="none" stroke-width="2.4"/>
+        <circle cx="23" cy="32.5" r="3.4" fill="${ink}"/>
+        <circle cx="41" cy="32.5" r="3.4" fill="${ink}"/>
+        <rect x="20" y="38" width="24" height="9" rx="4.5" fill="${ink}" stroke-width="1.6"/>
       </g>
     </svg>
     `;
-    return `data:image/svg+xml;base64,${btoa(svgPre)}`;
+    return `data:image/svg+xml;base64,${btoa(svg)}`;
   });
 
   return (

@@ -1,7 +1,6 @@
 import { JSXElement } from "solid-js";
 
 import { getIsScreenshotting } from "../../../states/core";
-import { showModal } from "../../../states/modals";
 import { getFocus } from "../../../states/test";
 import { cn } from "../../../utils/cn";
 import { Button } from "../../common/Button";
@@ -26,50 +25,12 @@ export function Footer(): JSXElement {
         <div class="grid grid-cols-1 justify-items-start xs:grid-cols-2 sm:grid-cols-4 lg:flex">
           <Button
             variant="text"
-            text="contact"
-            fa={{
-              icon: "fa-envelope",
-              fixedWidth: true,
-            }}
-            onClick={() => showModal("Contact")}
-          />
-          <Button
-            variant="text"
-            text="support"
-            fa={{
-              icon: "fa-donate",
-              fixedWidth: true,
-            }}
-            onClick={() => showModal("Support")}
-          />
-          <Button
-            variant="text"
-            text="github"
+            text="source"
             fa={{
               icon: "fa-code",
               fixedWidth: true,
             }}
-            href="https://github.com/monkeytypegame/monkeytype"
-          />
-          <Button
-            variant="text"
-            text="discord"
-            fa={{
-              icon: "fa-discord",
-              variant: "brand",
-              fixedWidth: true,
-            }}
-            href="https://www.discord.gg/monkeytype"
-          />
-          <Button
-            variant="text"
-            text="twitter"
-            fa={{
-              icon: "fa-twitter",
-              variant: "brand",
-              fixedWidth: true,
-            }}
-            href="https://x.com/monkeytype"
+            href="https://github.com/shoyru-ai/puggietype"
           />
           <Button
             variant="text"
@@ -98,6 +59,20 @@ export function Footer(): JSXElement {
               fixedWidth: true,
             }}
           />
+          <div class="flex items-center p-2">
+            <span>
+              puggietype is based on{" "}
+              <a
+                class="text-sub underline hover:text-text"
+                href="https://github.com/monkeytypegame/monkeytype"
+                target="_blank"
+                rel="noopener"
+              >
+                Monkeytype
+              </a>{" "}
+              (GPL-3.0)
+            </span>
+          </div>
         </div>
         <div class="flex flex-col items-end text-right lg:flex-row">
           <ThemeIndicator />

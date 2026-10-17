@@ -129,6 +129,7 @@ const caretOptionsMetadata = {
   },
   monkey: {
     visible: false,
+    displayString: "pug",
   },
   block: {},
   off: {},

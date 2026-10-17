@@ -223,7 +223,7 @@ type GithubRelease = {
 export async function getLatestReleaseFromGitHub(): Promise<string> {
   type releaseType = { name: string };
   const releases = await cachedFetchJson<releaseType[]>(
-    "https://api.github.com/repos/monkeytypegame/monkeytype/releases?per_page=1",
+    "https://api.github.com/repos/shoyru-ai/puggietype/releases?per_page=1",
   );
   if (releases[0]?.name === undefined) {
     throw new Error("No release found");
@@ -239,6 +239,6 @@ export async function getReleasesFromGitHub(options?: {
   page?: number;
 }): Promise<GithubRelease[]> {
   return fetchJson(
-    `https://api.github.com/repos/monkeytypegame/monkeytype/releases?per_page=5&page=${options?.page ?? 1}`,
+    `https://api.github.com/repos/shoyru-ai/puggietype/releases?per_page=5&page=${options?.page ?? 1}`,
   );
 }

@@ -127,26 +127,33 @@ function getPlugins({
       injectRegister: null,
       registerType: "autoUpdate",
       manifest: {
-        short_name: "Monkeytype",
-        name: "Monkeytype",
+        short_name: "puggietype",
+        name: "puggietype",
+        description: "a minimalist typing test with a little pug",
         start_url: "/",
         icons: [
           {
-            src: "/images/icons/maskable_icon_x512.png",
+            src: "/images/favicon/maskable-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
           },
           {
-            src: "/images/icons/general_icon_x512.png",
+            src: "/images/favicon/icon-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "any",
           },
+          {
+            src: "/images/favicon/icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
         ],
-        background_color: "#323437",
+        background_color: "#161514",
         display: "standalone",
-        theme_color: "#323437",
+        theme_color: "#161514",
       },
       manifestFilename: "manifest.json",
       workbox: {
@@ -158,8 +165,9 @@ function getPlugins({
         runtimeCaching: [
           {
             urlPattern: (options) => {
-              const isApi = options.url.hostname === "api.monkeytype.com";
-              return options.sameOrigin && !isApi;
+              return (
+                options.sameOrigin && !options.url.pathname.startsWith("/ws")
+              );
             },
             handler: "NetworkFirst",
             options: {},

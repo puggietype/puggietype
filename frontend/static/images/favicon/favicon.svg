@@ -1,10 +1,1 @@
-<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-      <style>
-    #bg{fill: #323437;}
-    path{fill: #e2b714;}
-  </style>
-    <g>
-        <path id="bg" d="M0 16Q0 0 16 0h32q16 0 16 16v32q0 16-16 16H16Q0 64 0 48"/>
-        <path d="M9.09 24.1v21.2h5.12V33.1q.256-4.61 4.48-4.61 3.46.384 3.46 3.84v12.9h5.12v-11.5q-.128-5.25 4.48-5.25 3.46.384 3.46 3.84v12.9h5.12v-12.2q0-9.47-7.04-9.47-4.22 0-7.04 3.46-2.18-3.46-6.02-3.46-3.46 0-6.02 2.43v-2.05M47 18.9v5.12h-4.61v5.12H47v16.1h5.12v-16.1h4.61v-5.12h-4.61V18.9"/>
-    </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><rect width="64" height="64" rx="14" fill="#E8A96B"/><path d="M5,52 C4,30 16,14 32,14 C48,14 60,30 59,52 Z" fill="#F0D9B5" stroke="#161514" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M20,20 C13,18 7,23 7,31 C7,36 10,38 13.5,36 C16,34 17,29 22,26 Z M44,20 C51,18 57,23 57,31 C57,36 54,38 50.5,36 C48,34 47,29 42,26 Z" fill="#3B2B23" stroke="#161514" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M28,24 q4,-2 8,0" fill="none" stroke="#161514" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="23" cy="32.5" r="3.4" fill="#161514"/><circle cx="41" cy="32.5" r="3.4" fill="#161514"/><rect x="20" y="38" width="24" height="9" rx="4.5" fill="#3B2B23" stroke="#161514" stroke-width="1.6"/><path d="M30,41.5 h4" stroke="#F0D9B5" stroke-width="1.6" stroke-linecap="round"/></svg>

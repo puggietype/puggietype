@@ -1,20 +1,16 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <link rel="preconnect" href="https://api.monkeytype.com" />
-    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
-    <link rel="preconnect" href="https://www.google.com" />
-    <link rel="preconnect" href="https://www.gstatic.com" />
     <link
       rel="preload"
-      href="/webfonts/RobotoMono-Regular.woff2"
+      href="/webfonts/JetBrainsMono-Regular.woff2"
       type="font/woff2"
       as="font"
       crossorigin
     />
     <link
       rel="preload"
-      href="/webfonts/LexendDeca-Regular.woff2"
+      href="/webfonts/Lexend-Regular.woff2"
       type="font/woff2"
       as="font"
       crossorigin
@@ -27,85 +23,55 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Monkeytype | A minimalistic, customizable typing test</title>
-    <!-- fallback theme colors -->
+    <title>puggietype | a minimalist typing test</title>
+    <!-- fallback theme colors (puggie dark) -->
     <style>
       :root {
-        --bg-color: #323437;
-        --main-color: #e2b714;
-        --caret-color: #e2b714;
-        --sub-color: #646669;
-        --sub-alt-color: #2c2e31;
-        --text-color: #d1d0c5;
-        --error-color: #ca4754;
-        --error-extra-color: #7e2a33;
-        --colorful-error-color: #ca4754;
-        --colorful-error-extra-color: #7e2a33;
+        --bg-color: #161514;
+        --main-color: #e8a96b;
+        --caret-color: #e8a96b;
+        --sub-color: #77706a;
+        --sub-alt-color: #211f1d;
+        --text-color: #ece6dd;
+        --error-color: #ef6b5f;
+        --error-extra-color: #a84a43;
+        --colorful-error-color: #ef6b5f;
+        --colorful-error-extra-color: #a84a43;
         --nav-focus-opacity: 0;
       }
     </style>
-    <link
-      rel="icon"
-      type="image/x-icon"
-      sizes="32x32"
-      href="/images/favicon/favicon.ico"
-    />
+    <link rel="icon" href="/images/favicon/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/images/favicon/favicon.svg" type="image/svg+xml" />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
       href="/images/favicon/apple-touch-icon.png"
     />
-    <link
-      rel="mask-icon"
-      href="/images/favicon/safari-pinned-tab.svg"
-      color="#eee"
-    />
-    <meta name="msapplication-TileColor" content="#e2b714" />
-    <meta
-      name="msapplication-config"
-      content="/images/favicon/browserconfig.xml"
-    />
-    <meta
-      name="name"
-      content="Monkeytype | A minimalistic, customizable typing test"
-    />
-    <meta name="image" content="https://monkeytype.com/images/mtsocial.png" />
+    <meta name="theme-color" content="#161514" />
+    <meta name="name" content="puggietype | a minimalist typing test" />
+    <meta name="image" content="/images/og-image.png" />
     <meta
       name="description"
-      content="The most customizable typing test website with a minimal design and a ton of features. Test yourself in various modes, track your progress and improve your speed."
+      content="A minimalist, customizable typing test with a little pug. Type fast, stay cute, and race your friends."
     />
-    <!-- <meta
-    name="keywords"
-    content="typing speed test, typing speedtest, typing test, speedtest, speed test, typing, test, typing-test, typing test, monkey-type, monkeytype, monkey type, monkey-types, monkeytypes, monkey types, types, monkey, type, miodec, wpm, words per minute, typing website, minimalistic, custom typing test, customizable, customisable, themes, random words, smooth caret, smooth, new, new typing site, new typing website, minimalist typing website, minimalistic typing website, minimalist typing test"
-
-  /> -->
     <meta
       name="keywords"
-      content="typing test, monkeytype, speed test, typing, test, speed"
+      content="typing test, puggietype, speed test, typing, wpm, typing race"
     />
-    <meta name="author" content="Miodec" />
-    <meta
-      property="og:title"
-      content="Monkeytype | A minimalistic, customizable typing test"
-    />
-    <meta property="og:url" content="https://monkeytype.com/" />
+    <meta property="og:title" content="puggietype | a minimalist typing test" />
+    <meta property="og:site_name" content="puggietype" />
+    <meta property="og:url" content="/" />
     <meta property="og:type" content="website" />
-    <meta
-      property="og:image"
-      content="https://monkeytype.com/images/mtsocial.png"
-    />
+    <meta property="og:image" content="/images/og-image.png" />
     <meta
       property="og:description"
-      content="The most customizable typing test website with a minimal design and a ton of features. Test yourself in various modes, track your progress and improve your speed."
+      content="A minimalist, customizable typing test with a little pug. Type fast, stay cute, and race your friends."
     />
     <meta
       name="twitter:title"
-      content="Monkeytype | A minimalistic, customizable typing test"
+      content="puggietype | a minimalist typing test"
     />
-    <meta
-      name="twitter:image"
-      content="https://monkeytype.com/images/mtsocial.png"
-    />
+    <meta name="twitter:image" content="/images/og-image.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="darkreader-lock" />
     <meta http-equiv="Cache-Control" content="no-store" />

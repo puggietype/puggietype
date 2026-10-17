@@ -166,7 +166,7 @@ function updateTitle(nextPage: { id: string }): void {
     Misc.updateTitle();
   } else {
     const titleString = Strings.capitalizeFirstLetterOfEachWord(nextPage.id);
-    Misc.updateTitle(`${titleString} | Monkeytype`);
+    Misc.updateTitle(`${titleString} | puggietype`);
   }
 }
 

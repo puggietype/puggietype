@@ -1,5 +1,25 @@
-[![](https://github.com/monkeytypegame/monkeytype/blob/master/frontend/static/images/githubbanner2.png?raw=true)](https://monkeytype.com/)
-<br />
+<p align="center"><img src="frontend/static/images/og-image.png" alt="puggietype" width="600" /></p>
+
+# puggietype
+
+**puggietype** is a minimalist, customizable typing test with a little pug who types along with you, plus multiplayer races with friends. Type fast, stay cute.
+
+puggietype is a fork of [Monkeytype](https://github.com/monkeytypegame/monkeytype) (created by Miodec and contributors) and, like it, is licensed under [GPL-3.0](LICENSE). It is not affiliated with or endorsed by Monkeytype. All puggietype branding (name, pug mascot, logo, themes `puggie_dark`, `puggie_light`, `midnight_chow`) is original work.
+
+Source: https://github.com/shoyru-ai/puggietype
+
+## Run locally (no backend needed)
+
+```bash
+pnpm i
+pnpm dev-fe   # http://localhost:3000
+```
+
+Without `BACKEND_URL` set, the frontend runs **standalone**: typing tests, settings, themes and the pug work from localStorage; accounts, leaderboards and profiles are hidden. The dev server listens on `0.0.0.0`, accepts any host (for a Cloudflare quick tunnel) and proxies `/ws` to the realtime server on `localhost:2567`.
+
+---
+
+_The rest of this README is inherited from upstream Monkeytype and describes the upstream project._
 
 [![AnimeJs](https://img.shields.io/badge/Anime.js-ff4b4b?style=for-the-badge&logo=animedotjs&logoColor=white)](https://animejs.com/)&nbsp;
 [![ChartJs](https://img.shields.io/badge/Chart.js-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white)](https://www.chartjs.org/)&nbsp;
@@ -23,9 +43,9 @@
 [![Vitest](https://img.shields.io/badge/vitest-00FF74?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)&nbsp;
 [![Zod](https://img.shields.io/badge/-Zod-408AFF?style=for-the-badge&logo=zod&logoColor=white)](https://zod.dev/)
 
-# About
+# About (upstream)
 
-Monkeytype is a minimalistic and customizable [typing test](https://www.monkeytype.com). It features many test modes, an account system to save your typing speed history, and user-configurable features such as themes, sounds, a smooth caret, and more. Monkeytype attempts to emulate a natural typing experience during a typing test by unobtrusively presenting the text prompts and displaying typed characters in place, providing straightforward, real-time feedback on typos, speed, and accuracy.
+Monkeytype is a minimalistic and customizable typing test. It features many test modes, an account system to save your typing speed history, and user-configurable features such as themes, sounds, a smooth caret, and more. Monkeytype attempts to emulate a natural typing experience during a typing test by unobtrusively presenting the text prompts and displaying typed characters in place, providing straightforward, real-time feedback on typos, speed, and accuracy.
 
 # Features
 

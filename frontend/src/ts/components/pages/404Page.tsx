@@ -1,12 +1,13 @@
 import { Button } from "../common/Button";
 import { H2 } from "../common/Headers";
+import { PugHead } from "../common/PugHead";
 
 export function NotFoundPage() {
   return (
     <div class="flex h-full items-center justify-center">
       <div class="flex flex-col gap-16 md:flex-row">
         <div class="place-self-center">
-          <img src="/images/monkeymeme.jpg" class="rounded-xl" />
+          <PugHead class="h-48 w-48 text-main" />
         </div>
         <div class="flex max-w-md flex-col items-center gap-4">
           <H2 text="404" class="pb-0 text-7xl text-main" />

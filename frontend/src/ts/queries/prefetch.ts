@@ -1,18 +1,5 @@
 import { queryClient } from ".";
-import {
-  getContributorsQueryOptions,
-  getSpeedHistogramQueryOptions,
-  getSupportersQueryOptions,
-  getTypingStatsQueryOptions,
-} from "./public";
 import { getLeaderboardQueryOptions } from "./leaderboards";
-
-export function prefetchAboutPage(): void {
-  void queryClient.prefetchQuery(getContributorsQueryOptions());
-  void queryClient.prefetchQuery(getSupportersQueryOptions());
-  void queryClient.prefetchQuery(getTypingStatsQueryOptions());
-  void queryClient.prefetchQuery(getSpeedHistogramQueryOptions());
-}
 
 export function prefetchLeaderboardPage(): void {
   void queryClient.prefetchQuery(

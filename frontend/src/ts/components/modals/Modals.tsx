@@ -3,7 +3,6 @@ import { JSXElement } from "solid-js";
 import { ViewApeKeyModal } from "./account-settings/ViewApeKeyModal";
 import { AlertsModal } from "./alerts/AlertsModal";
 import { CommandlineModal } from "./CommandlineModal";
-import { ContactModal } from "./ContactModal";
 import { CookiesModal } from "./CookiesModal";
 import { CustomTestDurationModal } from "./CustomTestDurationModal";
 import { CustomTextModal } from "./CustomTextModal";
@@ -24,7 +23,6 @@ import { RegisterCaptchaModal } from "./RegisterCaptchaModal";
 import { ShareTestSettings } from "./ShareTestSettings";
 import { SimpleModal } from "./SimpleModal";
 import { StreakHourOffsetModal } from "./StreakHourOffsetModal";
-import { SupportModal } from "./SupportModal";
 import { TheRestModal } from "./TheRestModal";
 import { UserReportModal } from "./UserReportModal";
 import { VersionHistoryModal } from "./VersionHistoryModal";
@@ -35,9 +33,7 @@ export function Modals(): JSXElement {
       <CommandlineModal />
       <AlertsModal />
       <VersionHistoryModal />
-      <ContactModal />
       <RegisterCaptchaModal />
-      <SupportModal />
       <SimpleModal />
       <CustomTextModal />
       <QuoteRateModal />
