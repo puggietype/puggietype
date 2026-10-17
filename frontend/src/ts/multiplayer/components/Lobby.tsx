@@ -1,4 +1,4 @@
-import { For, JSXElement, Show } from "solid-js";
+import { createSignal, For, JSXElement, onCleanup, Show } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
@@ -28,6 +28,7 @@ import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
 const CARD = "grid content-start gap-4 rounded-lg bg-sub-alt p-6";
 const LABEL = "text-sm tracking-wide text-sub";
+const REROLL_COOLDOWN_MS = 2000;
 
 function OptionButton(props: {
   text: string;
@@ -61,6 +62,16 @@ export function Lobby(props: { room: RoomState }): JSXElement {
     s().mode === "time" ? TIME_MODE2 : WORDS_MODE2;
   const change = (patch: SettingsPatch): void => {
     if (!readOnly()) updateSettings(patch);
+  };
+
+  // the server allows 5 rerolls per 10 s and drops the rest silently
+  const [rerollCooling, setRerollCooling] = createSignal(false);
+  let rerollTimer: ReturnType<typeof setTimeout> | undefined;
+  onCleanup(() => clearTimeout(rerollTimer));
+  const reroll = (): void => {
+    rerollName();
+    setRerollCooling(true);
+    rerollTimer = setTimeout(() => setRerollCooling(false), REROLL_COOLDOWN_MS);
   };
 
   const copyInvite = (): void => {
@@ -196,8 +207,9 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                 text="new name"
                 fa={{ icon: "fa-dice" }}
                 class="py-1 text-sm"
+                disabled={rerollCooling()}
                 dataset={{ "data-testid": "mp-reroll" }}
-                onClick={() => rerollName()}
+                onClick={reroll}
               />
             </div>
           )}
