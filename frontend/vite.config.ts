@@ -265,6 +265,12 @@ function getBuildOptions({
         entryFileNames: "js/[name].[hash].js",
         codeSplitting: {
           groups: [
+            // keeps the boot entry (ts/boot.ts) free of static imports: it
+            // only needs the dynamic import helper
+            {
+              name: "preload-helper",
+              test: /preload-helper/,
+            },
             {
               name: "vendor-firebase",
               test: /node_modules\/@firebase\//,
