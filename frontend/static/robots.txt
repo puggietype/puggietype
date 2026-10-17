@@ -1,4 +1,4 @@
 User-agent: *
-Disallow: 
+Disallow:
 
-Sitemap: https://monkeytype.com/sitemap.xml
+Sitemap: https://puggietype.com/sitemap.xml

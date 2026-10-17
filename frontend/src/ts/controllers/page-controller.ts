@@ -3,6 +3,7 @@ import { setInviteCode } from "../multiplayer/store";
 import { waitForShownPage } from "../components/pages/Pages";
 import * as Misc from "../utils/misc";
 import * as Strings from "../utils/strings";
+import { canonicalUrl } from "../utils/site-url";
 import {
   getActivePage,
   setActivePage,
@@ -151,19 +152,23 @@ const pages = {
 };
 
 function updateOpenGraphUrl(): void {
-  const ogUrlTag = document.querySelector('meta[property="og:url"]');
-  const currentUrl = window.location.href;
+  const url = canonicalUrl(window.location.pathname);
 
-  if (ogUrlTag) {
-    // Update existing tag
-    ogUrlTag.setAttribute("content", currentUrl);
-  } else {
-    // Create and append new tag if it doesn't exist
-    const newOgUrlTag = document.createElement("meta");
-    newOgUrlTag.setAttribute("property", "og:url");
-    newOgUrlTag.content = currentUrl;
-    document.head.appendChild(newOgUrlTag);
+  let ogUrlTag = document.querySelector('meta[property="og:url"]');
+  if (ogUrlTag === null) {
+    ogUrlTag = document.createElement("meta");
+    ogUrlTag.setAttribute("property", "og:url");
+    document.head.appendChild(ogUrlTag);
   }
+  ogUrlTag.setAttribute("content", url);
+
+  let canonicalTag = document.querySelector('link[rel="canonical"]');
+  if (canonicalTag === null) {
+    canonicalTag = document.createElement("link");
+    canonicalTag.setAttribute("rel", "canonical");
+    document.head.appendChild(canonicalTag);
+  }
+  canonicalTag.setAttribute("href", url);
 }
 
 function updateTitle(nextPage: { id: string }): void {
