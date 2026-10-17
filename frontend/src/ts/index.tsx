@@ -82,11 +82,7 @@ const accepted = Cookies.getAcceptedCookies();
 if (accepted === null && !isStandalone()) {
   showModal("Cookies");
 }
-void init(onAuthStateChanged).then(() => {
-  if (accepted !== null) {
-    Cookies.activateWhatsAccepted();
-  }
-});
+void init(onAuthStateChanged);
 
 addToGlobal({
   snapshot: DB.getSnapshot,

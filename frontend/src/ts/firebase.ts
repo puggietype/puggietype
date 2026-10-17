@@ -26,10 +26,6 @@ import { promiseWithResolvers } from "./utils/misc";
 import { isDevEnvironment, isStandalone } from "./utils/env";
 import { createErrorMessage } from "./utils/error";
 
-import {
-  Analytics as AnalyticsType,
-  getAnalytics as firebaseGetAnalytics,
-} from "firebase/analytics";
 import { tryCatch } from "@monkeytype/util/trycatch";
 import { googleSignUpEvent } from "./events/google-sign-up";
 import { addBanner } from "./states/banners";
@@ -94,10 +90,6 @@ export async function init(callback: ReadyCallback): Promise<void> {
  */
 export function getAuthenticatedUser(): User | null {
   return Auth?.currentUser ?? null;
-}
-
-export function getAnalytics(): AnalyticsType {
-  return firebaseGetAnalytics(app);
 }
 
 export function isAuthAvailable(): boolean {

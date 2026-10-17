@@ -1,12 +1,10 @@
 import { z } from "zod";
 import { createSignal } from "solid-js";
 import { LocalStorageWithSchema } from "./utils/local-storage-with-schema";
-import { activateAnalytics } from "./controllers/analytics-controller";
 
 const AcceptedCookiesSchema = z
   .object({
     security: z.boolean(),
-    analytics: z.boolean(),
   })
   .strict()
   .nullable();
@@ -29,12 +27,4 @@ export function getAcceptedCookies(): AcceptedCookies | null {
 export function setAcceptedCookies(accepted: AcceptedCookies): void {
   cookies.set(accepted);
   _setAcceptedCookies(accepted);
-  activateWhatsAccepted();
-}
-
-export function activateWhatsAccepted(): void {
-  const accepted = getAcceptedCookies();
-  if (accepted?.analytics) {
-    activateAnalytics();
-  }
 }

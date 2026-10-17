@@ -84,7 +84,6 @@ import { canStartTest, markTestPageLeaving } from "./test-page-state";
 import { configEvent } from "../events/config";
 import { timerEvent } from "../events/timer";
 import objectHash from "object-hash";
-import * as AnalyticsController from "../controllers/analytics-controller";
 import { getAuthenticatedUser } from "../firebase";
 import { highlight } from "../events/keymap";
 import * as LazyModeState from "../legacy-states/remember-lazy-mode";
@@ -163,12 +162,6 @@ let failReason = "";
 export function startTest(now: number): boolean {
   if (!canStartTest()) {
     return false;
-  }
-
-  if (isAuthenticated()) {
-    void AnalyticsController.log("testStarted");
-  } else {
-    void AnalyticsController.log("testStartedNoLogin");
   }
 
   setTestActive(true);
@@ -1106,9 +1099,7 @@ export async function finish(difficultyFailed = false): Promise<void> {
   const user = getAuthenticatedUser();
   if (user !== null) {
     // logged in
-    if (dontSave) {
-      void AnalyticsController.log("testCompletedInvalid");
-    } else {
+    if (!dontSave) {
       resetIncompleteTests();
 
       if (!completedEvent.bailedOut) {
@@ -1119,15 +1110,9 @@ export async function finish(difficultyFailed = false): Promise<void> {
       completedEvent.uid = user.uid;
 
       savingResultPromise = saveResult(completedEvent, false);
-      void savingResultPromise.then((response) => {
-        if (response?.status === 200) {
-          void AnalyticsController.log("testCompleted");
-        }
-      });
     }
   } else {
     // logged out
-    void AnalyticsController.log("testCompletedNoLogin");
     if (!dontSave) {
       // if its valid save it for later
       setLastSignedOutResult(completedEvent);

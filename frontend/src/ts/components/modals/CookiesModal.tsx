@@ -16,7 +16,6 @@ export function CookiesModal(): JSXElement {
   const [accepted, setAccepted] = createSignal(
     getAcceptedCookies() ?? {
       security: true,
-      analytics: false,
     },
   );
 
@@ -25,7 +24,6 @@ export function CookiesModal(): JSXElement {
       setShowSettings(false);
       setAccepted({
         security: true,
-        analytics: false,
       });
     }
   });
@@ -72,7 +70,6 @@ export function CookiesModal(): JSXElement {
                 onClick={() => {
                   setAccepted({
                     security: true,
-                    analytics: true,
                   });
                   setAcceptedCookies(accepted());
                   hideModal("Cookies");
@@ -83,7 +80,6 @@ export function CookiesModal(): JSXElement {
                 onClick={() => {
                   setAccepted({
                     security: true,
-                    analytics: false,
                   });
                   setAcceptedCookies(accepted());
                   hideModal("Cookies");
@@ -109,15 +105,6 @@ export function CookiesModal(): JSXElement {
               }
               checked={true}
               disabled={true}
-            />
-            <SettingsSection
-              title="analytics"
-              description="We use Google Analytics to track the overall traffic and
-            demographics of our site."
-              checked={false}
-              onChange={(checked) =>
-                setAccepted({ ...accepted(), analytics: checked })
-              }
             />
             <SettingsSection
               title="advertising"
