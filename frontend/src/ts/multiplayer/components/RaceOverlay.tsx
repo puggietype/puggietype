@@ -23,29 +23,42 @@ export function RaceOverlay(): JSXElement {
   return (
     <Show when={race()}>
       {(info) => (
-        <div class="grid gap-3 pb-12" data-testid="mp-race">
-          <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm font-(--font) text-sub">
-            <span class="min-w-0 basis-full truncate sm:basis-auto">
-              private · {room()?.code} · {settingsSummary(info().settings)}
+        <div class="grid min-w-0 gap-3 pb-12" data-testid="mp-race">
+          {/* one row: the info truncates, the actions go icon-only on phones */}
+          <div class="flex min-w-0 items-center gap-x-4 text-sm font-(--font) text-sub">
+            <span class="min-w-0 flex-1 truncate">
+              <span class="hidden sm:inline">private · </span>
+              {room()?.code} · {settingsSummary(info().settings)}
             </span>
-            <span class="hidden grow sm:block"></span>
             <Button
               variant="text"
-              text="leave race"
               fa={{ icon: "fa-sign-out-alt" }}
-              class="py-1 text-sm"
-              dataset={{ "data-testid": "mp-leave-race" }}
+              class="shrink-0 py-1 text-sm"
+              dataset={{
+                "data-testid": "mp-leave-race",
+                "aria-label": "leave race",
+              }}
               onClick={() => leaveRoom()}
-            />
+            >
+              <span class="hidden sm:inline">leave race</span>
+            </Button>
             <Button
               variant="text"
-              text={showOpponentCarets() ? "carets on" : "carets off"}
               fa={{ icon: showOpponentCarets() ? "fa-eye" : "fa-eye-slash" }}
-              class="py-1 text-sm"
-              balloon={{ text: "show opponent carets", position: "left" }}
+              class="shrink-0 py-1 text-sm"
+              balloon={{
+                text: showOpponentCarets()
+                  ? "hide opponent carets"
+                  : "show opponent carets",
+                position: "left",
+              }}
               dataset={{ "data-testid": "mp-toggle-carets" }}
               onClick={() => setShowOpponentCarets(!showOpponentCarets())}
-            />
+            >
+              <span class="hidden sm:inline">
+                {showOpponentCarets() ? "carets on" : "carets off"}
+              </span>
+            </Button>
           </div>
           <RaceProgressBars />
           <Show when={(countdown() ?? 0) > 0}>

@@ -523,3 +523,51 @@ test("the host can kick a player, who lands back on /race; a host reload rejoins
   await ctxA.close();
   await ctxB.close();
 });
+
+test("phone (390px): the race header stays on one line (QA-14)", async ({
+  browser,
+}) => {
+  const phone = { viewport: { width: 390, height: 844 } };
+  const ctxA = await confirmedContext(browser);
+  const ctxB = await browser.newContext(phone);
+  await skipNgrokWarning(ctxB);
+  await ctxB.addInitScript((key) => localStorage.setItem(key, "true"), AGE_KEY);
+  const a = await ctxA.newPage();
+  const b = await ctxB.newPage();
+
+  await a.goto("/race");
+  await expect(byTestId(a, "mp-create")).toBeVisible({ timeout: 60_000 });
+  await byTestId(a, "mp-create").click();
+  const code = (await byTestId(a, "mp-room-code").innerText()).trim();
+  await b.goto(`/r/${code}`);
+  await expect(byTestId(b, "mp-lobby")).toBeVisible();
+  await byTestId(b, "mp-ready").click();
+  await expect(byTestId(a, "mp-start")).toBeEnabled();
+  await byTestId(a, "mp-start").click();
+  await waitForRaceStart(b);
+
+  const leave = byTestId(b, "mp-leave-race");
+  const carets = byTestId(b, "mp-toggle-carets");
+  await expect(leave).toHaveAttribute("aria-label", "leave race");
+  await expect(carets).toHaveAttribute("aria-label", /opponent carets/);
+  const header = leave.locator("xpath=..");
+  const box = await header.boundingBox();
+  const leaveBox = await leave.boundingBox();
+  // one row: the header is no taller than its buttons
+  expect(box?.height ?? 0).toBeLessThanOrEqual((leaveBox?.height ?? 0) + 1);
+  const caretsBox = await carets.boundingBox();
+  const words = await b.locator("#words").boundingBox();
+  // nothing sticks out of the content column
+  expect((caretsBox?.x ?? 999) + (caretsBox?.width ?? 0)).toBeLessThanOrEqual(
+    (words?.x ?? 0) + (words?.width ?? 0) + 1,
+  );
+  // the code and the settings stay readable (only "private ·" is dropped)
+  const info = header.locator("span").first();
+  expect(await info.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
+  await b.screenshot({ path: `${SCREENS}/race-header-390.png` });
+
+  await ctxA.close();
+  await ctxB.close();
+});
