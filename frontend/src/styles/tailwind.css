@@ -12,6 +12,10 @@
   --color-error-extra: var(--error-extra-color);
   --color-colorful-error: var(--colorful-error-color);
   --color-colorful-error-extra: var(--colorful-error-extra-color);
+  --color-opp1: var(--opp1);
+  --color-opp2: var(--opp2);
+  --color-opp3: var(--opp3);
+  --color-opp4: var(--opp4);
 
   /* decide on rem or em */
   --spacing: 0.25rem;

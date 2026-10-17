@@ -15,8 +15,15 @@ export const PUG_FRAME_FILES = {
 export type PugFrame = keyof typeof PUG_FRAME_FILES;
 export type PugHandsFrame = "idle" | "left" | "right" | "both";
 
+/** shown on the multiplayer podium */
+export const PUG_WINNER_FILE = "pug-winner.svg";
+
+export function getPugImageUrl(file: string): string {
+  return `/images/pug/${file}`;
+}
+
 export function getPugFrameUrl(frame: PugFrame): string {
-  return `/images/pug/${PUG_FRAME_FILES[frame]}`;
+  return getPugImageUrl(PUG_FRAME_FILES[frame]);
 }
 
 export function getHandsFrame(hands: {

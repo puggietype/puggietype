@@ -1,4 +1,5 @@
 import { batch } from "solid-js";
+import { setInviteCode } from "../multiplayer/store";
 import { waitForShownPage } from "../components/pages/Pages";
 import * as Misc from "../utils/misc";
 import * as Strings from "../utils/strings";
@@ -101,6 +102,11 @@ const pages = {
   }),
   profileSearch: page("profileSearch"),
   404: page("404"),
+  race: page("race", {
+    beforeShow: async (options) => {
+      setInviteCode(options.params?.["code"]);
+    },
+  }),
   friends: page("friends", {
     beforeShow: async () => {
       await invalidateConnections();

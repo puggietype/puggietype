@@ -34,6 +34,7 @@ import {
   setCurrentQuote,
 } from "../states/test";
 import * as TestWords from "./test-words";
+import { getRaceWord } from "../multiplayer/engine-hooks";
 
 //pin implementation
 const random = Math.random;
@@ -752,6 +753,16 @@ export async function getNextWord(
   previousWord: string | undefined,
   previousWord2: string | undefined,
 ): Promise<GetNextWordReturn> {
+  // multiplayer hook: races use the server's word list as-is
+  const raceWord = getRaceWord(wordIndex);
+  if (raceWord !== undefined) {
+    return {
+      word: appendCommitCharacter(raceWord),
+      wordRaw: raceWord,
+      sectionIndex: wordIndex,
+    };
+  }
+
   console.debug("Getting next word", {
     isRepeated: isRepeated(),
     currentWordset,

@@ -7,6 +7,7 @@ import {
   registerInputElement,
 } from "../../../input/input-element";
 import { initInputListeners } from "../../../input/listeners";
+import { RaceOverlay } from "../../../multiplayer/components/RaceOverlay";
 import { listenForModifierKeys } from "../../../states/modifiers";
 import { listenForMonkeyKeys } from "../../../states/monkey";
 import { getShowResult } from "../../../states/result";
@@ -196,6 +197,7 @@ export function TestPage(): JSXElement {
           <TestModesNotice />
         </div>
 
+        <RaceOverlay />
         <div>
           <LiveStatsTextTop />
         </div>

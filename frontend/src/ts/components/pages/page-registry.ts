@@ -8,6 +8,7 @@ import { LoadingPage } from "./LoadingPage";
 import { LoginPage } from "./login/LoginPage";
 import { PageRegistry } from "./Pages";
 import { ProfilePage } from "./profile/ProfilePage";
+import { RacePage } from "../../multiplayer/components/RacePage";
 import { ProfileSearchPage } from "./profile/ProfileSearchPage";
 import { SettingsPage } from "./settings/SettingsPage";
 import { TestPage } from "./test/TestPage";
@@ -30,4 +31,5 @@ export const pageRegistry: PageRegistry = {
   accountSettings: { component: AccountSettingsPage },
   leaderboards: { component: LeaderboardPage },
   friends: { component: FriendsPage },
+  race: { component: RacePage, class: "full-width content-grid" },
 };

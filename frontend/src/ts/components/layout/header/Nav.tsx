@@ -95,6 +95,21 @@ export function Nav(): JSXElement {
           if (getActivePage() === "test") restartTestEvent.dispatch();
         }}
       />
+      <Button
+        variant="text"
+        fa={{
+          icon: "fa-flag-checkered",
+          fixedWidth: true,
+        }}
+        router-link
+        href="/race"
+        class={buttonClass()}
+        balloon={{ text: "race", position: "down" }}
+        dataset={{
+          "data-nav-item": "race",
+          "data-testid": "nav-race",
+        }}
+      />
       <Show when={!isStandalone()}>
         <Button
           variant="text"

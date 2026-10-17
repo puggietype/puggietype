@@ -1,3 +1,4 @@
+import { isRaceInputLocked } from "../../multiplayer/engine-hooks";
 import { getInputElement } from "../input-element";
 import * as CompositionState from "../../legacy-states/composition";
 import * as TestLogic from "../../test/test-logic";
@@ -25,6 +26,8 @@ export function init(signal: AbortSignal): void {
 
       const now = performance.now();
 
+      // multiplayer hook: locked during the race countdown
+      if (isRaceInputLocked()) return;
       if (isTestRestarting() || isResultCalculating()) return;
       CompositionState.setComposing(true);
       CompositionState.setData("");

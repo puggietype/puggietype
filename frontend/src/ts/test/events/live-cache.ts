@@ -63,3 +63,7 @@ export function getLiveCachedTestSeconds(now: number): number {
   const startMs = cache.timerStartMs ?? now;
   return Math.floor((now - startMs) / 1000);
 }
+
+export function getLiveCachedIncorrectInputs(): number {
+  return cache.totalInputs - cache.correctInputs;
+}

@@ -153,6 +153,22 @@ const routes: Route[] = [
     },
   },
   {
+    path: "/race",
+    load: async (_params, options) => {
+      await PageController.change("race", { ...options, params: {} });
+    },
+  },
+  {
+    path: "/r/:code",
+    load: async (params, options) => {
+      await PageController.change("race", {
+        ...options,
+        force: true,
+        params: { code: params["code"] as string },
+      });
+    },
+  },
+  {
     path: "/friends",
     load: async (_params, options) => {
       if (!isAuthAvailable()) {

@@ -1,4 +1,8 @@
 import MinBurstCommands from "./lists/min-burst";
+import {
+  setShowOpponentCarets,
+  showOpponentCarets,
+} from "../multiplayer/store";
 import BailOutCommands from "./lists/bail-out";
 import QuoteFavoriteCommands from "./lists/quote-favorites";
 import NavigationCommands from "./lists/navigation";
@@ -279,6 +283,31 @@ export const commands: CommandsSubgroup = {
           .catch((e: unknown) => {
             showErrorNotification("Failed to copy to clipboard", { error: e });
           });
+      },
+    },
+    {
+      id: "opponentCarets",
+      display: "Opponent carets...",
+      alias: "multiplayer race",
+      icon: "fa-flag-checkered",
+      subgroup: {
+        title: "Opponent carets...",
+        list: [
+          {
+            id: "showOpponentCarets",
+            display: "show",
+            icon: "fa-eye",
+            active: () => showOpponentCarets(),
+            exec: (): void => setShowOpponentCarets(true),
+          },
+          {
+            id: "hideOpponentCarets",
+            display: "hide",
+            icon: "fa-eye-slash",
+            active: () => !showOpponentCarets(),
+            exec: (): void => setShowOpponentCarets(false),
+          },
+        ],
       },
     },
     {

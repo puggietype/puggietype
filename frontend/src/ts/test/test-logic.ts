@@ -153,6 +153,10 @@ import { isDevEnvironment } from "../utils/env";
 import { EventLog } from "./events/types";
 import { resetModifierState } from "../states/modifiers";
 import { nthElementFromArray } from "../utils/arrays";
+import {
+  handleRaceFinish,
+  isRaceRestartLocked,
+} from "../multiplayer/engine-hooks";
 
 let failReason = "";
 
@@ -258,6 +262,9 @@ export async function restart(options = {} as RestartOptions): Promise<void> {
 
   // not on the test page - TestPage restarts on mount
   if (!TestUI.isMounted()) return;
+
+  // multiplayer hook: no restarts mid-race
+  if (isRaceRestartLocked()) return;
 
   const noQuit = isFunboxActive("no_quit");
   if (isTestActive() && noQuit) {
@@ -917,6 +924,21 @@ export async function finish(difficultyFailed = false): Promise<void> {
     setLastEventLog(eventLog);
     setLastResult(structuredClone(completedEvent));
   });
+
+  // multiplayer hook: races report to the server, never save or show a result
+  const raceTookResult = handleRaceFinish({
+    wpm: completedEvent.wpm,
+    raw: completedEvent.rawWpm,
+    acc: completedEvent.acc,
+    testMs: Math.round(completedEvent.testDuration * 1000),
+    input: getInputHistory(eventLog),
+    keyCount: eventLog.events.filter((e) => e.type === "input").length,
+  });
+  if (raceTookResult) {
+    setResultLoading(false);
+    setResultCalculating(false);
+    return;
+  }
 
   ///////// completed event ready
 

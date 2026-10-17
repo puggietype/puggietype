@@ -14,6 +14,7 @@ import { shouldGoToNextWord } from "../helpers/validation";
 import { getCommitCharacterType, normalizeData } from "../helpers/util";
 import { getCurrentInput } from "../../test/events/data";
 import { isSpace } from "../../utils/strings";
+import { isRaceInputLocked } from "../../multiplayer/engine-hooks";
 
 /**
  * Handles logic before inserting text into the input element.
@@ -21,6 +22,11 @@ import { isSpace } from "../../utils/strings";
  * @returns Whether to prevent the default insertion behavior.
  */
 export function onBeforeInsertText(data: string): boolean {
+  // multiplayer hook: locked during the race countdown
+  if (isRaceInputLocked()) {
+    return true;
+  }
+
   if (isTestRestarting()) {
     return true;
   }
