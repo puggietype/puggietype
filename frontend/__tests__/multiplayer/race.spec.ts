@@ -13,6 +13,7 @@ const engine = vi.hoisted(() => ({
   testActive: false,
   resultCalculating: false,
   firstWord: undefined as string | undefined,
+  page: "test",
   wordIndex: 0,
   input: "",
   emulated: [] as string[],
@@ -66,7 +67,9 @@ vi.mock("../../src/ts/config/persistence", () => ({
 vi.mock("../../src/ts/events/navigation", () => ({
   navigationEvent: { dispatch: engine.navigate },
 }));
-vi.mock("../../src/ts/states/core", () => ({ getActivePage: () => "test" }));
+vi.mock("../../src/ts/states/core", () => ({
+  getActivePage: () => engine.page,
+}));
 vi.mock("../../src/ts/states/notifications", () => ({
   showErrorNotification: vi.fn(),
   showNoticeNotification: vi.fn(),
@@ -202,6 +205,7 @@ describe("race lifecycle", () => {
     engine.testActive = false;
     engine.resultCalculating = false;
     engine.firstWord = WORDS[0];
+    engine.page = "test";
     engine.wordIndex = 0;
     engine.input = "";
     engine.emulated = [];
@@ -509,5 +513,28 @@ describe("race lifecycle", () => {
     fakeClient.sent = [];
     Race.rerollName();
     expect(fakeClient.sent).toEqual([{ type: "player:reroll" }]);
+  });
+
+  it("puts the lobby code in the host's URL on the race page", () => {
+    engine.page = "race";
+    window.history.replaceState(null, "", "/race");
+    receive(roomState());
+    expect(window.location.pathname).toBe("/r/ABC234");
+    expect(engine.navigate).not.toHaveBeenCalled();
+  });
+
+  it("goes back to /race in the URL after leaving the lobby", () => {
+    engine.page = "race";
+    window.history.replaceState(null, "", "/r/ABC234");
+    receive(roomState());
+    Race.leaveRoom();
+    expect(window.location.pathname).toBe("/race");
+  });
+
+  it("drops a dead invite code from the URL", () => {
+    engine.page = "race";
+    window.history.replaceState(null, "", "/r/ABCD2345");
+    receive({ type: "error", code: "ROOM_NOT_FOUND", message: "x" });
+    expect(window.location.pathname).toBe("/race");
   });
 });

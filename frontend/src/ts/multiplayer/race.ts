@@ -155,10 +155,20 @@ function send(msg: ClientMessage): void {
   client.send(msg);
 }
 
+/** keep the race page's URL in step with the room: /r/CODE in one, else /race */
+function syncRaceUrl(code: string | undefined): void {
+  if (getActivePage() !== "race") return;
+  const path = code === undefined ? "/race" : `/r/${code}`;
+  if (window.location.pathname !== path) {
+    window.history.replaceState(window.history.state, "", path);
+  }
+}
+
 /** forget the room locally (left, kicked out or session taken over) */
 function dropRoom(): void {
   const wasRacing = isRaceActive();
   sessionStorage.removeItem(ROOM_KEY);
+  syncRaceUrl(undefined);
   endRace();
   batch(() => {
     setRoom(undefined);
@@ -179,6 +189,8 @@ function handleMessage(msg: ServerMessage): void {
       const prev = room();
       setRoom(msg);
       sessionStorage.setItem(ROOM_KEY, msg.code);
+      // the host lands here from /race: make the URL shareable and reloadable
+      syncRaceUrl(msg.code);
       if (msg.phase === "lobby" && prev?.phase !== "lobby") {
         // rematch (or a fresh join): back to the lobby
         endRace();
@@ -207,9 +219,11 @@ function handleMessage(msg: ServerMessage): void {
       if (
         msg.code === "ROOM_NOT_FOUND" ||
         msg.code === "ROOM_FULL" ||
-        msg.code === "ROOM_IN_PROGRESS"
+        msg.code === "ROOM_IN_PROGRESS" ||
+        msg.code === "KICKED"
       ) {
         sessionStorage.removeItem(ROOM_KEY);
+        if (room() === undefined) syncRaceUrl(undefined);
       }
       if (msg.code !== "RATE_LIMITED") {
         showErrorNotification(`Multiplayer: ${msg.message}`);
