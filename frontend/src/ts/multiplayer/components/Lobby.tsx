@@ -24,6 +24,7 @@ import {
   updateSettings,
 } from "../race";
 import { isHost, myId } from "../store";
+import { KickButton } from "./KickButton";
 import { PugImage } from "./PugImage";
 import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
@@ -263,6 +264,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     {p.ready ? "ready" : "not ready"}
                   </span>
                 </Show>
+                <KickButton room={props.room} playerId={p.id} name={p.name} />
               </li>
             )}
           </For>

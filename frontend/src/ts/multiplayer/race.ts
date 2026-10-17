@@ -113,6 +113,11 @@ export function leaveRoom(): void {
   dropRoom();
 }
 
+/** host only: remove another player from the lobby (or results) */
+export function kickPlayer(playerId: string): void {
+  send({ type: "room:kick", playerId });
+}
+
 /** swap our server-assigned nickname for a new one (lobby only) */
 export function rerollName(): void {
   send({ type: "player:reroll" });
@@ -228,6 +233,18 @@ function handleMessage(msg: ServerMessage): void {
       if (msg.code !== "RATE_LIMITED") {
         showErrorNotification(`Multiplayer: ${msg.message}`);
       }
+      return;
+    case "room:kicked":
+      dropRoom();
+      showNoticeNotification("The host removed you from the lobby.");
+      goTo("/race");
+      return;
+    case "room:closed":
+      dropRoom();
+      showNoticeNotification(
+        "The lobby closed after an hour without activity.",
+      );
+      if (getActivePage() === "race") goTo("/race");
       return;
     case "pong":
       return;

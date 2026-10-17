@@ -70,9 +70,10 @@ vi.mock("../../src/ts/events/navigation", () => ({
 vi.mock("../../src/ts/states/core", () => ({
   getActivePage: () => engine.page,
 }));
+const notices = vi.hoisted(() => vi.fn());
 vi.mock("../../src/ts/states/notifications", () => ({
   showErrorNotification: vi.fn(),
-  showNoticeNotification: vi.fn(),
+  showNoticeNotification: notices,
 }));
 vi.mock("../../src/ts/states/test", () => ({
   getActiveWordIndex: () => engine.wordIndex,
@@ -536,5 +537,39 @@ describe("race lifecycle", () => {
     window.history.replaceState(null, "", "/r/ABCD2345");
     receive({ type: "error", code: "ROOM_NOT_FOUND", message: "x" });
     expect(window.location.pathname).toBe("/race");
+  });
+
+  it("sends the host's kick", () => {
+    fakeClient.sent = [];
+    Race.kickPlayer("p2");
+    expect(fakeClient.sent).toEqual([{ type: "room:kick", playerId: "p2" }]);
+  });
+
+  it("takes a kicked player back to /race with a friendly message", async () => {
+    await startCountdown(Date.now());
+    receive({ type: "race:results", results: [] });
+    notices.mockClear();
+    engine.navigate.mockClear();
+    receive({ type: "room:kicked" });
+    expect(Store.room()).toBeUndefined();
+    expect(Store.results()).toBeUndefined();
+    expect(sessionStorage.getItem("puggie-mp-room")).toBeNull();
+    expect(notices).toHaveBeenCalledWith(
+      expect.stringContaining("removed you"),
+    );
+    expect(engine.navigate).toHaveBeenCalledWith({
+      url: "/race",
+      options: { force: true },
+    });
+  });
+
+  it("leaves a lobby the server closed for idling", () => {
+    engine.page = "race";
+    receive(roomState());
+    notices.mockClear();
+    receive({ type: "room:closed", reason: "idle" });
+    expect(Store.room()).toBeUndefined();
+    expect(window.location.pathname).toBe("/race");
+    expect(notices).toHaveBeenCalledTimes(1);
   });
 });

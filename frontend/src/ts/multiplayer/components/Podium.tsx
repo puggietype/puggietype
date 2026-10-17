@@ -8,6 +8,7 @@ import { PUG_WINNER_FILE } from "../../components/pages/test/pug-frames";
 import { cn } from "../../utils/cn";
 import { leaveRoom, rematch } from "../race";
 import { isHost, myId } from "../store";
+import { KickButton } from "./KickButton";
 import { PugImage } from "./PugImage";
 import {
   ordinal,
@@ -114,6 +115,11 @@ export function Podium(props: {
                         <Show when={!r.finished}>
                           <span class="text-sm text-sub">dnf</span>
                         </Show>
+                        <KickButton
+                          room={props.room}
+                          playerId={r.playerId}
+                          name={r.name}
+                        />
                       </span>
                     </td>
                     <td
