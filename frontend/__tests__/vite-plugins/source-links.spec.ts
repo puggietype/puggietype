@@ -12,9 +12,9 @@ import {
 const hash = "0123456789abcdef0123456789abcdef01234567";
 
 describe("source-links", () => {
-  it("defaults SOURCE_URL_MODE to tarball", () => {
-    expect(parseSourceUrlMode(undefined)).toBe("tarball");
-    expect(parseSourceUrlMode("")).toBe("tarball");
+  it("defaults SOURCE_URL_MODE to github", () => {
+    expect(parseSourceUrlMode(undefined)).toBe("github");
+    expect(parseSourceUrlMode("")).toBe("github");
     expect(parseSourceUrlMode("tarball")).toBe("tarball");
     expect(parseSourceUrlMode("github")).toBe("github");
   });
@@ -37,7 +37,7 @@ describe("source-links", () => {
       commitHash: hash,
       sourceUrl: `https://github.com/puggietype/puggietype/tree/${hash}`,
       licenseUrl: `https://github.com/puggietype/puggietype/blob/${hash}/LICENSE`,
-      tarballName: undefined,
+      tarballName: "puggietype-0123456.tar.gz",
     });
   });
 
