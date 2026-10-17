@@ -211,8 +211,10 @@ function getPlugins({
 
 function getBuildOptions({
   enableSourceMaps,
+  standalone,
 }: {
   enableSourceMaps: boolean;
+  standalone: boolean;
 }): BuildEnvironmentOptions {
   return {
     sourcemap: enableSourceMaps,
@@ -222,7 +224,10 @@ function getBuildOptions({
     rolldownOptions: {
       input: {
         puggietype: path.resolve(__dirname, "src/index.html"),
-        email: path.resolve(__dirname, "src/email-handler.html"),
+        // firebase email actions (verify, reset password): needs auth
+        ...(standalone
+          ? {}
+          : { email: path.resolve(__dirname, "src/email-handler.html") }),
         privacy: path.resolve(__dirname, "src/privacy.html"),
         terms: path.resolve(__dirname, "src/terms.html"),
         404: path.resolve(__dirname, "src/404.html"),
@@ -367,7 +372,7 @@ export default defineConfig(({ mode }): UserConfig => {
           ]
         : [],
     },
-    build: getBuildOptions({ enableSourceMaps: false }),
+    build: getBuildOptions({ enableSourceMaps: false, standalone }),
     css: getCssOptions({ isDevelopment }),
     server: {
       open: env["SERVER_OPEN"] !== "false",
