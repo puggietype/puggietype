@@ -3851,7 +3851,7 @@ backend/anticheat
         queue: [],
       };
     </script> -->
-    <!-- <script async src="https://s.nitropay.com/ads-693.js"></script> -->
+    <!-- <script async src="https://ads.example.com/ads.js"></script> -->
     <script
       src="https://hb.vntsm.com/v3/live/ad-manager.min.js"
       type="text/javascript"
@@ -4319,7 +4319,7 @@ backend/anticheat
         <select name="language" id="submitQuoteLanguage"></select>
         <div
           class="g-recaptcha"
-          data-sitekey="6Lc-V8McAAAAAJ7s6LGNe7MBZnRiwbsbiWts87aj"
+          data-sitekey="your-recaptcha-site-key"
         ></div>
         <div id="submitQuoteButton" class="button">Submit</div>
       </div>
@@ -8449,7 +8449,7 @@ backend/anticheat
   <!-- Global site tag (gtag.js) - Google Analytics -->
   <script
     async
-    src="https://www.googletagmanager.com/gtag/js?id=UA-165993088-1"
+    src="https://www.googletagmanager.com/gtag/js?id=UA-XXXXXXXXX-X"
   ></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -8458,7 +8458,7 @@ backend/anticheat
     }
     gtag("js", new Date());
 
-    gtag("config", "UA-165993088-1");
+    gtag("config", "UA-XXXXXXXXX-X");
   </script>
 
   <!-- The core Firebase JS SDK is always required and must be listed first -->

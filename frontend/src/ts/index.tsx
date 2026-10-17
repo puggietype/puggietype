@@ -77,9 +77,13 @@ void fetchLatestVersion().then((data) => {
 
 Focus.set(true, true);
 const accepted = Cookies.getAcceptedCookies();
-// standalone builds have no analytics/ads, so there is nothing to consent to
-if (accepted === null && !isStandalone()) {
-  showModal("Cookies");
+// standalone builds have no backend, so no captcha and nothing to consent to
+if (!isStandalone()) {
+  if (accepted === null) showModal("Cookies");
+  const recaptcha = document.createElement("script");
+  recaptcha.src = "https://www.google.com/recaptcha/api.js?render=explicit";
+  recaptcha.async = true;
+  document.body.appendChild(recaptcha);
 }
 void init(onAuthStateChanged);
 
