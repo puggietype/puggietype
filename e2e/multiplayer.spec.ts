@@ -68,9 +68,6 @@ test("two players race, see each other, get a podium and rematch", async ({
   const ctxB = await browser.newContext();
   await skipNgrokWarning(ctxA);
   await skipNgrokWarning(ctxB);
-  await ctxB.addInitScript(() => {
-    localStorage.setItem("puggie-mp-name", "bob");
-  });
   const a = await ctxA.newPage();
   const b = await ctxB.newPage();
   const pageErrors: string[] = [];
@@ -96,7 +93,7 @@ test("two players race, see each other, get a podium and rematch", async ({
   await a.locator("#words .word").first().waitFor({ timeout: 60_000 });
   await byTestId(a, "nav-race").click();
   await expect(byTestId(a, "race-page")).toBeVisible();
-  await byTestId(a, "mp-nickname").fill("alice");
+  await expect(byTestId(a, "mp-nickname")).toHaveCount(0);
   await byTestId(a, "mp-create").click();
   await expect(byTestId(a, "mp-lobby")).toBeVisible();
   const code = (await byTestId(a, "mp-room-code").innerText()).trim();
@@ -120,6 +117,21 @@ test("two players race, see each other, get a podium and rematch", async ({
   await expect(byTestId(b, "mp-room-code")).toHaveText(code);
   await expect(byTestId(b, "mp-mode-time")).toBeDisabled();
   await expect(byTestId(a, "mp-player")).toHaveCount(2);
+
+  // nicknames are server-assigned (e.g. ZippyPug42); B rerolls theirs
+  const NICK = /^[A-Z][a-z]+[A-Z][a-z]+\d{2}$/;
+  const alice = (await byTestId(a, "mp-my-name").innerText()).trim();
+  const firstB = (await byTestId(b, "mp-my-name").innerText()).trim();
+  expect(alice).toMatch(NICK);
+  expect(firstB).toMatch(NICK);
+  expect(firstB).not.toBe(alice);
+  await byTestId(b, "mp-reroll").click();
+  await expect(byTestId(b, "mp-my-name")).not.toHaveText(firstB);
+  const bob = (await byTestId(b, "mp-my-name").innerText()).trim();
+  expect(bob).toMatch(NICK);
+  expect(bob).not.toBe(alice);
+  await expect(byTestId(a, "mp-player").nth(1)).toContainText(bob);
+  await expect(byTestId(a, "mp-player").nth(0)).toContainText(alice);
   await expect(byTestId(a, "mp-start")).toBeDisabled();
   await byTestId(b, "mp-ready").click();
   await expect(byTestId(a, "mp-start")).toBeEnabled();
@@ -156,10 +168,10 @@ test("two players race, see each other, get a podium and rematch", async ({
   await expect(caretOnA).toBeVisible();
   await expect(caretOnB).toBeVisible();
   await expect(caretOnA.locator('[data-testid="mp-opponent-tag"]')).toHaveText(
-    "bob",
+    bob,
   );
   await expect(caretOnB.locator('[data-testid="mp-opponent-tag"]')).toHaveText(
-    "alice",
+    alice,
   );
   // let both get going so the screenshot shows real progress
   await expect(caretOnB).toHaveAttribute("data-word-index", /^[3-9]$/);
@@ -171,8 +183,8 @@ test("two players race, see each other, get a podium and rematch", async ({
   // both reach the podium, the faster typist wins
   await expect(byTestId(a, "mp-podium")).toBeVisible({ timeout: 30_000 });
   await expect(byTestId(b, "mp-podium")).toBeVisible({ timeout: 30_000 });
-  await expect(byTestId(a, "mp-winner")).toContainText("alice");
-  await expect(byTestId(b, "mp-winner")).toContainText("alice");
+  await expect(byTestId(a, "mp-winner")).toContainText(alice);
+  await expect(byTestId(b, "mp-winner")).toContainText(alice);
   await expect(byTestId(a, "mp-my-place")).toHaveText("1st");
   await expect(byTestId(b, "mp-my-place")).toHaveText("2nd");
   await expect(byTestId(a, "mp-result-row")).toHaveCount(2);
