@@ -107,6 +107,7 @@
     "jsdom": "27.4.0",
     "madge": "8.0.0",
     "magic-string": "0.30.17",
+    "marked": "13.0.3",
     "normalize.css": "8.0.1",
     "oxlint": "1.88.0",
     "oxlint-tsgolint": "7.0.2004",

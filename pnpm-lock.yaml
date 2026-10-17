@@ -523,6 +523,9 @@ importers:
       magic-string:
         specifier: 0.30.17
         version: 0.30.17
+      marked:
+        specifier: 13.0.3
+        version: 13.0.3
       normalize.css:
         specifier: 8.0.1
         version: 8.0.1

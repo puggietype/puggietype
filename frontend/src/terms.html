@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Security Policy | puggietype</title>
+    <title>Terms of Service | puggietype</title>
     <link rel="stylesheet" href="styles/standalone.scss" />
     <link rel="icon" href="/images/favicon/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/images/favicon/favicon.svg" type="image/svg+xml" />
@@ -26,27 +26,39 @@
     <meta name="twitter:card" content="summary_large_image" />
     <style>
       header {
-        font-size: 2.5rem;
+        font-size: 2.5rem !important;
       }
 
       main {
-        color: var(--text-color);
+        color: var(--text-color) !important;
       }
 
-      h1 {
+      h1,
+      h2 {
         font-weight: unset !important;
         color: var(--main-color) !important;
         font-size: 2rem !important;
         margin-top: 3rem !important;
       }
 
+      h2 {
+        font-size: 1.5rem !important;
+      }
+
+      table {
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--sub-color);
+        padding: 0.25rem 0.5rem;
+        text-align: left;
+      }
+
       body {
         justify-content: center !important;
         display: flex !important;
-      }
-
-      main {
-        height: max-content;
       }
     </style>
   </head>
@@ -109,55 +121,12 @@
           <div class="text">
             <div class="top">type fast. stay cute.</div>
             puggietype
-            <span style="color: var(--main-color)">Security Policy</span>
+            <span style="color: var(--main-color)">Terms of Service</span>
           </div>
         </div>
       </header>
       <main>
-        <p>
-          We take the security of puggietype seriously. If you have found a
-          vulnerability, please let us know so we can fix it.
-        </p>
-        <h1 id="Vulnerability_Disclosure">How to report a vulnerability</h1>
-        <p>
-          Report vulnerabilities privately via a
-          <a
-            href="https://github.com/shoyru-ai/puggietype/security/advisories/new"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub security advisory
-          </a>
-          . Please include:
-        </p>
-        <ul>
-          <li>A description of the vulnerability</li>
-          <li>Steps to reproduce or a proof of concept</li>
-          <li>The potential impact</li>
-        </ul>
-        <p>
-          Please do not disclose the issue publicly until a fix has been
-          released. For non-security bugs, open a regular
-          <a
-            href="https://github.com/shoyru-ai/puggietype/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub issue
-          </a>
-          .
-        </p>
-        <h1 id="Scope">Scope</h1>
-        <p>
-          In scope: the puggietype source code and website, including the
-          multiplayer game server. Out of scope: third-party services, social
-          engineering, and denial of service attacks.
-        </p>
-        <h1 id="Submission_Guidelines">Guidelines</h1>
-        <p>
-          Do not engage in activities that might cause a denial of service, put
-          significant strain on resources, or affect other players.
-        </p>
+        <!-- legal-markdown:terms -->
       </main>
     </div>
   </body>

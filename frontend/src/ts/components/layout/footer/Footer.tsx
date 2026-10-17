@@ -33,19 +33,10 @@ export function Footer(): JSXElement {
               icon: "fa-file-contract",
               fixedWidth: true,
             }}
-            href="/terms-of-service.html"
+            href="/terms"
           />
           <Button
-            href="/security-policy.html"
-            variant="text"
-            text="security"
-            fa={{
-              icon: "fa-shield-alt",
-              fixedWidth: true,
-            }}
-          />
-          <Button
-            href="/privacy-policy.html"
+            href="/privacy"
             variant="text"
             text="privacy"
             fa={{

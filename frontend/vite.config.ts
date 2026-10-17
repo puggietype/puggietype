@@ -19,6 +19,7 @@ import { minifyJson } from "./vite-plugins/minify-json";
 import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
+import { legalMarkdown } from "./vite-plugins/legal-markdown";
 import {
   getCommitHash,
   getSourceLinks,
@@ -108,6 +109,7 @@ function getPlugins({
     sourceTarball(sourceLinks),
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
+    legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     tailwindcss(),
 
     solidPlugin(),
@@ -214,9 +216,8 @@ function getBuildOptions({
       input: {
         puggietype: path.resolve(__dirname, "src/index.html"),
         email: path.resolve(__dirname, "src/email-handler.html"),
-        privacy: path.resolve(__dirname, "src/privacy-policy.html"),
-        security: path.resolve(__dirname, "src/security-policy.html"),
-        terms: path.resolve(__dirname, "src/terms-of-service.html"),
+        privacy: path.resolve(__dirname, "src/privacy.html"),
+        terms: path.resolve(__dirname, "src/terms.html"),
         404: path.resolve(__dirname, "src/404.html"),
       },
       output: {

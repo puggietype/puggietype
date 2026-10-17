@@ -43,4 +43,13 @@ describe("Footer", () => {
       ["source", links.sourceUrl],
     ]);
   });
+  it("links terms and privacy to /terms and /privacy", () => {
+    const { container } = render(() => <Footer />);
+    const hrefs = [...container.querySelectorAll("a")].map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(hrefs).toContain("/terms");
+    expect(hrefs).toContain("/privacy");
+    expect(hrefs.some((h) => h?.includes("security-policy"))).toBe(false);
+  });
 });
