@@ -48,7 +48,7 @@ describe("AnimatedModal", () => {
   it("renders dialog with correct id and class", () => {
     const { dialog } = renderModal({});
 
-    expect(dialog).toHaveAttribute("id", "SupportModal");
+    expect(dialog).toHaveAttribute("id", "VersionHistoryModal");
   });
 
   it("renders children inside modal div", () => {
@@ -91,6 +91,6 @@ describe("AnimatedModal", () => {
       animationMode: "none",
     });
 
-    expect(dialog).toHaveAttribute("id", "SupportModal");
+    expect(dialog).toHaveAttribute("id", "VersionHistoryModal");
   });
 });
