@@ -332,7 +332,10 @@ export default defineConfig(({ mode }): UserConfig => {
   const isDevelopment = mode !== "production";
 
   if (!isDevelopment) {
-    if (env["RECAPTCHA_SITE_KEY"] === undefined) {
+    if (
+      env["BACKEND_URL"] !== undefined &&
+      env["RECAPTCHA_SITE_KEY"] === undefined
+    ) {
       throw new Error(`${mode}: RECAPTCHA_SITE_KEY is not defined`);
     }
     if (useSentry && env["SENTRY_AUTH_TOKEN"] === undefined) {
@@ -347,22 +350,20 @@ export default defineConfig(({ mode }): UserConfig => {
     server: {
       open: env["SERVER_OPEN"] !== "false",
       port: 3000,
-      host: env["BACKEND_URL"] !== undefined,
+      strictPort: true,
+      host: "0.0.0.0",
+      // cloudflare quick tunnels use random *.trycloudflare.com hosts
+      allowedHosts: true,
+      // hmr: no port set, so the client reuses the page's host/port/protocol
+      // (works through https tunnels on 443)
+      proxy: {
+        "/ws": { target: "ws://localhost:2567", ws: true },
+      },
       watch: {
         //we rebuild the whole contracts package when a file changes
         //so we only want to watch one file
         ignored: [/.*\/packages\/contracts\/dist\/(?!configs).*/],
       },
-    },
-    resolve: {
-      alias: isDevelopment
-        ? []
-        : [
-            {
-              find: /\/constants\/firebase-config$/,
-              replacement: "/constants/firebase-config-live",
-            },
-          ],
     },
     clearScreen: false,
     root: "src",

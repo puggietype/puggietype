@@ -23,7 +23,7 @@ import {
   getAdditionalUserInfo,
 } from "firebase/auth";
 import { promiseWithResolvers } from "./utils/misc";
-import { isDevEnvironment } from "./utils/env";
+import { isDevEnvironment, isStandalone } from "./utils/env";
 import { createErrorMessage } from "./utils/error";
 
 import {
@@ -51,13 +51,18 @@ const { promise: authPromise, resolve: resolveAuthPromise } =
 
 export async function init(callback: ReadyCallback): Promise<void> {
   try {
-    let firebaseConfig: FirebaseOptions | null;
+    if (isStandalone()) throw new Error("standalone mode, auth disabled");
 
-    firebaseConfig = (
-      (await import("./constants/firebase-config")) as {
-        firebaseConfig: FirebaseOptions;
-      }
-    ).firebaseConfig;
+    // glob so a missing (gitignored) config file doesn't break the build
+    const configs = import.meta.glob<{ firebaseConfig: FirebaseOptions }>([
+      "./constants/firebase-config.ts",
+      "./constants/firebase-config-live.ts",
+    ]);
+    const loadConfig = isDevEnvironment()
+      ? configs["./constants/firebase-config.ts"]
+      : configs["./constants/firebase-config-live.ts"];
+    if (loadConfig === undefined) throw new Error("firebase config missing");
+    const firebaseConfig = (await loadConfig()).firebaseConfig;
 
     readyCallback = callback;
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -76,10 +81,10 @@ export async function init(callback: ReadyCallback): Promise<void> {
   } catch (e) {
     app = undefined;
     Auth = undefined;
-    console.error("Firebase failed to initialize", e);
+    if (!isStandalone()) console.error("Firebase failed to initialize", e);
     await callback(false, null);
     setUserState(null);
-    if (isDevEnvironment()) {
+    if (isDevEnvironment() && !isStandalone()) {
       addBanner({
         level: "notice",
         text: "Dev Info: Firebase failed to initialize",

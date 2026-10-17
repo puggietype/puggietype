@@ -5,6 +5,7 @@ import { isFunboxActive } from "../test/funbox/list";
 import { showNoticeNotification } from "../states/notifications";
 import { navigationEvent, type NavigateOptions } from "../events/navigation";
 import { authEvent } from "../events/auth";
+import { isStandalone } from "../utils/env";
 import {
   isTestRestarting,
   isResultCalculating,
@@ -63,6 +64,10 @@ const routes: Route[] = [
   {
     path: "/leaderboards",
     load: async (_params, options) => {
+      if (isStandalone()) {
+        await navigate("/", options);
+        return;
+      }
       await PageController.change("leaderboards", options);
     },
   },
@@ -123,12 +128,20 @@ const routes: Route[] = [
   {
     path: "/profile",
     load: async (_params, options) => {
+      if (isStandalone()) {
+        await navigate("/", options);
+        return;
+      }
       await PageController.change("profileSearch", options);
     },
   },
   {
     path: "/profile/:uidOrName",
     load: async (params, options) => {
+      if (isStandalone()) {
+        await navigate("/", options);
+        return;
+      }
       await PageController.change("profile", {
         ...options,
         force: true,

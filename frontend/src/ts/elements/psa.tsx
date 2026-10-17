@@ -10,7 +10,7 @@ import { authEvent } from "../events/auth";
 import { addBanner } from "../states/banners";
 import { addPsa } from "../states/psas";
 import { secondsToString } from "../utils/date-and-time";
-import { isDevEnvironment } from "../utils/env";
+import { isDevEnvironment, isStandalone } from "../utils/env";
 import { LocalStorageWithSchema } from "../utils/local-storage-with-schema";
 
 const confirmedPSAs = new LocalStorageWithSchema({
@@ -146,6 +146,7 @@ async function getLatest(): Promise<PSA[] | null> {
 }
 
 export async function show(): Promise<void> {
+  if (isStandalone()) return;
   const latest = await getLatest();
   if (latest === null) return;
   if (latest.length === 0) {

@@ -26,6 +26,7 @@ import { showModal } from "../../../states/modals";
 import { getSnapshot } from "../../../states/snapshot";
 import { getFocus } from "../../../states/test";
 import { cn } from "../../../utils/cn";
+import { isStandalone } from "../../../utils/env";
 import { getLevelFromTotalXp } from "../../../utils/levels";
 import { Anime } from "../../common/anime";
 import { AnimePresence } from "../../common/anime/AnimePresence";
@@ -77,7 +78,7 @@ export function Nav(): JSXElement {
 
   const serverConfig = useQuery(() => getServerConfigurationQueryOptions());
   const showLoginButton = (): boolean =>
-    serverConfig.data?.users.signUp ?? true;
+    !isStandalone() && (serverConfig.data?.users.signUp ?? true);
 
   return (
     <nav class={cn("z-5 flex w-full items-center gap-1 md:gap-2")}>
@@ -97,22 +98,24 @@ export function Nav(): JSXElement {
           if (getActivePage() === "test") restartTestEvent.dispatch();
         }}
       />
-      <Button
-        variant="text"
-        fa={{
-          icon: "fa-crown",
-          fixedWidth: true,
-        }}
-        router-link
-        dataset={{
-          "data-nav-item": "leaderboards",
-        }}
-        class={buttonClass()}
-        href="/leaderboards"
-        onMouseEnter={() => {
-          prefetchLeaderboardPage();
-        }}
-      />
+      <Show when={!isStandalone()}>
+        <Button
+          variant="text"
+          fa={{
+            icon: "fa-crown",
+            fixedWidth: true,
+          }}
+          router-link
+          dataset={{
+            "data-nav-item": "leaderboards",
+          }}
+          class={buttonClass()}
+          href="/leaderboards"
+          onMouseEnter={() => {
+            prefetchLeaderboardPage();
+          }}
+        />
+      </Show>
       <Button
         variant="text"
         fa={{

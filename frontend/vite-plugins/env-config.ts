@@ -22,8 +22,12 @@ export function envConfig(options: {
     },
     load(id) {
       if (id === resolvedVirtualModuleId) {
+        // no BACKEND_URL => run without backend (no auth, api, leaderboards)
+        const standalone = fallback(options.env["BACKEND_URL"], "") === "";
+
         const devConfig: EnvConfig = {
           isDevelopment: true,
+          standalone,
           backendUrl: fallback(
             options.env["BACKEND_URL"],
             "http://localhost:5005",
@@ -36,9 +40,10 @@ export function envConfig(options: {
 
         const prodConfig: EnvConfig = {
           isDevelopment: false,
+          standalone,
           backendUrl: fallback(
             options.env["BACKEND_URL"],
-            "https://api.monkeytype.com",
+            "http://localhost:5005",
           ),
           recaptchaSiteKey: options.env["RECAPTCHA_SITE_KEY"] ?? "",
           quickLoginEmail: undefined,

@@ -1,4 +1,5 @@
 import { Configuration } from "@monkeytype/schemas/configuration";
+import { isStandalone } from "../utils/env";
 import { promiseWithResolvers } from "../utils/misc";
 import { queryClient } from "../queries";
 import { getServerConfigurationQueryOptions } from "../queries/server-configuration";
@@ -18,6 +19,10 @@ export function get(): Configuration | undefined {
 }
 
 export async function sync(): Promise<void> {
+  if (isStandalone()) {
+    resolve(false);
+    return;
+  }
   try {
     await queryClient.fetchQuery(getServerConfigurationQueryOptions());
     resolve(true);

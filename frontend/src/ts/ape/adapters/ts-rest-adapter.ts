@@ -28,6 +28,13 @@ function buildApi(timeout: number): (args: ApiFetcherArgs) => Promise<{
   headers: Headers;
 }> {
   return async (request: ApiFetcherArgs) => {
+    if (envConfig.standalone) {
+      return {
+        status: 503,
+        body: { message: "No backend in standalone mode" },
+        headers: new Headers(),
+      };
+    }
     try {
       const token = await getIdToken();
       if (token !== null) {
