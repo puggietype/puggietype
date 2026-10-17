@@ -42,7 +42,10 @@ export function KickButton(props: {
         text={armed() ? "kick?" : undefined}
         fa={{ icon: "fa-user-times" }}
         class="py-1 text-sm"
-        balloon={{ text: `kick ${props.name}`, position: "left" }}
+        balloon={{
+          text: armed() ? `confirm kick ${props.name}` : `kick ${props.name}`,
+          position: "left",
+        }}
         dataset={{
           "data-testid": "mp-kick",
           "data-player-id": props.playerId,

@@ -12,7 +12,6 @@ export function AgeGate(): JSXElement {
     <section
       class="mx-auto grid max-w-xl justify-items-center gap-4 rounded-lg bg-sub-alt p-8 text-center"
       data-testid="mp-age-gate"
-      role="dialog"
       aria-labelledby="mpAgeGateTitle"
     >
       <PugHead class="h-16 w-16 text-main" />
@@ -22,7 +21,12 @@ export function AgeGate(): JSXElement {
       <div class="text-sub">
         multiplayer races are with other people. by continuing you confirm you
         are 13 or older and agree to the{" "}
-        <a href="/terms" router-link class="text-main hover:text-text">
+        <a
+          href="/terms"
+          target="_blank"
+          rel="noopener"
+          class="text-main hover:text-text"
+        >
           terms
         </a>
         .

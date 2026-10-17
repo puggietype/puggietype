@@ -108,6 +108,7 @@ vi.mock("../../src/ts/test/test-words", () => ({
   words: { get: () => ({ text: engine.firstWord }) },
 }));
 
+const AgeGate = await import("../../src/ts/multiplayer/age-gate");
 const Race = await import("../../src/ts/multiplayer/race");
 const Hooks = await import("../../src/ts/multiplayer/engine-hooks");
 const Store = await import("../../src/ts/multiplayer/store");
@@ -202,6 +203,7 @@ describe("race lifecycle", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     sessionStorage.clear();
+    AgeGate.confirmAge();
     Object.assign(engine.config, structuredClone(USER_CONFIG));
     engine.testActive = false;
     engine.resultCalculating = false;
@@ -548,6 +550,7 @@ describe("race lifecycle", () => {
   it("takes a kicked player back to /race with a friendly message", async () => {
     await startCountdown(Date.now());
     receive({ type: "race:results", results: [] });
+    engine.page = "race";
     notices.mockClear();
     engine.navigate.mockClear();
     receive({ type: "room:kicked" });
@@ -565,11 +568,28 @@ describe("race lifecycle", () => {
 
   it("leaves a lobby the server closed for idling", () => {
     engine.page = "race";
+    window.history.replaceState(null, "", "/race");
     receive(roomState());
     notices.mockClear();
     receive({ type: "room:closed", reason: "idle" });
     expect(Store.room()).toBeUndefined();
     expect(window.location.pathname).toBe("/race");
     expect(notices).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a kicked player's solo test alone off the race page", () => {
+    receive(roomState());
+    engine.navigate.mockClear();
+    receive({ type: "room:kicked" });
+    expect(Store.room()).toBeUndefined();
+    expect(engine.navigate).not.toHaveBeenCalled();
+  });
+
+  it("never rewrites a URL the user is navigating to", () => {
+    // left the race page: the URL changed, the page transition hasn't ended
+    engine.page = "race";
+    window.history.replaceState(null, "", "/settings");
+    receive(roomState());
+    expect(window.location.pathname).toBe("/settings");
   });
 });

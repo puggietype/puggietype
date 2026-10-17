@@ -103,9 +103,16 @@ describe("MultiplayerClient", () => {
     expect(lastSocket().sent[5]).toEqual({ type: "hello", ageConfirmed: true });
   });
 
-  it("never opens a socket before the age is confirmed", () => {
+  it("never opens a socket before the age is confirmed", async () => {
     localStorage.clear();
-    const { client } = setup();
+    vi.resetModules();
+    const { MultiplayerClient: FreshClient } =
+      await import("../../src/ts/multiplayer/client");
+    const client = new FreshClient({
+      onMessage: () => undefined,
+      onStatus: () => undefined,
+      onTerminated: () => undefined,
+    });
     client.connect();
     client.send({ type: "room:create" });
     expect(FakeSocket.instances).toHaveLength(0);

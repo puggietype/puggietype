@@ -50,7 +50,14 @@
     },
     "@monkeytype/frontend#build": {
       "dependsOn": ["^build"],
-      "env": ["BACKEND_URL", "RECAPTCHA_SITE_KEY", "SOURCE_URL_MODE"],
+      "env": [
+        "BACKEND_URL",
+        "RECAPTCHA_SITE_KEY",
+        "SOURCE_URL_MODE",
+        "VITE_WS_URL",
+        "VITE_MULTIPLAYER",
+        "VITE_PUBLIC_MATCHES"
+      ],
       "outputs": ["dist/**"]
     },
     "@monkeytype/frontend#dev": {

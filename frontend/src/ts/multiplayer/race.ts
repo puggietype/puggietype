@@ -21,6 +21,7 @@ import { emulateInsertText } from "../input/handlers/insert-text";
 import { restart, startTest, stop as stopTest } from "../test/test-logic";
 import { focusWords, isMounted as isTestUIMounted } from "../test/test-ui";
 import { words as testWords } from "../test/test-words";
+import { isAgeConfirmed } from "./age-gate";
 import { MultiplayerClient } from "./client";
 import {
   discardPendingRaceFinish,
@@ -31,6 +32,7 @@ import {
   setRaceWords,
   type RaceFinishData,
 } from "./engine-hooks";
+import { MULTIPLAYER_ENABLED } from "./flags";
 import {
   finishInput,
   isBehind,
@@ -62,6 +64,7 @@ import {
 } from "./store";
 
 const PROGRESS_INTERVAL_MS = 100;
+const RACE_PATH_RE = /^\/(race|r\/[^/]+)\/?$/;
 const ROOM_KEY = "puggie-mp-room";
 /** the user's own config while a race overrides it; survives reloads */
 const SAVED_CONFIG_KEY = "puggie-mp-saved-config";
@@ -146,6 +149,7 @@ export function rematch(): void {
 export function resumeSession(): boolean {
   // a rejoined race re-applies its settings from a fresh snapshot
   restoreConfig();
+  if (!MULTIPLAYER_ENABLED || !isAgeConfirmed()) return false;
   const code = sessionStorage.getItem(ROOM_KEY);
   if (code === null) return false;
   client.connect();
@@ -162,7 +166,14 @@ function send(msg: ClientMessage): void {
 
 /** keep the race page's URL in step with the room: /r/CODE in one, else /race */
 function syncRaceUrl(code: string | undefined): void {
-  if (getActivePage() !== "race") return;
+  // also check the path: navigating away pushes the new URL before the page
+  // transition ends, and that entry must not be overwritten
+  if (
+    getActivePage() !== "race" ||
+    !RACE_PATH_RE.test(window.location.pathname)
+  ) {
+    return;
+  }
   const path = code === undefined ? "/race" : `/r/${code}`;
   if (window.location.pathname !== path) {
     window.history.replaceState(window.history.state, "", path);
@@ -237,7 +248,7 @@ function handleMessage(msg: ServerMessage): void {
     case "room:kicked":
       dropRoom();
       showNoticeNotification("The host removed you from the lobby.");
-      goTo("/race");
+      if (getActivePage() === "race") goTo("/race");
       return;
     case "room:closed":
       dropRoom();

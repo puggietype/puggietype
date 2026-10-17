@@ -31,10 +31,12 @@ const byTestId = (page: Page, id: string): Locator =>
 const CODE_RE = /^[A-Z0-9]{8}$/;
 const AGE_KEY = "puggie-mp-age-confirmed";
 
-/** counts WebSockets the page opens (the age gate must come first) */
+/** counts multiplayer WebSockets the page opens (the age gate must come first) */
 function countSockets(page: Page): () => number {
   let n = 0;
-  page.on("websocket", () => n++);
+  page.on("websocket", (ws) => {
+    if (new URL(ws.url()).pathname === "/ws") n++;
+  });
   return () => n;
 }
 
