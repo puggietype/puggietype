@@ -51,9 +51,9 @@ import { LiveStatsTextBottom } from "./live-stats/LiveStatsTextBottom";
 import { LiveStatsTextTop } from "./live-stats/LiveStatsTextTop";
 import { MemoryFunboxTimer } from "./MemoryFunboxTimer";
 import { TestModesNotice } from "./modes-notice/TestModesNotice";
-import { Monkey } from "./Monkey";
 import { OutOfFocusWarning } from "./OutOfFocusWarning";
 import { Premid } from "./Premid";
+import { Pug } from "./Pug";
 import { TestResult } from "./result/TestResult";
 import { TestConfig } from "./TestConfig";
 import { TestInitFailed } from "./TestInitFailed";
@@ -288,7 +288,7 @@ export function TestPage(): JSXElement {
           <Keymap />
         </div>
         <div>
-          <Monkey />
+          <Pug />
         </div>
 
         <Button

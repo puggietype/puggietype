@@ -165,6 +165,7 @@ export function SettingsPage(): JSXElement {
           <SearchableAutoSetting key="alwaysShowDecimalPlaces" />
           <SearchableAutoSetting key="typingSpeedUnit" />
           <SearchableAutoSetting key="startGraphsAtZero" />
+          <SearchableAutoSetting key="monkey" />
           <MaxLineWidth />
           <SearchableAutoSetting key="fontSize" />
           <FontFamily />

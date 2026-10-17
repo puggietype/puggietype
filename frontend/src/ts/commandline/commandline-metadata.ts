@@ -764,6 +764,7 @@ export const commandlineConfigMetadata: CommandlineConfigMetadataObject = {
     },
   },
   monkey: {
+    alias: "pug monkey mascot",
     subgroup: {
       options: "fromSchema",
     },

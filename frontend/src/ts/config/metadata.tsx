@@ -1265,12 +1265,14 @@ export const configMetadata: ConfigMetadataObject = {
       return value;
     },
   },
+  // internal key stays "monkey" for config compatibility, shown as "pug"
   monkey: {
     key: "monkey",
-    fa: { icon: "fa-egg" },
-    displayString: "monkey",
+    fa: { icon: "fa-dog" },
+    displayString: "pug",
+    description: "Shows a pug typing along with you during the test.",
     changeRequiresRestart: false,
-    group: "hidden",
+    group: "appearance",
     overrideConfig: ({ value, currentConfig }) => {
       if (value) {
         return {
@@ -1290,7 +1292,7 @@ export const configMetadata: ConfigMetadataObject = {
   monkeyPowerLevel: {
     key: "monkeyPowerLevel",
     fa: { icon: "fa-egg" },
-    displayString: "monkey power level",
+    displayString: "power mode",
     changeRequiresRestart: false,
     group: "hidden",
   },
