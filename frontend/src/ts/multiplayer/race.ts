@@ -17,6 +17,7 @@ import {
 } from "../states/test";
 import { getCurrentInput } from "../test/events/data";
 import { getLiveCachedIncorrectInputs } from "../test/events/live-cache";
+import { emulateInsertText } from "../input/handlers/insert-text";
 import { restart, startTest, stop as stopTest } from "../test/test-logic";
 import { focusWords, isMounted as isTestUIMounted } from "../test/test-ui";
 import { words as testWords } from "../test/test-words";
@@ -32,16 +33,20 @@ import {
 } from "./engine-hooks";
 import {
   finishInput,
+  isBehind,
   progressChanged,
   progressWpm,
   RACE_CONFIG_KEYS,
   raceConfigOverrides,
+  resumeText,
   type ConfigEntry,
   type ProgressPayload,
+  type RacePosition,
 } from "./helpers";
 import type { ClientMessage, ServerMessage, SettingsPatch } from "./protocol";
 import {
   myId,
+  opponentProgress,
   race,
   room,
   setConnectionStatus,
@@ -66,6 +71,8 @@ let countdownTimer: ReturnType<typeof setInterval> | undefined;
 let progressTimer: ReturnType<typeof setInterval> | undefined;
 let lastProgress: ProgressPayload | undefined;
 let raceStartedAt = 0;
+/** where the server had us before a reload; progress never drops below it */
+let resumeFloor: RacePosition | undefined;
 let finishSent = false;
 /** bumped per race so a stale async setup can bail out */
 let raceToken = 0;
@@ -253,6 +260,7 @@ async function beginRace(info: RaceInfo): Promise<void> {
   clearTimers();
   finishSent = false;
   lastProgress = undefined;
+  resumeFloor = undefined;
   batch(() => {
     setRace(info);
     setRaceFinished(false);
@@ -290,7 +298,7 @@ async function beginRace(info: RaceInfo): Promise<void> {
   countdownTimer = setInterval(updateCountdown, 100);
   updateCountdown();
   startTimer = setTimeout(
-    () => goRace(token),
+    () => void goRace(token),
     Math.max(0, info.startAt - serverNow()),
   );
 }
@@ -306,23 +314,59 @@ function updateCountdown(): void {
   setCountdown(Math.max(0, Math.ceil((info.startAt - serverNow()) / 1000)));
 }
 
-function goRace(token: number): void {
+async function goRace(token: number): Promise<void> {
   if (token !== raceToken) return;
   // timers can fire a bit early; wait for the corrected clock
   const info = race();
   if (info === undefined) return;
   const left = info.startAt - serverNow();
   if (left > 0) {
-    startTimer = setTimeout(() => goRace(token), left);
+    startTimer = setTimeout(() => void goRace(token), left);
     return;
   }
   clearInterval(countdownTimer);
   setCountdown(0);
   setRaceInputLocked(false);
-  raceStartedAt = performance.now();
+  // run on the shared race clock: a rejoin after a reload lands mid-race
+  raceStartedAt = performance.now() + left;
   if (!isTestActive()) startTest(raceStartedAt);
+  const resume = ownServerPosition();
+  if (resume !== undefined) {
+    resumeFloor = resume;
+    await fastForward(info.words, resume);
+    if (token !== raceToken) return;
+  }
   focusWords(true);
   progressTimer = setInterval(sendProgress, PROGRESS_INTERVAL_MS);
+}
+
+/** our position as the server last saw it (rejoin snapshot), if past the start */
+function ownServerPosition(): RacePosition | undefined {
+  const id = myId();
+  const candidates = [
+    opponentProgress().find((p) => p.id === id),
+    room()?.players.find((p) => p.id === id)?.progress,
+  ];
+  let best: RacePosition | undefined;
+  for (const p of candidates) {
+    if (p === undefined || (p.wordIndex === 0 && p.charIndex === 0)) continue;
+    if (best === undefined || isBehind(best, p)) {
+      best = { wordIndex: p.wordIndex, charIndex: p.charIndex };
+    }
+  }
+  return best;
+}
+
+/** replay the race text up to a position through the engine, as typed input */
+async function fastForward(
+  words: readonly string[],
+  to: RacePosition,
+): Promise<void> {
+  const token = raceToken;
+  for (const data of resumeText(words, to.wordIndex, to.charIndex)) {
+    if (token !== raceToken || finishSent) return;
+    await emulateInsertText({ data, now: performance.now(), automatic: true });
+  }
 }
 
 function sendProgress(): void {
@@ -337,6 +381,7 @@ function sendProgress(): void {
     wpm: progressWpm(race()?.words ?? [], wordIndex, charIndex, testMs),
     errors: getLiveCachedIncorrectInputs(),
   };
+  if (resumeFloor !== undefined && isBehind(next, resumeFloor)) return;
   if (!progressChanged(lastProgress, next)) return;
   lastProgress = next;
   client.send({ type: "race:progress", ...next });

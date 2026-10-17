@@ -13,8 +13,11 @@ const engine = vi.hoisted(() => ({
   testActive: false,
   resultCalculating: false,
   firstWord: undefined as string | undefined,
+  wordIndex: 0,
+  input: "",
+  emulated: [] as string[],
   restart: vi.fn(async () => undefined),
-  startTest: vi.fn(() => true),
+  startTest: vi.fn((_now: number) => true),
   stop: vi.fn(),
   navigate: vi.fn(),
   saveFull: vi.fn(),
@@ -65,13 +68,13 @@ vi.mock("../../src/ts/states/notifications", () => ({
   showNoticeNotification: vi.fn(),
 }));
 vi.mock("../../src/ts/states/test", () => ({
-  getActiveWordIndex: () => 0,
+  getActiveWordIndex: () => engine.wordIndex,
   isResultCalculating: () => engine.resultCalculating,
   isTestActive: () => engine.testActive,
   isTestRestarting: () => false,
 }));
 vi.mock("../../src/ts/test/events/data", () => ({
-  getCurrentInput: () => "",
+  getCurrentInput: () => engine.input,
 }));
 vi.mock("../../src/ts/test/events/live-cache", () => ({
   getLiveCachedIncorrectInputs: () => 0,
@@ -80,6 +83,11 @@ vi.mock("../../src/ts/test/test-logic", () => ({
   restart: engine.restart,
   startTest: engine.startTest,
   stop: engine.stop,
+}));
+vi.mock("../../src/ts/input/handlers/insert-text", () => ({
+  emulateInsertText: async ({ data }: { data: string }) => {
+    engine.emulated.push(data);
+  },
 }));
 vi.mock("../../src/ts/test/test-ui", () => ({
   focusWords: vi.fn(),
@@ -186,8 +194,12 @@ describe("race lifecycle", () => {
     engine.testActive = false;
     engine.resultCalculating = false;
     engine.firstWord = WORDS[0];
+    engine.wordIndex = 0;
+    engine.input = "";
+    engine.emulated = [];
     engine.restart.mockClear();
-    engine.startTest.mockClear();
+    engine.startTest.mockReset();
+    engine.startTest.mockImplementation(() => true);
     engine.stop.mockClear();
     engine.navigate.mockClear();
     engine.saveFull.mockClear();
@@ -250,6 +262,55 @@ describe("race lifecycle", () => {
     await flush();
     expect(engine.restart).not.toHaveBeenCalled();
     expect(Store.raceFinished()).toBe(true);
+  });
+
+  it("resumes a rejoined race at our server position on the race clock (MP-002)", async () => {
+    const startAt = Date.now() - 5000;
+    engine.startTest.mockImplementation(() => {
+      engine.testActive = true;
+      return true;
+    });
+    receive({
+      type: "welcome",
+      playerId: "me",
+      sessionToken: "t",
+      name: "ZippyPug42",
+      protocol: 1,
+    });
+    const state = roomState({ phase: "racing" });
+    const me = state.type === "room:state" ? state.players[0] : undefined;
+    if (me !== undefined) {
+      me.progress = { wordIndex: 1, charIndex: 2, testMs: 4000, wpm: 50 };
+    }
+    receive(state);
+    receive(countdown(startAt));
+    await flush();
+
+    expect(engine.startTest).toHaveBeenCalledTimes(1);
+    const startedAt = engine.startTest.mock.calls[0]?.[0] ?? 0;
+    expect(performance.now() - startedAt).toBeGreaterThanOrEqual(4900);
+    // fast-forwarded through "the " and "qu"
+    expect(engine.emulated.join("")).toBe("the qu");
+    expect(Hooks.isRaceInputLocked()).toBe(false);
+
+    // the engine still reports word 0 while catching up: never report lower
+    await vi.advanceTimersByTimeAsync(300);
+    expect(fakeClient.sent.map((m) => m.type)).not.toContain("race:progress");
+
+    engine.wordIndex = 1;
+    engine.input = "qui";
+    await vi.advanceTimersByTimeAsync(150);
+    const progress = fakeClient.sent.filter((m) => m.type === "race:progress");
+    expect(progress.at(-1)).toMatchObject({ wordIndex: 1, charIndex: 3 });
+    const testMs = (progress.at(-1) as { testMs: number }).testMs;
+    expect(testMs).toBeGreaterThanOrEqual(5000);
+  });
+
+  it("starts a race joined on time at word 0 without fast-forwarding", async () => {
+    await startCountdown(Date.now() + 1000);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(engine.startTest).toHaveBeenCalledTimes(1);
+    expect(engine.emulated).toEqual([]);
   });
 
   it("sends the finish without separators and restores config", async () => {

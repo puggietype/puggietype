@@ -89,6 +89,30 @@ export function raceConfigOverrides(
   ];
 }
 
+export type RacePosition = { wordIndex: number; charIndex: number };
+
+/** the text typed up to a position, as the engine would have received it */
+export function resumeText(
+  words: readonly string[],
+  wordIndex: number,
+  charIndex: number,
+): string {
+  const done = words.slice(0, wordIndex);
+  const partial = (words[wordIndex] ?? "").slice(0, charIndex);
+  return (
+    done.join(" ") +
+    (done.length > 0 && wordIndex < words.length ? " " : "") +
+    partial
+  );
+}
+
+export function isBehind(pos: RacePosition, floor: RacePosition): boolean {
+  return (
+    pos.wordIndex < floor.wordIndex ||
+    (pos.wordIndex === floor.wordIndex && pos.charIndex < floor.charIndex)
+  );
+}
+
 export type ProgressPayload = {
   wordIndex: number;
   charIndex: number;

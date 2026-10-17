@@ -29,10 +29,12 @@ export function Logo(): JSXElement {
           "text-sub": getFocus(),
         })}
       />
-      <div class="hidden h-6 place-content-center text-[2rem] leading-0 sm:grid">
+      {/* tagline sits in normal flow above the wordmark (no negative offsets
+          tuned to one font), so it can never overlap the glyphs */}
+      <div class="hidden h-6 flex-col justify-center sm:flex">
         <div
           class={cn(
-            "-mt-[1.65em] hidden pl-[0.5em] text-[0.315em] leading-0 text-sub transition-colors duration-125 lg:block",
+            "mb-[0.2rem] hidden pl-[0.15em] text-[0.62rem] leading-none whitespace-nowrap text-sub transition-colors duration-125 lg:block",
             {
               "text-transparent": getFocus(),
             },
@@ -42,9 +44,12 @@ export function Logo(): JSXElement {
           {isDevEnvironment() ? "localhost" : "type fast. stay cute."}
         </div>
         <h1
-          class={cn("-mt-[0.11em] text-text transition-colors duration-250", {
-            "text-sub": getFocus(),
-          })}
+          class={cn(
+            "text-[2rem] leading-[0.75] text-text transition-colors duration-250",
+            {
+              "text-sub": getFocus(),
+            },
+          )}
           data-ui-element="logoText"
         >
           puggietype

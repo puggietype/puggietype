@@ -365,13 +365,26 @@ export async function start(now: number): Promise<void> {
 
 async function _startNew(now: number): Promise<void> {
   stopped = false;
-  newTimer.duration = 1000;
-  newTimer.play();
+  const realNow = performance.now();
   logTestEvent("timer", now, {
     event: "start",
     timer: 0,
-    date: new Date().getTime(),
+    date: Date.now() - Math.max(0, realNow - now),
   });
+  // multiplayer hook: a resumed race starts in the past. Emit the elapsed
+  // ticks now, like a stall catch-up, instead of one huge first-tick drift
+  // that would fail the test as a slow timer.
+  const ticksDue = Math.floor((realNow - now) / 1000);
+  while (!stopped && emittedTicks < ticksDue) {
+    timerStep(realNow, true);
+    logTestEvent("timer", realNow, {
+      event: "step",
+      timer: emittedTicks,
+      catchup: true,
+    });
+  }
+  newTimer.duration = Math.max(0, now + (emittedTicks + 1) * 1000 - realNow);
+  newTimer.play();
 }
 
 async function _startOld(now: number): Promise<void> {

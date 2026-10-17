@@ -9,7 +9,9 @@ import {
   progressChanged,
   progressWpm,
   RACE_CONFIG_KEYS,
+  isBehind,
   raceConfigOverrides,
+  resumeText,
   wsUrl,
 } from "../../src/ts/multiplayer/helpers";
 import type { RoomState } from "../../src/ts/multiplayer/protocol";
@@ -210,5 +212,25 @@ describe("progressWpm", () => {
   });
   it("caps the current word at its length", () => {
     expect(progressWpm(words, 0, 99, 6000)).toBe(10);
+  });
+});
+
+describe("resume after a reload (MP-002)", () => {
+  const words = ["the", "quick", "fox"];
+  it("builds the text typed up to a position", () => {
+    expect(resumeText(words, 0, 0)).toBe("");
+    expect(resumeText(words, 1, 2)).toBe("the qu");
+    expect(resumeText(words, 2, 0)).toBe("the quick ");
+  });
+  it("clamps past the end of a word or the list", () => {
+    expect(resumeText(words, 0, 99)).toBe("the");
+    expect(resumeText(words, 9, 0)).toBe("the quick fox");
+  });
+  it("compares positions", () => {
+    const floor = { wordIndex: 3, charIndex: 2 };
+    expect(isBehind({ wordIndex: 2, charIndex: 9 }, floor)).toBe(true);
+    expect(isBehind({ wordIndex: 3, charIndex: 1 }, floor)).toBe(true);
+    expect(isBehind({ wordIndex: 3, charIndex: 2 }, floor)).toBe(false);
+    expect(isBehind({ wordIndex: 4, charIndex: 0 }, floor)).toBe(false);
   });
 });
