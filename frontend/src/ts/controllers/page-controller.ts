@@ -18,7 +18,6 @@ import {
   updateLoadingPageBar,
   updateLoadingPageText,
 } from "../states/loading-page";
-import * as AdController from "../controllers/ad-controller";
 import * as Focus from "../test/focus";
 import Page, {
   PageName,
@@ -329,7 +328,6 @@ export async function change(
 
   //wrapup
   navigating = false;
-  void AdController.reinstate();
   return true;
 }
 

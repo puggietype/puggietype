@@ -1,8 +1,3 @@
-#ad-footer-wrapper,
-#ad-footer-small-wrapper {
-  justify-self: center;
-}
-
 #ad-result-wrapper,
 #ad-result-small-wrapper {
   margin: 0 auto;
@@ -38,11 +33,6 @@
     &.small {
       font-size: 1.5rem;
     }
-  }
-
-  &.ad-v {
-    width: 160px;
-    height: 600px;
   }
 
   &.ad-h {

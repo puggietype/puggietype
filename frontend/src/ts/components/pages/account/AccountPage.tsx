@@ -12,7 +12,6 @@ import { hideLoaderBar, showLoaderBar } from "../../../states/loader-bar";
 import { filters, setFilters } from "../../../states/result-filters";
 import { qs } from "../../../utils/dom";
 import { downloadResultsCSV } from "../../../utils/misc";
-import { Advertisement } from "../../common/Advertisement";
 import AsyncContent from "../../common/AsyncContent";
 import { Button } from "../../common/Button";
 import { Charts } from "./Charts";
@@ -54,8 +53,6 @@ export function AccountPage(): JSXElement {
     <div class="flex flex-col gap-8">
       <VerifyNotice />
       <MyProfile />
-
-      <Advertisement id="ad-account-1" visible="sellout" />
 
       <Filters filters={filters} onChangeFilters={setFilters} />
 
@@ -111,8 +108,6 @@ export function AccountPage(): JSXElement {
               }}
             />
           </div>
-
-          <Advertisement id="ad-account-2" visible="sellout" />
 
           <AsyncContent collections={{ resultsQuery }}>
             {({ resultsQueryData }) => (

@@ -30,7 +30,8 @@ type ConfigKeysWithoutCommands =
   | "autoSwitchTheme"
   | "themeLight"
   | "themeDark"
-  | "burstHeatmap";
+  | "burstHeatmap"
+  | "ads"; // ads are not user-facing yet
 
 type SkippedConfigKeys =
   | "minBurst" //this is skipped for now because it has 2 nested inputs;
@@ -765,13 +766,6 @@ export const commandlineConfigMetadata: CommandlineConfigMetadataObject = {
   },
   monkey: {
     alias: "pug monkey mascot",
-    subgroup: {
-      options: "fromSchema",
-    },
-  },
-
-  //danger zone
-  ads: {
     subgroup: {
       options: "fromSchema",
     },

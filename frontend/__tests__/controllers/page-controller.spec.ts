@@ -21,9 +21,6 @@ vi.mock("../../src/ts/test/test-logic", () => ({
   stop: vi.fn(),
 }));
 vi.mock("../../src/ts/test/focus", () => ({ set: vi.fn() }));
-vi.mock("../../src/ts/controllers/ad-controller", () => ({
-  reinstate: vi.fn(),
-}));
 
 import { change, isNavigating } from "../../src/ts/controllers/page-controller";
 import { getActivePage } from "../../src/ts/states/core";

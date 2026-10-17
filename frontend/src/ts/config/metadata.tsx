@@ -1302,7 +1302,7 @@ export const configMetadata: ConfigMetadataObject = {
     key: "ads",
     fa: { icon: "fa-ad" },
     changeRequiresRestart: false,
-    description: `You can disable or enable ads at any time. "Result" will show one ad on the result page, "on" will add floating vertical banners, and "sellout" will add multiple ads on every page.`,
+    description: `Ads are not enabled yet. Any value other than "off" will at most show one ad on the result page.`,
     group: "ads",
     overrideValue: ({ value }) => {
       if (isDevEnvironment()) {
