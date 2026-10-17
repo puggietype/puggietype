@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- typing font: needed once the app renders, not for the first paint -->
     <link
       rel="preload"
       href="/webfonts/JetBrainsMono-Regular.woff2"
       type="font/woff2"
       as="font"
+      fetchpriority="low"
       crossorigin
     />
     <link
@@ -108,8 +110,9 @@
   <body class="loading">
     <!-- shown without js or css, so it can't be rendered by solid -->
     <load src="html/warnings.html" />
+    <load src="html/app-shell.html" />
     <link rel="stylesheet" href="" id="globalFunBoxTheme" type="text/css" />
     <!-- renders the app after the markup above -->
-    <script type="module" src="ts/index.tsx"></script>
+    <script type="module" src="ts/boot.ts"></script>
   </body>
 </html>

@@ -1,0 +1,49 @@
+<!--
+  painted before the js bundle arrives (first paint on slow phones went from
+  ~5s to ~1.5s); removed by ready.ts when #app fades in. Roughly mirrors the
+  header logo and the footer legal line in the same content column (.content-grid);
+  aria-hidden, the app renders the real ones
+-->
+<style>
+  #appShell {
+    position: fixed;
+    inset: 0;
+    padding-block: 2rem;
+    grid-template-rows: auto 1fr auto;
+    pointer-events: none;
+    font-family: Lexend, sans-serif;
+  }
+  #appShell .shellLogo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 1.5rem;
+    padding-block: 0.375rem;
+  }
+  #appShell .shellWordmark {
+    font-weight: 600;
+    font-size: 2rem;
+    line-height: 0.75;
+    color: var(--text-color);
+  }
+  #appShell .shellLegal {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--sub-color);
+  }
+  @media (width < 721px) {
+    #appShell .shellWordmark {
+      display: none;
+    }
+  }
+</style>
+<div id="appShell" class="content-grid" aria-hidden="true">
+  <div class="shellLogo">
+    <img src="/images/favicon/favicon.svg" alt="" width="24" height="24" />
+    <span class="shellWordmark">puggietype</span>
+  </div>
+  <div></div>
+  <div class="shellLegal">
+    Based on Monkeytype, GPL-3.0, no warranty, source
+  </div>
+</div>

@@ -5,6 +5,7 @@ import {
   ElementWithUtils,
   qsr,
   onDOMReady,
+  onWindowLoad,
   __testing,
 } from "../../src/ts/utils/dom";
 const resetReady = __testing.resetReady;
@@ -170,6 +171,34 @@ describe("dom", () => {
       });
     });
   });
+  describe("onWindowLoad", () => {
+    function setReadyState(state: DocumentReadyState): void {
+      Object.defineProperty(document, "readyState", {
+        value: state,
+        configurable: true,
+      });
+    }
+
+    it("waits for the load event while the page is loading", () => {
+      setReadyState("interactive");
+      const spy = vi.fn();
+      onWindowLoad(spy);
+      expect(spy).not.toHaveBeenCalled();
+
+      window.dispatchEvent(new Event("load"));
+      window.dispatchEvent(new Event("load"));
+
+      expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it("runs right away when load already fired (deferred boot)", () => {
+      setReadyState("complete");
+      const spy = vi.fn();
+      onWindowLoad(spy);
+      expect(spy).toHaveBeenCalledOnce();
+    });
+  });
+
   describe("onDOMReady", () => {
     beforeEach(() => {
       document.body.innerHTML = "";

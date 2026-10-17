@@ -26,6 +26,18 @@ export function onDOMReady(callback: () => void): void {
 }
 
 /**
+ * Runs the callback once the window `load` event fired, right away if it
+ * already has (the app boots after the first paint, often after `load`)
+ */
+export function onWindowLoad(callback: () => void): void {
+  if (document.readyState === "complete") {
+    callback();
+  } else {
+    window.addEventListener("load", callback, { once: true });
+  }
+}
+
+/**
  * initialize the readyList and bind the necessary events
  */
 function bindReady(): void {
