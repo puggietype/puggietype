@@ -26,7 +26,6 @@ mkdir -p "$STATIC/images/pug"
 for f in "$BRAND_DIR"/mascot/svg/*.svg; do
   copy "$f" "$STATIC/images/pug/$(basename "$f")"
 done
-copy "$BRAND_DIR/mascot/pug-frames.js" "$STATIC/images/pug/pug-frames.js"
 
 # drop frames the brand kit no longer ships
 for f in "$STATIC"/images/pug/*.svg; do

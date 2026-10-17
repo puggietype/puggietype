@@ -34,8 +34,9 @@ alternate), see `src/ts/states/monkey.ts`. The mapping lives in
 - No scripts or event handlers (they are stripped). Ids are prefixed per frame
   automatically, so `url(#id)` references are fine.
 
-`pug-frames.js` is the brand kit's inline-svg bundle, kept for reference only;
-code loads the `.svg` files by filename.
+Code loads the `.svg` files by filename at runtime (nothing is bundled), so a
+frame is swapped by replacing its file. The brand kit's inline-svg bundle
+(`pug-frames.js`) is deliberately not shipped.
 
 To pull new art: `pnpm sync-pug` (frames only) or `pnpm sync-pug --all`
 (also favicons, logos and theme tokens), run in `frontend/`. Set `BRAND_DIR`
