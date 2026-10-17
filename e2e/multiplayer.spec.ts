@@ -28,6 +28,35 @@ const SLOW_DELAY_MS = 140;
 const byTestId = (page: Page, id: string): Locator =>
   page.locator(`[data-testid="${id}"]`);
 
+const CODE_RE = /^[A-Z0-9]{8}$/;
+const AGE_KEY = "puggie-mp-age-confirmed";
+
+/** counts WebSockets the page opens (the age gate must come first) */
+function countSockets(page: Page): () => number {
+  let n = 0;
+  page.on("websocket", () => n++);
+  return () => n;
+}
+
+async function passAgeGate(page: Page): Promise<void> {
+  await expect(byTestId(page, "mp-age-gate")).toBeVisible();
+  await expect(byTestId(page, "mp-age-gate")).toContainText(
+    "You must be 13 or older to play multiplayer",
+  );
+  await byTestId(page, "mp-age-confirm").click();
+  await expect(byTestId(page, "mp-age-gate")).toHaveCount(0);
+}
+
+/** a context whose user already passed the age gate on an earlier visit */
+async function confirmedContext(
+  browser: import("@playwright/test").Browser,
+): Promise<import("@playwright/test").BrowserContext> {
+  const ctx = await browser.newContext();
+  await skipNgrokWarning(ctx);
+  await ctx.addInitScript((key) => localStorage.setItem(key, "true"), AGE_KEY);
+  return ctx;
+}
+
 async function waitForApp(page: Page): Promise<void> {
   await page.waitForFunction(
     () => document.querySelector("#app") !== null,
@@ -91,13 +120,24 @@ test("two players race, see each other, get a podium and rematch", async ({
   // over a slow public tunnel the router may not be ready yet; wait for the
   // test page to render before navigating
   await a.locator("#words .word").first().waitFor({ timeout: 60_000 });
-  await byTestId(a, "nav-race").click();
-  await expect(byTestId(a, "race-page")).toBeVisible();
+  const socketsOfA = countSockets(a);
+  // clicks during the initial page transition are dropped: retry until it lands
+  await expect(async () => {
+    await byTestId(a, "nav-race").click();
+    await expect(byTestId(a, "race-page")).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+  // first visit: the 13+ gate, and no connection before it is confirmed
+  await expect(byTestId(a, "mp-age-gate")).toBeVisible();
+  await expect(byTestId(a, "mp-create")).toHaveCount(0);
+  expect(socketsOfA()).toBe(0);
+  await passAgeGate(a);
   await expect(byTestId(a, "mp-nickname")).toHaveCount(0);
   await byTestId(a, "mp-create").click();
   await expect(byTestId(a, "mp-lobby")).toBeVisible();
   const code = (await byTestId(a, "mp-room-code").innerText()).trim();
-  expect(code).toMatch(/^[A-Z0-9]{6}$/);
+  expect(code).toMatch(CODE_RE);
+  // the host's URL is the invite link right away (QA 2PM)
+  await expect(a).toHaveURL(new RegExp(`/r/${code}$`));
   await byTestId(a, "mp-mode-words").click();
   await byTestId(a, "mp-length-10").click();
   await expect(byTestId(a, "mp-settings-summary")).toContainText("10 words");
@@ -111,8 +151,13 @@ test("two players race, see each other, get a podium and rematch", async ({
     mt?.setConfig("monkey", true);
   });
 
-  // B: joins through the invite link
+  // B: joins through the invite link, after the age gate
+  const socketsOfB = countSockets(b);
   await b.goto(`/r/${code}`);
+  await expect(byTestId(b, "mp-age-gate")).toBeVisible();
+  await b.waitForTimeout(500);
+  expect(socketsOfB()).toBe(0);
+  await passAgeGate(b);
   await expect(byTestId(b, "mp-lobby")).toBeVisible();
   await expect(byTestId(b, "mp-room-code")).toHaveText(code);
   await expect(byTestId(b, "mp-mode-time")).toBeDisabled();
@@ -222,10 +267,8 @@ async function startTwoPlayerRace(
   mode: "time" | "words",
   length: number,
 ): Promise<RaceSetup> {
-  const ctxA = await browser.newContext();
-  const ctxB = await browser.newContext();
-  await skipNgrokWarning(ctxA);
-  await skipNgrokWarning(ctxB);
+  const ctxA = await confirmedContext(browser);
+  const ctxB = await confirmedContext(browser);
   const a = await ctxA.newPage();
   const b = await ctxB.newPage();
   const pageErrors: string[] = [];
@@ -377,4 +420,104 @@ test("browser Back mid-race asks first and leaves the race only if confirmed (MP
   await expect(byTestId(a, "mp-race")).toHaveCount(0);
   expect(pageErrors).toEqual([]);
   await close();
+});
+
+test("the 13+ gate blocks multiplayer until confirmed, and is remembered", async ({
+  browser,
+}) => {
+  const ctx = await browser.newContext();
+  await skipNgrokWarning(ctx);
+  const page = await ctx.newPage();
+  const pageErrors: string[] = [];
+  page.on("pageerror", (e) => pageErrors.push(e.message));
+  const sockets = countSockets(page);
+
+  // an invite link shows the gate, not the lobby, and connects nowhere
+  await page.goto("/r/ABCD2345");
+  await waitForApp(page);
+  await expect(byTestId(page, "mp-age-gate")).toBeVisible();
+  await page.waitForTimeout(1000);
+  expect(sockets()).toBe(0);
+
+  // go back: home, still unconfirmed
+  await byTestId(page, "mp-age-back").click();
+  await expect(page).toHaveURL(/\/$/);
+  expect(await page.evaluate((k) => localStorage.getItem(k), AGE_KEY)).toBe(
+    null,
+  );
+  await page.goto("/race");
+  await expect(byTestId(page, "mp-age-gate")).toBeVisible();
+  expect(sockets()).toBe(0);
+
+  // confirm: stored, and not asked again after a reload
+  await passAgeGate(page);
+  await expect(byTestId(page, "mp-create")).toBeVisible();
+  expect(await page.evaluate((k) => localStorage.getItem(k), AGE_KEY)).toBe(
+    "true",
+  );
+  await page.reload();
+  await expect(byTestId(page, "mp-create")).toBeVisible();
+  await expect(byTestId(page, "mp-age-gate")).toHaveCount(0);
+  expect(pageErrors).toEqual([]);
+  await ctx.close();
+});
+
+test("the host can kick a player, who lands back on /race; a host reload rejoins", async ({
+  browser,
+}) => {
+  const ctxA = await confirmedContext(browser);
+  const ctxB = await confirmedContext(browser);
+  const a = await ctxA.newPage();
+  const b = await ctxB.newPage();
+  const pageErrors: string[] = [];
+  for (const p of [a, b]) p.on("pageerror", (e) => pageErrors.push(e.message));
+  const helloOfA: Record<string, unknown>[] = [];
+  a.on("websocket", (ws) =>
+    ws.on("framesent", (f) => {
+      const msg = JSON.parse(String(f.payload)) as Record<string, unknown>;
+      if (msg["type"] === "hello") helloOfA.push(msg);
+    }),
+  );
+
+  await a.goto("/race");
+  await waitForApp(a);
+  await byTestId(a, "mp-create").click();
+  await expect(byTestId(a, "mp-lobby")).toBeVisible();
+  const code = (await byTestId(a, "mp-room-code").innerText()).trim();
+  await expect(a).toHaveURL(new RegExp(`/r/${code}$`));
+  expect(helloOfA[0]).toMatchObject({ type: "hello", ageConfirmed: true });
+
+  // refreshing the host's /r/CODE rejoins the same lobby, still host
+  await a.reload();
+  await expect(byTestId(a, "mp-lobby")).toBeVisible();
+  await expect(byTestId(a, "mp-room-code")).toHaveText(code);
+  await expect(byTestId(a, "mp-start")).toBeVisible();
+
+  await b.goto(`/r/${code}`);
+  await expect(byTestId(b, "mp-lobby")).toBeVisible();
+  await expect(byTestId(a, "mp-player")).toHaveCount(2);
+  // only the host sees kick buttons, and never for themselves
+  await expect(byTestId(b, "mp-kick")).toHaveCount(0);
+  const kick = byTestId(a, "mp-kick");
+  await expect(kick).toHaveCount(1);
+
+  // two clicks: arm, then kick
+  await kick.click();
+  await expect(kick).toHaveAttribute("data-armed", "true");
+  await kick.click();
+  await expect(
+    b.getByText("The host removed you from the lobby."),
+  ).toBeVisible();
+  await expect(b).toHaveURL(/\/race$/);
+  await expect(byTestId(b, "mp-create")).toBeVisible();
+  await expect(byTestId(a, "mp-player")).toHaveCount(1);
+
+  // the kicked player can't come straight back
+  await b.goto(`/r/${code}`);
+  await expect(byTestId(b, "mp-lobby")).toHaveCount(0);
+  await expect(b).toHaveURL(/\/race$/);
+  await expect(byTestId(a, "mp-player")).toHaveCount(1);
+  expect(pageErrors).toEqual([]);
+  await ctxA.close();
+  await ctxB.close();
 });
