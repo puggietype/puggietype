@@ -1,7 +1,6 @@
 import { PSA } from "@monkeytype/schemas/psas";
 import { IdSchema } from "@monkeytype/schemas/util";
 import { isSafeNumber } from "@monkeytype/util/numbers";
-import { tryCatch } from "@monkeytype/util/trycatch";
 import { format } from "date-fns/format";
 import { z } from "zod";
 
@@ -44,99 +43,18 @@ async function getLatest(): Promise<PSA[] | null> {
         icon: "fas fa-exclamation-triangle",
       });
     } else {
-      type InstatusSummary = {
-        page: {
-          name: string;
-          url: string;
-          status: string;
-        };
-        activeIncidents: {
-          id: string;
-          name: string;
-          started: string;
-          status: string;
-          impact: string;
-          url: string;
-          updatedAt: string;
-        }[];
-        activeMaintenances:
-          | {
-              id: string;
-              name: string;
-              start: string;
-              status: "NOTSTARTEDYET" | "INPROGRESS" | "COMPLETED";
-              duration: number;
-              url: string;
-              updatedAt: string;
-            }[]
-          | undefined;
-      };
-
-      const { data: instatus, error } = await tryCatch(
-        fetch("https://monkeytype.instatus.com/summary.json"),
-      );
-
-      let maintenanceData: undefined | InstatusSummary["activeMaintenances"];
-
-      if (error) {
-        console.log("Failed to fetch Instatus summary", error);
-      } else {
-        const instatusData =
-          (await instatus.json()) as unknown as InstatusSummary;
-
-        maintenanceData = instatusData.activeMaintenances;
-      }
-
-      if (
-        maintenanceData !== undefined &&
-        maintenanceData.length > 0 &&
-        maintenanceData[0]?.status === "INPROGRESS"
-      ) {
-        addBanner({
-          level: "error",
-          customContent: (
-            <>
-              Server is currently offline for scheduled maintenance.{" "}
-              <a target="_blank" href={maintenanceData[0].url}>
-                Check the status page
-              </a>{" "}
-              for more info.
-            </>
-          ),
-          icon: "fas fa-bullhorn",
-        });
-      } else {
-        addBanner({
-          level: "error",
-          icon: "fas fa-exclamation-triangle",
-          customContent: (
-            <>
-              Looks like the server is experiencing unexpected down time.
-              <br />
-              Check the{" "}
-              <a target="_blank" href="https://monkeytype.instatus.com/">
-                status page
-              </a>{" "}
-              for more information.
-            </>
-          ),
-        });
-      }
+      addBanner({
+        level: "error",
+        icon: "fas fa-exclamation-triangle",
+        text: "Looks like the server is experiencing unexpected down time.",
+      });
     }
     return null;
   } else if (response.status === 503) {
     addBanner({
       level: "error",
       icon: "fas fa-bullhorn",
-      customContent: (
-        <>
-          Server is currently under maintenance.{" "}
-          <a target="_blank" href="https://monkeytype.instatus.com/">
-            Check the status page
-          </a>{" "}
-          for more info.
-        </>
-      ),
+      text: "Server is currently under maintenance.",
     });
     return null;
   } else if (response.status !== 200) {
