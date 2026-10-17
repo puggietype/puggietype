@@ -7,13 +7,14 @@ import { Fa } from "../../components/common/Fa";
 import { cn } from "../../utils/cn";
 import { leaveRoom, rematch } from "../race";
 import { isHost, myId } from "../store";
+import { PugWinner } from "./PugWinner";
 import {
   ordinal,
   PLAYER_BG,
   PLAYER_TEXT,
   settingsSummary,
-} from "./player-colors";
-import { PugWinner } from "./PugWinner";
+  PRIMARY_BUTTON,
+} from "./ui";
 
 const REASON_TEXT: Record<RaceResult["reasons"][number], string> = {
   wpm_mismatch: "reported wpm didn't match",
@@ -157,7 +158,7 @@ export function Podium(props: {
             <Button
               text="rematch"
               fa={{ icon: "fa-redo-alt" }}
-              class="bg-main px-5 py-3 text-bg"
+              class={cn(PRIMARY_BUTTON, "px-5 py-3")}
               dataset={{ "data-testid": "mp-rematch" }}
               onClick={() => rematch()}
             />

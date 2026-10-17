@@ -3,7 +3,7 @@ import { For, JSXElement, Show } from "solid-js";
 import { Fa } from "../../components/common/Fa";
 import { cn } from "../../utils/cn";
 import { myId, opponentProgress, race, room } from "../store";
-import { PLAYER_BG, PLAYER_TEXT } from "./player-colors";
+import { PLAYER_BG, PLAYER_TEXT } from "./ui";
 
 /** extra words of headroom in time mode, where the end isn't known */
 const TIME_MODE_HEADROOM = 10;

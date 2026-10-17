@@ -16,7 +16,7 @@ import {
 } from "../protocol";
 import { leaveRoom, setReady, startRace, updateSettings } from "../race";
 import { isHost, myId } from "../store";
-import { LANGUAGES, PLAYER_BG, settingsSummary } from "./player-colors";
+import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
 const CARD = "grid content-start gap-4 rounded-lg bg-sub-alt p-6";
 const LABEL = "text-sm tracking-wide text-sub";
@@ -251,7 +251,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
               <Button
                 text="start race"
                 fa={{ icon: "fa-flag-checkered" }}
-                class="bg-main px-5 text-bg"
+                class={cn(PRIMARY_BUTTON, "px-5")}
                 disabled={!canStartRace(props.room, myId() ?? "")}
                 dataset={{ "data-testid": "mp-start" }}
                 onClick={() => startRace()}

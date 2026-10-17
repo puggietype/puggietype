@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildFinishInput,
   canStartRace,
+  finishInput,
   inviteLink,
   normalizeRoomCode,
   parseInvitePath,
   progressChanged,
+  progressWpm,
   raceConfigFromSettings,
   wsUrl,
 } from "../../src/ts/multiplayer/helpers";
@@ -129,16 +130,19 @@ describe("progressChanged", () => {
   });
 });
 
-describe("buildFinishInput", () => {
-  it("appends the current word when it has input", () => {
-    expect(buildFinishInput(["the", "quick"], "fo")).toEqual([
+describe("finishInput", () => {
+  it("drops the separator the engine keeps on committed words", () => {
+    expect(finishInput(["the ", "quick ", "fo"])).toEqual([
       "the",
       "quick",
       "fo",
     ]);
   });
-  it("skips an empty current word", () => {
-    expect(buildFinishInput(["the"], "")).toEqual(["the"]);
+  it("drops a newline separator", () => {
+    expect(finishInput(["line\n", "next"])).toEqual(["line", "next"]);
+  });
+  it("only drops one separator", () => {
+    expect(finishInput(["a  ", ""])).toEqual(["a ", ""]);
   });
 });
 
@@ -149,5 +153,19 @@ describe("protocol copy", () => {
       parseClientMessage('{"type":"hello","name":"  \\u200bpug  "}'),
     ).toEqual({ ok: true, msg: { type: "hello", name: "pug" } });
     expect(parseClientMessage('{"type":"nope"}').ok).toBe(false);
+  });
+});
+
+describe("progressWpm", () => {
+  const words = ["hello", "world", "again"];
+  it("counts completed words plus their spaces and the current chars", () => {
+    // "hello " (6) + "wo" (2) = 8 chars in 6s -> 8/5/0.1 = 16 wpm
+    expect(progressWpm(words, 1, 2, 6000)).toBe(16);
+  });
+  it("is 0 before any time has passed", () => {
+    expect(progressWpm(words, 1, 2, 0)).toBe(0);
+  });
+  it("caps the current word at its length", () => {
+    expect(progressWpm(words, 0, 99, 6000)).toBe(10);
   });
 });

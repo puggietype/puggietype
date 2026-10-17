@@ -15,7 +15,7 @@ import {
   room,
   showOpponentCarets,
 } from "../store";
-import { PLAYER_BG } from "./player-colors";
+import { PLAYER_BG } from "./ui";
 
 const SMOOTH_TAU_MS = 70;
 /** name tags of carets on the same spot stack upward by this many px */
@@ -95,6 +95,7 @@ export function OpponentCarets(): JSXElement {
       const next = smoothToward(prev, { x: m.x, y: m.y }, dt, SMOOTH_TAU_MS);
       positions.set(id, next);
       el.dataset["visible"] = "true";
+      el.dataset["wordIndex"] = String(p?.wordIndex ?? 0);
       el.classList.remove("opacity-0");
       el.style.transform = `translate(${next.x - 1}px, ${next.y}px)`;
       el.style.height = `${m.height}px`;

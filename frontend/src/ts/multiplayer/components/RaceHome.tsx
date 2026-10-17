@@ -2,9 +2,11 @@ import { createSignal, JSXElement, untrack } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { PugHead } from "../../components/common/PugHead";
+import { cn } from "../../utils/cn";
 import { normalizeRoomCode } from "../helpers";
 import { connect, createRoom, joinRoom } from "../race";
 import { connectionStatus, loadNickname, saveNickname } from "../store";
+import { PRIMARY_BUTTON } from "./ui";
 
 const CARD = "grid gap-3 rounded-lg bg-sub-alt p-6";
 const LABEL = "text-sm tracking-wide text-sub";
@@ -55,7 +57,7 @@ export function RaceHome(props: { code?: string }): JSXElement {
             <Button
               text="create private lobby"
               fa={{ icon: "fa-plus" }}
-              class="bg-main px-5 py-3 text-bg"
+              class={cn(PRIMARY_BUTTON, "px-5 py-3")}
               disabled={validName() === undefined || busy()}
               dataset={{ "data-testid": "mp-create" }}
               onClick={() => withName(() => createRoom())}
@@ -87,7 +89,7 @@ export function RaceHome(props: { code?: string }): JSXElement {
               type="submit"
               text="join"
               fa={{ icon: "fa-sign-in-alt" }}
-              class="bg-main px-5 text-bg"
+              class={cn(PRIMARY_BUTTON, "px-5")}
               disabled={
                 validName() === undefined || validCode() === undefined || busy()
               }

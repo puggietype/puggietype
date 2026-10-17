@@ -9,6 +9,7 @@
     "full-check": "turbo lint build test integration-test lint-styles lint-json check-assets --force",
     "prepare": "husky install",
     "pre-commit": "lint-staged",
+    "e2e": "playwright test",
     "ts-check": "turbo run ts-check",
     "lint": "turbo run lint",
     "lint-be": "turbo run lint --filter @monkeytype/backend",

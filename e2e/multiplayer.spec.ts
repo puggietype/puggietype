@@ -1,0 +1,149 @@
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+const SCREENS = process.env["SCREENS_DIR"] ?? "/workspace/puggietype/screens";
+const FAST_DELAY_MS = 25;
+const SLOW_DELAY_MS = 140;
+
+const byTestId = (page: Page, id: string): Locator =>
+  page.locator(`[data-testid="${id}"]`);
+
+async function waitForApp(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => document.querySelector("#app") !== null,
+    null,
+    { timeout: 60_000 },
+  );
+}
+
+/** the words as rendered, so typing matches what the engine expects */
+async function renderedWords(page: Page): Promise<string[]> {
+  return page.$$eval("#words .word", (els) =>
+    els.map((el) =>
+      Array.from(el.querySelectorAll("letter"))
+        .map((l) => l.textContent ?? "")
+        .join(""),
+    ),
+  );
+}
+
+async function typeRace(page: Page, delay: number): Promise<void> {
+  const words = await renderedWords(page);
+  for (const [i, word] of words.entries()) {
+    const last = i === words.length - 1;
+    await page.keyboard.type(last ? word : `${word} `, { delay });
+  }
+}
+
+async function waitForRaceStart(page: Page): Promise<void> {
+  await expect(byTestId(page, "mp-race")).toBeVisible();
+  await expect(byTestId(page, "mp-countdown")).toBeVisible();
+  await expect(byTestId(page, "mp-countdown")).toBeHidden({ timeout: 10_000 });
+}
+
+test("two players race, see each other, get a podium and rematch", async ({
+  browser,
+}) => {
+  const ctxA = await browser.newContext();
+  const ctxB = await browser.newContext();
+  await ctxB.addInitScript(() => {
+    localStorage.setItem("puggie-mp-name", "bob");
+  });
+  const a = await ctxA.newPage();
+  const b = await ctxB.newPage();
+  for (const p of [a, b]) {
+    p.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
+  }
+
+  // A: home -> race page via the header button, create a words-10 lobby
+  await a.goto("/");
+  await waitForApp(a);
+  await byTestId(a, "nav-race").click();
+  await expect(byTestId(a, "race-page")).toBeVisible();
+  await byTestId(a, "mp-nickname").fill("alice");
+  await byTestId(a, "mp-create").click();
+  await expect(byTestId(a, "mp-lobby")).toBeVisible();
+  const code = (await byTestId(a, "mp-room-code").innerText()).trim();
+  expect(code).toMatch(/^[A-Z0-9]{6}$/);
+  await byTestId(a, "mp-mode-words").click();
+  await byTestId(a, "mp-length-10").click();
+  await expect(byTestId(a, "mp-settings-summary")).toContainText("10 words");
+  // pug mode keeps working during races
+  await a.evaluate(() => {
+    const mt = (
+      window as unknown as {
+        __mt?: { setConfig: (k: string, v: unknown) => void };
+      }
+    ).__mt;
+    mt?.setConfig("monkey", true);
+  });
+
+  // B: joins through the invite link
+  await b.goto(`/r/${code}`);
+  await expect(byTestId(b, "mp-lobby")).toBeVisible();
+  await expect(byTestId(b, "mp-room-code")).toHaveText(code);
+  await expect(byTestId(b, "mp-mode-time")).toBeDisabled();
+  await expect(byTestId(a, "mp-player")).toHaveCount(2);
+  await expect(byTestId(a, "mp-start")).toBeDisabled();
+  await byTestId(b, "mp-ready").click();
+  await expect(byTestId(a, "mp-start")).toBeEnabled();
+  await a.screenshot({ path: `${SCREENS}/lobby.png` });
+
+  // race
+  await byTestId(a, "mp-start").click();
+  await Promise.all([waitForRaceStart(a), waitForRaceStart(b)]);
+
+  const words = await renderedWords(a);
+  expect(words).toHaveLength(10);
+  expect(await renderedWords(b)).toEqual(words);
+
+  const typing = Promise.all([
+    typeRace(a, FAST_DELAY_MS),
+    typeRace(b, SLOW_DELAY_MS),
+  ]);
+
+  // mid-race: each side sees the other's caret and name tag
+  const caretOnA = a.locator(
+    '[data-testid="mp-opponent-caret"][data-visible="true"]',
+  );
+  const caretOnB = b.locator(
+    '[data-testid="mp-opponent-caret"][data-visible="true"]',
+  );
+  await expect(caretOnA).toBeVisible();
+  await expect(caretOnB).toBeVisible();
+  await expect(caretOnA.locator('[data-testid="mp-opponent-tag"]')).toHaveText(
+    "bob",
+  );
+  await expect(caretOnB.locator('[data-testid="mp-opponent-tag"]')).toHaveText(
+    "alice",
+  );
+  // let both get going so the screenshot shows real progress
+  await expect(caretOnB).toHaveAttribute("data-word-index", /^[3-9]$/);
+  await expect(caretOnA).toHaveAttribute("data-word-index", /^[1-9]$/);
+  await a.screenshot({ path: `${SCREENS}/race-midway.png` });
+
+  await typing;
+
+  // both reach the podium, the faster typist wins
+  await expect(byTestId(a, "mp-podium")).toBeVisible({ timeout: 30_000 });
+  await expect(byTestId(b, "mp-podium")).toBeVisible({ timeout: 30_000 });
+  await expect(byTestId(a, "mp-winner")).toContainText("alice");
+  await expect(byTestId(b, "mp-winner")).toContainText("alice");
+  await expect(byTestId(a, "mp-my-place")).toHaveText("1st");
+  await expect(byTestId(b, "mp-my-place")).toHaveText("2nd");
+  await expect(byTestId(a, "mp-result-row")).toHaveCount(2);
+  // the server's recomputation agrees with ours: nobody flagged, both finished
+  await expect(byTestId(a, "mp-result-flagged")).toHaveCount(0);
+  await expect(byTestId(a, "mp-results-table")).not.toContainText("dnf");
+  await expect(byTestId(a, "mp-pug-winner").locator("svg")).toBeVisible();
+  await expect(byTestId(b, "mp-waiting-host")).toBeVisible();
+  await a.screenshot({ path: `${SCREENS}/results.png` });
+
+  // rematch: everyone back in the lobby, un-readied
+  await byTestId(a, "mp-rematch").click();
+  await expect(byTestId(a, "mp-lobby")).toBeVisible();
+  await expect(byTestId(b, "mp-lobby")).toBeVisible();
+  await expect(byTestId(b, "mp-ready")).toContainText("ready up");
+
+  await ctxA.close();
+  await ctxB.close();
+});

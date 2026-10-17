@@ -10,7 +10,6 @@ import {
   showNoticeNotification,
 } from "../states/notifications";
 import {
-  currentLiveStats,
   getActiveWordIndex,
   isTestActive,
   isTestRestarting,
@@ -28,7 +27,9 @@ import {
   type RaceFinishData,
 } from "./engine-hooks";
 import {
+  finishInput,
   progressChanged,
+  progressWpm,
   raceConfigFromSettings,
   type ProgressPayload,
 } from "./helpers";
@@ -250,11 +251,14 @@ function goRace(token: number): void {
 
 function sendProgress(): void {
   if (!isTestActive() || finishSent) return;
+  const wordIndex = getActiveWordIndex();
+  const charIndex = getCurrentInput().length;
+  const testMs = Math.round(performance.now() - raceStartedAt);
   const next: ProgressPayload = {
-    wordIndex: getActiveWordIndex(),
-    charIndex: getCurrentInput().length,
-    testMs: Math.round(performance.now() - raceStartedAt),
-    wpm: Math.max(0, Math.round(currentLiveStats.wpm ?? 0)),
+    wordIndex,
+    charIndex,
+    testMs,
+    wpm: progressWpm(race()?.words ?? [], wordIndex, charIndex, testMs),
     errors: getLiveCachedIncorrectInputs(),
   };
   if (!progressChanged(lastProgress, next)) return;
@@ -272,7 +276,7 @@ function sendFinish(data: RaceFinishData): void {
     raw: data.raw,
     acc: data.acc,
     testMs: data.testMs,
-    input: data.input,
+    input: finishInput(data.input),
     keyCount: data.keyCount,
   });
   // the test is done for us: unhook the engine and wait on the race page

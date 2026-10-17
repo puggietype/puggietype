@@ -80,10 +80,29 @@ export function progressChanged(
   );
 }
 
-/** race:finish input: one entry per word, up to the current word */
-export function buildFinishInput(
-  history: readonly string[],
-  current: string,
-): string[] {
-  return current === "" ? [...history] : [...history, current];
+/**
+ * race:finish input: what was typed per word. The engine's input history keeps
+ * the separator (space or newline) on committed words; the server wants it off.
+ */
+export function finishInput(history: readonly string[]): string[] {
+  return history.map((word) => word.replace(/[ \n]$/, ""));
+}
+
+/**
+ * wpm from the caret position alone (chars of completed words plus spaces,
+ * plus the current word), so progress can show a live speed every 100 ms.
+ */
+export function progressWpm(
+  words: readonly string[],
+  wordIndex: number,
+  charIndex: number,
+  testMs: number,
+): number {
+  if (testMs <= 0) return 0;
+  let chars = 0;
+  for (let i = 0; i < wordIndex && i < words.length; i++) {
+    chars += (words[i] ?? "").length + 1;
+  }
+  chars += Math.min(charIndex, (words[wordIndex] ?? "").length);
+  return Math.round((chars / 5 / (testMs / 60000)) * 100) / 100;
 }

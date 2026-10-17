@@ -9,7 +9,7 @@ export type RaceFinishData = {
   raw: number;
   acc: number;
   testMs: number;
-  /** what was typed for each word, up to the last typed word */
+  /** engine input history per word, up to the last typed word */
   input: string[];
   keyCount: number;
 };

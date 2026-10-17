@@ -9,8 +9,8 @@ import {
   showOpponentCarets,
 } from "../store";
 import { OpponentCarets } from "./OpponentCarets";
-import { settingsSummary } from "./player-colors";
 import { RaceProgressBars } from "./RaceProgressBars";
+import { settingsSummary } from "./ui";
 
 /** race chrome on the test page: info line, progress bars, 3-2-1, carets */
 export function RaceOverlay(): JSXElement {

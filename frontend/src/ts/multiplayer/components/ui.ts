@@ -49,3 +49,7 @@ export function settingsSummary(s: {
   if (s.numbers) parts.push("numbers");
   return parts.join(" · ");
 }
+
+/** main-colour call to action that keeps Button's hover/focus behaviour */
+export const PRIMARY_BUTTON =
+  "[--themable-button-bg:var(--main-color)] [--themable-button-text:var(--bg-color)]";
