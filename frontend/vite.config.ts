@@ -16,6 +16,7 @@ import { fontPreview } from "./vite-plugins/font-preview";
 import { envConfig } from "./vite-plugins/env-config";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
+import { pagesHeaders } from "./vite-plugins/pages-headers";
 import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
@@ -202,6 +203,7 @@ function getPlugins({
     }),
     injectPreload(),
     minifyJson(),
+    pagesHeaders({ wsUrl: env["VITE_WS_URL"] }),
   ];
 
   return [...plugins, ...(isDevelopment ? devPlugins : prodPlugins)].filter(
@@ -230,7 +232,7 @@ function getBuildOptions({
           : { email: path.resolve(__dirname, "src/email-handler.html") }),
         privacy: path.resolve(__dirname, "src/privacy.html"),
         terms: path.resolve(__dirname, "src/terms.html"),
-        404: path.resolve(__dirname, "src/404.html"),
+        // no 404.html: its absence turns on cloudflare pages' spa fallback
       },
       output: {
         assetFileNames: (assetInfo) => {
@@ -384,9 +386,13 @@ export default defineConfig(({ mode }): UserConfig => {
       // hmr: no port set, so the client reuses the page's host/port/protocol
       // (works through https tunnels on 443)
       proxy: {
-        // MP_WS_TARGET points a second dev server at a test WS server
+        // PUGGIE_WS_PROXY_TARGET (or legacy MP_WS_TARGET) points a second dev
+        // server or `vite preview` (inherits this proxy) at a test WS server
         "/ws": {
-          target: process.env["MP_WS_TARGET"] ?? "ws://localhost:2567",
+          target:
+            process.env["PUGGIE_WS_PROXY_TARGET"] ??
+            process.env["MP_WS_TARGET"] ??
+            "ws://localhost:2567",
           ws: true,
         },
       },

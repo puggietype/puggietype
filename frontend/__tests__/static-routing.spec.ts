@@ -5,13 +5,19 @@ import { describe, it, expect } from "vitest";
 const staticDir = path.resolve(__dirname, "../static");
 const srcDir = path.resolve(__dirname, "../src");
 
-// cloudflare pages disables its spa fallback when dist has a 404.html,
-// so every spa route needs a rewrite to /index.html in _redirects
+// cloudflare pages: _redirects rules beat real files, and a rewrite to
+// /index.html is dropped as an infinite loop (verified with wrangler pages dev).
+// spa routes rewrite to /, and no 404.html keeps pages' own spa fallback on
 describe("static routing", () => {
-  const rewrites = readFileSync(path.join(staticDir, "_redirects"), "utf-8")
+  const redirectsFile = readFileSync(
+    path.join(staticDir, "_redirects"),
+    "utf-8",
+  );
+  const rewrites = redirectsFile
     .split("\n")
     .map((line) => line.trim().split(/\s+/))
-    .filter(([, to, code]) => to === "/index.html" && code === "200")
+    .filter((rule) => rule[0]?.startsWith("/") === true)
+    .filter(([, to, code]) => to === "/" && code === "200")
     .map(([from]) => from);
 
   const sitemapPaths = [
@@ -42,5 +48,12 @@ describe("static routing", () => {
 
   it("rewrites race invite links", () => {
     expect(rewrites).toContain("/r/*");
+  });
+
+  it("keeps cloudflare's spa fallback on: no 404.html page, no splat", () => {
+    expect(existsSync(path.join(srcDir, "404.html"))).toBe(false);
+    expect(existsSync(path.join(staticDir, "404.html"))).toBe(false);
+    expect(rewrites).not.toContain("/*");
+    expect(redirectsFile).not.toMatch(/\/index\.html 200/);
   });
 });
