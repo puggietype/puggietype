@@ -101,7 +101,7 @@ export function AboutPage(): JSXElement {
           <Button
             text="github issues"
             fa={{ icon: "fa-github", variant: "brand" }}
-            href="https://github.com/shoyru-ai/puggietype/issues"
+            href="https://github.com/puggietype/puggietype/issues"
             class="w-full p-8"
           />
         </div>
@@ -132,7 +132,7 @@ export function AboutPage(): JSXElement {
           <Button
             variant="text"
             text="GitHub"
-            href="https://github.com/shoyru-ai/puggietype"
+            href="https://github.com/puggietype/puggietype"
             class="p-0"
           />{" "}
           under the same license.

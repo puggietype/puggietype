@@ -18,7 +18,7 @@ export type SourceLinks = {
 };
 
 export function parseSourceUrlMode(value: string | undefined): SourceUrlMode {
-  return value === "github" ? "github" : "tarball";
+  return value === "tarball" ? "tarball" : "github";
 }
 
 export function tarballName(commitHash: string): string {
@@ -43,7 +43,8 @@ export function getSourceLinks(options: {
       commitHash,
       sourceUrl: `${REPO_URL}/tree/${commitHash}`,
       licenseUrl: `${REPO_URL}/blob/${commitHash}/LICENSE`,
-      tarballName: undefined,
+      // still ship /source/<tarball> as a backup copy of the source
+      tarballName: tarballName(commitHash),
     };
   }
   const name = tarballName(commitHash);
