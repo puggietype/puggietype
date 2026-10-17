@@ -3,6 +3,17 @@
   --font: "JetBrains Mono", "Vazirharf", monospace;
   // ui chrome uses lexend, typing area and stats use the configured --font
   --ui-font: "Lexend", "Vazirharf", sans-serif;
+  // opponent caret + pug colours; puggie themes override these in static/themes
+  --opp1: #5db7ee;
+  --opp2: #3dbe9a;
+  --opp3: #c58bd9;
+  --opp4: #e6d85c;
+  --pug-ink: #161514;
+  --pug-fill: #f0d9b5;
+  --pug-paw: #f6e6cc;
+  --pug-mask: #3b2b23;
+  --pug-bean: #f09aa2;
+  --pug-key: #e8a96b;
   // scroll-behavior: smooth;
   scroll-padding-top: 2rem;
   font-weight: 400;
