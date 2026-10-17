@@ -17,7 +17,6 @@ export function CookiesModal(): JSXElement {
     getAcceptedCookies() ?? {
       security: true,
       analytics: false,
-      sentry: false,
     },
   );
 
@@ -27,7 +26,6 @@ export function CookiesModal(): JSXElement {
       setAccepted({
         security: true,
         analytics: false,
-        sentry: false,
       });
     }
   });
@@ -75,7 +73,6 @@ export function CookiesModal(): JSXElement {
                   setAccepted({
                     security: true,
                     analytics: true,
-                    sentry: true,
                   });
                   setAcceptedCookies(accepted());
                   hideModal("Cookies");
@@ -87,7 +84,6 @@ export function CookiesModal(): JSXElement {
                   setAccepted({
                     security: true,
                     analytics: false,
-                    sentry: false,
                   });
                   setAcceptedCookies(accepted());
                   hideModal("Cookies");
@@ -121,16 +117,6 @@ export function CookiesModal(): JSXElement {
               checked={false}
               onChange={(checked) =>
                 setAccepted({ ...accepted(), analytics: checked })
-              }
-            />
-            <SettingsSection
-              title="sentry"
-              description="We use Sentry to track errors and performance issues on our site, as
-            well as record anonymized user sessions to help us debug issues and
-            improve experience."
-              checked={false}
-              onChange={(checked) =>
-                setAccepted({ ...accepted(), sentry: checked })
               }
             />
             <SettingsSection

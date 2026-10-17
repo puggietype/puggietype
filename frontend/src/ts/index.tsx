@@ -25,7 +25,6 @@ import "./test/tts";
 import { addToGlobal } from "./utils/misc";
 import * as Focus from "./test/focus";
 import { fetchLatestVersion } from "./utils/version";
-import * as Sentry from "./sentry";
 import * as Cookies from "./cookies";
 import { isStandalone } from "./utils/env";
 import "./elements/psa";
@@ -99,7 +98,6 @@ addToGlobal({
   getTimerStats: TestTimer.getTimerStats,
   toggleSmoothedBurst,
   toggleDebugLogs: Logger.toggleDebugLogs,
-  toggleSentryDebug: Sentry.toggleDebug,
   qs: qs,
   qsa: qsa,
   qsr: qsr,

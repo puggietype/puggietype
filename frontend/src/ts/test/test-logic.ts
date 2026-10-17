@@ -106,7 +106,6 @@ import * as CompositionState from "../legacy-states/composition";
 import { SnapshotResult } from "../constants/default-snapshot";
 import { WordGenError } from "../utils/word-gen-error";
 import { tryCatch } from "@monkeytype/util/trycatch";
-import * as Sentry from "../sentry";
 import { showLoaderBar, hideLoaderBar } from "../states/loader-bar";
 import { canQuickRestart } from "../utils/quick-restart";
 import {
@@ -415,7 +414,6 @@ async function init(): Promise<boolean> {
   testReinitCount++;
   if (testReinitCount > 3) {
     if (lastInitError) {
-      void Sentry.captureException(lastInitError);
       setTestInitError(`${lastInitError.name}: ${lastInitError.message}`);
     }
     setTestInitFailed(true);

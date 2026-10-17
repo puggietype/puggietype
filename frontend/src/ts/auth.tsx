@@ -37,7 +37,6 @@ import {
 } from "./firebase";
 import { createSignalWithSetters } from "./hooks/createSignalWithSetters";
 import { createEffectOn } from "./hooks/effects";
-import * as Sentry from "./sentry";
 import { getUserId, isAuthenticated, setUserId } from "./states/core";
 import { hideLoaderBar, showLoaderBar } from "./states/loader-bar";
 import {
@@ -179,8 +178,6 @@ async function getDataAndInit(): Promise<boolean> {
       );
     }
 
-    void Sentry.setUser(snapshot.uid, snapshot.name);
-
     await updateConfigFromServer();
     return true;
   } catch (error) {
@@ -234,10 +231,6 @@ export async function onAuthStateChanged(
       setUserId(null);
       DB.setSnapshot(undefined);
     }
-  }
-
-  if (!authInitialisedAndConnected || !user) {
-    void Sentry.clearUser();
   }
 
   authEvent.dispatch({
