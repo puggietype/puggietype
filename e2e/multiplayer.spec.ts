@@ -297,6 +297,8 @@ test("reloading mid-race resumes at the same word on the race clock (MP-002)", a
   expect(before?.wordIndex).toBe(12);
   const sentBefore = sentByA.length;
 
+  // a running race asks before unloading (MP-003); confirm the reload
+  a.once("dialog", (d) => void d.accept());
   await a.reload();
   await expect(byTestId(a, "mp-race")).toBeVisible({ timeout: 20_000 });
   // the caret sits on word 12 and the words before it show as typed
@@ -325,6 +327,51 @@ test("reloading mid-race resumes at the same word on the race clock (MP-002)", a
     | { input: string[] }
     | undefined;
   expect(finish?.input.length).toBeGreaterThanOrEqual(15);
+  expect(pageErrors).toEqual([]);
+  await close();
+});
+
+test("browser Back mid-race asks first and leaves the race only if confirmed (MP-003)", async ({
+  browser,
+}) => {
+  const { a, sentByA, pageErrors, close } = await startTwoPlayerRace(
+    browser,
+    "time",
+    30,
+  );
+  await typeWords(a, 3, 60);
+  const leaves = (): number =>
+    sentByA.filter((m) => m["type"] === "room:leave").length;
+
+  // closing or reloading the tab is guarded too
+  const unloadBlocked = await a.evaluate(() => {
+    const e = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  expect(unloadBlocked).toBe(true);
+
+  // cancel: still racing on the test page
+  const dismissed = new Promise<string>((resolve) =>
+    a.once("dialog", (d) => {
+      resolve(d.message());
+      void d.dismiss();
+    }),
+  );
+  await a.goBack();
+  expect(await dismissed).toMatch(/leave the race/i);
+  await expect(byTestId(a, "mp-race")).toBeVisible();
+  expect(new URL(a.url()).pathname).toBe("/");
+  await typeWords(a, 1, 60);
+  await expect.poll(() => progressOf(sentByA).at(-1)?.wordIndex).toBe(4);
+  expect(leaves()).toBe(0);
+
+  // confirm: leaves the room and goes back
+  a.once("dialog", (d) => void d.accept());
+  await a.goBack();
+  await expect.poll(leaves).toBe(1);
+  await expect(byTestId(a, "race-page")).toBeVisible();
+  await expect(byTestId(a, "mp-race")).toHaveCount(0);
   expect(pageErrors).toEqual([]);
   await close();
 });

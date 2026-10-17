@@ -11,6 +11,7 @@ import fileStorage from "./utils/file-storage";
 import { getLanguage } from "./utils/json-data";
 import { replaceUnderscoresWithSpaces } from "./utils/strings";
 import { isTestActive } from "./states/test";
+import { isRaceActive } from "./multiplayer/engine-hooks";
 
 let isPreviewingFont = false;
 export function previewFontFamily(font: FontName): void {
@@ -85,6 +86,13 @@ if (isDevEnvironment()) {
 }
 
 window.addEventListener("beforeunload", (event) => {
+  // multiplayer hook: a running race always asks, even for quick-restart modes
+  if (isRaceActive()) {
+    event.preventDefault();
+    // oxlint-disable-next-line no-deprecated
+    event.returnValue = "";
+    return;
+  }
   // Cancel the event as stated by the standard.
   if (
     canQuickRestart(

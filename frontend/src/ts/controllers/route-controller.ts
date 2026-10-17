@@ -7,6 +7,7 @@ import { navigationEvent, type NavigateOptions } from "../events/navigation";
 import { authEvent } from "../events/auth";
 import { isStandalone } from "../utils/env";
 import { isRaceActive } from "../multiplayer/engine-hooks";
+import { leaveRoom } from "../multiplayer/race";
 import {
   isTestRestarting,
   isResultCalculating,
@@ -273,6 +274,19 @@ async function router(options = {} as NavigateOptions): Promise<void> {
 }
 
 window.addEventListener("popstate", () => {
+  // multiplayer hook: browser back/forward gets the navigate() race guard,
+  // but the URL already changed, so ask instead of a notice
+  if (isRaceActive() && location.pathname !== "/") {
+    if (!confirm("Leave the race? You can't rejoin it.")) {
+      // undo the history move; the race page is still showing "/"
+      history.pushState(null, "", "/");
+      return;
+    }
+    // leave once off the test page, so it doesn't regenerate a solo test
+    // under the page transition
+    void router().then(leaveRoom);
+    return;
+  }
   void router();
 });
 
