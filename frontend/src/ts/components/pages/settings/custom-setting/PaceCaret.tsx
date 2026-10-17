@@ -11,6 +11,7 @@ import {
 } from "../../../../config/metadata";
 import { setConfig } from "../../../../config/setters";
 import { getConfig } from "../../../../config/store";
+import { isPaceCaretHidden } from "../../../../constants/standalone";
 import { useSavedIndicator } from "../../../../hooks/useSavedIndicator";
 import { getOptions } from "../../../../utils/zod";
 import { Button } from "../../../common/Button";
@@ -77,7 +78,11 @@ export function PaceCaret(): JSXElement {
             />
           </form>
           <div class="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-2">
-            <For each={getOptions(ConfigSchema.shape.paceCaret)}>
+            <For
+              each={getOptions(ConfigSchema.shape.paceCaret)?.filter(
+                (option) => !isPaceCaretHidden(option),
+              )}
+            >
               {(option) => {
                 const optionMeta = configMetadata.paceCaret
                   .optionsMetadata as Record<

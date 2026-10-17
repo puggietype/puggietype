@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { resetConfig } from "../../../config/lifecycle";
 import { getConfig } from "../../../config/store";
+import { isConfigKeyHidden } from "../../../constants/standalone";
 import {
   playTimeWarning,
   previewClick,
@@ -197,7 +198,9 @@ export function SettingsPage(): JSXElement {
           <SearchableAutoSetting key="showKeyTips" />
           <SearchableAutoSetting key="showOutOfFocusWarning" />
           <SearchableAutoSetting key="capsLockWarning" />
-          <SearchableAutoSetting key="showAverage" />
+          <Show when={!isConfigKeyHidden("showAverage")}>
+            <SearchableAutoSetting key="showAverage" />
+          </Show>
         </Section>
         <Section title="danger zone">
           <ImportExport />

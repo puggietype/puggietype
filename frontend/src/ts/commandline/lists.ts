@@ -32,6 +32,7 @@ import { buildCommandForConfigKey } from "./util";
 import { CommandlineConfigMetadataObject } from "./commandline-metadata";
 import { isAuthAvailable, signOut } from "../firebase";
 import { isAuthenticated } from "../states/core";
+import { isCommandHidden, isConfigKeyHidden } from "../constants/standalone";
 import { ConfigKey } from "@monkeytype/schemas/configs";
 import {
   hideFpsCounter,
@@ -42,7 +43,7 @@ import { getLastEventLog } from "../states/test";
 
 export const commands: CommandsSubgroup = {
   title: "",
-  list: [
+  list: withoutBackendCommands([
     //result
     ...ResultScreenCommands,
 
@@ -366,7 +367,7 @@ export const commands: CommandsSubgroup = {
         return isAuthAvailable() && isAuthenticated();
       },
     },
-  ],
+  ]),
 };
 
 const lists: Record<CommandlineListKey, CommandsSubgroup | undefined> = {
@@ -511,7 +512,11 @@ function buildSingleListCommands(
 function buildCommands(
   ...commands: (Command | keyof CommandlineConfigMetadataObject)[]
 ): Command[] {
-  return commands.map((it) =>
-    typeof it === "string" ? buildCommandForConfigKey(it) : it,
-  );
+  return commands
+    .filter((it) => typeof it !== "string" || !isConfigKeyHidden(it))
+    .map((it) => (typeof it === "string" ? buildCommandForConfigKey(it) : it));
+}
+
+function withoutBackendCommands(list: Command[]): Command[] {
+  return list.filter((it) => !isCommandHidden(it.id));
 }

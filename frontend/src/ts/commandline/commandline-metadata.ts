@@ -11,6 +11,7 @@ import { Config } from "../config/store";
 import { get as getTypingSpeedUnit } from "../utils/typing-speed-units";
 import { getActivePage, isAuthenticated } from "../states/core";
 import { Fonts } from "../constants/fonts";
+import { isPaceCaretHidden } from "../constants/standalone";
 import { KnownFontName } from "@monkeytype/schemas/fonts";
 import * as UI from "../ui";
 import { Validation } from "../types/validation";
@@ -491,7 +492,9 @@ export const commandlineConfigMetadata: CommandlineConfigMetadataObject = {
   paceCaret: {
     display: "Pace caret mode...",
     subgroup: {
-      options: ["off", "pb", "tagPb", "last", "average", "daily"],
+      options: (
+        ["off", "pb", "tagPb", "last", "average", "daily"] as const
+      ).filter((mode) => !isPaceCaretHidden(mode)),
       afterExec: () => {
         void TestLogic.restart();
       },
