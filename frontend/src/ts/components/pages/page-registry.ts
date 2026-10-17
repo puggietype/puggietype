@@ -1,17 +1,58 @@
+import { Component, lazy } from "solid-js";
+
 import { NotFoundPage } from "./404Page";
-import { AboutPage } from "./AboutPage";
-import { AccountSettingsPage } from "./account-settings/AccountSettingsPage";
-import { AccountPage } from "./account/AccountPage";
-import { FriendsPage } from "./connections/FriendsPage";
-import { LeaderboardPage } from "./leaderboard/LeaderboardPage";
 import { LoadingPage } from "./LoadingPage";
-import { LoginPage } from "./login/LoginPage";
 import { PageRegistry } from "./Pages";
-import { ProfilePage } from "./profile/ProfilePage";
-import { RacePage } from "../../multiplayer/components/RacePage";
-import { ProfileSearchPage } from "./profile/ProfileSearchPage";
-import { SettingsPage } from "./settings/SettingsPage";
 import { TestPage } from "./test/TestPage";
+
+// the test page is the landing page; every other page (and its deps such as
+// chart.js and tanstack form) loads on first visit to keep the boot bundle small
+function lazyPage<T extends Record<string, unknown>>(
+  load: () => Promise<T>,
+  name: keyof T,
+): Component {
+  return lazy(async () =>
+    load().then((m) => ({ default: m[name] as Component })),
+  );
+}
+
+const SettingsPage = lazyPage(
+  async () => import("./settings/SettingsPage"),
+  "SettingsPage",
+);
+const AboutPage = lazyPage(async () => import("./AboutPage"), "AboutPage");
+const AccountPage = lazyPage(
+  async () => import("./account/AccountPage"),
+  "AccountPage",
+);
+const LoginPage = lazyPage(
+  async () => import("./login/LoginPage"),
+  "LoginPage",
+);
+const ProfilePage = lazyPage(
+  async () => import("./profile/ProfilePage"),
+  "ProfilePage",
+);
+const ProfileSearchPage = lazyPage(
+  async () => import("./profile/ProfileSearchPage"),
+  "ProfileSearchPage",
+);
+const AccountSettingsPage = lazyPage(
+  async () => import("./account-settings/AccountSettingsPage"),
+  "AccountSettingsPage",
+);
+const LeaderboardPage = lazyPage(
+  async () => import("./leaderboard/LeaderboardPage"),
+  "LeaderboardPage",
+);
+const FriendsPage = lazyPage(
+  async () => import("./connections/FriendsPage"),
+  "FriendsPage",
+);
+const RacePage = lazyPage(
+  async () => import("../../multiplayer/components/RacePage"),
+  "RacePage",
+);
 
 /** Every page's component and wrapper options, rendered by `Pages`. */
 export const pageRegistry: PageRegistry = {

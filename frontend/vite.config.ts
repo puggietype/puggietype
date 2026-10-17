@@ -270,12 +270,14 @@ function getBuildOptions({
               test: /node_modules\/@firebase\//,
             },
             {
-              name: "vendor-tanstack",
-              test: /node_modules\/@tanstack\//,
-            },
-            {
               name: "puggietype-packages",
               test: /monkeytype\/packages\//,
+            },
+            // date-fns is used on boot; claimed before vendor-chart so the
+            // chart.js date adapter doesn't drag it (and chart.js) into boot
+            {
+              name: "vendor-date",
+              test: /node_modules\/date-fns\//,
             },
             {
               name: "vendor-chart",

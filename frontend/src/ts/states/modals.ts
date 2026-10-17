@@ -145,6 +145,10 @@ export function getModalVisibility(id: ModalId): ModalVisibility | null {
   return modalState.openModals[id] ?? null;
 }
 
+export function getPendingModal(): ModalId | null {
+  return modalState.pendingModal;
+}
+
 export function isModalOpen(id: ModalId): boolean {
   return modalState.openModals[id]?.visible === true;
 }

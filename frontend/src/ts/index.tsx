@@ -63,6 +63,18 @@ if (import.meta.env.DEV) {
   void import("./dev/expose");
 }
 
+// pages and the result chart are lazy chunks: after a deploy an open tab can
+// ask for chunk hashes that no longer exist. Reload once to pick up the new
+// build (at most once a minute, so a truly missing chunk can't loop)
+window.addEventListener("vite:preloadError", (event) => {
+  const key = "chunkReloadAt";
+  const last = Number(sessionStorage.getItem(key) ?? 0);
+  if (Date.now() - last < 60_000) return;
+  sessionStorage.setItem(key, String(Date.now()));
+  event.preventDefault();
+  location.reload();
+});
+
 // render before anything that might touch component-rendered DOM (eg. test page).
 // Renders after the static markup in <body> (index.html)
 render(() => <App />, document.body);
