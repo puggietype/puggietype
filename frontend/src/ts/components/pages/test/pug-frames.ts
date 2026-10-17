@@ -74,3 +74,14 @@ export function normalizePugSvg(
   }
   return svg;
 }
+
+/** themes with a full-colour pug palette; every other theme gets the mono pug */
+export const PUG_COLOR_THEMES: readonly string[] = [
+  "puggie_dark",
+  "puggie_light",
+  "midnight_chow",
+];
+
+export function getPugVariant(themeName: string): "color" | "mono" {
+  return PUG_COLOR_THEMES.includes(themeName) ? "color" : "mono";
+}

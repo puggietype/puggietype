@@ -4,6 +4,7 @@ import {
   getHandsFrame,
   getTransitionFrame,
   getPugFrameUrl,
+  getPugVariant,
   normalizePugSvg,
 } from "../../../../src/ts/components/pages/test/pug-frames";
 
@@ -83,6 +84,18 @@ describe("pug-frames", () => {
         `<svg viewBox="0 0 1 1"><script>alert(1)</script><path onclick="x()"/></svg>`,
       );
       expect(out).toEqual(`<svg viewBox="0 0 1 1"><path/></svg>`);
+    });
+  });
+
+  describe("getPugVariant", () => {
+    it.each([
+      ["puggie_dark", "color"],
+      ["puggie_light", "color"],
+      ["midnight_chow", "color"],
+      ["serika_dark", "mono"],
+      ["custom", "mono"],
+    ])("%s -> %s", (theme, variant) => {
+      expect(getPugVariant(theme)).toEqual(variant);
     });
   });
 });

@@ -27,10 +27,15 @@ alternate), see `src/ts/states/monkey.ts`. The mapping lives in
   `currentColor` (= `--pug-ink`) for outlines, and `var(--pug-fill, …)`,
   `var(--pug-paw, …)`, `var(--pug-mask, …)`, `var(--pug-bean, …)`,
   `var(--pug-key, …)`, `var(--pug-blush, …)` for fills. Always include a fallback colour.
-  puggie themes set these in `static/themes/<theme>.css`; all other themes use
-  the defaults in `src/styles/core.scss`.
+  puggie themes set these in `static/themes/<theme>.css`. All other themes
+  (and custom themes) get the brand's monochrome pug: `<html data-pug="mono">`
+  (white fill/paws, mask + beans in ink, no blush, from
+  `src/styles/pug-mono.scss`), with the pressed key in `--main-color`.
 - No scripts or event handlers (they are stripped). Ids are prefixed per frame
   automatically, so `url(#id)` references are fine.
+
+`pug-frames.js` is the brand kit's inline-svg bundle, kept for reference only;
+code loads the `.svg` files by filename.
 
 To pull new art: `pnpm sync-pug` (frames only) or `pnpm sync-pug --all`
 (also favicons, logos and theme tokens), run in `frontend/`. Set `BRAND_DIR`

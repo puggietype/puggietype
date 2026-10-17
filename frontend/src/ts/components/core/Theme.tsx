@@ -7,6 +7,7 @@ import { useRefWithUtils } from "../../hooks/useRefWithUtils";
 import { hideLoaderBar, showLoaderBar } from "../../states/loader-bar";
 import { showNoticeNotification } from "../../states/notifications";
 import { getTheme } from "../../states/theme";
+import { getPugVariant } from "../pages/test/pug-frames";
 import { FavIcon } from "./FavIcon";
 
 export function Theme(): JSXElement {
@@ -56,6 +57,16 @@ export function Theme(): JSXElement {
     const name = getThemeName();
     return name !== "custom" && (themes[name]?.hasCss ?? false);
   };
+
+  // brand: monochrome line-art pug outside the puggie themes
+  createEffect(() => {
+    const root = document.documentElement;
+    if (getPugVariant(getThemeName()) === "mono") {
+      root.setAttribute("data-pug", "mono");
+    } else {
+      root.removeAttribute("data-pug");
+    }
+  });
 
   createEffect(() => {
     const name = getThemeName();

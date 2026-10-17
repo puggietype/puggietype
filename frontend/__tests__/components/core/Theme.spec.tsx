@@ -34,19 +34,24 @@ describe("Theme component", () => {
     notificationAddMock.mockClear();
     themeSignalMock.mockImplementation(() => themeSignal());
     setThemeSignal({
+      ...baseTheme,
       name: "dark",
-      bg: "#000",
-      main: "#fff",
-      caret: "#fff",
-      sub: "#aaa",
-      subAlt: "#888",
-      text: "#fff",
-      error: "#f00",
-      errorExtra: "#c00",
-      colorfulError: "#f55",
-      colorfulErrorExtra: "#c55",
     });
   });
+
+  const baseTheme: ThemeWithName = {
+    name: "dark",
+    bg: "#000",
+    main: "#fff",
+    caret: "#fff",
+    sub: "#aaa",
+    subAlt: "#888",
+    text: "#fff",
+    error: "#f00",
+    errorExtra: "#c00",
+    colorfulError: "#f55",
+    colorfulErrorExtra: "#c55",
+  };
 
   it("injects CSS variables based on theme", () => {
     const { style } = renderComponent();
@@ -67,7 +72,7 @@ describe("Theme component", () => {
   });
 
   it("updates CSS variables based on signal", () => {
-    setThemeSignal({ name: "light", bg: "#f00" } as any);
+    setThemeSignal({ ...baseTheme, name: "light" as any, bg: "#f00" });
     const { style } = renderComponent();
 
     expect(style.innerHTML).toContain("--bg-color: #f00;");
@@ -83,15 +88,19 @@ describe("Theme component", () => {
   });
 
   it("removes CSS when theme has no CSS", async () => {
-    // oxlint-disable-next-line typescript/no-unsafe-return
-    themeSignalMock.mockImplementation(() => ({ name: "light" }) as any);
+    themeSignalMock.mockImplementation(() => ({
+      ...baseTheme,
+      name: "light" as any,
+    }));
     const { css } = renderComponent();
     expect(css).not.toBeInTheDocument();
   });
 
   it("removes CSS when theme is custom", async () => {
-    // oxlint-disable-next-line typescript/no-unsafe-return
-    themeSignalMock.mockImplementation(() => ({ name: "custom" }) as any);
+    themeSignalMock.mockImplementation(() => ({
+      ...baseTheme,
+      name: "custom",
+    }));
     const { css } = renderComponent();
     expect(css).not.toBeInTheDocument();
   });
@@ -102,6 +111,17 @@ describe("Theme component", () => {
     fireEvent.error(css);
     expect(loaderHideMock).toHaveBeenCalledOnce();
     expect(notificationAddMock).toHaveBeenCalledWith("Failed to load theme");
+  });
+
+  it("uses the mono pug outside the puggie themes", () => {
+    renderComponent();
+    expect(document.documentElement.dataset["pug"]).toBe("mono");
+  });
+
+  it("uses the colour pug on puggie themes", () => {
+    setThemeSignal({ ...baseTheme, name: "puggie_dark" });
+    renderComponent();
+    expect(document.documentElement.dataset["pug"]).toBeUndefined();
   });
 
   it("renders favicon", () => {
