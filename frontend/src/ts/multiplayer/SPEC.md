@@ -29,15 +29,15 @@ Solo typing must keep working unchanged. Pug mode works during races.
 
 | file | role |
 | --- | --- |
-| `protocol.ts` | wire types + zod (copy of the server's) |
-| `clock.ts` | clock offset from ping samples (pure) |
-| `progress.ts` | progress payload, change detection (pure) |
-| `caret-position.ts` | opponent caret mapping (pure) |
-| `client.ts` | WebSocket client: hello, ping sync, reconnect, send/receive |
-| `store.ts` | Solid signals: connection, room, race, results |
-| `race.ts` | engine glue: settings override, word feed, countdown, input lock, progress loop, finish |
-| `opponent-carets.ts` | caret layer on `#words` |
-| `components/` | Race page, lobby, countdown, progress bars, podium |
+| `protocol.ts` | wire types + zod (verbatim copy of the server's) |
+| `clock.ts` | clock offset from ping samples, countdown seconds (pure) |
+| `helpers.ts` | room codes, invite links, start rules, config mapping, progress diff/wpm, finish input (pure) |
+| `caret-position.ts` | opponent caret mapping, smoothing, tag stacking (pure) |
+| `client.ts` | WebSocket client: ping sync, hello, session in sessionStorage, reconnect |
+| `store.ts` | Solid signals: connection, room, race, progress, results, caret toggle |
+| `race.ts` | actions + engine glue: settings override/restore, countdown, input lock, progress loop, finish |
+| `engine-hooks.ts` | dependency-free state the engine reads (race words, locks, finish callback) |
+| `components/` | `RacePage` (home, lobby, waiting, podium), `RaceOverlay` + `OpponentCarets` + `RaceProgressBars` on the test page |
 
 Engine hook points are kept small and marked `// multiplayer hook`.
 

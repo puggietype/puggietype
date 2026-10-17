@@ -86,6 +86,7 @@ test("two players race, see each other, get a podium and rematch", async ({
   await expect(byTestId(a, "mp-start")).toBeDisabled();
   await byTestId(b, "mp-ready").click();
   await expect(byTestId(a, "mp-start")).toBeEnabled();
+  await a.waitForTimeout(400); // let the button fade in
   await a.screenshot({ path: `${SCREENS}/lobby.png` });
 
   // race

@@ -3,27 +3,33 @@ import { createResource, JSXElement } from "solid-js";
 import {
   getPugImageUrl,
   normalizePugSvg,
-  PUG_WINNER_FILE,
 } from "../../components/pages/test/pug-frames";
 import { cn } from "../../utils/cn";
 
-async function loadWinner(): Promise<string> {
+let nextId = 0;
+
+async function loadSvg(file: string): Promise<string> {
   try {
-    const response = await fetch(getPugImageUrl(PUG_WINNER_FILE));
+    const response = await fetch(getPugImageUrl(file));
     if (!response.ok) return "";
-    return normalizePugSvg(await response.text(), "pug-winner-") ?? "";
+    return normalizePugSvg(await response.text(), `pug-img-${nextId++}-`) ?? "";
   } catch {
     return "";
   }
 }
 
-/** the pug-winner frame, inlined so theme colours apply */
-export function PugWinner(props: { class?: string }): JSXElement {
-  const [svg] = createResource(loadWinner);
+/** a pug frame by filename, inlined so theme colours apply */
+export function PugImage(props: {
+  file: string;
+  class?: string;
+  testId?: string;
+}): JSXElement {
+  const [svg] = createResource(() => props.file, loadSvg);
   return (
     <div
       class={cn("text-(--pug-ink) [&>svg]:h-full [&>svg]:w-full", props.class)}
-      data-testid="mp-pug-winner"
+      data-testid={props.testId}
+      aria-hidden="true"
       // oxlint-disable-next-line solid/no-innerhtml -- same-origin static svg, sanitised by normalizePugSvg
       innerHTML={svg() ?? ""}
     ></div>

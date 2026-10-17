@@ -17,7 +17,7 @@ export function RaceOverlay(): JSXElement {
   return (
     <Show when={race()}>
       {(info) => (
-        <div class="grid gap-3 pb-4" data-testid="mp-race">
+        <div class="grid gap-3 pb-12" data-testid="mp-race">
           <div class="flex items-center justify-between gap-4 text-sm font-(--font) text-sub">
             <span>
               private · {room()?.code} · {settingsSummary(info().settings)}

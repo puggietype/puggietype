@@ -4,10 +4,11 @@ import type { RaceResult, RoomState } from "../protocol";
 
 import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
+import { PUG_WINNER_FILE } from "../../components/pages/test/pug-frames";
 import { cn } from "../../utils/cn";
 import { leaveRoom, rematch } from "../race";
 import { isHost, myId } from "../store";
-import { PugWinner } from "./PugWinner";
+import { PugImage } from "./PugImage";
 import {
   ordinal,
   PLAYER_BG,
@@ -40,7 +41,11 @@ export function Podium(props: {
       class="grid items-center gap-8 md:grid-cols-[2fr_3fr]"
       data-testid="mp-podium"
     >
-      <PugWinner class="mx-auto aspect-square w-full max-w-80" />
+      <PugImage
+        file={PUG_WINNER_FILE}
+        class="mx-auto aspect-square w-full max-w-80"
+        testId="mp-pug-winner"
+      />
       <div class="grid gap-4">
         <div class="text-sm font-(--font) text-sub">
           race over · private · {props.room.code} ·{" "}

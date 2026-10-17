@@ -2,6 +2,7 @@ import { For, JSXElement, Show } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
+import { PUG_FRAME_FILES } from "../../components/pages/test/pug-frames";
 import {
   showErrorNotification,
   showSuccessNotification,
@@ -16,6 +17,7 @@ import {
 } from "../protocol";
 import { leaveRoom, setReady, startRace, updateSettings } from "../race";
 import { isHost, myId } from "../store";
+import { PugImage } from "./PugImage";
 import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
 const CARD = "grid content-start gap-4 rounded-lg bg-sub-alt p-6";
@@ -259,6 +261,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             </Show>
           </div>
         </div>
+        <PugImage file={PUG_FRAME_FILES.idle} class="mx-auto mt-2 h-36 w-36" />
       </section>
     </div>
   );
