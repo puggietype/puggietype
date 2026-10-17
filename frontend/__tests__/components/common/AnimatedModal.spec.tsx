@@ -6,7 +6,7 @@ import { hideModal, showModal } from "../../../src/ts/states/modals";
 
 describe("AnimatedModal", () => {
   beforeEach(() => {
-    showModal("Support");
+    showModal("VersionHistory");
     vi.clearAllMocks();
 
     // Mock dialog methods that don't exist in jsdom
@@ -30,7 +30,7 @@ describe("AnimatedModal", () => {
     modalDiv: HTMLDivElement;
   } {
     const { container } = render(() => (
-      <AnimatedModal id="Support" {...props}>
+      <AnimatedModal id="VersionHistory" {...props}>
         <div data-testid="modal-content">Test Content</div>
       </AnimatedModal>
     ));
@@ -60,7 +60,7 @@ describe("AnimatedModal", () => {
   });
 
   it("doesnt render children if not open", () => {
-    hideModal("Support");
+    hideModal("VersionHistory");
     const { modalDiv } = renderModal({});
 
     expect(modalDiv).not.toBeInTheDocument();

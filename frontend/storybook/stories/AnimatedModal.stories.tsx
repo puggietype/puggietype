@@ -33,8 +33,8 @@ const meta = preview.meta({
 export const Default = meta.story({
   render: () => (
     <>
-      <ModalTrigger modalId="Contact" label="Open Example Modal" />
-      <AnimatedModal id="Contact" title="Example Modal">
+      <ModalTrigger modalId="Cookies" label="Open Example Modal" />
+      <AnimatedModal id="Cookies" title="Example Modal">
         <div>
           <p>This is modal content.</p>
         </div>
@@ -46,9 +46,9 @@ export const Default = meta.story({
 export const NoAnimation = meta.story({
   render: () => (
     <>
-      <ModalTrigger modalId="Support" label="Open No Animation Modal" />
+      <ModalTrigger modalId="VersionHistory" label="Open No Animation Modal" />
       <AnimatedModal
-        id="Support"
+        id="VersionHistory"
         title="No Animation Modal"
         animationMode="none"
       >
