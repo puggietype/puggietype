@@ -18,7 +18,9 @@ let raceWords: readonly string[] | undefined;
 let inputLocked = false;
 let restartLocked = false;
 let finishHandler: ((data: RaceFinishData) => void) | undefined;
-let discardNextFinish = false;
+/** a pending discard expires, so it can't eat a later solo result */
+const DISCARD_WINDOW_MS = 10_000;
+let discardUntil = 0;
 
 /** while set, the words generator returns these words in order */
 export function setRaceWords(words: readonly string[] | undefined): void {
@@ -68,7 +70,7 @@ export function onRaceFinish(
  * that result once instead of letting it become a solo test.
  */
 export function discardPendingRaceFinish(): void {
-  discardNextFinish = true;
+  discardUntil = Date.now() + DISCARD_WINDOW_MS;
 }
 
 /**
@@ -76,8 +78,8 @@ export function discardPendingRaceFinish(): void {
  * in which case the engine must not save it or show the result screen.
  */
 export function handleRaceFinish(data: RaceFinishData): boolean {
-  if (discardNextFinish) {
-    discardNextFinish = false;
+  if (Date.now() < discardUntil) {
+    discardUntil = 0;
     return true;
   }
   if (raceWords === undefined || finishHandler === undefined) return false;

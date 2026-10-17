@@ -51,3 +51,17 @@ Engine hook points are kept small and marked `// multiplayer hook`.
 
 - Always: frames referenced by filename, `data-testid` on interactive MP elements.
 - Never: save MP results to the backend, persist the overridden race config.
+
+## Known gaps
+
+- Time mode gets the server's 300 words; the word stream ends there (a 120 s race above
+  ~150 wpm finishes early).
+- Reloading mid-race rejoins with a fresh test from word 0; progress typed before the
+  reload is lost. After finishing, a reload just waits for the results.
+- Browser back mid-race bypasses the navigation guard; the race page then offers to leave.
+- Public matchmaking is a stub. Results are never saved.
+
+## Dev
+
+Server: `cd puggietype-server && pnpm start` (:2567, vite proxies `/ws`). E2E: `pnpm e2e` from
+the repo root (`BASE_URL`, `SCREENS_DIR`).

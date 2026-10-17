@@ -2,8 +2,24 @@ import { mkdirSync } from "node:fs";
 
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const SCREENS = process.env["SCREENS_DIR"] ?? "/workspace/puggietype/screens";
-mkdirSync(SCREENS, { recursive: true });
+/** SCREENS_DIR, else the brand workspace if present, else test-results */
+function screensDir(): string {
+  for (const dir of [
+    process.env["SCREENS_DIR"],
+    "/workspace/puggietype/screens",
+    "test-results/screens",
+  ]) {
+    if (dir === undefined) continue;
+    try {
+      mkdirSync(dir, { recursive: true });
+      return dir;
+    } catch {
+      // not writable here, try the next one
+    }
+  }
+  return ".";
+}
+const SCREENS = screensDir();
 const FAST_DELAY_MS = 25;
 const SLOW_DELAY_MS = 140;
 

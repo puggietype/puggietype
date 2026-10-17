@@ -345,4 +345,47 @@ describe("race lifecycle", () => {
     expect(Store.results()).toBeUndefined();
     expect(Store.race()).toBeUndefined();
   });
+
+  it("regenerates the test after leaving mid-race on the test page", async () => {
+    await startCountdown(Date.now());
+    engine.restart.mockClear();
+    Race.leaveRoom();
+    await flush();
+    expect(engine.restart).toHaveBeenCalledTimes(1);
+    expect(Hooks.isRaceActive()).toBe(false);
+  });
+
+  it("restores a stale snapshot and rejoins on resume", async () => {
+    await startCountdown();
+    // simulate a reload: the snapshot and room code survive in sessionStorage
+    const saved = {
+      room: sessionStorage.getItem("puggie-mp-room"),
+      config: sessionStorage.getItem("puggie-mp-saved-config"),
+    };
+    Race.leaveRoom();
+    sessionStorage.setItem("puggie-mp-room", saved.room ?? "");
+    sessionStorage.setItem("puggie-mp-saved-config", saved.config ?? "");
+    engine.config["language"] = "english";
+    fakeClient.sent = [];
+    expect(Race.resumeSession("me")).toBe(true);
+    expect(engine.config).toMatchObject(USER_CONFIG);
+    expect(fakeClient.sent).toEqual([{ type: "room:join", code: "ABC234" }]);
+    receive({ type: "error", code: "ROOM_IN_PROGRESS", message: "x" });
+    expect(sessionStorage.getItem("puggie-mp-room")).toBeNull();
+  });
+
+  it("lets a pending discard expire", () => {
+    Hooks.discardPendingRaceFinish();
+    vi.advanceTimersByTime(11_000);
+    expect(
+      Hooks.handleRaceFinish({
+        wpm: 1,
+        raw: 1,
+        acc: 100,
+        testMs: 1,
+        input: [],
+        keyCount: 0,
+      }),
+    ).toBe(false);
+  });
 });

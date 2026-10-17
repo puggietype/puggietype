@@ -127,11 +127,14 @@ export function rematch(): void {
  * 20 s), and put back config a race had overridden.
  */
 export function resumeSession(name: string): boolean {
-  if (sessionStorage.getItem(ROOM_KEY) === null || name === "") {
-    restoreConfig();
-    return false;
-  }
+  // a rejoined race re-applies its settings from a fresh snapshot
+  restoreConfig();
+  const code = sessionStorage.getItem(ROOM_KEY);
+  if (code === null || name === "") return false;
   client.connect(name);
+  // resends the snapshot if we're still in the room, errors (and clears the
+  // stored code) if the grace period is over
+  client.send({ type: "room:join", code });
   return true;
 }
 
@@ -142,12 +145,15 @@ function send(msg: ClientMessage): void {
 
 /** forget the room locally (left, kicked out or session taken over) */
 function dropRoom(): void {
+  const wasRacing = isRaceActive();
   sessionStorage.removeItem(ROOM_KEY);
   endRace();
   batch(() => {
     setRoom(undefined);
     setResults(undefined);
   });
+  // don't leave the race words on screen for a solo test
+  if (wasRacing && getActivePage() === "test") void restart({ noAnim: true });
 }
 
 // ---------------------------------------------------------------- inbound
@@ -186,7 +192,11 @@ function handleMessage(msg: ServerMessage): void {
       return;
     case "error":
       setLastError(msg.message);
-      if (msg.code === "ROOM_NOT_FOUND" || msg.code === "ROOM_FULL") {
+      if (
+        msg.code === "ROOM_NOT_FOUND" ||
+        msg.code === "ROOM_FULL" ||
+        msg.code === "ROOM_IN_PROGRESS"
+      ) {
         sessionStorage.removeItem(ROOM_KEY);
       }
       if (msg.code !== "RATE_LIMITED") {
@@ -208,6 +218,7 @@ function onCountdown(info: RaceInfo): void {
       setRace(info);
       setRaceFinished(true);
     });
+    if (getActivePage() !== "race") goTo(`/r/${room()?.code ?? ""}`);
     return;
   }
   void beginRace(info);

@@ -205,7 +205,11 @@ export async function navigate(
   }
 
   // multiplayer hook: stay on the test page until the race is done
-  if (!options.force && isRaceActive()) {
+  if (
+    !options.force &&
+    isRaceActive() &&
+    new URL(url, location.origin).pathname !== "/"
+  ) {
     showNoticeNotification(
       "Finish the race first, or leave it from the race bar.",
     );
