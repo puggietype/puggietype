@@ -22,23 +22,23 @@ import {
 
 describe("normalizeRoomCode", () => {
   it("uppercases and strips separators", () => {
-    expect(normalizeRoomCode(" abc-23x ")).toBe("ABC23X");
+    expect(normalizeRoomCode(" abcd-23xy ")).toBe("ABCD23XY");
   });
   it("rejects wrong length and ambiguous chars", () => {
-    expect(normalizeRoomCode("ABC12")).toBeUndefined();
-    expect(normalizeRoomCode("ABCDE0")).toBeUndefined();
-    expect(normalizeRoomCode("ABCDEFG")).toBeUndefined();
+    expect(normalizeRoomCode("ABC234")).toBeUndefined();
+    expect(normalizeRoomCode("ABCDEFG0")).toBeUndefined();
+    expect(normalizeRoomCode("ABCDEFGHJ")).toBeUndefined();
   });
 });
 
 describe("invite links", () => {
   it("builds and parses /r/CODE", () => {
-    const link = inviteLink("https://puggie.example", "ABC234");
-    expect(link).toBe("https://puggie.example/r/ABC234");
-    expect(parseInvitePath(new URL(link).pathname)).toBe("ABC234");
+    const link = inviteLink("https://puggie.example", "ABCD2345");
+    expect(link).toBe("https://puggie.example/r/ABCD2345");
+    expect(parseInvitePath(new URL(link).pathname)).toBe("ABCD2345");
   });
   it("accepts lowercase and a trailing slash", () => {
-    expect(parseInvitePath("/r/abc234/")).toBe("ABC234");
+    expect(parseInvitePath("/r/abcd2345/")).toBe("ABCD2345");
   });
   it("ignores other paths", () => {
     expect(parseInvitePath("/race")).toBeUndefined();

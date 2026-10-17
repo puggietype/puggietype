@@ -10,7 +10,8 @@ import { z } from "zod";
 
 export const PROTOCOL_VERSION = 1;
 export const MAX_PLAYERS = 4;
-export const ROOM_CODE_LENGTH = 6;
+/** 31^8 ≈ 8.5e11 codes; with join rate limits, guessing a live lobby is impractical. */
+export const ROOM_CODE_LENGTH = 8;
 /** Unambiguous alphabet: no 0/O, 1/I/L. */
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const PLAYER_COLORS = ["opp1", "opp2", "opp3", "opp4"] as const;
@@ -75,6 +76,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     /** Reconnect: both the public playerId and the secret sessionToken from `welcome`. */
     playerId: z.string().min(1).max(64).optional(),
     sessionToken: z.string().min(1).max(128).optional(),
+    /** The user confirmed the age gate (13+). Required before room:create / room:join. */
+    ageConfirmed: z.boolean().optional(),
   }),
   z.object({
     type: z.literal("room:create"),
@@ -82,6 +85,11 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("room:join"), code: z.string().min(1).max(16) }),
   z.object({ type: z.literal("room:leave") }),
+  /** Host only, lobby or results phase: remove a player; they can't rejoin this code for 10 min. */
+  z.object({
+    type: z.literal("room:kick"),
+    playerId: z.string().min(1).max(64),
+  }),
   z.object({ type: z.literal("room:settings"), settings: SettingsPatchSchema }),
   z.object({ type: z.literal("player:ready"), ready: z.boolean() }),
   /** Lobby only: swap your server-assigned nickname for a new one, unique in the room. */
@@ -186,6 +194,9 @@ export type ErrorCode =
   | "INVALID_SETTINGS"
   | "ALREADY_FINISHED"
   | "RATE_LIMITED"
+  | "AGE_REQUIRED"
+  | "PLAYER_NOT_FOUND"
+  | "KICKED"
   | "SERVER_FULL"
   | "INTERNAL";
 
@@ -207,6 +218,10 @@ export type ServerMessage =
     }
   | { type: "race:progress"; players: PlayerProgress[] }
   | { type: "race:results"; results: RaceResult[] }
+  /** The server closed your room (inactivity); you are no longer in it and its code is gone. */
+  | { type: "room:closed"; reason: "idle" }
+  /** The host removed you from your room. */
+  | { type: "room:kicked" }
   | { type: "error"; code: ErrorCode; message: string };
 export type ServerMessageType = ServerMessage["type"];
 

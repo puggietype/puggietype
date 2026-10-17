@@ -1,14 +1,8 @@
-import {
-  createEffect,
-  JSXElement,
-  Match,
-  onMount,
-  Show,
-  Switch,
-} from "solid-js";
+import { createEffect, JSXElement, Match, on, Show, Switch } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
+import { ageConfirmed } from "../age-gate";
 import { connect, joinRoom, leaveRoom, resumeSession } from "../race";
 import {
   connectionStatus,
@@ -19,22 +13,27 @@ import {
   room,
   setInviteCode,
 } from "../store";
+import { AgeGate } from "./AgeGate";
 import { Lobby } from "./Lobby";
 import { Podium } from "./Podium";
 import { RaceHome } from "./RaceHome";
 import { RaceProgressBars } from "./RaceProgressBars";
 
 export function RacePage(): JSXElement {
-  onMount(() => {
-    if (room() === undefined && inviteCode() === undefined) {
-      resumeSession();
-    }
-  });
+  // nothing connects before the 13+ confirmation
+  createEffect(
+    on(ageConfirmed, (confirmed) => {
+      if (!confirmed) return;
+      if (room() === undefined && inviteCode() === undefined) {
+        resumeSession();
+      }
+    }),
+  );
 
   // /r/CODE: join straight away (the server assigns a nickname)
   createEffect(() => {
     const code = inviteCode();
-    if (code === undefined) return;
+    if (code === undefined || !ageConfirmed()) return;
     setInviteCode(undefined);
     if (room()?.code === code) return;
     connect();
@@ -43,42 +42,44 @@ export function RacePage(): JSXElement {
 
   return (
     <div class="grid content-start gap-6 py-8" data-testid="race-page">
-      <Show when={connectionStatus() === "reconnecting"}>
-        <div class="text-center text-sub" data-testid="mp-reconnecting">
-          <Fa icon="fa-circle-notch" spin /> reconnecting...
-        </div>
-      </Show>
-      <Show when={room()} fallback={<RaceHome />}>
-        {(r) => (
-          <Switch fallback={<Lobby room={r()} />}>
-            <Match when={results()}>
-              {(res) => <Podium room={r()} results={res()} />}
-            </Match>
-            <Match when={race() && raceFinished()}>
-              <div class="grid gap-4" data-testid="mp-waiting">
-                <div class="text-center text-xl text-sub">
-                  you finished! waiting for the others...
+      <Show when={ageConfirmed()} fallback={<AgeGate />}>
+        <Show when={connectionStatus() === "reconnecting"}>
+          <div class="text-center text-sub" data-testid="mp-reconnecting">
+            <Fa icon="fa-circle-notch" spin /> reconnecting...
+          </div>
+        </Show>
+        <Show when={room()} fallback={<RaceHome />}>
+          {(r) => (
+            <Switch fallback={<Lobby room={r()} />}>
+              <Match when={results()}>
+                {(res) => <Podium room={r()} results={res()} />}
+              </Match>
+              <Match when={race() && raceFinished()}>
+                <div class="grid gap-4" data-testid="mp-waiting">
+                  <div class="text-center text-xl text-sub">
+                    you finished! waiting for the others...
+                  </div>
+                  <RaceProgressBars />
                 </div>
-                <RaceProgressBars />
-              </div>
-            </Match>
-            <Match when={race()}>
-              <div class="grid gap-4" data-testid="mp-left-race">
-                <div class="text-center text-xl text-sub">
-                  a race is running without you
+              </Match>
+              <Match when={race()}>
+                <div class="grid gap-4" data-testid="mp-left-race">
+                  <div class="text-center text-xl text-sub">
+                    a race is running without you
+                  </div>
+                  <RaceProgressBars />
+                  <Button
+                    text="leave the room"
+                    fa={{ icon: "fa-sign-out-alt" }}
+                    class="mx-auto px-5 py-3"
+                    dataset={{ "data-testid": "mp-leave" }}
+                    onClick={() => leaveRoom()}
+                  />
                 </div>
-                <RaceProgressBars />
-                <Button
-                  text="leave the room"
-                  fa={{ icon: "fa-sign-out-alt" }}
-                  class="mx-auto px-5 py-3"
-                  dataset={{ "data-testid": "mp-leave" }}
-                  onClick={() => leaveRoom()}
-                />
-              </div>
-            </Match>
-          </Switch>
-        )}
+              </Match>
+            </Switch>
+          )}
+        </Show>
       </Show>
     </div>
   );

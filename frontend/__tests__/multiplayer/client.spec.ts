@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { confirmAge } from "../../src/ts/multiplayer/age-gate";
 import { MultiplayerClient } from "../../src/ts/multiplayer/client";
 import type { ServerMessage } from "../../src/ts/multiplayer/protocol";
 
@@ -77,6 +78,8 @@ describe("MultiplayerClient", () => {
   beforeEach(() => {
     FakeSocket.instances = [];
     sessionStorage.clear();
+    localStorage.clear();
+    confirmAge();
     vi.stubGlobal("WebSocket", FakeSocket);
     vi.useFakeTimers();
   });
@@ -97,7 +100,15 @@ describe("MultiplayerClient", () => {
       "ping",
       "hello",
     ]);
-    expect(lastSocket().sent[5]).toEqual({ type: "hello" });
+    expect(lastSocket().sent[5]).toEqual({ type: "hello", ageConfirmed: true });
+  });
+
+  it("never opens a socket before the age is confirmed", () => {
+    localStorage.clear();
+    const { client } = setup();
+    client.connect();
+    client.send({ type: "room:create" });
+    expect(FakeSocket.instances).toHaveLength(0);
   });
 
   it("queues messages until welcome, keeping the latest per type", () => {
@@ -146,6 +157,7 @@ describe("MultiplayerClient", () => {
       type: "hello",
       playerId: "p1",
       sessionToken: "secret",
+      ageConfirmed: true,
     });
   });
 

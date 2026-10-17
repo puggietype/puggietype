@@ -1,3 +1,4 @@
+import { isAgeConfirmed } from "./age-gate";
 import { computeClockOffset, type ClockSample } from "./clock";
 import { wsUrl } from "./helpers";
 import type { ClientMessage, ServerMessage } from "./protocol";
@@ -69,7 +70,9 @@ export class MultiplayerClient {
     return Date.now() + this.offset;
   }
 
+  /** no-op until the user passed the age gate: no socket before that */
   connect(): void {
+    if (!isAgeConfirmed()) return;
     this.closedByUser = false;
     if (this.ws !== undefined) return;
     this.open("connecting");
@@ -100,7 +103,8 @@ export class MultiplayerClient {
 
   private helloMessage(): ClientMessage {
     const session = loadSession();
-    return { type: "hello", ...session };
+    // only reachable after the age gate (see connect)
+    return { type: "hello", ...session, ageConfirmed: true };
   }
 
   private open(status: ConnectionStatus): void {

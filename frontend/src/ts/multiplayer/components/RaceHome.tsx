@@ -61,8 +61,8 @@ export function RaceHome(props: { code?: string }): JSXElement {
               id="mpJoinCode"
               class={`${INPUT} text-xl tracking-[0.3em] uppercase`}
               data-testid="mp-join-code"
-              maxLength={7}
-              placeholder="ABC234"
+              maxLength={9}
+              placeholder="ABCD2345"
               value={code()}
               onInput={(e) => setCode(e.currentTarget.value)}
             />
