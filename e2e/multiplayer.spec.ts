@@ -207,3 +207,124 @@ test("two players race, see each other, get a podium and rematch", async ({
   await ctxA.close();
   await ctxB.close();
 });
+
+type RaceSetup = {
+  a: Page;
+  b: Page;
+  sentByA: Record<string, unknown>[];
+  pageErrors: string[];
+  close: () => Promise<void>;
+};
+
+/** A hosts a private lobby with these settings, B joins and readies, A starts */
+async function startTwoPlayerRace(
+  browser: import("@playwright/test").Browser,
+  mode: "time" | "words",
+  length: number,
+): Promise<RaceSetup> {
+  const ctxA = await browser.newContext();
+  const ctxB = await browser.newContext();
+  await skipNgrokWarning(ctxA);
+  await skipNgrokWarning(ctxB);
+  const a = await ctxA.newPage();
+  const b = await ctxB.newPage();
+  const pageErrors: string[] = [];
+  for (const p of [a, b]) p.on("pageerror", (e) => pageErrors.push(e.message));
+  const sentByA: Record<string, unknown>[] = [];
+  a.on("websocket", (ws) =>
+    ws.on("framesent", (f) => {
+      try {
+        sentByA.push(JSON.parse(String(f.payload)) as Record<string, unknown>);
+      } catch {
+        // not json
+      }
+    }),
+  );
+
+  await a.goto("/race");
+  await waitForApp(a);
+  await byTestId(a, "mp-create").click();
+  await expect(byTestId(a, "mp-lobby")).toBeVisible();
+  const code = (await byTestId(a, "mp-room-code").innerText()).trim();
+  await byTestId(a, `mp-mode-${mode}`).click();
+  await byTestId(a, `mp-length-${length}`).click();
+  await b.goto(`/r/${code}`);
+  await expect(byTestId(b, "mp-lobby")).toBeVisible();
+  await byTestId(b, "mp-ready").click();
+  await expect(byTestId(a, "mp-start")).toBeEnabled();
+  await byTestId(a, "mp-start").click();
+  await Promise.all([waitForRaceStart(a), waitForRaceStart(b)]);
+  return {
+    a,
+    b,
+    sentByA,
+    pageErrors,
+    close: async () => {
+      await ctxA.close();
+      await ctxB.close();
+    },
+  };
+}
+
+/** types the active word plus a space, n times */
+async function typeWords(page: Page, n: number, delay: number): Promise<void> {
+  for (let i = 0; i < n; i++) {
+    const word = await page
+      .locator("#words .word.active letter")
+      .allTextContents();
+    await page.keyboard.type(`${word.join("")} `, { delay });
+  }
+}
+
+type SentProgress = { wordIndex: number; charIndex: number; testMs: number };
+
+const progressOf = (msgs: Record<string, unknown>[]): SentProgress[] =>
+  msgs.filter((m) => m["type"] === "race:progress") as SentProgress[];
+
+test("reloading mid-race resumes at the same word on the race clock (MP-002)", async ({
+  browser,
+}) => {
+  const { a, b, sentByA, pageErrors, close } = await startTwoPlayerRace(
+    browser,
+    "time",
+    30,
+  );
+  // ~200 wpm, well under the server's plausibility limits
+  await typeWords(a, 12, 60);
+  const caretOnB = b.locator('[data-testid="mp-opponent-caret"]');
+  await expect(caretOnB).toHaveAttribute("data-word-index", "12");
+  const before = progressOf(sentByA).at(-1);
+  expect(before?.wordIndex).toBe(12);
+  const sentBefore = sentByA.length;
+
+  await a.reload();
+  await expect(byTestId(a, "mp-race")).toBeVisible({ timeout: 20_000 });
+  // the caret sits on word 12 and the words before it show as typed
+  await expect(a.locator("#words .word.active").first()).toHaveAttribute(
+    "data-wordindex",
+    "12",
+    { timeout: 15_000 },
+  );
+  await expect(
+    a.locator("#words .word[data-wordindex='11'] letter.correct"),
+  ).not.toHaveCount(0);
+  await typeWords(a, 3, 60);
+  const after = progressOf(sentByA.slice(sentBefore));
+  expect(after.length).toBeGreaterThan(0);
+  // never reported below where the server had us, on the shared clock
+  expect(Math.min(...after.map((p) => p.wordIndex))).toBeGreaterThanOrEqual(12);
+  expect(after.at(-1)?.wordIndex).toBe(15);
+  expect(after[0]?.testMs ?? 0).toBeGreaterThan(before?.testMs ?? 0);
+  await expect(caretOnB).toHaveAttribute("data-word-index", "15");
+
+  // the timer ends the race; the resumed result is accepted, not flagged
+  await expect(byTestId(a, "mp-podium")).toBeVisible({ timeout: 45_000 });
+  await expect(byTestId(a, "mp-result-flagged")).toHaveCount(0);
+  await expect(byTestId(a, "mp-my-place")).toHaveText("1st");
+  const finish = sentByA.find((m) => m["type"] === "race:finish") as
+    | { input: string[] }
+    | undefined;
+  expect(finish?.input.length).toBeGreaterThanOrEqual(15);
+  expect(pageErrors).toEqual([]);
+  await close();
+});

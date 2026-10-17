@@ -54,10 +54,9 @@ Engine hook points are kept small and marked `// multiplayer hook`.
 
 ## Known gaps
 
-- Time mode gets the server's 300 words; the word stream ends there (a 120 s race above
-  ~150 wpm finishes early).
-- Reloading mid-race rejoins with a fresh test from word 0; progress typed before the
-  reload is lost. After finishing, a reload just waits for the results.
+- Reloading mid-race resumes at the last position the server saw, on the race clock; the
+  words before it are replayed as typed correctly (mistakes before the reload are lost).
+  After finishing, a reload just waits for the results.
 - Browser back mid-race bypasses the navigation guard; the race page then offers to leave.
 - Public matchmaking is a stub. Results are never saved.
 
