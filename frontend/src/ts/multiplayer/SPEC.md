@@ -11,8 +11,14 @@ Solo typing must keep working unchanged. Pug mode works during races.
 
 ## Scope
 
+- 13+ age gate (`age-gate.ts`, `AgeGate.tsx`) on the first visit to `/race` or `/r/CODE`:
+  confirm (stored in localStorage) or go back; no WebSocket before confirming, then
+  `hello{ageConfirmed:true}`. Build flags `VITE_MULTIPLAYER`, `VITE_PUBLIC_MATCHES`, WS URL
+  `VITE_WS_URL` (see `DEPLOY.md`).
 - `/race` page: (nickname is server-assigned, shown with a reroll button in the lobby), Create private lobby, Join by code, "public match:
   coming soon" stub. `/r/CODE` auto-joins.
+- Host kick (two clicks) per player in lobby and results; the kicked player gets a notice and
+  lands on `/race`. The race page URL follows the room (`/r/CODE` in one, else `/race`).
 - Lobby: code + copy invite link, players (colour dot, name, host crown, ready), Ready toggle,
   host settings (time 15/30/60/120 | words 10/25/50/100, punctuation, numbers, language),
   read-only for non-hosts, Start (host) enabled when ≥2 players and every non-host is ready.
