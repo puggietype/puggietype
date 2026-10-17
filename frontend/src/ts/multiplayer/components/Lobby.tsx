@@ -15,7 +15,13 @@ import {
   type RoomState,
   type SettingsPatch,
 } from "../protocol";
-import { leaveRoom, setReady, startRace, updateSettings } from "../race";
+import {
+  leaveRoom,
+  rerollName,
+  setReady,
+  startRace,
+  updateSettings,
+} from "../race";
 import { isHost, myId } from "../store";
 import { PugImage } from "./PugImage";
 import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
@@ -175,6 +181,27 @@ export function Lobby(props: { room: RoomState }): JSXElement {
       </div>
 
       <section class={CARD}>
+        <Show when={me()}>
+          {(p) => (
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span class="text-sub">you are</span>
+              <span
+                class="text-xl font-(--font) text-main"
+                data-testid="mp-my-name"
+              >
+                {p().name}
+              </span>
+              <Button
+                variant="text"
+                text="new name"
+                fa={{ icon: "fa-dice" }}
+                class="py-1 text-sm"
+                dataset={{ "data-testid": "mp-reroll" }}
+                onClick={() => rerollName()}
+              />
+            </div>
+          )}
+        </Show>
         <div class={LABEL}>players · {props.room.players.length}/4</div>
         <ul class="grid gap-2">
           <For each={props.room.players}>

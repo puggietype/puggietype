@@ -89,8 +89,8 @@ export function serverNow(): number {
 
 // ---------------------------------------------------------------- actions
 
-export function connect(name: string): void {
-  client.connect(name);
+export function connect(): void {
+  client.connect();
 }
 
 export function createRoom(settings?: SettingsPatch): void {
@@ -104,6 +104,11 @@ export function joinRoom(code: string): void {
 export function leaveRoom(): void {
   send({ type: "room:leave" });
   dropRoom();
+}
+
+/** swap our server-assigned nickname for a new one (lobby only) */
+export function rerollName(): void {
+  send({ type: "player:reroll" });
 }
 
 export function setReady(ready: boolean): void {
@@ -126,12 +131,12 @@ export function rematch(): void {
  * After a reload: rejoin the room this tab was in (the server keeps us for
  * 20 s), and put back config a race had overridden.
  */
-export function resumeSession(name: string): boolean {
+export function resumeSession(): boolean {
   // a rejoined race re-applies its settings from a fresh snapshot
   restoreConfig();
   const code = sessionStorage.getItem(ROOM_KEY);
-  if (code === null || name === "") return false;
-  client.connect(name);
+  if (code === null) return false;
+  client.connect();
   // resends the snapshot if we're still in the room, errors (and clears the
   // stored code) if the grace period is over
   client.send({ type: "room:join", code });

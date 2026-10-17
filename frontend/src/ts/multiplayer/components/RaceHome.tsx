@@ -5,7 +5,7 @@ import { PugHead } from "../../components/common/PugHead";
 import { cn } from "../../utils/cn";
 import { normalizeRoomCode } from "../helpers";
 import { connect, createRoom, joinRoom } from "../race";
-import { connectionStatus, loadNickname, saveNickname } from "../store";
+import { connectionStatus } from "../store";
 import { PRIMARY_BUTTON } from "./ui";
 
 const CARD = "grid gap-3 rounded-lg bg-sub-alt p-6";
@@ -14,22 +14,14 @@ const INPUT =
   "w-full rounded bg-bg px-4 py-3 font-(--font) text-text placeholder:text-sub";
 
 export function RaceHome(props: { code?: string }): JSXElement {
-  const [name, setName] = createSignal(loadNickname());
   // initial value only, the field is user-editable afterwards
   const [code, setCode] = createSignal(untrack(() => props.code) ?? "");
 
-  const validName = (): string | undefined => {
-    const trimmed = name().trim();
-    return trimmed.length > 0 && trimmed.length <= 24 ? trimmed : undefined;
-  };
   const validCode = (): string | undefined => normalizeRoomCode(code());
   const busy = (): boolean => connectionStatus() === "connecting";
 
-  const withName = (action: () => void): void => {
-    const n = validName();
-    if (n === undefined) return;
-    saveNickname(n);
-    connect(n);
+  const withConnection = (action: () => void): void => {
+    connect();
     action();
   };
 
@@ -37,30 +29,19 @@ export function RaceHome(props: { code?: string }): JSXElement {
     <div class="grid gap-6 md:grid-cols-[3fr_2fr]">
       <div class="grid content-start gap-6">
         <section class={CARD}>
-          <label class={LABEL} for="mpNickname">
-            nickname
-          </label>
-          <input
-            id="mpNickname"
-            class={INPUT}
-            data-testid="mp-nickname"
-            maxLength={24}
-            placeholder="your name"
-            value={name()}
-            onInput={(e) => setName(e.currentTarget.value)}
-          />
-        </section>
-        <section class={CARD}>
           <div class={LABEL}>private match</div>
           <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="text-sub">race up to 4 friends with an invite link</div>
+            <div class="text-sub">
+              race up to 4 friends with an invite link. you get a random pug
+              name.
+            </div>
             <Button
               text="create private lobby"
               fa={{ icon: "fa-plus" }}
               class={cn(PRIMARY_BUTTON, "px-5 py-3")}
-              disabled={validName() === undefined || busy()}
+              disabled={busy()}
               dataset={{ "data-testid": "mp-create" }}
-              onClick={() => withName(() => createRoom())}
+              onClick={() => withConnection(() => createRoom())}
             />
           </div>
         </section>
@@ -73,7 +54,7 @@ export function RaceHome(props: { code?: string }): JSXElement {
             onSubmit={(e) => {
               e.preventDefault();
               const c = validCode();
-              if (c !== undefined) withName(() => joinRoom(c));
+              if (c !== undefined) withConnection(() => joinRoom(c));
             }}
           >
             <input
@@ -90,9 +71,7 @@ export function RaceHome(props: { code?: string }): JSXElement {
               text="join"
               fa={{ icon: "fa-sign-in-alt" }}
               class={cn(PRIMARY_BUTTON, "px-5")}
-              disabled={
-                validName() === undefined || validCode() === undefined || busy()
-              }
+              disabled={validCode() === undefined || busy()}
               dataset={{ "data-testid": "mp-join" }}
             />
           </form>

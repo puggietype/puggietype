@@ -4,7 +4,6 @@ import { Button } from "../../components/common/Button";
 import { leaveRoom, resumeSession } from "../race";
 import {
   countdown,
-  loadNickname,
   race,
   room,
   setShowOpponentCarets,
@@ -18,7 +17,7 @@ import { settingsSummary } from "./ui";
 export function RaceOverlay(): JSXElement {
   // a reload on the test page mid-race rejoins (and restores overridden config)
   onMount(() => {
-    if (room() === undefined) resumeSession(loadNickname());
+    if (room() === undefined) resumeSession();
   });
 
   return (

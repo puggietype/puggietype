@@ -14,7 +14,6 @@ export type RaceInfo = {
   settings: Settings;
 };
 
-const NAME_KEY = "puggie-mp-name";
 const SHOW_CARETS_KEY = "puggie-mp-show-carets";
 
 export const [connectionStatus, setConnectionStatus] =
@@ -34,13 +33,8 @@ export const [inviteCode, setInviteCode] = createSignal<string | undefined>();
 /** seconds left in the 3-2-1, 0 once racing, undefined outside a countdown */
 export const [countdown, setCountdown] = createSignal<number | undefined>();
 
-export function loadNickname(): string {
-  return localStorage.getItem(NAME_KEY) ?? "";
-}
-
-export function saveNickname(name: string): void {
-  localStorage.setItem(NAME_KEY, name);
-}
+// nicknames are server-assigned now; drop the one older builds stored
+localStorage.removeItem("puggie-mp-name");
 
 const [showOpponentCarets, setShowOpponentCaretsSignal] = createSignal(
   localStorage.getItem(SHOW_CARETS_KEY) !== "false",

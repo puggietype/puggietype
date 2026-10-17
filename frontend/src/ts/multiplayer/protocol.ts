@@ -71,12 +71,7 @@ const nonNeg = finite.min(0);
 export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("hello"),
-    // Control, format (zero-width, bidi override) and other invisible chars are stripped.
-    name: z
-      .string()
-      .max(200)
-      .transform((n) => n.replace(/\p{C}/gu, "").trim())
-      .pipe(z.string().min(1).max(24)),
+    // No `name`: the server assigns nicknames. Unknown keys (e.g. a legacy `name`) are stripped.
     /** Reconnect: both the public playerId and the secret sessionToken from `welcome`. */
     playerId: z.string().min(1).max(64).optional(),
     sessionToken: z.string().min(1).max(128).optional(),
@@ -89,6 +84,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("room:leave") }),
   z.object({ type: z.literal("room:settings"), settings: SettingsPatchSchema }),
   z.object({ type: z.literal("player:ready"), ready: z.boolean() }),
+  /** Lobby only: swap your server-assigned nickname for a new one, unique in the room. */
+  z.object({ type: z.literal("player:reroll") }),
   z.object({ type: z.literal("race:start") }),
   z.object({
     type: z.literal("race:progress"),
@@ -197,6 +194,7 @@ export type ServerMessage =
       type: "welcome";
       playerId: string;
       sessionToken: string;
+      name: string;
       protocol: number;
     }
   | { type: "pong"; t: number; serverNow: number }

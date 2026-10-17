@@ -69,6 +69,7 @@ const welcome: ServerMessage = {
   type: "welcome",
   playerId: "p1",
   sessionToken: "secret",
+  name: "ZippyPug42",
   protocol: 1,
 };
 
@@ -86,7 +87,7 @@ describe("MultiplayerClient", () => {
 
   it("pings five times, then says hello, on open", () => {
     const { client } = setup();
-    client.connect("pug");
+    client.connect();
     lastSocket().open();
     expect(lastSocket().types()).toEqual([
       "ping",
@@ -96,12 +97,12 @@ describe("MultiplayerClient", () => {
       "ping",
       "hello",
     ]);
-    expect(lastSocket().sent[5]).toEqual({ type: "hello", name: "pug" });
+    expect(lastSocket().sent[5]).toEqual({ type: "hello" });
   });
 
   it("queues messages until welcome, keeping the latest per type", () => {
     const { client } = setup();
-    client.connect("pug");
+    client.connect();
     client.send({ type: "player:ready", ready: true });
     client.send({ type: "room:join", code: "ABC234" });
     client.send({ type: "player:ready", ready: false });
@@ -116,7 +117,7 @@ describe("MultiplayerClient", () => {
 
   it("never queues progress", () => {
     const { client } = setup();
-    client.connect("pug");
+    client.connect();
     client.send({
       type: "race:progress",
       wordIndex: 1,
@@ -133,7 +134,7 @@ describe("MultiplayerClient", () => {
 
   it("reconnects with the stored session after a drop", () => {
     const { client, statuses } = setup();
-    client.connect("pug");
+    client.connect();
     lastSocket().open();
     lastSocket().receive(welcome);
     lastSocket().serverClose(1006);
@@ -143,7 +144,6 @@ describe("MultiplayerClient", () => {
     lastSocket().open();
     expect(lastSocket().sent.at(-1)).toEqual({
       type: "hello",
-      name: "pug",
       playerId: "p1",
       sessionToken: "secret",
     });
@@ -151,7 +151,7 @@ describe("MultiplayerClient", () => {
 
   it("stops for good when another tab takes over", () => {
     const { client, terminated } = setup();
-    client.connect("pug");
+    client.connect();
     lastSocket().open();
     lastSocket().receive(welcome);
     lastSocket().serverClose(4000);
@@ -163,7 +163,7 @@ describe("MultiplayerClient", () => {
   it("estimates the server clock from pongs", () => {
     vi.setSystemTime(1000);
     const { client } = setup();
-    client.connect("pug");
+    client.connect();
     const socket = lastSocket();
     socket.open();
     vi.setSystemTime(1040);

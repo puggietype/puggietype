@@ -189,9 +189,12 @@ describe("finishInput", () => {
 describe("protocol copy", () => {
   it("validates client messages like the server", () => {
     expect(parseClientMessage('{"type":"ping","t":1}').ok).toBe(true);
-    expect(
-      parseClientMessage('{"type":"hello","name":"  \\u200bpug  "}'),
-    ).toEqual({ ok: true, msg: { type: "hello", name: "pug" } });
+    // a legacy client-supplied name is stripped: the server assigns names
+    expect(parseClientMessage('{"type":"hello","name":"pug"}')).toEqual({
+      ok: true,
+      msg: { type: "hello" },
+    });
+    expect(parseClientMessage('{"type":"player:reroll"}').ok).toBe(true);
     expect(parseClientMessage('{"type":"nope"}').ok).toBe(false);
   });
 });

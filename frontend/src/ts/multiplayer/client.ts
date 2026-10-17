@@ -46,7 +46,6 @@ function saveSession(session: Session): void {
  */
 export class MultiplayerClient {
   private ws: WebSocket | undefined;
-  private name = "";
   private offset = 0;
   private samples: ClockSample[] = [];
   private pingSentAt = new Map<number, number>();
@@ -70,14 +69,9 @@ export class MultiplayerClient {
     return Date.now() + this.offset;
   }
 
-  connect(name: string): void {
-    this.name = name;
+  connect(): void {
     this.closedByUser = false;
-    if (this.ws !== undefined) {
-      // already connected: a re-hello renames
-      if (this.connected) this.sendNow(this.helloMessage());
-      return;
-    }
+    if (this.ws !== undefined) return;
     this.open("connecting");
   }
 
@@ -106,7 +100,7 @@ export class MultiplayerClient {
 
   private helloMessage(): ClientMessage {
     const session = loadSession();
-    return { type: "hello", name: this.name, ...session };
+    return { type: "hello", ...session };
   }
 
   private open(status: ConnectionStatus): void {

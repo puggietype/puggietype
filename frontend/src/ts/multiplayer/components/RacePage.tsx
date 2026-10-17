@@ -13,12 +13,10 @@ import { connect, joinRoom, leaveRoom, resumeSession } from "../race";
 import {
   connectionStatus,
   inviteCode,
-  loadNickname,
   race,
   raceFinished,
   results,
   room,
-  saveNickname,
   setInviteCode,
 } from "../store";
 import { Lobby } from "./Lobby";
@@ -26,29 +24,20 @@ import { Podium } from "./Podium";
 import { RaceHome } from "./RaceHome";
 import { RaceProgressBars } from "./RaceProgressBars";
 
-function defaultNickname(): string {
-  return `pug${Math.floor(100 + Math.random() * 900)}`;
-}
-
 export function RacePage(): JSXElement {
   onMount(() => {
     if (room() === undefined && inviteCode() === undefined) {
-      resumeSession(loadNickname());
+      resumeSession();
     }
   });
 
-  // /r/CODE: join straight away (with a generated name if there is none yet)
+  // /r/CODE: join straight away (the server assigns a nickname)
   createEffect(() => {
     const code = inviteCode();
     if (code === undefined) return;
     setInviteCode(undefined);
     if (room()?.code === code) return;
-    let name = loadNickname();
-    if (name === "") {
-      name = defaultNickname();
-      saveNickname(name);
-    }
-    connect(name);
+    connect();
     joinRoom(code);
   });
 

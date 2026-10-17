@@ -11,7 +11,7 @@ Solo typing must keep working unchanged. Pug mode works during races.
 
 ## Scope
 
-- `/race` page: nickname (localStorage), Create private lobby, Join by code, "public match:
+- `/race` page: (nickname is server-assigned, shown with a reroll button in the lobby), Create private lobby, Join by code, "public match:
   coming soon" stub. `/r/CODE` auto-joins.
 - Lobby: code + copy invite link, players (colour dot, name, host crown, ready), Ready toggle,
   host settings (time 15/30/60/120 | words 10/25/50/100, punctuation, numbers, language),

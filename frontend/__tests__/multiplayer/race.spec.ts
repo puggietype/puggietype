@@ -166,7 +166,13 @@ async function flush(): Promise<void> {
 }
 
 async function startCountdown(startAt?: number): Promise<void> {
-  receive({ type: "welcome", playerId: "me", sessionToken: "t", protocol: 1 });
+  receive({
+    type: "welcome",
+    playerId: "me",
+    sessionToken: "t",
+    name: "ZippyPug42",
+    protocol: 1,
+  });
   receive(roomState({ phase: "countdown" }));
   receive(countdown(startAt));
   await flush();
@@ -233,6 +239,7 @@ describe("race lifecycle", () => {
       type: "welcome",
       playerId: "me",
       sessionToken: "t",
+      name: "ZippyPug42",
       protocol: 1,
     });
     const state = roomState({ phase: "racing" });
@@ -318,6 +325,7 @@ describe("race lifecycle", () => {
       type: "welcome",
       playerId: "me",
       sessionToken: "t",
+      name: "ZippyPug42",
       protocol: 1,
     });
     receive(roomState({ phase: "countdown" }));
@@ -367,7 +375,7 @@ describe("race lifecycle", () => {
     sessionStorage.setItem("puggie-mp-saved-config", saved.config ?? "");
     engine.config["language"] = "english";
     fakeClient.sent = [];
-    expect(Race.resumeSession("me")).toBe(true);
+    expect(Race.resumeSession()).toBe(true);
     expect(engine.config).toMatchObject(USER_CONFIG);
     expect(fakeClient.sent).toEqual([{ type: "room:join", code: "ABC234" }]);
     receive({ type: "error", code: "ROOM_IN_PROGRESS", message: "x" });
@@ -387,5 +395,11 @@ describe("race lifecycle", () => {
         keyCount: 0,
       }),
     ).toBe(false);
+  });
+
+  it("asks the server for a new nickname", () => {
+    fakeClient.sent = [];
+    Race.rerollName();
+    expect(fakeClient.sent).toEqual([{ type: "player:reroll" }]);
   });
 });
