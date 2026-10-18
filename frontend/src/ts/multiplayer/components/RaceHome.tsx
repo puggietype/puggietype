@@ -11,17 +11,25 @@ import { Button } from "../../components/common/Button";
 import { PugHead } from "../../components/common/PugHead";
 import { showNoticeNotification } from "../../states/notifications";
 import { cn } from "../../utils/cn";
+import { isFlagEnabled } from "../feature-flags";
 import { PUBLIC_MATCHES_ENABLED } from "../flags";
 import { normalizeRoomCode } from "../helpers";
 import { MAX_PLAYERS } from "../protocol";
 import {
   connect,
   createRoom,
+  joinQueue,
   joinRoom,
   unwatchOpenRooms,
   watchOpenRooms,
 } from "../race";
-import { connectionStatus, openRooms, openRoomsOn } from "../store";
+import { recentClaimedWpm } from "../recent-pace";
+import {
+  connectionStatus,
+  openRooms,
+  openRoomsOn,
+  quickMatchOn,
+} from "../store";
 import { OpenRoomsList } from "./OpenRoomsList";
 import { PRIMARY_BUTTON } from "./ui";
 
@@ -44,6 +52,19 @@ export function RaceHome(props: { code?: string }): JSXElement {
 
   // no-op unless the openRooms client flag is on
   onMount(watchOpenRooms);
+  // learn the server's features so Quick Match can show up
+  onMount(() => {
+    if (isFlagEnabled("quickMatch")) connect();
+  });
+
+  const [findingPace, setFindingPace] = createSignal(false);
+  const findMatch = (): void => {
+    setFindingPace(true);
+    void recentClaimedWpm().then((wpm) => {
+      setFindingPace(false);
+      joinQueue(wpm);
+    });
+  };
   onCleanup(unwatchOpenRooms);
 
   return (
@@ -107,33 +128,56 @@ export function RaceHome(props: { code?: string }): JSXElement {
             />
           </section>
         </Show>
-        <section class={CARD}>
-          <div class={LABEL}>quick play</div>
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div class="text-lg text-text">public match</div>
-              <Show when={!PUBLIC_MATCHES_ENABLED}>
-                <div
-                  class="text-sm font-(--font) text-sub"
-                  data-testid="mp-public-soon"
-                >
-                  coming soon
+        <Show when={quickMatchOn()}>
+          <section class={CARD} data-testid="mp-quick-match">
+            <div class={LABEL}>quick play</div>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div class="text-lg text-text">quick match</div>
+                <div class="text-sm text-sub">
+                  race strangers at your pace · time 30 · english
                 </div>
-              </Show>
+              </div>
+              <Button
+                text="find match"
+                fa={{ icon: "fa-globe" }}
+                class={cn(PRIMARY_BUTTON, "px-5 py-3")}
+                disabled={busy() || findingPace()}
+                dataset={{ "data-testid": "mp-public" }}
+                onClick={findMatch}
+              />
             </div>
-            <Button
-              text="find match"
-              fa={{ icon: "fa-globe" }}
-              disabled={!PUBLIC_MATCHES_ENABLED}
-              dataset={{ "data-testid": "mp-public" }}
-              onClick={() =>
-                showNoticeNotification(
-                  "Public matchmaking isn't on this server yet.",
-                )
-              }
-            />
-          </div>
-        </section>
+          </section>
+        </Show>
+        <Show when={!quickMatchOn()}>
+          <section class={CARD}>
+            <div class={LABEL}>quick play</div>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div class="text-lg text-text">public match</div>
+                <Show when={!PUBLIC_MATCHES_ENABLED}>
+                  <div
+                    class="text-sm font-(--font) text-sub"
+                    data-testid="mp-public-soon"
+                  >
+                    coming soon
+                  </div>
+                </Show>
+              </div>
+              <Button
+                text="find match"
+                fa={{ icon: "fa-globe" }}
+                disabled={!PUBLIC_MATCHES_ENABLED}
+                dataset={{ "data-testid": "mp-public" }}
+                onClick={() =>
+                  showNoticeNotification(
+                    "Public matchmaking isn't on this server yet.",
+                  )
+                }
+              />
+            </div>
+          </section>
+        </Show>
       </div>
       <section class="hidden content-center justify-items-center gap-4 rounded-lg bg-sub-alt p-6 text-center text-sub md:grid">
         <PugHead class="h-24 w-24" />
