@@ -3,12 +3,13 @@ import { createSignal, JSXElement, onCleanup, Show } from "solid-js";
 import type { RoomState } from "../protocol";
 
 import { Button } from "../../components/common/Button";
+import { isBot } from "../bots";
 import { kickPlayer } from "../race";
 import { isHost, myId } from "../store";
 
 const CONFIRM_MS = 3000;
 
-/** host only, lobby or results: two clicks (kick? -> kick) remove a player */
+/** host only, lobby or results, never bots: two clicks (kick? -> kick) remove a player */
 export function KickButton(props: {
   room: RoomState;
   playerId: string;
@@ -22,7 +23,7 @@ export function KickButton(props: {
     isHost() &&
     props.playerId !== myId() &&
     (props.room.phase === "lobby" || props.room.phase === "results") &&
-    props.room.players.some((p) => p.id === props.playerId);
+    props.room.players.some((p) => p.id === props.playerId && !isBot(p));
 
   const click = (): void => {
     if (armed()) {
