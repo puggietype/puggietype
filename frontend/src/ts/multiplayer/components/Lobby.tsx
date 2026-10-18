@@ -19,7 +19,7 @@ import {
   showSuccessNotification,
 } from "../../states/notifications";
 import { cn } from "../../utils/cn";
-import { displayName } from "../bots";
+import { displayName, isBot } from "../bots";
 import { isFlagEnabled } from "../feature-flags";
 import { canStartRace, inviteLink } from "../helpers";
 import {
@@ -355,7 +355,14 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     </Show>
                   </span>
                 </Show>
-                <span class="min-w-0 truncate font-(--font) text-text">
+                <span
+                  class={cn(
+                    "min-w-0 leading-tight font-(--font) text-text",
+                    // humans keep the one-line truncate; bot names never truncate
+                    !isBot(p) && "truncate",
+                  )}
+                  title={isBot(p) ? undefined : p.name}
+                >
                   <PlayerName player={p} />
                 </span>
                 <Show when={p.id === myId()}>

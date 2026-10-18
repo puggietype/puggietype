@@ -109,7 +109,7 @@ function OpponentDog(props: {
       <Show when={!props.dense}>
         <span
           class={cn(
-            "w-full text-center text-xs leading-tight font-(--font) [overflow-wrap:anywhere] [&>span:last-child]:whitespace-normal",
+            "w-full text-center text-xs leading-tight font-(--font) [overflow-wrap:anywhere] [&_span]:whitespace-normal",
             PLAYER_TEXT[props.player.color],
           )}
         >
