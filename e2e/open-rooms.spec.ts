@@ -146,7 +146,7 @@ test("flag off: coming soon and no open rooms list", async ({ browser }) => {
   const page = await ctx.newPage();
   const sent = sentTypes(page);
 
-  await openRace(page, "?flags=default");
+  await openRace(page, "?flags=characterSelect,opponentDogs");
   await expect(byTestId(page, "mp-create")).toBeVisible();
   await expect(byTestId(page, "mp-public-soon")).toHaveText("coming soon");
   await expect(byTestId(page, "mp-open-rooms")).toHaveCount(0);
