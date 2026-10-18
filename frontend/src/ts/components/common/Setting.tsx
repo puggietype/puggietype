@@ -140,6 +140,7 @@ function DeepLinkButton(props: { key: string }) {
       class="-m-2 p-2 opacity-0 group-hover:opacity-100"
       variant="text"
       fa={{ icon: "fa-link" }}
+      ariaLabel="copy link to this setting"
       onClick={() => {
         navigator.clipboard
           .writeText(linkToSetting(props.key))

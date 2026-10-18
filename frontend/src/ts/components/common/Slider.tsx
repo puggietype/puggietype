@@ -9,6 +9,8 @@ type Props = {
   onChange?: (value: number) => void;
   onEveryChange?: (value: number) => void;
   text?: (value: number) => string | JSXElement;
+  /** accessible name of the range input */
+  label: string;
 };
 
 export function Slider(props: Props): JSXElement {
@@ -28,6 +30,7 @@ export function Slider(props: Props): JSXElement {
       <input
         ref={props.ref}
         type="range"
+        aria-label={props.label}
         min={props.min}
         max={props.max}
         value={value()}

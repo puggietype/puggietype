@@ -97,6 +97,12 @@ export function SearchableAutoSetting<T extends ConfigKey>(props: {
             {(option) => (
               <Button
                 active={getConfig[props.key] === option}
+                // blind mode's "on" is deliberately blank on screen
+                ariaLabel={
+                  getOptionLabel(props.key, option).trim() === ""
+                    ? `${configMetadata[props.key].displayString ?? props.key} ${option === true ? "on" : String(option)}`
+                    : undefined
+                }
                 onClick={() => {
                   if (getConfig[props.key] === option) return;
                   props.onOptionClick?.(option);

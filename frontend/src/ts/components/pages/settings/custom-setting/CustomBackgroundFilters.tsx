@@ -37,6 +37,7 @@ export function CustomBackgroundFilters(): JSXElement {
             <div>blur</div>
             <Slider
               ref={(el) => (refBlur = el)}
+              label="background blur"
               min={0}
               max={5}
               step={0.1}
@@ -60,6 +61,7 @@ export function CustomBackgroundFilters(): JSXElement {
             <div>brightness</div>
             <Slider
               ref={(el) => (refBrightness = el)}
+              label="background brightness"
               min={0}
               max={2}
               step={0.1}
@@ -83,6 +85,7 @@ export function CustomBackgroundFilters(): JSXElement {
             <div>saturate</div>
             <Slider
               ref={(el) => (refSaturate = el)}
+              label="background saturate"
               min={0}
               max={2}
               step={0.1}
@@ -106,6 +109,7 @@ export function CustomBackgroundFilters(): JSXElement {
             <div>opacity</div>
             <Slider
               ref={(el) => (refOpacity = el)}
+              label="background opacity"
               min={0}
               max={1}
               step={0.1}

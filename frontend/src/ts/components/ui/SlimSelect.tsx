@@ -367,6 +367,7 @@ export default function SlimSelect(props: SlimSelectProps): JSXElement {
     };
 
     slimSelect = new SlimSelectCore(config);
+    moveListboxRole(slimSelect);
     lastOptionsReference = props.options;
     props.ref?.(slimSelect);
 
@@ -516,4 +517,18 @@ export default function SlimSelect(props: SlimSelectProps): JSXElement {
       </select>
     </div>
   );
+}
+
+/**
+ * a11y: slim-select puts role=listbox on the panel that also holds the search
+ * input; options must be the listbox's only children (axe
+ * aria-required-children), so move the role onto the option list
+ */
+function moveListboxRole(select: SlimSelectCore): void {
+  const render = select.render;
+  const content = render.content;
+  content.main.removeAttribute("role");
+  content.list.id = `${content.main.id}-list`;
+  content.list.setAttribute("role", "listbox");
+  render.main.main.setAttribute("aria-controls", content.list.id);
 }

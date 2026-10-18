@@ -20,6 +20,8 @@ type BaseProps = {
   active?: boolean;
   tabIndex?: number | string;
   id?: string;
+  /** accessible name, needed when the button only shows an icon */
+  ariaLabel?: string;
 };
 
 export type ButtonProps = BaseProps & {
@@ -97,6 +99,9 @@ export function Button(props: ButtonProps | AnchorProps): JSXElement {
           onMouseEnter={(e) => props.onMouseEnter?.(e)}
           onMouseLeave={(e) => props.onMouseLeave?.(e)}
           {...balloonHtmlProps()}
+          {...(props.ariaLabel !== undefined
+            ? { "aria-label": props.ariaLabel }
+            : {})}
           {...(props["router-link"] ? { "router-link": "" } : {})}
           disabled={props.disabled ?? false}
           data-ui-variant={variant()}
@@ -123,6 +128,9 @@ export function Button(props: ButtonProps | AnchorProps): JSXElement {
             : "noreferrer noopener"
         }
         {...balloonHtmlProps()}
+        {...(props.ariaLabel !== undefined
+          ? { "aria-label": props.ariaLabel }
+          : {})}
         {...(props["router-link"] ? { "router-link": "" } : {})}
         onClick={(e) => props.onClick?.(e)}
         onMouseEnter={(e) => props.onMouseEnter?.(e)}
