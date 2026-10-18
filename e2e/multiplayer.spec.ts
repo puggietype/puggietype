@@ -356,6 +356,10 @@ test("reloading mid-race resumes at the same word on the race clock (MP-002)", a
     a.locator("#words .word[data-wordindex='11'] letter.correct"),
   ).not.toHaveCount(0);
   await typeWords(a, 3, 60);
+  // progress goes out on a 100 ms interval: wait for the last word to be sent
+  await expect
+    .poll(() => progressOf(sentByA.slice(sentBefore)).at(-1)?.wordIndex)
+    .toBe(15);
   const after = progressOf(sentByA.slice(sentBefore));
   expect(after.length).toBeGreaterThan(0);
   // never reported below where the server had us, on the shared clock
