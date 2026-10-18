@@ -9,6 +9,7 @@ import {
 import { Portal } from "solid-js/web";
 
 import { cn } from "../../utils/cn";
+import { displayName } from "../bots";
 import {
   caretTarget,
   smoothToward,
@@ -165,7 +166,7 @@ export function OpponentCarets(): JSXElement {
                   )}
                   data-testid="mp-opponent-tag"
                 >
-                  {player(id)?.name}
+                  <Show when={player(id)}>{(p) => displayName(p())}</Show>
                 </span>
               </div>
             </div>

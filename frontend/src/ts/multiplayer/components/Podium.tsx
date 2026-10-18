@@ -9,6 +9,7 @@ import {
   DEFAULT_CHARACTER,
 } from "../../components/pages/test/character-frames";
 import { cn } from "../../utils/cn";
+import { displayName } from "../bots";
 import { leaveRoom, rematch } from "../race";
 import { characterSelectOn, isHost, myId } from "../store";
 import { CharacterImage } from "./CharacterImage";
@@ -48,7 +49,7 @@ export function Podium(props: {
   const winnerAlt = (): string | undefined => {
     const w = winner();
     if (!characterSelectOn() || w === undefined) return undefined;
-    return `${w.name}'s ${characterName(winnerDog())}`;
+    return `${displayName(w)}'s ${characterName(winnerDog())}`;
   };
   const dense = () => props.results.length > 4;
   const mine = () => props.results.find((r) => r.playerId === myId());
@@ -70,8 +71,8 @@ export function Podium(props: {
       />
       <div class="grid gap-4">
         <div class="text-sm font-(--font) text-sub">
-          race over · private · {props.room.code} ·{" "}
-          {settingsSummary(props.room.settings)}
+          race over · {props.room.open ? "open" : "private"} · {props.room.code}{" "}
+          · {settingsSummary(props.room.settings)}
         </div>
         <Show when={winner()}>
           {(w) => (
@@ -79,7 +80,9 @@ export function Podium(props: {
               class="text-4xl leading-tight break-words sm:text-5xl"
               data-testid="mp-winner"
             >
-              <span class={PLAYER_TEXT[colorOf(w().playerId)]}>{w().name}</span>{" "}
+              <span class={PLAYER_TEXT[colorOf(w().playerId)]}>
+                {displayName(w())}
+              </span>{" "}
               <span class="text-text">wins!</span>
             </h2>
           )}
@@ -150,7 +153,7 @@ export function Podium(props: {
                             testId="mp-result-character"
                           />
                         </Show>
-                        <span class="truncate text-text">{r.name}</span>
+                        <span class="truncate text-text">{displayName(r)}</span>
                         <Show when={r.playerId === myId()}>
                           <span class="shrink-0 text-sm text-sub">(you)</span>
                         </Show>
@@ -170,7 +173,7 @@ export function Podium(props: {
                         <KickButton
                           room={props.room}
                           playerId={r.playerId}
-                          name={r.name}
+                          name={displayName(r)}
                         />
                       </span>
                     </td>

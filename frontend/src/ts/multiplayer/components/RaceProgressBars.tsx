@@ -2,6 +2,7 @@ import { createMemo, For, JSXElement, Show } from "solid-js";
 
 import { Fa } from "../../components/common/Fa";
 import { cn } from "../../utils/cn";
+import { displayName } from "../bots";
 import { isFlagEnabled } from "../feature-flags";
 import {
   myId,
@@ -89,7 +90,7 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
                 />
               </Show>
               <span class="truncate">
-                {player.name}
+                {displayName(player)}
                 {player.id === myId() ? " (you)" : ""}
               </span>
             </span>

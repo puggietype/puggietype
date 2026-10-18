@@ -19,6 +19,7 @@ import {
 } from "../../components/pages/test/character-frames";
 import { cn } from "../../utils/cn";
 import { prefersReducedMotion } from "../../utils/misc";
+import { displayName } from "../bots";
 import {
   advanced,
   nextPaw,
@@ -111,7 +112,7 @@ function OpponentDog(props: {
             PLAYER_TEXT[props.player.color],
           )}
         >
-          {props.player.name}
+          {displayName(props.player)}
         </span>
       </Show>
       <span class="text-xs leading-none font-(--font) whitespace-nowrap text-sub">
@@ -239,7 +240,7 @@ export function OpponentDogs(): JSXElement {
   const summary = (): string => {
     const list = opponents().map((p) => {
       const place = ordinal(placeById().get(p.id) ?? 1);
-      return `${p.name} as ${characterName(p.character)}, ${place}`;
+      return `${displayName(p)} as ${characterName(p.character)}, ${place}`;
     });
     return `Opponents: ${list.join("; ")}`;
   };
