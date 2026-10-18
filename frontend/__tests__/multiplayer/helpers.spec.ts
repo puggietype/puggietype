@@ -12,6 +12,7 @@ import {
   isBehind,
   raceConfigOverrides,
   resumeText,
+  roomKindLabel,
   wsUrl,
   envFlag,
 } from "../../src/ts/multiplayer/helpers";
@@ -101,6 +102,7 @@ function room(players: Partial<RoomState["players"][number]>[]): RoomState {
     settings: DEFAULT_SETTINGS,
     settingsVersion: 1,
     open: false,
+    quickMatch: false,
     players: players.map((p, i) => ({
       id: `p${i}`,
       name: `p${i}`,
@@ -275,5 +277,16 @@ describe("resume after a reload (MP-002)", () => {
     expect(isBehind({ wordIndex: 3, charIndex: 1 }, floor)).toBe(true);
     expect(isBehind({ wordIndex: 3, charIndex: 2 }, floor)).toBe(false);
     expect(isBehind({ wordIndex: 4, charIndex: 0 }, floor)).toBe(false);
+  });
+});
+
+describe("roomKindLabel", () => {
+  it("names quick match, open and private rooms", () => {
+    expect(roomKindLabel({ open: false, quickMatch: true })).toBe(
+      "quick match",
+    );
+    expect(roomKindLabel({ open: true, quickMatch: true })).toBe("quick match");
+    expect(roomKindLabel({ open: true, quickMatch: false })).toBe("open");
+    expect(roomKindLabel({ open: false, quickMatch: false })).toBe("private");
   });
 });

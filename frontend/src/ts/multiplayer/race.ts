@@ -454,8 +454,9 @@ function handleMessage(msg: ServerMessage): void {
 }
 
 /** room:state from a server without open rooms (and so without bots) */
-type LegacyRoomState = Omit<RoomState, "open" | "players"> & {
+type LegacyRoomState = Omit<RoomState, "open" | "quickMatch" | "players"> & {
   open?: boolean;
+  quickMatch?: boolean;
   players: (Omit<PlayerState, "isBot"> & { isBot?: boolean })[];
 };
 
@@ -468,6 +469,7 @@ function withRoomDefaults(msg: LegacyRoomState): RoomState {
     settings: msg.settings,
     settingsVersion: msg.settingsVersion,
     open: msg.open === true,
+    quickMatch: msg.quickMatch === true,
     players: msg.players.map(withBotDefault),
   };
 }

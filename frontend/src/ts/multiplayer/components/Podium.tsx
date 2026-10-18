@@ -10,6 +10,7 @@ import {
 } from "../../components/pages/test/character-frames";
 import { cn } from "../../utils/cn";
 import { displayName } from "../bots";
+import { roomKindLabel } from "../helpers";
 import { leaveRoom, rematch } from "../race";
 import { characterSelectOn, isHost, myId } from "../store";
 import { CharacterImage } from "./CharacterImage";
@@ -73,8 +74,8 @@ export function Podium(props: {
       />
       <div class="grid gap-4">
         <div class="text-sm font-(--font) text-sub">
-          race over · {props.room.open ? "open" : "private"} · {props.room.code}{" "}
-          · {settingsSummary(props.room.settings)}
+          race over · {roomKindLabel(props.room)} · {props.room.code} ·{" "}
+          {settingsSummary(props.room.settings)}
         </div>
         <Show when={winner()}>
           {(w) => (

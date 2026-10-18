@@ -39,6 +39,7 @@ const ROOM: RoomState = {
   },
   settingsVersion: 1,
   open: true,
+  quickMatch: false,
   players: [player("me"), player("them"), player("bot1", true)],
 };
 

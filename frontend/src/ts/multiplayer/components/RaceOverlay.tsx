@@ -2,6 +2,7 @@ import { JSXElement, onMount, Show } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { isFlagEnabled } from "../feature-flags";
+import { roomKindLabel } from "../helpers";
 import { leaveRoom, resumeSession } from "../race";
 import {
   countdown,
@@ -29,9 +30,11 @@ export function RaceOverlay(): JSXElement {
           {/* one row: the info truncates, the actions go icon-only on phones */}
           <div class="flex min-w-0 items-center gap-x-4 text-sm font-(--font) text-sub">
             <span class="min-w-0 flex-1 truncate">
-              <span class="hidden sm:inline">
-                {room()?.open ? "open" : "private"} ·{" "}
-              </span>
+              <Show when={room()}>
+                {(r) => (
+                  <span class="hidden sm:inline">{roomKindLabel(r())} · </span>
+                )}
+              </Show>
               {room()?.code} · {settingsSummary(info().settings)}
             </span>
             <Button

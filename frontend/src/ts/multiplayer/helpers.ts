@@ -57,6 +57,14 @@ export function canStartRace(room: RoomState, myId: string): boolean {
   );
 }
 
+/** room kind for headers: "quick match", "open" or "private" */
+export function roomKindLabel(
+  room: Pick<RoomState, "open" | "quickMatch">,
+): string {
+  if (room.quickMatch) return "quick match";
+  return room.open ? "open" : "private";
+}
+
 export type ConfigEntry = {
   [K in keyof ConfigSchema]: [K, ConfigSchema[K]];
 }[keyof ConfigSchema];

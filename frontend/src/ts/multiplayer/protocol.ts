@@ -232,6 +232,8 @@ export interface RoomState {
   settingsVersion: number;
   /** Whether the room shows in `rooms:list` (lobby and has space). False whenever the flag is disabled. */
   open: boolean;
+  /** Whether Quick Match made the room. Older servers omit it (false). */
+  quickMatch: boolean;
   players: PlayerState[];
 }
 

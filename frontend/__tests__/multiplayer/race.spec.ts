@@ -163,6 +163,7 @@ function roomState(overrides: Partial<RoomState> = {}): ServerMessage {
     },
     settingsVersion: 1,
     open: false,
+    quickMatch: false,
     players: [
       {
         id: "me",
@@ -728,14 +729,16 @@ describe("open rooms", () => {
     });
   });
 
-  it("defaults open and isBot for servers that don't send them", () => {
+  it("defaults open, quickMatch and isBot for servers that don't send them", () => {
     const legacy = roomState() as unknown as Record<string, unknown>;
     delete legacy["open"];
+    delete legacy["quickMatch"];
     for (const p of legacy["players"] as Record<string, unknown>[]) {
       delete p["isBot"];
     }
     receive(legacy as unknown as ServerMessage);
     expect(Store.room()?.open).toBe(false);
+    expect(Store.room()?.quickMatch).toBe(false);
     expect(Store.room()?.players[0]?.isBot).toBe(false);
     Race.leaveRoom();
   });
