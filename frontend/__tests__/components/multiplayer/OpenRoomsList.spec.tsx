@@ -55,8 +55,26 @@ describe("OpenRoomsList", () => {
     expect(row).toHaveTextContent("english · 30s");
     expect(getByTestId("mp-open-room-humans")).toHaveTextContent("3/8");
     expect(getByTestId("mp-open-room-phase")).toHaveTextContent("lobby");
-    expect(getByTestId("mp-open-room-age")).toHaveTextContent("just opened");
+    const age = getByTestId("mp-open-room-age");
+    expect(age).toHaveTextContent("opened < 1 min ago");
+    expect(age).toHaveAttribute(
+      "aria-label",
+      "room opened less than 1 minute ago",
+    );
     expect(queryByTestId("mp-open-room-bots")).toBeNull();
+  });
+
+  it("labels the age column for screen readers", () => {
+    const { getByTestId } = renderList({
+      rooms: [entry({ createdAgo: "lt5m" })],
+      racing: 0,
+    });
+    const age = getByTestId("mp-open-room-age");
+    expect(age).toHaveTextContent("opened < 5 min ago");
+    expect(age).toHaveAttribute(
+      "aria-label",
+      "room opened less than 5 minutes ago",
+    );
   });
 
   it("shows bots apart from the human count", () => {

@@ -47,15 +47,28 @@ export function parseRoomsList(msg: {
 }
 
 const AGE_TEXT: Record<RoomAge, string> = {
-  lt1m: "just opened",
-  lt5m: "< 5 min",
-  lt15m: "< 15 min",
-  lt1h: "< 1 hour",
-  gte1h: "1 hour+",
+  lt1m: "opened < 1 min ago",
+  lt5m: "opened < 5 min ago",
+  lt15m: "opened < 15 min ago",
+  lt1h: "opened < 1 hour ago",
+  gte1h: "opened 1+ hours ago",
+};
+
+/** spoken form: screen readers mangle "<" */
+const AGE_ARIA: Record<RoomAge, string> = {
+  lt1m: "room opened less than 1 minute ago",
+  lt5m: "room opened less than 5 minutes ago",
+  lt15m: "room opened less than 15 minutes ago",
+  lt1h: "room opened less than 1 hour ago",
+  gte1h: "room opened 1 or more hours ago",
 };
 
 export function roomAgeText(age: RoomAge): string {
   return AGE_TEXT[age];
+}
+
+export function roomAgeAria(age: RoomAge): string {
+  return AGE_ARIA[age];
 }
 
 /** "3/8": humans only, bots never count here */

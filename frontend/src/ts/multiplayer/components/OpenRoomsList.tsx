@@ -8,6 +8,7 @@ import {
   botsText,
   humansText,
   openRoomsStatus,
+  roomAgeAria,
   roomAgeText,
   type RoomsList,
 } from "../open-rooms";
@@ -51,7 +52,11 @@ function OpenRoomRow(props: {
       <span class="text-sm text-sub" data-testid="mp-open-room-phase">
         {props.room.phase}
       </span>
-      <span class="text-sm text-sub" data-testid="mp-open-room-age">
+      <span
+        class="text-sm text-sub"
+        aria-label={roomAgeAria(props.room.createdAgo)}
+        data-testid="mp-open-room-age"
+      >
         {roomAgeText(props.room.createdAgo)}
       </span>
       <Button

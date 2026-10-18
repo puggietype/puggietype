@@ -5,6 +5,7 @@ import {
   humansText,
   openRoomsStatus,
   parseRoomsList,
+  roomAgeAria,
   roomAgeText,
 } from "../../src/ts/multiplayer/open-rooms";
 import type { OpenRoomEntry } from "../../src/ts/multiplayer/protocol";
@@ -81,8 +82,13 @@ describe("open rooms list", () => {
   });
 
   it("describes age buckets coarsely and the live status", () => {
-    expect(roomAgeText("lt1m")).toBe("just opened");
-    expect(roomAgeText("gte1h")).toBe("1 hour+");
+    expect(roomAgeText("lt1m")).toBe("opened < 1 min ago");
+    expect(roomAgeText("lt5m")).toBe("opened < 5 min ago");
+    expect(roomAgeText("lt15m")).toBe("opened < 15 min ago");
+    expect(roomAgeText("lt1h")).toBe("opened < 1 hour ago");
+    expect(roomAgeText("gte1h")).toBe("opened 1+ hours ago");
+    expect(roomAgeAria("lt5m")).toBe("room opened less than 5 minutes ago");
+    expect(roomAgeAria("gte1h")).toBe("room opened 1 or more hours ago");
     expect(openRoomsStatus({ rooms: [entry], racing: 0 })).toBe("1 open room");
     expect(openRoomsStatus({ rooms: [entry, entry], racing: 3 })).toBe(
       "2 open rooms · 3 racing now",
