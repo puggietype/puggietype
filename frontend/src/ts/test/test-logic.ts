@@ -156,6 +156,7 @@ import {
   isRaceActive,
   isRaceRestartLocked,
 } from "../multiplayer/engine-hooks";
+import { recordSoloPace } from "../multiplayer/recent-pace";
 
 let failReason = "";
 
@@ -1029,6 +1030,9 @@ export async function finish(difficultyFailed = false): Promise<void> {
   }
 
   // test is valid
+
+  // multiplayer hook: local pace history for Quick Match
+  if (!dontSave) recordSoloPace(completedEvent);
 
   if (isRepeated() || difficultyFailed) {
     if (Config.resultSaving) {
