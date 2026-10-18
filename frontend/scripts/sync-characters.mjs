@@ -17,8 +17,13 @@ import {
   unifyHalo,
 } from "./character-svg.mjs";
 
+// default: frames generated in-repo by `python3 art/render8.py`
 const ART_DIR =
-  process.env["ART_DIR"] ?? "/workspace/puggietype/art/sketches/frames";
+  process.env["ART_DIR"] ??
+  path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../art/sketches/frames",
+  );
 const OUT = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "../static/images/characters",
