@@ -8,7 +8,8 @@ export function injectPreload(): Plugin {
     // fonts) competed with the boot JS; the css discovers the ones a page uses
     files: [
       {
-        outputMatch: /css\/.*\.css$/,
+        // standalone.css belongs to the terms/privacy pages, not index.html
+        outputMatch: /css\/(?!standalone\.).*\.css$/,
         attributes: {
           as: "style",
           type: "text/css",
