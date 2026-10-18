@@ -22,7 +22,7 @@ function screensDir(): string {
   return ".";
 }
 const SCREENS = screensDir();
-const FAST_DELAY_MS = 25;
+const FAST_DELAY_MS = 50;
 const SLOW_DELAY_MS = 140;
 
 const byTestId = (page: Page, id: string): Locator =>
@@ -190,7 +190,7 @@ test("two players race, see each other, get a podium and rematch", async ({
   await byTestId(a, "mp-start").click();
   // typing during the countdown is ignored
   await expect(byTestId(b, "mp-countdown")).toBeVisible();
-  await b.keyboard.type("xyz");
+  await b.keyboard.type("xyz", { delay: 50 });
   await Promise.all([waitForRaceStart(a), waitForRaceStart(b)]);
   await expect(
     b.locator("#words letter.correct, #words letter.incorrect"),

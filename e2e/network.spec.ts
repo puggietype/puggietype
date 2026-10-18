@@ -31,7 +31,7 @@ async function typeFor(page: Page, ms: number): Promise<void> {
       .textContent({ timeout: 2_000 })
       .catch(() => null);
     if (word === null) return;
-    await page.keyboard.type(`${word} `, { delay: 30 });
+    await page.keyboard.type(`${word} `, { delay: 50 });
   }
 }
 

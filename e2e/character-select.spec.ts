@@ -131,9 +131,9 @@ test("players pick dogs, see each other's, lock on ready, race and podium", asyn
     frames.add((await oppDog.getAttribute("data-frame")) ?? "");
   }
   expect(frames.has("left") || frames.has("right")).toBe(true);
-  await b.keyboard.type(words.at(-1) ?? "", { delay: 20 });
+  await b.keyboard.type(words.at(-1) ?? "", { delay: 50 });
   await expect(oppDog).toHaveAttribute("data-frame", "winnerSmall");
-  await a.keyboard.type((await renderedWords(a)).join(" "), { delay: 5 });
+  await a.keyboard.type((await renderedWords(a)).join(" "), { delay: 50 });
 
   // podium: the winner's dog, with alt text
   await expect(byTestId(a, "mp-podium")).toBeVisible({ timeout: 30_000 });
