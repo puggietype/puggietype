@@ -15,6 +15,7 @@ export function KeymapSize(): JSXElement {
       fa={configMetadata.keymapSize.fa}
       inputs={
         <Slider
+          label="keymap size"
           min={0.5}
           max={3.5}
           step={0.1}

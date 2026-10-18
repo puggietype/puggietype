@@ -19,6 +19,7 @@ export function SoundVolume(): JSXElement {
       fa={configMetadata.soundVolume.fa}
       inputs={
         <Slider
+          label="sound volume"
           min={0}
           max={1}
           step={0.1}

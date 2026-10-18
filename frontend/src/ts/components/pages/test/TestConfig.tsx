@@ -69,6 +69,7 @@ function TCButton(props: {
   class?: string;
   fa?: FaObject;
   text?: string;
+  ariaLabel?: string;
   active?: boolean;
   disabled?: boolean;
   onClick: () => void;
@@ -79,6 +80,7 @@ function TCButton(props: {
       class={cn(buttonClass, props.class)}
       fa={props.fa ? { ...props.fa, fixedWidth: true } : undefined}
       text={props.text}
+      ariaLabel={props.ariaLabel}
       active={props.active}
       onClick={() => {
         if (isTestRestarting()) return;
@@ -241,6 +243,7 @@ function Mode2(): JSXElement {
           "pointer-events-none absolute right-0 self-center px-(--horizontal-padding) opacity-0 transition-[margin-right,background-color,opacity] duration-125 group-hover:pointer-events-auto group-hover:mr-[calc((1.25em+(var(--horizontal-padding)*2))*-1)] group-hover:opacity-100 hover:mr-[calc((1.25em+(var(--horizontal-padding)*2))*-1)] hover:opacity-100"
         }
         fa={{ icon: "fa-share" }}
+        ariaLabel="share test settings"
         onClick={() => showModal("ShareTestSettings")}
       />
     </div>
@@ -269,6 +272,7 @@ function Mode2Time(props: ComponentProps<"div">): JSXElement {
         fa={{
           icon: "fa-tools",
         }}
+        ariaLabel="custom test duration"
         onClick={() => {
           showModal("TestDuration");
         }}
@@ -301,6 +305,7 @@ function Mode2Words(props: ComponentProps<"div">): JSXElement {
         fa={{
           icon: "fa-tools",
         }}
+        ariaLabel="custom word amount"
         onClick={() => {
           showModal("CustomWordAmount");
         }}

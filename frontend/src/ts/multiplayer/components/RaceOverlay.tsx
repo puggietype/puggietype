@@ -34,10 +34,8 @@ export function RaceOverlay(): JSXElement {
               variant="text"
               fa={{ icon: "fa-sign-out-alt" }}
               class="shrink-0 py-1 text-sm"
-              dataset={{
-                "data-testid": "mp-leave-race",
-                "aria-label": "leave race",
-              }}
+              ariaLabel="leave race"
+              dataset={{ "data-testid": "mp-leave-race" }}
               onClick={() => leaveRoom()}
             >
               <span class="hidden sm:inline">leave race</span>
