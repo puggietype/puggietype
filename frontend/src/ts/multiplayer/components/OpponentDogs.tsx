@@ -31,6 +31,7 @@ import {
   type OpponentPaw,
 } from "../opponent-dog";
 import { myId, opponentProgress, room } from "../store";
+import { PlayerName } from "./PlayerName";
 import { ordinal, PLAYER_TEXT } from "./ui";
 
 const FRAMES: readonly OpponentFrame[] = [
@@ -112,7 +113,7 @@ function OpponentDog(props: {
             PLAYER_TEXT[props.player.color],
           )}
         >
-          {displayName(props.player)}
+          <PlayerName player={props.player} />
         </span>
       </Show>
       <span class="text-xs leading-none font-(--font) whitespace-nowrap text-sub">

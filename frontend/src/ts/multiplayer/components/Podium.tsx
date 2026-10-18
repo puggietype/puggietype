@@ -14,6 +14,7 @@ import { leaveRoom, rematch } from "../race";
 import { characterSelectOn, isHost, myId } from "../store";
 import { CharacterImage } from "./CharacterImage";
 import { KickButton } from "./KickButton";
+import { PlayerName } from "./PlayerName";
 import {
   ordinal,
   PLAYER_BG,
@@ -81,7 +82,7 @@ export function Podium(props: {
               data-testid="mp-winner"
             >
               <span class={PLAYER_TEXT[colorOf(w().playerId)]}>
-                {displayName(w())}
+                <PlayerName player={w()} />
               </span>{" "}
               <span class="text-text">wins!</span>
             </h2>
@@ -153,7 +154,9 @@ export function Podium(props: {
                             testId="mp-result-character"
                           />
                         </Show>
-                        <span class="truncate text-text">{displayName(r)}</span>
+                        <span class="truncate text-text">
+                          <PlayerName player={r} />
+                        </span>
                         <Show when={r.playerId === myId()}>
                           <span class="shrink-0 text-sm text-sub">(you)</span>
                         </Show>

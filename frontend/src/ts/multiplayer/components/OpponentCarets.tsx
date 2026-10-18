@@ -9,7 +9,6 @@ import {
 import { Portal } from "solid-js/web";
 
 import { cn } from "../../utils/cn";
-import { displayName } from "../bots";
 import {
   caretTarget,
   smoothToward,
@@ -23,6 +22,7 @@ import {
   room,
   showOpponentCarets,
 } from "../store";
+import { PlayerName } from "./PlayerName";
 import { PLAYER_BG } from "./ui";
 
 const SMOOTH_TAU_MS = 70;
@@ -166,7 +166,9 @@ export function OpponentCarets(): JSXElement {
                   )}
                   data-testid="mp-opponent-tag"
                 >
-                  <Show when={player(id)}>{(p) => displayName(p())}</Show>
+                  <Show when={player(id)}>
+                    {(p) => <PlayerName player={p()} />}
+                  </Show>
                 </span>
               </div>
             </div>

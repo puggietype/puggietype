@@ -2,7 +2,6 @@ import { createMemo, For, JSXElement, Show } from "solid-js";
 
 import { Fa } from "../../components/common/Fa";
 import { cn } from "../../utils/cn";
-import { displayName } from "../bots";
 import { isFlagEnabled } from "../feature-flags";
 import {
   myId,
@@ -12,6 +11,7 @@ import {
   showOpponentCarets,
 } from "../store";
 import { CharacterImage } from "./CharacterImage";
+import { PlayerName } from "./PlayerName";
 import { PLAYER_BG, PLAYER_TEXT } from "./ui";
 
 /** extra words of headroom in time mode, where the end isn't known */
@@ -90,7 +90,7 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
                 />
               </Show>
               <span class="truncate">
-                {displayName(player)}
+                <PlayerName player={player} />
                 {player.id === myId() ? " (you)" : ""}
               </span>
             </span>

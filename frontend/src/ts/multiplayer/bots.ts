@@ -7,6 +7,11 @@
 type MaybeBot = { isBot?: boolean };
 
 export const BOT_BADGE = "🤖";
+export const BOT_LABEL = "Bot";
+export const BOT_LABEL_ARIA = "Bot: computer-controlled player";
+
+/** mirrors the server: bot names are "Pug Bot · NN wpm" */
+export const BOT_NAME_PATTERN = /^Pug Bot \u00B7 ([1-9]\d{1,2}) wpm$/;
 
 export function isBot(p: MaybeBot): boolean {
   return p.isBot === true;
@@ -25,7 +30,7 @@ export function excludeBots<T extends MaybeBot>(results: readonly T[]): T[] {
   return results.filter((r) => !isBot(r));
 }
 
-/** a player's name as shown anywhere: bots carry the badge */
+/** plain-text name (aria, titles): bots carry "🤖 Bot"; JSX uses PlayerName */
 export function displayName(p: MaybeBot & { name: string }): string {
-  return isBot(p) ? `${BOT_BADGE} ${p.name}` : p.name;
+  return isBot(p) ? `${BOT_BADGE} ${BOT_LABEL} ${p.name}` : p.name;
 }

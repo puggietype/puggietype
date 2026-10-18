@@ -47,6 +47,7 @@ import {
 import { CharacterImage } from "./CharacterImage";
 import { CharacterPicker } from "./CharacterPicker";
 import { KickButton } from "./KickButton";
+import { PlayerName } from "./PlayerName";
 import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
 const CARD = "grid content-start gap-4 rounded-lg bg-sub-alt p-6";
@@ -355,7 +356,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                   </span>
                 </Show>
                 <span class="min-w-0 truncate font-(--font) text-text">
-                  {displayName(p)}
+                  <PlayerName player={p} />
                 </span>
                 <Show when={p.id === myId()}>
                   <span class="shrink-0 text-sm text-sub">(you)</span>
