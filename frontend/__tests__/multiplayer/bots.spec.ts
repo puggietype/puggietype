@@ -43,12 +43,17 @@ describe("bots", () => {
   });
 
   it("BOT_NAME_PATTERN matches server bot names only", () => {
-    expect("Pug Bot \u00B7 80 wpm").toMatch(BOT_NAME_PATTERN);
-    expect("Pug Bot · 120 wpm".match(BOT_NAME_PATTERN)?.[1]).toBe("120");
-    expect("Pug Bot · 8 wpm").not.toMatch(BOT_NAME_PATTERN);
-    expect("Pug Bot · 1000 wpm").not.toMatch(BOT_NAME_PATTERN);
-    expect("Pug Bot · 08 wpm").not.toMatch(BOT_NAME_PATTERN);
-    expect("Pug Bot - 80 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot \u00B7 ~80 wpm").toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · ~10 wpm").toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · ~120 wpm".match(BOT_NAME_PATTERN)?.[1]).toBe("120");
+    expect("Pug Bot · ~250 wpm".match(BOT_NAME_PATTERN)?.[1]).toBe("250");
+    // the old exact-speed format is gone
+    expect("Pug Bot · 80 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · ~8 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · ~1000 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · ~08 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · ~ 80 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot - ~80 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("ZippyPug42").not.toMatch(BOT_NAME_PATTERN);
   });
 

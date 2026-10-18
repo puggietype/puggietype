@@ -891,7 +891,7 @@ describe("player reports", () => {
   });
   const player = (id: string, isBot = false): RoomState["players"][number] => ({
     id,
-    name: isBot ? "Pug Bot · 80 wpm" : id,
+    name: isBot ? "Pug Bot · ~80 wpm" : id,
     isBot,
     color: "opp2",
     ready: false,

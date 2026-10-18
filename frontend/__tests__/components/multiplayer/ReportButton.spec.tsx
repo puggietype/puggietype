@@ -16,7 +16,7 @@ const { ReportButton } =
 
 const player = (id: string, isBot = false): RoomState["players"][number] => ({
   id,
-  name: isBot ? "Pug Bot · 80 wpm" : `${id}Pug`,
+  name: isBot ? "Pug Bot · ~80 wpm" : `${id}Pug`,
   isBot,
   color: "opp1",
   ready: false,

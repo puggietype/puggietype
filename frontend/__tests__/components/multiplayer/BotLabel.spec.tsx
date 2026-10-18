@@ -14,9 +14,13 @@ describe("BotLabel", () => {
     expect(label).toHaveTextContent("Bot");
     expect(label).toHaveAttribute(
       "aria-label",
-      "Bot: computer-controlled player",
+      "Bot: computer-controlled player; ~ means approximate speed",
     );
-    expect(getByLabelText("Bot: computer-controlled player")).toBe(label);
+    expect(
+      getByLabelText(
+        "Bot: computer-controlled player; ~ means approximate speed",
+      ),
+    ).toBe(label);
   });
 });
 
@@ -25,10 +29,10 @@ describe("PlayerName", () => {
 
   it("badges bot players", () => {
     const { container, getByTestId } = render(() => (
-      <PlayerName player={{ name: "Pug Bot · 80 wpm", isBot: true }} />
+      <PlayerName player={{ name: "Pug Bot · ~80 wpm", isBot: true }} />
     ));
     expect(getByTestId("mp-bot-label")).toHaveTextContent("Bot");
-    expect(container).toHaveTextContent("Pug Bot · 80 wpm");
+    expect(container).toHaveTextContent("Pug Bot · ~80 wpm");
   });
 
   it("renders nothing extra for humans or legacy players", () => {

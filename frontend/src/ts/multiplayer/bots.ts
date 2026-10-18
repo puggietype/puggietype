@@ -8,10 +8,11 @@ type MaybeBot = { isBot?: boolean };
 
 export const BOT_BADGE = "🤖";
 export const BOT_LABEL = "Bot";
-export const BOT_LABEL_ARIA = "Bot: computer-controlled player";
+export const BOT_LABEL_ARIA =
+  "Bot: computer-controlled player; ~ means approximate speed";
 
-/** mirrors the server: bot names are "Pug Bot · NN wpm" */
-export const BOT_NAME_PATTERN = /^Pug Bot \u00B7 ([1-9]\d{1,2}) wpm$/;
+/** bot names give an approximate speed: "Pug Bot · ~NN wpm" */
+export const BOT_NAME_PATTERN = /^Pug Bot \u00B7 ~([1-9]\d{1,2}) wpm$/;
 
 export function isBot(p: MaybeBot): boolean {
   return p.isBot === true;
