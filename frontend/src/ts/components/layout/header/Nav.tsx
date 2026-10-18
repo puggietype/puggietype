@@ -89,6 +89,7 @@ export function Nav(): JSXElement {
         router-link
         href="/"
         class={buttonClass()}
+        balloon={{ text: "test", position: "down" }}
         dataset={{
           "data-nav-item": "test",
         }}
@@ -106,7 +107,7 @@ export function Nav(): JSXElement {
           router-link
           href="/race"
           class={buttonClass()}
-          balloon={{ text: "race", position: "down" }}
+          balloon={{ text: "multiplayer", position: "down" }}
           dataset={{
             "data-nav-item": "race",
             "data-testid": "nav-race",
@@ -121,6 +122,7 @@ export function Nav(): JSXElement {
             fixedWidth: true,
           }}
           router-link
+          balloon={{ text: "leaderboards", position: "down" }}
           dataset={{
             "data-nav-item": "leaderboards",
           }}
@@ -138,6 +140,7 @@ export function Nav(): JSXElement {
           fixedWidth: true,
         }}
         class={buttonClass()}
+        balloon={{ text: "about", position: "down" }}
         dataset={{
           "data-nav-item": "about",
         }}
@@ -152,6 +155,7 @@ export function Nav(): JSXElement {
         }}
         class={buttonClass()}
         href="/settings"
+        balloon={{ text: "settings", position: "down" }}
         dataset={{
           "data-nav-item": "settings",
         }}
@@ -166,6 +170,7 @@ export function Nav(): JSXElement {
             icon: "fa-bell",
             fixedWidth: true,
           }}
+          balloon={{ text: "notifications", position: "down" }}
           dataset={{
             "data-nav-item": "alerts",
           }}
@@ -192,6 +197,7 @@ export function Nav(): JSXElement {
                   <Button
                     variant="text"
                     href="/login"
+                    balloon={{ text: "login", position: "down" }}
                     dataset={{
                       "data-nav-item": "login",
                     }}
@@ -245,6 +251,7 @@ export function Nav(): JSXElement {
                     )}
                     href="/account"
                     router-link
+                    balloon={{ text: "account", position: "down" }}
                     dataset={{
                       "data-nav-item": "account",
                     }}
