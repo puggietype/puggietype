@@ -168,7 +168,9 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                       setRoomOpen(open);
                     }}
                   />
-                  list in open rooms
+                  {
+                    "List in Open Rooms: anyone can see this room's code and join"
+                  }
                 </label>
               </Show>
             </div>
