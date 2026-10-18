@@ -4,10 +4,25 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { skipNgrokWarning } from "./tunnel";
 
-/** SCREENS_DIR, else e2e/screens (gitignored) */
-const SCREENS = process.env["SCREENS_DIR"] ?? "e2e/screens";
-mkdirSync(SCREENS, { recursive: true });
-const FAST_DELAY_MS = 50;
+/** SCREENS_DIR, else the brand workspace if present, else test-results */
+function screensDir(): string {
+  for (const dir of [
+    process.env["SCREENS_DIR"],
+    "/workspace/puggietype/screens",
+    "test-results/screens",
+  ]) {
+    if (dir === undefined) continue;
+    try {
+      mkdirSync(dir, { recursive: true });
+      return dir;
+    } catch {
+      // not writable here, try the next one
+    }
+  }
+  return ".";
+}
+const SCREENS = screensDir();
+const FAST_DELAY_MS = 25;
 const SLOW_DELAY_MS = 140;
 
 const byTestId = (page: Page, id: string): Locator =>
@@ -175,7 +190,7 @@ test("two players race, see each other, get a podium and rematch", async ({
   await byTestId(a, "mp-start").click();
   // typing during the countdown is ignored
   await expect(byTestId(b, "mp-countdown")).toBeVisible();
-  await b.keyboard.type("xyz", { delay: 50 });
+  await b.keyboard.type("xyz");
   await Promise.all([waitForRaceStart(a), waitForRaceStart(b)]);
   await expect(
     b.locator("#words letter.correct, #words letter.incorrect"),
@@ -538,7 +553,7 @@ test("phone (390px): the race header stays on one line (QA-14)", async ({
   const leave = byTestId(b, "mp-leave-race");
   const carets = byTestId(b, "mp-toggle-carets");
   await expect(leave).toHaveAttribute("aria-label", "leave race");
-  await expect(carets).toHaveAttribute("aria-label", /opponent/);
+  await expect(carets).toHaveAttribute("aria-label", /opponent carets/);
   const header = leave.locator("xpath=..");
   const box = await header.boundingBox();
   const leaveBox = await leave.boundingBox();

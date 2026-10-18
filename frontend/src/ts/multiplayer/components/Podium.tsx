@@ -4,15 +4,12 @@ import type { RaceResult, RoomState } from "../protocol";
 
 import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
-import {
-  characterName,
-  DEFAULT_CHARACTER,
-} from "../../components/pages/test/character-frames";
+import { PUG_WINNER_FILE } from "../../components/pages/test/pug-frames";
 import { cn } from "../../utils/cn";
 import { leaveRoom, rematch } from "../race";
-import { characterSelectOn, isHost, myId } from "../store";
-import { CharacterImage } from "./CharacterImage";
+import { isHost, myId } from "../store";
 import { KickButton } from "./KickButton";
+import { PugImage } from "./PugImage";
 import {
   ordinal,
   PLAYER_BG,
@@ -37,19 +34,7 @@ export function Podium(props: {
 }): JSXElement {
   const colorOf = (id: string) =>
     props.room.players.find((p) => p.id === id)?.color ?? "opp1";
-  const dogOf = (id: string) =>
-    props.room.players.find((p) => p.id === id)?.character ?? DEFAULT_CHARACTER;
   const winner = () => props.results[0];
-  const winnerDog = () => {
-    const w = winner();
-    return w ? dogOf(w.playerId) : DEFAULT_CHARACTER;
-  };
-  /** the podium dog is the one image with alt text (rows are decorative) */
-  const winnerAlt = (): string | undefined => {
-    const w = winner();
-    if (!characterSelectOn() || w === undefined) return undefined;
-    return `${w.name}'s ${characterName(winnerDog())}`;
-  };
   const dense = () => props.results.length > 4;
   const mine = () => props.results.find((r) => r.playerId === myId());
 
@@ -58,15 +43,13 @@ export function Podium(props: {
       class="grid items-center gap-8 md:grid-cols-[2fr_3fr]"
       data-testid="mp-podium"
     >
-      <CharacterImage
-        character={winnerDog()}
-        frame="winner"
+      <PugImage
+        file={PUG_WINNER_FILE}
         class={cn(
           "mx-auto aspect-square w-full",
           dense() ? "max-w-48 md:max-w-80" : "max-w-80",
         )}
         testId="mp-pug-winner"
-        alt={winnerAlt()}
       />
       <div class="grid gap-4">
         <div class="text-sm font-(--font) text-sub">
@@ -142,14 +125,6 @@ export function Podium(props: {
                             PLAYER_BG[colorOf(r.playerId)],
                           )}
                         ></span>
-                        <Show when={characterSelectOn()}>
-                          <CharacterImage
-                            character={dogOf(r.playerId)}
-                            frame="head"
-                            class="h-7 w-8 shrink-0"
-                            testId="mp-result-character"
-                          />
-                        </Show>
                         <span class="truncate text-text">{r.name}</span>
                         <Show when={r.playerId === myId()}>
                           <span class="shrink-0 text-sm text-sub">(you)</span>

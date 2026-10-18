@@ -458,6 +458,14 @@ const list: Record<FunboxName, FunboxMetadata> = {
     frontendFunctions: ["withWords"],
     name: "polyglot",
   },
+  asl: {
+    description: "Practice american sign language.",
+    canGetPb: true,
+    difficultyLevel: 1,
+    properties: ["hasCssFile", "noJoiningScript"],
+    name: "asl",
+    cssModifications: ["words"],
+  },
   rot13: {
     description: "Vg znl abg or frpher, ohg vg vf sha gb glcr!",
     canGetPb: true,

@@ -10,16 +10,16 @@ import {
 
 import { getConfig } from "../../../config/store";
 import { createEffectOn } from "../../../hooks/effects";
-import { myCharacter } from "../../../multiplayer/store";
 import { getMonkeyState } from "../../../states/monkey";
 import { currentLiveStats, isTestActive } from "../../../states/test";
 import { cn } from "../../../utils/cn";
 import { prefersReducedMotion } from "../../../utils/misc";
 import { AnimeShow } from "../../common/anime";
-import { type Character, loadCharacterSvg } from "./character-frames";
 import {
   getHandsFrame,
+  getPugFrameUrl,
   getTransitionFrame,
+  normalizePugSvg,
   PUG_FRAME_FILES,
   PugFrame,
 } from "./pug-frames";
@@ -31,22 +31,26 @@ const BLINK_MS = 140;
 
 const frameNames = Object.keys(PUG_FRAME_FILES) as PugFrame[];
 
-async function loadFrames(
-  character: Character,
-): Promise<Partial<Record<PugFrame, string>>> {
+async function loadFrames(): Promise<Partial<Record<PugFrame, string>>> {
   const entries = await Promise.all(
-    frameNames.map(
-      async (name) => [name, await loadCharacterSvg(character, name)] as const,
-    ),
+    frameNames.map(async (name) => {
+      try {
+        const response = await fetch(getPugFrameUrl(name));
+        if (!response.ok) return [name, undefined] as const;
+        const svg = normalizePugSvg(await response.text(), `pug-${name}-`);
+        return [name, svg] as const;
+      } catch {
+        return [name, undefined] as const;
+      }
+    }),
   );
   return Object.fromEntries(entries);
 }
 
 export function Pug(): JSXElement {
-  // fetched lazily the first time pug mode is shown, then cached; the dog is
-  // the saved pick (solo) or our seat's (race), puggie with the flag off
+  // fetched lazily the first time pug mode is shown, then cached
   const [frames] = createResource(
-    () => (getConfig.monkey ? myCharacter() : undefined),
+    () => getConfig.monkey || undefined,
     loadFrames,
   );
 
@@ -109,7 +113,6 @@ export function Pug(): JSXElement {
           class="absolute h-50 w-50 text-(--pug-ink)"
           data-ui-element="pug"
           data-frame={frame()}
-          data-character={myCharacter()}
         >
           <For each={frameNames}>
             {(name) => (
@@ -118,7 +121,7 @@ export function Pug(): JSXElement {
                   hidden: frame() !== name,
                 })}
                 // oxlint-disable-next-line solid/no-innerhtml -- same-origin static svg, sanitised by normalizePugSvg
-                innerHTML={frames.latest?.[name] ?? ""}
+                innerHTML={frames()?.[name] ?? ""}
               ></div>
             )}
           </For>

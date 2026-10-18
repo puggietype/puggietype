@@ -24,9 +24,7 @@
     "docker": "docker compose -f docker/compose.dev.yml up",
     "storybook": "cd storybook && pnpm run storybook",
     "import-tree": "tsx ./scripts/import-tree.ts",
-    "sync-pug": "bash ./scripts/sync-pug-art.sh",
-    "sync-characters": "node ./scripts/sync-characters.mjs",
-    "check-characters": "node ./scripts/check-characters.mjs"
+    "sync-pug": "bash ./scripts/sync-pug-art.sh"
   },
   "dependencies": {
     "@date-fns/utc": "1.2.0",

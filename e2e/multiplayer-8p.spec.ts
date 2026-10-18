@@ -16,7 +16,7 @@ const THEME = process.env["P8_THEME"] ?? "puggie_dark";
 const WIDTH = Number(process.env["P8_WIDTH"] ?? 1280);
 const HEIGHT = Number(process.env["P8_HEIGHT"] ?? 900);
 const SHOTS = process.env["P8_SHOTS"] === "1";
-const SCREENS = process.env["SCREENS_DIR"] ?? "e2e/screens";
+const SCREENS = process.env["SCREENS_DIR"] ?? "/workspace/puggietype/screens";
 const BOT_WPM = [96, 88, 80, 72, 64, 56, 48];
 
 const byTestId = (page: Page, id: string): Locator =>

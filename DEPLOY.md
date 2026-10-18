@@ -25,7 +25,6 @@ Set them for **both** Production and Preview. All are optional.
 | `VITE_WS_URL` | unset | WS endpoint, e.g. `wss://ws.puggietype.com/ws`. Unset: `wss://ws.puggietype.com/ws` on puggietype.com, same-origin `/ws` elsewhere (dev server, local preview, tunnels). **Set it on Pages** so `*.pages.dev` preview deploys reach the server too. Its origin is also put into the CSP `connect-src`. |
 | `VITE_MULTIPLAYER` | on | `false` hides the race nav button and the `/race` page. |
 | `VITE_PUBLIC_MATCHES` | off | off shows the "public match: coming soon" card. |
-| `VITE_FLAGS` | unset (all on) | Client feature flags, all **on** by default: `characterSelect` (dog picker, dogs in lobby/podium/solo), `opponentDogs` (opponents' dogs in races). Set to a comma list to ship only those, or `none` to turn all off (build-time kill switch). Per tab: `?flags=characterSelect` limits to those, `?flags=none` turns all off, `?flags=default` clears (kept in sessionStorage). `characterSelect` also needs the WS server's `FEATURE_CHARACTER_SELECT=1`, else everyone stays Puggie (server off = picker off, safe). |
 | `BACKEND_URL` | unset | leave unset: no accounts/API (standalone build). |
 
 The WS server's Origin allowlist must include every host serving the frontend

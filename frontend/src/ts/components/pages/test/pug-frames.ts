@@ -1,7 +1,6 @@
 /**
- * Pug mascot frames in static/images/pug/ (the brand kit's files, kept for
- * `pnpm sync-pug`), plus the frame logic shared by every dog. The app draws
- * dogs from static/images/characters/ (character-frames.ts).
+ * Pug mascot frames. Each frame is a swappable svg in static/images/pug/,
+ * loaded by filename (see the README in that folder).
  */
 export const PUG_FRAME_FILES = {
   idle: "pug-idle.svg",
@@ -15,6 +14,9 @@ export const PUG_FRAME_FILES = {
 
 export type PugFrame = keyof typeof PUG_FRAME_FILES;
 export type PugHandsFrame = "idle" | "left" | "right" | "both";
+
+/** shown on the multiplayer podium */
+export const PUG_WINNER_FILE = "pug-winner.svg";
 
 export function getPugImageUrl(file: string): string {
   return `/images/pug/${file}`;

@@ -46,25 +46,6 @@ describe("config.ts", () => {
       expect(result.time).toEqual(120);
       expect(result.accountChart).toEqual(["off", "off", "off", "off"]);
     });
-    describe("should strip removed funboxes without resetting the config", () => {
-      it.for([
-        {
-          given: { funbox: ["asl", "rot13"], mode: "words", words: 50 },
-          expected: { funbox: ["rot13"], mode: "words", words: 50 },
-        },
-        {
-          given: { funbox: ["asl"], theme: "nord" },
-          expected: { funbox: [], theme: "nord" },
-        },
-        {
-          given: { funbox: "asl#58008", time: 60 },
-          expected: { funbox: ["58008"], time: 60 },
-        },
-      ])(`$given`, ({ given, expected }) => {
-        const result = migrateConfig(given);
-        expect(result).toEqual(expect.objectContaining(expected));
-      });
-    });
     describe("should replace value with default config if invalid", () => {
       it.for([
         {

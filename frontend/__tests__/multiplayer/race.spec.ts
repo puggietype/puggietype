@@ -159,7 +159,6 @@ function roomState(overrides: Partial<RoomState> = {}): ServerMessage {
         color: "opp1",
         ready: true,
         connected: true,
-        character: "puggie",
         progress: { wordIndex: 0, charIndex: 0, testMs: 0, wpm: 0 },
         finished: false,
       },

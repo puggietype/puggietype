@@ -45,14 +45,8 @@ import {
   type ProgressPayload,
   type RacePosition,
 } from "./helpers";
-import type {
-  Character,
-  ClientMessage,
-  ServerMessage,
-  SettingsPatch,
-} from "./protocol";
+import type { ClientMessage, ServerMessage, SettingsPatch } from "./protocol";
 import {
-  characterSelectOn,
   myId,
   opponentProgress,
   race,
@@ -66,8 +60,6 @@ import {
   setRaceFinished,
   setResults,
   setRoom,
-  setSavedCharacter,
-  setServerFeatures,
   type RaceInfo,
 } from "./store";
 
@@ -132,14 +124,6 @@ export function kickPlayer(playerId: string): void {
 /** swap our server-assigned nickname for a new one (lobby only) */
 export function rerollName(): void {
   send({ type: "player:reroll" });
-}
-
-/** pick a dog: saved for next time (and solo), sent to the room if in one */
-export function setCharacter(character: Character): void {
-  setSavedCharacter(character);
-  if (room() !== undefined && characterSelectOn()) {
-    send({ type: "player:character", character });
-  }
 }
 
 export function setReady(ready: boolean): void {
@@ -215,10 +199,7 @@ function dropRoom(): void {
 function handleMessage(msg: ServerMessage): void {
   switch (msg.type) {
     case "welcome":
-      batch(() => {
-        setMyId(msg.playerId);
-        setServerFeatures(msg.features);
-      });
+      setMyId(msg.playerId);
       return;
     case "room:state": {
       const prev = room();

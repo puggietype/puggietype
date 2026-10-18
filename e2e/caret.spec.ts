@@ -95,13 +95,13 @@ for (const [name, config, pace] of [
     for (let i = 0; i < 20; i++) {
       // restart from a fresh test, mid-word, and after a finished word
       const w = await activeWord(page);
-      if (i % 3 === 1) await page.keyboard.type(w.slice(0, 2), { delay: 50 });
-      if (i % 3 === 2) await page.keyboard.type(`${w} `, { delay: 50 });
+      if (i % 3 === 1) await page.keyboard.type(w.slice(0, 2), { delay: 20 });
+      if (i % 3 === 2) await page.keyboard.type(`${w} `, { delay: 20 });
       await page.keyboard.press("Tab");
       await page.keyboard.press("Enter");
       await page.waitForTimeout(i % 2 === 0 ? 350 : 60);
       await page.keyboard.type((await activeWord(page)).slice(0, 2), {
-        delay: 50,
+        delay: 40,
       });
       await page.waitForTimeout(pace ? 700 : 250);
 
@@ -173,7 +173,7 @@ test("race -> solo: choosing solo leaves the race, no ghost opponent caret", asy
   await expect(byTestId(host, "mp-countdown")).toHaveCount(0, {
     timeout: 15_000,
   });
-  await host.keyboard.type(`${await activeWord(host)} `, { delay: 50 });
+  await host.keyboard.type(`${await activeWord(host)} `, { delay: 30 });
   // guest idles at word 0: its caret is the "ghost" at the start
   await expect
     .poll(async () => (await visibleCarets(host)).map((c) => c.id))
