@@ -1,8 +1,10 @@
 import { isAgeConfirmed } from "./age-gate";
 import { computeClockOffset, type ClockSample } from "./clock";
 import { CONFIGURED_WS_URL } from "./flags";
+import { isFlagEnabled } from "./feature-flags";
 import { wsUrl } from "./helpers";
 import type { ClientMessage, ServerMessage } from "./protocol";
+import { loadCharacter } from "./store";
 
 const SESSION_KEY = "puggie-mp-session";
 const PING_SAMPLES = 5;
@@ -105,7 +107,14 @@ export class MultiplayerClient {
   private helloMessage(): ClientMessage {
     const session = loadSession();
     // only reachable after the age gate (see connect)
-    return { type: "hello", ...session, ageConfirmed: true };
+    return {
+      type: "hello",
+      ...session,
+      ageConfirmed: true,
+      ...(isFlagEnabled("characterSelect")
+        ? { character: loadCharacter() }
+        : {}),
+    };
   }
 
   private open(status: ConnectionStatus): void {

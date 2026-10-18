@@ -1,11 +1,16 @@
 import { createSignal } from "solid-js";
 
 import type { ConnectionStatus } from "./client";
-import type {
-  PlayerProgress,
-  RaceResult,
-  RoomState,
-  Settings,
+import { isFlagEnabled } from "./feature-flags";
+import {
+  CharacterSchema,
+  DEFAULT_CHARACTER,
+  type Character,
+  type Features,
+  type PlayerProgress,
+  type RaceResult,
+  type RoomState,
+  type Settings,
 } from "./protocol";
 
 export type RaceInfo = {
@@ -15,6 +20,7 @@ export type RaceInfo = {
 };
 
 const SHOW_CARETS_KEY = "puggie-mp-show-carets";
+export const CHARACTER_KEY = "puggie-mp-character";
 
 export const [connectionStatus, setConnectionStatus] =
   createSignal<ConnectionStatus>("idle");
@@ -44,6 +50,49 @@ export { showOpponentCarets };
 export function setShowOpponentCarets(show: boolean): void {
   localStorage.setItem(SHOW_CARETS_KEY, String(show));
   setShowOpponentCaretsSignal(show);
+}
+
+/** the saved dog pick (localStorage), puggie if unset or unknown */
+export function loadCharacter(
+  storage: Pick<Storage, "getItem"> = localStorage,
+): Character {
+  const parsed = CharacterSchema.safeParse(storage.getItem(CHARACTER_KEY));
+  return parsed.success ? parsed.data : DEFAULT_CHARACTER;
+}
+
+export function saveCharacter(
+  character: Character,
+  storage: Pick<Storage, "setItem"> = localStorage,
+): void {
+  storage.setItem(CHARACTER_KEY, character);
+}
+
+const [savedCharacter, setSavedCharacterSignal] = createSignal(loadCharacter());
+export { savedCharacter };
+
+export function setSavedCharacter(character: Character): void {
+  saveCharacter(character);
+  setSavedCharacterSignal(character);
+}
+
+/** feature flags from the server's welcome (absent: an older server) */
+export const [serverFeatures, setServerFeatures] = createSignal<
+  Features | undefined
+>();
+
+/** dog picking is on here (client flag) and on the server we talk to */
+export function characterSelectOn(): boolean {
+  return (
+    isFlagEnabled("characterSelect") &&
+    serverFeatures()?.characterSelect === true
+  );
+}
+
+/** the dog we type as: our seat's in a room, else the saved pick (solo) */
+export function myCharacter(): Character {
+  if (!isFlagEnabled("characterSelect")) return DEFAULT_CHARACTER;
+  const seat = room()?.players.find((p) => p.id === myId());
+  return seat?.character ?? savedCharacter();
 }
 
 export function isHost(): boolean {

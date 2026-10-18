@@ -1,13 +1,25 @@
-import { createSignal, For, JSXElement, onCleanup, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  JSXElement,
+  onCleanup,
+  Show,
+} from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
-import { PUG_FRAME_FILES } from "../../components/pages/test/pug-frames";
+import {
+  characterName,
+  DEFAULT_CHARACTER,
+  prefetchCharacters,
+} from "../../components/pages/test/character-frames";
 import {
   showErrorNotification,
   showSuccessNotification,
 } from "../../states/notifications";
 import { cn } from "../../utils/cn";
+import { isFlagEnabled } from "../feature-flags";
 import { canStartRace, inviteLink } from "../helpers";
 import {
   MAX_PLAYERS,
@@ -23,9 +35,10 @@ import {
   startRace,
   updateSettings,
 } from "../race";
-import { isHost, myId } from "../store";
+import { characterSelectOn, isHost, myCharacter, myId } from "../store";
+import { CharacterImage } from "./CharacterImage";
+import { CharacterPicker } from "./CharacterPicker";
 import { KickButton } from "./KickButton";
-import { PugImage } from "./PugImage";
 import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
 const CARD = "grid content-start gap-4 rounded-lg bg-sub-alt p-6";
@@ -76,6 +89,21 @@ export function Lobby(props: { room: RoomState }): JSXElement {
     rerollTimer = setTimeout(() => setRerollCooling(false), REROLL_COOLDOWN_MS);
   };
 
+  // opponents' race frames, so the first race frame never waits on them
+  createEffect(() => {
+    if (!isFlagEnabled("opponentDogs")) return;
+    prefetchCharacters(
+      props.room.players.filter((p) => p.id !== myId()).map((p) => p.character),
+      ["idle", "left", "right", "winnerSmall"],
+    );
+  });
+
+  /** slot number badge when someone else has the same dog */
+  const sharesDog = (id: string): boolean => {
+    const dog = props.room.players.find((p) => p.id === id)?.character;
+    return props.room.players.some((p) => p.id !== id && p.character === dog);
+  };
+
   const copyInvite = (): void => {
     navigator.clipboard
       .writeText(link())
@@ -118,6 +146,13 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             </span>
           </div>
         </section>
+
+        <Show when={characterSelectOn()}>
+          <CharacterPicker
+            selected={me()?.character ?? DEFAULT_CHARACTER}
+            locked={me()?.ready === true}
+          />
+        </Show>
 
         <section class={CARD} data-testid="mp-settings">
           <div class="flex items-center justify-between">
@@ -244,6 +279,30 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     PLAYER_BG[p.color],
                   )}
                 ></span>
+                <Show when={characterSelectOn()}>
+                  <span
+                    class="relative shrink-0"
+                    title={characterName(p.character)}
+                  >
+                    <CharacterImage
+                      character={p.character}
+                      frame="head"
+                      class="h-6.5 w-8"
+                      testId="mp-player-character"
+                    />
+                    <Show when={sharesDog(p.id)}>
+                      <span
+                        class={cn(
+                          "absolute -right-1.5 -bottom-1 grid size-4 place-items-center rounded-full text-[0.625rem] leading-none font-bold text-bg",
+                          PLAYER_BG[p.color],
+                        )}
+                        aria-hidden="true"
+                      >
+                        {p.color.slice(3)}
+                      </span>
+                    </Show>
+                  </span>
+                </Show>
                 <span class="min-w-0 truncate font-(--font) text-text">
                   {p.name}
                 </span>
@@ -314,7 +373,11 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             </Show>
           </div>
         </div>
-        <PugImage file={PUG_FRAME_FILES.idle} class="mx-auto mt-2 h-36 w-36" />
+        <CharacterImage
+          character={myCharacter()}
+          frame="idle"
+          class="mx-auto mt-2 h-36 w-36"
+        />
       </section>
     </div>
   );

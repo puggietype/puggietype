@@ -106,6 +106,7 @@ function room(players: Partial<RoomState["players"][number]>[]): RoomState {
       color: "opp1",
       ready: false,
       connected: true,
+      character: "puggie",
       progress: { wordIndex: 0, charIndex: 0, testMs: 0, wpm: 0 },
       finished: false,
       ...p,

@@ -1,6 +1,7 @@
 import { JSXElement, onMount, Show } from "solid-js";
 
 import { Button } from "../../components/common/Button";
+import { isFlagEnabled } from "../feature-flags";
 import { leaveRoom, resumeSession } from "../race";
 import {
   countdown,
@@ -10,6 +11,7 @@ import {
   showOpponentCarets,
 } from "../store";
 import { OpponentCarets } from "./OpponentCarets";
+import { OpponentDogs } from "./OpponentDogs";
 import { RaceProgressBars } from "./RaceProgressBars";
 import { settingsSummary } from "./ui";
 
@@ -45,8 +47,12 @@ export function RaceOverlay(): JSXElement {
               fa={{ icon: showOpponentCarets() ? "fa-eye" : "fa-eye-slash" }}
               class="shrink-0 py-1 text-sm"
               balloon={{
-                text: showOpponentCarets()
-                  ? "hide opponent carets"
+                text: isFlagEnabled("opponentDogs")
+                  ? showOpponentCarets()
+                    ? "hide opponents"
+                    : "show opponents"
+                  : showOpponentCarets()
+                    ? "hide opponent carets"
                   : "show opponent carets",
                 position: "left",
               }}
@@ -58,6 +64,10 @@ export function RaceOverlay(): JSXElement {
               </span>
             </Button>
           </div>
+          {/* one "show opponents" toggle covers carets and dogs */}
+          <Show when={isFlagEnabled("opponentDogs") && showOpponentCarets()}>
+            <OpponentDogs />
+          </Show>
           <RaceProgressBars />
           <Show when={(countdown() ?? 0) > 0}>
             <div

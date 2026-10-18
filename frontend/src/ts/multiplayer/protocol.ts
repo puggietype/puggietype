@@ -27,6 +27,24 @@ export const PLAYER_COLORS = [
 export const TIME_MODE2 = [15, 30, 60, 120] as const;
 export const WORDS_MODE2 = [10, 25, 50, 100] as const;
 
+/** Selectable dogs (character select). Enum only: never free text, never stored after the room. */
+export const CHARACTERS = [
+  "puggie",
+  "chowie",
+  "frenchie",
+  "tuckie",
+  "huskie",
+  "corgie",
+  "shibie",
+  "goldie",
+] as const;
+export const CharacterSchema = z.enum(CHARACTERS);
+export type Character = z.infer<typeof CharacterSchema>;
+export const DEFAULT_CHARACTER: Character = "puggie";
+/** Character changes allowed per player per window; extra changes are silently dropped. */
+export const CHARACTER_CHANGE_LIMIT = 10;
+export const CHARACTER_CHANGE_WINDOW_MS = 10_000;
+
 // ---------------------------------------------------------------- settings
 
 export const SettingsSchema = z
@@ -87,6 +105,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     sessionToken: z.string().min(1).max(128).optional(),
     /** The user confirmed the age gate (13+). Required before room:create / room:join. */
     ageConfirmed: z.boolean().optional(),
+    /** Initial dog. Unknown or invalid values become "puggie" (never an error, so old clients work). */
+    character: CharacterSchema.catch(DEFAULT_CHARACTER).optional(),
   }),
   z.object({
     type: z.literal("room:create"),
@@ -103,6 +123,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("player:ready"), ready: z.boolean() }),
   /** Lobby only: swap your server-assigned nickname for a new one, unique in the room. */
   z.object({ type: z.literal("player:reroll") }),
+  /** Lobby or results phase while not ready: pick your dog. */
+  z.object({ type: z.literal("player:character"), character: CharacterSchema }),
   z.object({ type: z.literal("race:start") }),
   z.object({
     type: z.literal("race:progress"),
@@ -149,6 +171,7 @@ export interface PlayerState {
   color: PlayerColor;
   ready: boolean;
   connected: boolean;
+  character: Character;
   progress: Progress;
   finished: boolean;
   place?: number;
@@ -198,6 +221,8 @@ export type ErrorCode =
   | "ROOM_IN_PROGRESS"
   | "NOT_HOST"
   | "WRONG_PHASE"
+  | "READY_LOCKED"
+  | "FEATURE_DISABLED"
   | "NOT_ENOUGH_PLAYERS"
   | "NOT_ALL_READY"
   | "INVALID_SETTINGS"
@@ -209,6 +234,11 @@ export type ErrorCode =
   | "SERVER_FULL"
   | "INTERNAL";
 
+export interface Features {
+  /** Off: everyone is puggie, `player:character` is rejected, clients hide the picker. */
+  characterSelect: boolean;
+}
+
 export type ServerMessage =
   | {
       type: "welcome";
@@ -216,6 +246,8 @@ export type ServerMessage =
       sessionToken: string;
       name: string;
       protocol: number;
+      /** Server feature flags the client should follow (absent on older servers). */
+      features?: Features;
     }
   | { type: "pong"; t: number; serverNow: number }
   | ({ type: "room:state" } & RoomState)
