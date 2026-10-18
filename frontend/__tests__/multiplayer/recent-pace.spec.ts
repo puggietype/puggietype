@@ -56,7 +56,7 @@ describe("recent pace", () => {
     expect(await recentClaimedWpm()).toBe(75);
   });
 
-  it("prefers time 30 english records", async () => {
+  it("uses only time 30 english records", async () => {
     const { recordSoloPace, recentClaimedWpm } = await load();
     recordSoloPace(qm(60));
     recordSoloPace({ ...qm(200), mode2: "60" });
@@ -71,7 +71,7 @@ describe("recent pace", () => {
     expect(await recentClaimedWpm()).toBe(65);
   });
 
-  it("falls back to any local records", async () => {
+  it("ignores other configs: no time 30 english -> 50, nothing stored", async () => {
     const { recordSoloPace, recentClaimedWpm } = await load();
     recordSoloPace({
       wpm: 90,
@@ -80,7 +80,8 @@ describe("recent pace", () => {
       language: "english",
     });
     recordSoloPace({ ...qm(110), language: "spanish" });
-    expect(await recentClaimedWpm()).toBe(100);
+    expect(await recentClaimedWpm()).toBe(50);
+    expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).toEqual([]);
   });
 
   it("never imports resultsCollection", async () => {
