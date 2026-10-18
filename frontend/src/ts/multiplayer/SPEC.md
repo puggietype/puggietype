@@ -15,7 +15,7 @@ Solo typing must keep working unchanged. Pug mode works during races.
   confirm (stored in localStorage) or go back; no WebSocket before confirming, then
   `hello{ageConfirmed:true}`. Build flags `VITE_MULTIPLAYER`, `VITE_PUBLIC_MATCHES`, WS URL
   `VITE_WS_URL` (see `DEPLOY.md`).
-- `/race` page: (nickname is server-assigned, shown with a reroll button in the lobby), Create private lobby, Join by code, "public match:
+- `/race` page: (nickname is server-assigned, shown with a reroll button in the lobby), Create room (Private by default; Open when Open Rooms is on), Join by code, "public match:
   coming soon" stub. `/r/CODE` auto-joins.
 - Host kick (two clicks) per player in lobby and results; the kicked player gets a notice and
   lands on `/race`. The race page URL follows the room (`/r/CODE` in one, else `/race`).

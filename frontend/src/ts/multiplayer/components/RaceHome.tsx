@@ -24,6 +24,7 @@ import {
 import { connectionStatus, openRooms, openRoomsOn } from "../store";
 import { OpenRoomsList } from "./OpenRoomsList";
 import { PRIMARY_BUTTON } from "./ui";
+import { Visibility, VisibilityChoice } from "./VisibilityChoice";
 
 const CARD = "grid gap-3 rounded-lg bg-sub-alt p-6";
 const LABEL = "text-sm tracking-wide text-sub";
@@ -34,6 +35,8 @@ export function RaceHome(props: { code?: string }): JSXElement {
   // initial value only, the field is user-editable afterwards
   const [code, setCode] = createSignal(untrack(() => props.code) ?? "");
 
+  // never remembered: every visit to the hub starts private
+  const [visibility, setVisibility] = createSignal<Visibility>("private");
   const validCode = (): string | undefined => normalizeRoomCode(code());
   const busy = (): boolean => connectionStatus() === "connecting";
 
@@ -50,19 +53,28 @@ export function RaceHome(props: { code?: string }): JSXElement {
     <div class="grid gap-6 md:grid-cols-[3fr_2fr]">
       <div class="grid content-start gap-6">
         <section class={CARD}>
-          <div class={LABEL}>private match</div>
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="text-sub">
-              race up to {MAX_PLAYERS} typists with an invite link. you get a
-              random pug name.
-            </div>
+          <h2 class={LABEL}>create a room</h2>
+          <div class="text-sub">
+            race up to {MAX_PLAYERS} typists with an invite link. you get a
+            random pug name.
+          </div>
+          <Show when={openRoomsOn()}>
+            <VisibilityChoice
+              value={visibility()}
+              onChange={(v) => setVisibility(v)}
+            />
+          </Show>
+          <div class="flex justify-end">
             <Button
-              text="create private lobby"
+              text="Create room"
               fa={{ icon: "fa-plus" }}
               class={cn(PRIMARY_BUTTON, "px-5 py-3")}
               disabled={busy()}
               dataset={{ "data-testid": "mp-create" }}
-              onClick={() => withConnection(() => createRoom())}
+              onClick={() => {
+                const open = openRoomsOn() && visibility() === "open";
+                withConnection(() => createRoom(undefined, { open }));
+              }}
             />
           </div>
         </section>
