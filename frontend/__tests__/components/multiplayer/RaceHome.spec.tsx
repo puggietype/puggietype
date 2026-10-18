@@ -58,9 +58,11 @@ describe("RaceHome create room", () => {
   it("shows each hint as visible text linked by aria-describedby", () => {
     const { getByLabelText, getByTestId } = render(() => <RaceHome />);
     expect(getByTestId("mp-create-hint-private")).toHaveTextContent(
-      PRIVATE_HINT,
+      /^only people with the code can join$/,
     );
-    expect(getByTestId("mp-create-hint-open")).toHaveTextContent(OPEN_HINT);
+    expect(getByTestId("mp-create-hint-open")).toHaveTextContent(
+      /^anyone can see this room's code and join$/,
+    );
     expect(getByLabelText("Private")).toHaveAccessibleDescription(PRIVATE_HINT);
     expect(getByLabelText("Open")).toHaveAccessibleDescription(OPEN_HINT);
   });
