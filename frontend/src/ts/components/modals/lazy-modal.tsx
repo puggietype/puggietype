@@ -1,10 +1,19 @@
-import { Component, createMemo, lazy, Show } from "solid-js";
+import {
+  Component,
+  createMemo,
+  ErrorBoundary,
+  lazy,
+  Show,
+  untrack,
+} from "solid-js";
 
 import {
   getModalVisibility,
   getPendingModal,
+  hideModalAndClearChain,
   ModalId,
 } from "../../states/modals";
+import { showErrorNotification } from "../../states/notifications";
 
 /**
  * Loads and mounts a modal the first time one of its ids is requested, then
@@ -31,7 +40,24 @@ export function lazyModal<T extends Record<string, unknown>>(
     );
     return (
       <Show when={requested()}>
-        <Modal />
+        <ErrorBoundary
+          fallback={() => {
+            // chunk failed to load: don't leave the store thinking it's open.
+            // No reset: lazy() keeps the rejected import, so a retry would
+            // just fail again (the preloadError handler reloads the page)
+            untrack(() => {
+              for (const id of ids) {
+                if (getModalVisibility(id)?.visible === true) {
+                  hideModalAndClearChain(id);
+                }
+              }
+              showErrorNotification("Failed to load, please reload the page");
+            });
+            return null;
+          }}
+        >
+          <Modal />
+        </ErrorBoundary>
       </Show>
     );
   };

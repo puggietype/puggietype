@@ -5,6 +5,7 @@ import { JSXElement } from "solid-js";
 
 import * as CustomThemes from "../collections/custom-themes";
 import { getDefaultConfig } from "../constants/default-config";
+import { isBootSettled } from "../states/boot";
 import { isAuthenticated } from "../states/core";
 import { showNoticeNotification } from "../states/notifications";
 import { FaObject } from "../types/font-awesome";
@@ -734,7 +735,7 @@ export const configMetadata: ConfigMetadataObject = {
       pb: {},
     },
     isBlocked: ({ value }) => {
-      if (document.readyState === "complete") {
+      if (isBootSettled()) {
         if ((value === "pb" || value === "tagPb") && !isAuthenticated()) {
           showNoticeNotification(
             `Pace caret "pb" and "tag pb" are unavailable without an account`,
