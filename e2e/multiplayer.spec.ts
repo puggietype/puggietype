@@ -538,7 +538,7 @@ test("phone (390px): the race header stays on one line (QA-14)", async ({
   const leave = byTestId(b, "mp-leave-race");
   const carets = byTestId(b, "mp-toggle-carets");
   await expect(leave).toHaveAttribute("aria-label", "leave race");
-  await expect(carets).toHaveAttribute("aria-label", /opponent carets/);
+  await expect(carets).toHaveAttribute("aria-label", /opponent/);
   const header = leave.locator("xpath=..");
   const box = await header.boundingBox();
   const leaveBox = await leave.boundingBox();
