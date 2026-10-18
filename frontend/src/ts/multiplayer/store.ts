@@ -1,11 +1,16 @@
 import { createSignal } from "solid-js";
 
+import { loadCharacter, saveCharacter } from "./character-storage";
 import type { ConnectionStatus } from "./client";
-import type {
-  PlayerProgress,
-  RaceResult,
-  RoomState,
-  Settings,
+import { isFlagEnabled } from "./feature-flags";
+import {
+  DEFAULT_CHARACTER,
+  type Character,
+  type Features,
+  type PlayerProgress,
+  type RaceResult,
+  type RoomState,
+  type Settings,
 } from "./protocol";
 
 export type RaceInfo = {
@@ -44,6 +49,34 @@ export { showOpponentCarets };
 export function setShowOpponentCarets(show: boolean): void {
   localStorage.setItem(SHOW_CARETS_KEY, String(show));
   setShowOpponentCaretsSignal(show);
+}
+
+const [savedCharacter, setSavedCharacterSignal] = createSignal(loadCharacter());
+export { savedCharacter };
+
+export function setSavedCharacter(character: Character): void {
+  saveCharacter(character);
+  setSavedCharacterSignal(character);
+}
+
+/** feature flags from the server's welcome (absent: an older server) */
+export const [serverFeatures, setServerFeatures] = createSignal<
+  Features | undefined
+>();
+
+/** dog picking is on here (client flag) and on the server we talk to */
+export function characterSelectOn(): boolean {
+  return (
+    isFlagEnabled("characterSelect") &&
+    serverFeatures()?.characterSelect === true
+  );
+}
+
+/** the dog we type as: our seat's in a room, else the saved pick (solo) */
+export function myCharacter(): Character {
+  if (!isFlagEnabled("characterSelect")) return DEFAULT_CHARACTER;
+  const seat = room()?.players.find((p) => p.id === myId());
+  return seat?.character ?? savedCharacter();
 }
 
 export function isHost(): boolean {

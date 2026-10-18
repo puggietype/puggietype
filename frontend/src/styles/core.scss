@@ -405,9 +405,3 @@ table {
     background-color: var(--sub-alt-color);
   }
 }
-
-// Jake: no forehead "thumbprint" spot on the typing pug. The brand frames
-// shade it with --pug-thumb; zero it on the mascot so synced art stays as-is.
-[data-ui-element="pug"] {
-  --pug-thumb: transparent;
-}

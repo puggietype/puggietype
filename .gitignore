@@ -140,3 +140,12 @@ frontend/scripts/keylog-report.ts
 # playwright
 test-results/
 playwright-report/
+
+# art generator output (renders, contact sheets); never commit images here
+art/sketches/
+art/**/*.png
+art/**/*.jpg
+art/__pycache__/
+
+# e2e screenshots (SCREENS_DIR default)
+e2e/screens/

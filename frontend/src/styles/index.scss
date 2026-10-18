@@ -17,7 +17,8 @@
 
 @layer custom-styles {
   @import "buttons", "ads", "test-activity", "animations", "caret", "core",
-    "pug-mono", "fonts", "inputs", "scroll", "test", "media-queries";
+    "pug-mono", "character-mono", "fonts", "inputs", "scroll", "test",
+    "media-queries";
 
   .chartCanvas {
     width: 100% !important;

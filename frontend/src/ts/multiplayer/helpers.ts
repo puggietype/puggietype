@@ -182,3 +182,39 @@ export function progressWpm(
   chars += Math.min(charIndex, (words[wordIndex] ?? "").length);
   return Math.round((chars / 5 / (testMs / 60000)) * 100) / 100;
 }
+
+/**
+ * Roving focus in a grid of `count` items, `cols` wide (radio group arrows):
+ * Left/Right wrap within the row, Up/Down move between rows (wrapping).
+ */
+export function gridMove(
+  index: number,
+  key: string,
+  cols: number,
+  count: number,
+): number | undefined {
+  const rows = Math.ceil(count / cols);
+  const row = Math.floor(index / cols);
+  const col = index % cols;
+  const rowLen = Math.min(cols, count - row * cols);
+  switch (key) {
+    case "ArrowLeft":
+      return row * cols + ((col - 1 + rowLen) % rowLen);
+    case "ArrowRight":
+      return row * cols + ((col + 1) % rowLen);
+    case "ArrowUp":
+    case "ArrowDown": {
+      const step = key === "ArrowUp" ? rows - 1 : 1;
+      let r = (row + step) % rows;
+      // a short last row: skip it if it has no item in this column
+      while (r * cols + col >= count) r = (r + step) % rows;
+      return r * cols + col;
+    }
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return undefined;
+  }
+}

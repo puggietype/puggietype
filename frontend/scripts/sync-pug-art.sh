@@ -3,10 +3,13 @@
 # filename, so redrawn art drops in with no code change.
 #   pnpm sync-pug            frames only
 #   pnpm sync-pug --all      frames + favicons + logos + theme tokens + mono pug
-# BRAND_DIR overrides the brand kit location.
+# BRAND_DIR (required) = path to the brand kit checkout.
 set -euo pipefail
 
-BRAND_DIR="${BRAND_DIR:-/workspace/puggietype/brand}"
+if [ -z "${BRAND_DIR:-}" ]; then
+  echo "BRAND_DIR is not set: export BRAND_DIR=/path/to/brand-kit (the dir containing mascot/svg)" >&2
+  exit 1
+fi
 FRONTEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATIC="$FRONTEND_DIR/static"
 

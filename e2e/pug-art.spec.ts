@@ -4,24 +4,9 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { skipNgrokWarning } from "./tunnel";
 
-/** SCREENS_DIR, else the brand workspace if present, else test-results */
-function screensDir(): string {
-  for (const dir of [
-    process.env["SCREENS_DIR"],
-    "/workspace/puggietype/screens",
-    "test-results/screens",
-  ]) {
-    if (dir === undefined) continue;
-    try {
-      mkdirSync(dir, { recursive: true });
-      return dir;
-    } catch {
-      // not writable here, try the next one
-    }
-  }
-  return ".";
-}
-const SCREENS = screensDir();
+/** SCREENS_DIR, else e2e/screens (gitignored) */
+const SCREENS = process.env["SCREENS_DIR"] ?? "e2e/screens";
+mkdirSync(SCREENS, { recursive: true });
 
 async function openWithConfig(
   page: Page,

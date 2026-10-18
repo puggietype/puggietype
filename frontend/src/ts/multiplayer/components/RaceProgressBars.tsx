@@ -2,7 +2,15 @@ import { createMemo, For, JSXElement, Show } from "solid-js";
 
 import { Fa } from "../../components/common/Fa";
 import { cn } from "../../utils/cn";
-import { myId, opponentProgress, race, room } from "../store";
+import { isFlagEnabled } from "../feature-flags";
+import {
+  myId,
+  opponentProgress,
+  race,
+  room,
+  showOpponentCarets,
+} from "../store";
+import { CharacterImage } from "./CharacterImage";
 import { PLAYER_BG, PLAYER_TEXT } from "./ui";
 
 /** extra words of headroom in time mode, where the end isn't known */
@@ -64,12 +72,26 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
             data-player-id={player.id}
           >
             <span
-              class={cn("truncate", PLAYER_TEXT[player.color], {
-                "opacity-50": !player.connected,
-              })}
+              class={cn(
+                "flex min-w-0 items-center gap-1.5",
+                PLAYER_TEXT[player.color],
+                { "opacity-50": !player.connected },
+              )}
             >
-              {player.name}
-              {player.id === myId() ? " (you)" : ""}
+              {/* phones: the dog strip collapses to a head per row */}
+              <Show
+                when={isFlagEnabled("opponentDogs") && showOpponentCarets()}
+              >
+                <CharacterImage
+                  character={player.character}
+                  frame="head"
+                  class="hidden h-7 w-8 shrink-0 max-[601px]:block"
+                />
+              </Show>
+              <span class="truncate">
+                {player.name}
+                {player.id === myId() ? " (you)" : ""}
+              </span>
             </span>
             <div class="h-1.5 rounded-full bg-bg">
               <div

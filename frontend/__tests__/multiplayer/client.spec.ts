@@ -100,7 +100,11 @@ describe("MultiplayerClient", () => {
       "ping",
       "hello",
     ]);
-    expect(lastSocket().sent[5]).toEqual({ type: "hello", ageConfirmed: true });
+    expect(lastSocket().sent[5]).toEqual({
+      type: "hello",
+      ageConfirmed: true,
+      character: "puggie",
+    });
   });
 
   it("never opens a socket before the age is confirmed", async () => {
@@ -165,6 +169,7 @@ describe("MultiplayerClient", () => {
       playerId: "p1",
       sessionToken: "secret",
       ageConfirmed: true,
+      character: "puggie",
     });
   });
 
