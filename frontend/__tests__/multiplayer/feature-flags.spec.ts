@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_OFF_FLAGS,
+  FEATURE_FLAGS,
   FLAGS_SESSION_KEY,
   parseFlagList,
   resolveFlags,
@@ -21,30 +23,31 @@ function memoryStorage(initial: Record<string, string> = {}): MemoryStorage {
 }
 
 describe("feature flags", () => {
-  it("are on by default except openRooms (prod: no VITE_FLAGS, no ?flags)", () => {
+  it("are all on by default incl. openRooms (prod: no VITE_FLAGS, no ?flags)", () => {
     const flags = resolveFlags("", memoryStorage(), undefined);
-    expect([...flags].sort()).toEqual(["characterSelect", "opponentDogs"]);
-    expect(flags.has("openRooms")).toBe(false);
+    expect([...flags].sort()).toEqual(
+      ["characterSelect", "opponentDogs", "openRooms"].sort(),
+    );
+    expect(DEFAULT_OFF_FLAGS).toEqual([]);
   });
 
-  it("openRooms only turns on when listed", () => {
-    expect(
-      resolveFlags(
-        "?flags=openRooms,characterSelect",
-        memoryStorage(),
-        undefined,
-      ).has("openRooms"),
-    ).toBe(true);
-    expect(
-      resolveFlags("", memoryStorage(), "openRooms,opponentDogs").has(
-        "openRooms",
-      ),
-    ).toBe(true);
-    expect(
-      resolveFlags("?flags=default", memoryStorage(), undefined).has(
-        "openRooms",
-      ),
-    ).toBe(false);
+  it("default set is FEATURE_FLAGS minus DEFAULT_OFF_FLAGS", () => {
+    const expected = FEATURE_FLAGS.filter(
+      (f) => !DEFAULT_OFF_FLAGS.includes(f),
+    );
+    expect([...resolveFlags("", memoryStorage(), undefined)]).toEqual(expected);
+    expect([...resolveFlags("?flags=default", memoryStorage(), "")]).toEqual(
+      expected,
+    );
+  });
+
+  it("every flag (incl. DEFAULT_OFF_FLAGS) turns on when listed", () => {
+    for (const flag of FEATURE_FLAGS) {
+      expect(
+        resolveFlags(`?flags=${flag}`, memoryStorage(), undefined),
+      ).toEqual(new Set([flag]));
+      expect(resolveFlags("", memoryStorage(), flag)).toEqual(new Set([flag]));
+    }
   });
 
   it("parses known flags only", () => {
@@ -58,14 +61,18 @@ describe("feature flags", () => {
     expect([...resolveFlags("", memoryStorage(), "opponentDogs")]).toEqual([
       "opponentDogs",
     ]);
+    expect(
+      resolveFlags("", memoryStorage(), "opponentDogs").has("openRooms"),
+    ).toBe(false);
     expect(resolveFlags("", memoryStorage(), "none").size).toBe(0);
-    expect(resolveFlags("", memoryStorage(), "").size).toBe(2);
+    expect(resolveFlags("", memoryStorage(), "").size).toBe(3);
   });
 
   it("?flags=<list> limits the tab to those flags and persists", () => {
     const storage = memoryStorage();
     const flags = resolveFlags("?flags=characterSelect", storage, undefined);
     expect([...flags]).toEqual(["characterSelect"]);
+    expect(flags.has("openRooms")).toBe(false);
     expect(storage.data.get(FLAGS_SESSION_KEY)).toBe("characterSelect");
     // a later page load without the param keeps the override
     expect([...resolveFlags("", storage, undefined)]).toEqual([
@@ -83,7 +90,7 @@ describe("feature flags", () => {
 
   it("?flags=default (or any unknown value) clears the override", () => {
     const storage = memoryStorage({ [FLAGS_SESSION_KEY]: "none" });
-    expect(resolveFlags("?flags=default", storage, undefined).size).toBe(2);
+    expect(resolveFlags("?flags=default", storage, undefined).size).toBe(3);
     expect(storage.data.has(FLAGS_SESSION_KEY)).toBe(false);
   });
 });
