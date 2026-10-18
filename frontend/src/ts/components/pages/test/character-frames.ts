@@ -30,7 +30,7 @@ export type CharacterFrame = keyof typeof CHARACTER_FRAME_FILES;
 export type CharacterImageFrame = CharacterFrame | "head";
 
 /** must match HEAD_VIEWBOX in scripts/character-svg.mjs */
-export const HEAD_VIEWBOX = "76 -2 360 288";
+export const HEAD_VIEWBOX = "80 4 352 296";
 
 export const CHARACTER_INFO: Record<
   Character,

@@ -11,7 +11,7 @@ import { gridMove } from "../helpers";
 import { setCharacter } from "../race";
 import { CharacterImage } from "./CharacterImage";
 
-/** ≤390px the grid is 2 wide (see the class list below) */
+/** ≤390px the grid is 2 wide (max-[391px] below) */
 const NARROW_QUERY = "(max-width: 390px)";
 
 /** "your dog" card: 8 dogs in a 4×2 radio grid (2×4 on narrow phones) */
@@ -72,7 +72,7 @@ export function CharacterPicker(props: {
         role="radiogroup"
         aria-labelledby="mp-character-label"
         aria-disabled={props.locked ? "true" : undefined}
-        class="grid w-fit grid-cols-4 gap-2 justify-self-center max-[390px]:grid-cols-2"
+        class="grid w-fit grid-cols-4 gap-2 justify-self-center max-[391px]:grid-cols-2"
         data-testid="mp-character-picker"
         title={props.locked ? "un-ready to change dog" : undefined}
       >
@@ -84,10 +84,11 @@ export function CharacterPicker(props: {
               role="radio"
               aria-checked={c === props.selected}
               aria-label={characterLabel(c)}
+              title={characterLabel(c)}
               aria-disabled={props.locked ? "true" : undefined}
               tabIndex={c === props.selected ? 0 : -1}
               class={cn(
-                "group grid size-22 place-items-center rounded-lg border-2 bg-bg p-1 transition-colors max-[390px]:size-16",
+                "group grid size-22 place-items-center rounded-lg border-2 bg-bg p-1 transition-colors max-[481px]:size-16",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-main",
                 c === props.selected
                   ? "border-main"

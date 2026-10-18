@@ -85,7 +85,7 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
                 <CharacterImage
                   character={player.character}
                   frame="head"
-                  class="hidden h-6.5 w-8 shrink-0 max-[600px]:block"
+                  class="hidden h-7 w-8 shrink-0 max-[601px]:block"
                 />
               </Show>
               <span class="truncate">

@@ -146,7 +146,7 @@ export function Podium(props: {
                           <CharacterImage
                             character={dogOf(r.playerId)}
                             frame="head"
-                            class="h-6.5 w-8 shrink-0"
+                            class="h-7 w-8 shrink-0"
                             testId="mp-result-character"
                           />
                         </Show>

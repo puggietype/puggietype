@@ -287,7 +287,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     <CharacterImage
                       character={p.character}
                       frame="head"
-                      class="h-6.5 w-8"
+                      class="h-7 w-8"
                       testId="mp-player-character"
                     />
                     <Show when={sharesDog(p.id)}>

@@ -25,7 +25,7 @@ export const FRAME_NAMES = [
 ];
 
 /** crop of the idle frame used as the 32px list head (head + paw tips) */
-export const HEAD_VIEWBOX = "76 -2 360 288";
+export const HEAD_VIEWBOX = "80 4 352 296";
 
 /** [start, end) of the `<g class="halo">…</g>` group, or undefined */
 function findHalo(svg) {
@@ -199,5 +199,5 @@ export function dropInheritedAttrs(svg, rootDefaults = ROOT_DEFAULTS) {
 export function makeHead(idleSvg) {
   return idleSvg
     .replace(/\sviewBox="[^"]*"/, ` viewBox="${HEAD_VIEWBOX}"`)
-    .replace(/\swidth="512" height="512"/, ' width="32" height="25.6"');
+    .replace(/\swidth="512" height="512"/, ' width="32" height="26.9"');
 }

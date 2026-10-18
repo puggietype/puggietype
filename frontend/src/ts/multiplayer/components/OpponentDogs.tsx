@@ -64,7 +64,7 @@ function OpponentDog(props: {
 
   return (
     <div
-      class={cn("grid w-14 justify-items-center gap-1 min-[1200px]:w-18", {
+      class={cn("grid w-20 justify-items-center gap-1 min-[1200px]:w-28", {
         "opacity-40": !props.player.connected,
       })}
       data-testid="mp-opponent-dog"
@@ -210,6 +210,11 @@ export function OpponentDogs(): JSXElement {
       for (const p of list) {
         const st = anim.get(p.id) ?? { typingUntil: 0, nextAt: 0 };
         if (!p.finished && advanced(st.last, p)) {
+          // starting to type: first paw after a random part of an interval,
+          // so several dogs don't paddle in lockstep
+          if (now >= st.typingUntil) {
+            st.nextAt = now + Math.random() * pawIntervalMs(p.wpm);
+          }
           st.typingUntil = now + TYPING_HOLD_MS;
         }
         st.last = p;
@@ -242,7 +247,7 @@ export function OpponentDogs(): JSXElement {
   return (
     <Show when={opponents().length > 0}>
       <div
-        class="flex flex-wrap justify-center gap-x-4 gap-y-2 max-[600px]:hidden"
+        class="flex flex-wrap justify-center gap-x-4 gap-y-2 max-[601px]:hidden"
         role="img"
         aria-label={summary()}
         data-testid="mp-opponent-dogs"
