@@ -9,6 +9,8 @@ import { authEvent } from "../events/auth";
 import { isRouteHidden } from "../constants/standalone";
 import { isRaceActive } from "../multiplayer/engine-hooks";
 import { leaveRoom } from "../multiplayer/race";
+import { room } from "../multiplayer/store";
+import { restart as restartTest } from "../test/test-logic";
 import {
   isTestRestarting,
   isResultCalculating,
@@ -204,6 +206,25 @@ export async function navigate(
       "Finish the race first, or leave it from the race bar.",
     );
     return;
+  }
+
+  // multiplayer hook: choosing solo (logo / test link -> "/") while in a
+  // room means leaving it. Otherwise the race keeps running on the test page
+  // (opponent carets idle at the start of the words look like a ghost caret)
+  // and a host start/rematch would pull this tab back into a race.
+  if (
+    !options.force &&
+    room() !== undefined &&
+    new URL(url, location.origin).pathname === "/"
+  ) {
+    if (isRaceActive()) {
+      if (!confirm("Leave the race and start a solo test?")) return;
+      leaveRoom();
+      // the test page is already showing: regenerate a solo test
+      void restartTest();
+      return;
+    }
+    leaveRoom();
   }
 
   const noQuit = isFunboxActive("no_quit");
