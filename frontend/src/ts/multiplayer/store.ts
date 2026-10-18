@@ -4,6 +4,7 @@ import { loadCharacter, saveCharacter } from "./character-storage";
 import type { ConnectionStatus } from "./client";
 import { isFlagEnabled } from "./feature-flags";
 import type { RoomsList } from "./open-rooms";
+import type { QueueState } from "./quick-match";
 import {
   DEFAULT_CHARACTER,
   type Character,
@@ -77,6 +78,26 @@ export function characterSelectOn(): boolean {
 export function openRoomsOn(): boolean {
   return isFlagEnabled("openRooms") && serverFeatures()?.openRooms === true;
 }
+
+/** Quick Match is on here (client flag) and on the server we talk to */
+export function quickMatchOn(): boolean {
+  return isFlagEnabled("quickMatch") && serverFeatures()?.quickMatch === true;
+}
+
+/** player reports are on here (client flag) and on the server we talk to */
+export function reportOn(): boolean {
+  return isFlagEnabled("report") && serverFeatures()?.report === true;
+}
+
+/** our Quick Match wait, undefined when not queued */
+export const [queue, setQueue] = createSignal<QueueState | undefined>();
+
+export type ReportStatus = "sending" | "received";
+
+/** reports we sent in this room, by player id */
+export const [reports, setReports] = createSignal<
+  ReadonlyMap<string, ReportStatus>
+>(new Map());
 
 /** the public lobby list while the hub watches it */
 export const [openRooms, setOpenRooms] = createSignal<RoomsList | undefined>();

@@ -614,7 +614,12 @@ describe("open rooms", () => {
     sessionToken: "t",
     name: "ZippyPug42",
     protocol: 1,
-    features: { characterSelect: false, openRooms },
+    features: {
+      characterSelect: false,
+      openRooms,
+      quickMatch: false,
+      report: false,
+    },
   });
   const listed = {
     code: "ABCD2345",
@@ -733,5 +738,233 @@ describe("open rooms", () => {
     expect(Store.room()?.open).toBe(false);
     expect(Store.room()?.players[0]?.isBot).toBe(false);
     Race.leaveRoom();
+  });
+});
+
+describe("quick match", () => {
+  const welcome = (quickMatch: boolean): ServerMessage => ({
+    type: "welcome",
+    playerId: "me",
+    sessionToken: "t",
+    name: "ZippyPug42",
+    protocol: 1,
+    features: {
+      characterSelect: false,
+      openRooms: false,
+      quickMatch,
+      report: false,
+    },
+  });
+  const queueSent = (): ClientMessage[] =>
+    fakeClient.sent.filter((m) => m.type.startsWith("queue:"));
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    sessionStorage.clear();
+    AgeGate.confirmAge();
+    clientFlags.clear();
+    fakeClient.sent = [];
+    fakeClient.connected = true;
+    notices.mockClear();
+    receive(welcome(false));
+  });
+  afterEach(() => {
+    Race.leaveQueue();
+    Race.leaveRoom();
+    clientFlags.clear();
+    vi.useRealTimers();
+  });
+
+  it("client flag off: never queues, even if the server has Quick Match", () => {
+    receive(welcome(true));
+    expect(Store.quickMatchOn()).toBe(false);
+    Race.joinQueue(60);
+    Race.leaveQueue();
+    expect(queueSent()).toEqual([]);
+    expect(Store.queue()).toBeUndefined();
+  });
+
+  it("server flag off: never queues", () => {
+    clientFlags.add("quickMatch");
+    expect(Store.quickMatchOn()).toBe(false);
+    Race.joinQueue(60);
+    expect(queueSent()).toEqual([]);
+  });
+
+  it("joins with the claimed pace, or none", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    Race.joinQueue(73);
+    expect(queueSent()).toEqual([{ type: "queue:join", claimedWpm: 73 }]);
+    expect(Store.queue()?.phase).toBe("joining");
+    // a second click while queued doesn't send again
+    Race.joinQueue(80);
+    expect(queueSent()).toHaveLength(1);
+    Race.leaveQueue();
+    Race.joinQueue();
+    expect(queueSent().at(-1)).toEqual({ type: "queue:join" });
+  });
+
+  it("tracks queue:status, cancels with queue:leave", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    Race.joinQueue();
+    receive({
+      type: "queue:status",
+      band: "40–60 wpm",
+      widenedTo: "20–80 wpm",
+      waitedMs: 6000,
+    });
+    expect(Store.queue()).toMatchObject({
+      phase: "queued",
+      band: "40–60 wpm",
+      widenedTo: "20–80 wpm",
+    });
+    Race.leaveQueue();
+    expect(queueSent().at(-1)).toEqual({ type: "queue:leave" });
+    expect(Store.queue()).toBeUndefined();
+    // a status that crossed the leave doesn't requeue us
+    receive({
+      type: "queue:status",
+      band: "40–60 wpm",
+      widenedTo: "20–80 wpm",
+      waitedMs: 7000,
+    });
+    expect(Store.queue()).toBeUndefined();
+  });
+
+  it("queue:matched hands over to the normal room / countdown flow", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    Race.joinQueue(50);
+    receive({ type: "queue:matched", code: "ABC234" });
+    expect(Store.queue()).toBeUndefined();
+    receive(roomState({ phase: "countdown", open: true }));
+    expect(Store.room()?.code).toBe("ABC234");
+    expect(sessionStorage.getItem("puggie-mp-room")).toBe("ABC234");
+  });
+
+  it("timeout and join errors end the wait with a notice", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    Race.joinQueue();
+    receive({ type: "queue:left", reason: "timeout" });
+    expect(Store.queue()).toBeUndefined();
+    expect(notices).toHaveBeenCalledWith("No match found. Try again in a bit.");
+
+    Race.joinQueue();
+    receive({ type: "error", code: "RATE_LIMITED", message: "slow down" });
+    expect(Store.queue()).toBeUndefined();
+  });
+
+  it("a new socket while queued drops the stale queue entry", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    Race.joinQueue();
+    // still joining: the buffered join goes out on this socket
+    receive(welcome(true));
+    expect(Store.queue()?.phase).toBe("joining");
+    receive({
+      type: "queue:status",
+      band: "40–60 wpm",
+      widenedTo: "40–60 wpm",
+      waitedMs: 0,
+    });
+    receive(welcome(true));
+    expect(Store.queue()).toBeUndefined();
+  });
+});
+
+describe("player reports", () => {
+  const welcome = (report: boolean): ServerMessage => ({
+    type: "welcome",
+    playerId: "me",
+    sessionToken: "t",
+    name: "ZippyPug42",
+    protocol: 1,
+    features: {
+      characterSelect: false,
+      openRooms: false,
+      quickMatch: false,
+      report,
+    },
+  });
+  const player = (id: string, isBot = false): RoomState["players"][number] => ({
+    id,
+    name: isBot ? "Pug Bot · 80 wpm" : id,
+    isBot,
+    color: "opp2",
+    ready: false,
+    connected: true,
+    character: "puggie",
+    progress: { wordIndex: 0, charIndex: 0, testMs: 0, wpm: 0 },
+    finished: false,
+  });
+  const reportsSent = (): ClientMessage[] =>
+    fakeClient.sent.filter((m) => m.type === "report:player");
+
+  beforeEach(() => {
+    clientFlags.clear();
+    fakeClient.sent = [];
+    receive(welcome(false));
+    const base = roomState() as Extract<ServerMessage, { type: "room:state" }>;
+    receive({
+      ...base,
+      players: [...base.players, player("them"), player("bot1", true)],
+    });
+  });
+  afterEach(() => {
+    Race.leaveRoom();
+    clientFlags.clear();
+  });
+
+  it("sends nothing with either flag off", () => {
+    receive(welcome(true));
+    Race.reportPlayer("them", "cheating");
+    clientFlags.add("report");
+    receive(welcome(false));
+    Race.reportPlayer("them", "cheating");
+    expect(reportsSent()).toEqual([]);
+    expect(Store.reportOn()).toBe(false);
+  });
+
+  it("sends a preset reason only, and marks it received", () => {
+    clientFlags.add("report");
+    receive(welcome(true));
+    Race.reportPlayer("them", "afk");
+    expect(reportsSent()).toEqual([
+      { type: "report:player", playerId: "them", reason: "afk" },
+    ]);
+    expect(Object.keys(reportsSent()[0] ?? {}).sort()).toEqual([
+      "playerId",
+      "reason",
+      "type",
+    ]);
+    expect(Store.reports().get("them")).toBe("sending");
+    receive({ type: "report:received" });
+    expect(Store.reports().get("them")).toBe("received");
+    // once per player
+    Race.reportPlayer("them", "name");
+    expect(reportsSent()).toHaveLength(1);
+  });
+
+  it("never reports ourselves, bots or strangers", () => {
+    clientFlags.add("report");
+    receive(welcome(true));
+    Race.reportPlayer("me", "cheating");
+    Race.reportPlayer("bot1", "cheating");
+    Race.reportPlayer("nobody", "cheating");
+    expect(reportsSent()).toEqual([]);
+  });
+
+  it("a refused report can be retried; already reported counts as done", () => {
+    clientFlags.add("report");
+    receive(welcome(true));
+    Race.reportPlayer("them", "other");
+    receive({ type: "error", code: "RATE_LIMITED", message: "slow down" });
+    expect(Store.reports().has("them")).toBe(false);
+    Race.reportPlayer("them", "other");
+    receive({ type: "error", code: "ALREADY_REPORTED", message: "already" });
+    expect(Store.reports().get("them")).toBe("received");
   });
 });

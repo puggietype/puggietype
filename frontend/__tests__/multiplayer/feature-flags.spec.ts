@@ -23,12 +23,34 @@ function memoryStorage(initial: Record<string, string> = {}): MemoryStorage {
 }
 
 describe("feature flags", () => {
-  it("are all on by default incl. openRooms (prod: no VITE_FLAGS, no ?flags)", () => {
+  it("default on incl. openRooms; quickMatch and report off (prod: no VITE_FLAGS, no ?flags)", () => {
     const flags = resolveFlags("", memoryStorage(), undefined);
     expect([...flags].sort()).toEqual(
       ["characterSelect", "opponentDogs", "openRooms"].sort(),
     );
-    expect(DEFAULT_OFF_FLAGS).toEqual([]);
+    expect(DEFAULT_OFF_FLAGS).toEqual(["quickMatch", "report"]);
+    expect(flags.has("quickMatch")).toBe(false);
+    expect(flags.has("report")).toBe(false);
+  });
+
+  it("quickMatch and report stay off with ?flags=default and an empty build list", () => {
+    for (const flags of [
+      resolveFlags("?flags=default", memoryStorage(), undefined),
+      resolveFlags("", memoryStorage(), ""),
+      resolveFlags("?flags=bogus", memoryStorage(), undefined),
+    ]) {
+      expect(flags.has("quickMatch")).toBe(false);
+      expect(flags.has("report")).toBe(false);
+    }
+  });
+
+  it("quickMatch and report turn on only when listed", () => {
+    const flags = resolveFlags(
+      "?flags=openRooms,quickMatch,report",
+      memoryStorage(),
+      undefined,
+    );
+    expect([...flags].sort()).toEqual(["openRooms", "quickMatch", "report"]);
   });
 
   it("default set is FEATURE_FLAGS minus DEFAULT_OFF_FLAGS", () => {

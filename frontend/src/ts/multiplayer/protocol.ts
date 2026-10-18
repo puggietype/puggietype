@@ -53,6 +53,24 @@ export const MAX_LISTED_ROOMS = 50;
 export const OPEN_ROOMS_REQUEST_LIMIT = 10;
 export const OPEN_ROOMS_REQUEST_WINDOW_MS = 10_000;
 
+/** Quick Match: `queue:join` allowed per session per window, and per client IP per window. */
+export const QUEUE_JOIN_LIMIT = 6;
+export const QUEUE_JOIN_IP_LIMIT = 20;
+export const QUEUE_JOIN_WINDOW_MS = 60_000;
+/** Quick Match: queue capacity; beyond it `queue:join` fails with QUEUE_FULL. */
+export const MAX_QUEUE = 1000;
+/** Quick Match: `claimedWpm` is clamped to 0..MAX_CLAIMED_WPM. */
+export const MAX_CLAIMED_WPM = 300;
+
+/** Player reports: preset reasons only, never free text. */
+export const REPORT_REASONS = ["cheating", "afk", "name", "other"] as const;
+export const ReportReasonSchema = z.enum(REPORT_REASONS);
+export type ReportReason = z.infer<typeof ReportReasonSchema>;
+/** `report:player` allowed per session per window, and per client IP per window. */
+export const REPORT_LIMIT = 5;
+export const REPORT_IP_LIMIT = 15;
+export const REPORT_WINDOW_MS = 10 * 60_000;
+
 // ---------------------------------------------------------------- settings
 
 export const SettingsSchema = z
@@ -135,6 +153,21 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("player:character"), character: CharacterSchema }),
   /** Open rooms (flag): host only, lobby only. Open lobbies appear in `rooms:list`. */
   z.object({ type: z.literal("room:setOpen"), open: z.boolean() }),
+  /**
+   * Quick Match (flag): enter the matchmaking queue. `claimedWpm` is the client's recent pace
+   * (clamped server-side; the server's own verified pace wins once it has one). Leaves your room.
+   */
+  z.object({ type: z.literal("queue:join"), claimedWpm: finite.optional() }),
+  z.object({ type: z.literal("queue:leave") }),
+  /**
+   * Player reports (flag): report another human in your room. Strict: any extra key (e.g. a
+   * free-text comment) is rejected, never stored.
+   */
+  z.strictObject({
+    type: z.literal("report:player"),
+    playerId: z.string().min(1).max(64),
+    reason: ReportReasonSchema,
+  }),
   /** Open rooms (flag): get the public list now and subscribe to throttled updates. */
   z.object({ type: z.literal("rooms:list") }),
   z.object({ type: z.literal("rooms:unsubscribe") }),
@@ -271,6 +304,9 @@ export type ErrorCode =
   | "PLAYER_NOT_FOUND"
   | "KICKED"
   | "SERVER_FULL"
+  | "QUEUE_FULL"
+  | "CANNOT_REPORT"
+  | "ALREADY_REPORTED"
   | "INTERNAL";
 
 export interface Features {
@@ -278,6 +314,10 @@ export interface Features {
   characterSelect: boolean;
   /** Off: `room:setOpen`, `rooms:list` and `rooms:unsubscribe` fail with FEATURE_DISABLED. */
   openRooms: boolean;
+  /** Off: `queue:join` / `queue:leave` fail with FEATURE_DISABLED; clients hide Quick Match. */
+  quickMatch: boolean;
+  /** Off: `report:player` fails with FEATURE_DISABLED; clients hide the report button. */
+  report: boolean;
 }
 
 export type ServerMessage =
@@ -302,6 +342,17 @@ export type ServerMessage =
   | { type: "race:results"; results: RaceResult[] }
   /** Public open-room list; `racing` = humans currently in a countdown or race, server-wide. */
   | { type: "rooms:list"; rooms: OpenRoomEntry[]; racing: number }
+  /**
+   * Quick Match: sent on join and every second while queued. `band` is your pace band
+   * (e.g. "60–80 wpm"), `widenedTo` the range currently accepted, `waitedMs` time in queue.
+   */
+  | { type: "queue:status"; band: string; widenedTo: string; waitedMs: number }
+  /** Quick Match: you are in room `code`; `room:state` and `race:countdown` follow. */
+  | { type: "queue:matched"; code: string }
+  /** Quick Match: you are no longer queued (`left`: queue:leave or room:create/join; `timeout`: 60 s). */
+  | { type: "queue:left"; reason: "left" | "timeout" }
+  /** Player reports: your `report:player` was accepted. */
+  | { type: "report:received" }
   /** The server closed your room (inactivity); you are no longer in it and its code is gone. */
   | { type: "room:closed"; reason: "idle" }
   /** The host removed you from your room. */
