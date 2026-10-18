@@ -146,3 +146,6 @@ art/sketches/
 art/**/*.png
 art/**/*.jpg
 art/__pycache__/
+
+# e2e screenshots (SCREENS_DIR default)
+e2e/screens/
