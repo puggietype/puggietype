@@ -43,6 +43,7 @@ function OpenRoomRow(props: {
           <span
             class="font-(--font) text-sub"
             title="bots"
+            aria-label={`${props.room.bots} computer-controlled ${props.room.bots === 1 ? "bot" : "bots"}`}
             data-testid="mp-open-room-bots"
           >
             {text()}
