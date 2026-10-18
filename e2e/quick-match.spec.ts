@@ -90,9 +90,9 @@ test("age gate first, queue screen, cancel", async ({ browser }) => {
   await expect(byTestId(page, "mp-queue-band")).toContainText("wpm");
   await expect(byTestId(page, "mp-queue-elapsed")).toHaveText(/0:0[1-9]/);
   await page.screenshot({ path: `${SCREENS}/quickmatch-queue.png` });
-  // a guest has no saved results: no claimed pace
+  // no local time 30 english results yet: the default pace of 50
   const join = sent.find((m) => m["type"] === "queue:join");
-  expect(join).toEqual({ type: "queue:join" });
+  expect(join).toEqual({ type: "queue:join", claimedWpm: 50 });
 
   await byTestId(page, "mp-queue-cancel").click();
   await expect(byTestId(page, "mp-queue")).toHaveCount(0);
