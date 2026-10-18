@@ -39,10 +39,11 @@ const { instances, MockSlimSelect } = vi.hoisted(() => {
       renderOptions: vi.fn(),
       main: { main: document.createElement("div") },
       content: {
-        main: Object.assign(document.createElement("div"), { id: "ss-1" }),
+        main: document.createElement("div"),
         list: document.createElement("div"),
       },
     };
+    settings = { id: `ss-${instances.length + 1}` };
     setSelected = vi.fn();
     destroy = vi.fn();
     enable = vi.fn();
@@ -255,6 +256,7 @@ describe("SlimSelect a11y", () => {
     const { content, main } = instance().render;
     expect(content.main.hasAttribute("role")).toBe(false);
     expect(content.list.getAttribute("role")).toBe("listbox");
+    expect(content.list.id).toBe(`${instance().settings.id}-list`);
     expect(main.main.getAttribute("aria-controls")).toBe(content.list.id);
   });
 });

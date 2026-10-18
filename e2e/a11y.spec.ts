@@ -37,9 +37,18 @@ test.beforeEach(async ({ context }) => {
   await skipNgrokWarning(context);
 });
 
-for (const path of ["/", "/settings", "/about", "/race"]) {
+// pages other than / are lazy chunks: wait for their content, not just #app
+const PAGES: [string, string][] = [
+  ["/", "#words .word"],
+  ["/settings", '[data-setting-key="blindMode"]'],
+  ["/about", "#pageAbout dl"],
+  ["/race", '[data-testid="mp-age-gate"]'],
+];
+
+for (const [path, content] of PAGES) {
   test(`no critical axe violations on ${path}`, async ({ page }) => {
     await openShown(page, path);
+    await page.locator(content).first().waitFor();
     expect(await criticals(page)).toEqual([]);
   });
 }
