@@ -61,6 +61,7 @@
     "update-oxc": "pnpm up -D -r oxlint@latest oxfmt@latest oxlint-tsgolint@latest"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@commitlint/cli": "20.5.2",
     "@commitlint/config-conventional": "19.2.2",
     "@monkeytype/release": "workspace:*",

@@ -214,6 +214,7 @@ export function TestPage(): JSXElement {
         >
           <textarea
             id="wordsInput"
+            aria-label="type the words here"
             ref={(el) => (inputRef = el)}
             class="full-width"
             autocomplete="off"

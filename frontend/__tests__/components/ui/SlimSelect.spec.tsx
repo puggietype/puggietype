@@ -37,6 +37,11 @@ const { instances, MockSlimSelect } = vi.hoisted(() => {
     render = {
       renderValues: vi.fn(),
       renderOptions: vi.fn(),
+      main: { main: document.createElement("div") },
+      content: {
+        main: Object.assign(document.createElement("div"), { id: "ss-1" }),
+        list: document.createElement("div"),
+      },
     };
     setSelected = vi.fn();
     destroy = vi.fn();
@@ -239,5 +244,17 @@ describe("SlimSelect", () => {
       expect(firstSetData?.find((o) => o.value === "all")?.selected).toBe(true);
       expect(instance().render.renderValues).toHaveBeenCalled();
     });
+  });
+});
+
+describe("SlimSelect a11y", () => {
+  afterEach(() => cleanup());
+
+  it("puts the listbox role on the option list, not the panel with the search", () => {
+    render(() => <SlimSelect options={options} />);
+    const { content, main } = instance().render;
+    expect(content.main.hasAttribute("role")).toBe(false);
+    expect(content.list.getAttribute("role")).toBe("listbox");
+    expect(main.main.getAttribute("aria-controls")).toBe(content.list.id);
   });
 });

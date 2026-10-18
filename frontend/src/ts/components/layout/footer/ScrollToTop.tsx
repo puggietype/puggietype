@@ -39,6 +39,7 @@ export function ScrollToTop(): JSXElement {
         }}
         tabIndex="-1"
         type="button"
+        aria-label="scroll to top"
         onClick={() => {
           setVisible(false);
           scrollToTop();
