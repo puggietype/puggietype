@@ -68,7 +68,7 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
       <For each={room()?.players ?? []}>
         {(player) => (
           <div
-            class="grid min-w-0 grid-cols-[7.5rem_1fr_2.5rem] items-center gap-3 text-sm font-(--font)"
+            class="grid min-w-0 grid-cols-[minmax(7.5rem,16rem)_1fr_2.5rem] items-center gap-3 text-sm font-(--font) max-[601px]:grid-cols-[minmax(0,12rem)_1fr_2rem] max-[601px]:gap-2"
             data-testid="mp-progress-row"
             data-player-id={player.id}
           >
@@ -89,7 +89,7 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
                   class="hidden h-7 w-8 shrink-0 max-[601px]:block"
                 />
               </Show>
-              <span class="truncate">
+              <span class="min-w-0 leading-tight break-words">
                 <PlayerName player={player} />
                 {player.id === myId() ? " (you)" : ""}
               </span>

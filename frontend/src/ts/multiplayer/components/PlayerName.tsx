@@ -12,7 +12,8 @@ export function PlayerName(props: {
       <Show when={isBot(props.player)}>
         <BotLabel />
       </Show>
-      {props.player.name}
+      {/* a bot name is one unit ("Pug Bot · ~NN wpm"): wrap before it, never inside */}
+      <span class="whitespace-nowrap">{props.player.name}</span>
     </>
   );
 }
