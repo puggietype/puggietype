@@ -46,6 +46,7 @@ export function updatePosition(noAnim = false): void {
 
 // #caret is rendered by TestPage, set via initElement() on every mount
 export let caret: Caret | undefined;
+let caretEl: Element | undefined;
 
 export function initElement(
   refs: {
@@ -55,11 +56,22 @@ export function initElement(
   },
   signal: AbortSignal,
 ): void {
+  const el = refs.caret.native;
+  // a double mount must reuse the live caret, never drive a second one
+  if (caret !== undefined && caretEl === el) return;
+  // and only one #caret may exist: drop any stale one a racing mount left
+  for (const stale of document.querySelectorAll("#caret")) {
+    if (stale !== el) stale.remove();
+  }
   const created = new Caret(refs.caret, Config.caretStyle, refs);
   caret = created;
+  caretEl = el;
   signal.addEventListener("abort", () => {
     // a remount may have created a new caret already
-    if (caret === created) caret = undefined;
+    if (caret === created) {
+      caret = undefined;
+      caretEl = undefined;
+    }
   });
 }
 

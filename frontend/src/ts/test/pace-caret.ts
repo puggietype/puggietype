@@ -65,7 +65,11 @@ export function setLastTestWpm(wpm: number): void {
 }
 
 export function resetCaretPosition(): void {
-  if (Config.paceCaret === "off" && !isPaceRepeat()) return;
+  if (Config.paceCaret === "off" && !isPaceRepeat()) {
+    // a pace caret left from a previous test must not linger at the start
+    caret?.hide();
+    return;
+  }
   if (Config.mode === "zen") return;
 
   caret?.hide();
@@ -192,6 +196,7 @@ export function reset(): void {
   }
   settings = null;
   startTimestamp = 0;
+  caret?.hide();
 }
 
 function incrementLetterIndex(): void {

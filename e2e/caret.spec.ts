@@ -105,6 +105,11 @@ for (const [name, config, pace] of [
       });
       await page.waitForTimeout(pace ? 700 : 250);
 
+      // at most one #caret element in the DOM, and at most one painted
+      expect(await page.locator("#caret").count()).toBeLessThanOrEqual(1);
+      expect(
+        (await visibleCarets(page)).filter((c) => c.id === "caret").length,
+      ).toBeLessThanOrEqual(1);
       // exactly one live caret, settled on the next letter to type
       await expect
         .poll(
@@ -186,6 +191,7 @@ test("race -> solo: choosing solo leaves the race, no ghost opponent caret", asy
     await host.waitForTimeout(300);
     await host.keyboard.type((await activeWord(host)).slice(0, 1));
     await host.waitForTimeout(300);
+    expect(await host.locator("#caret").count()).toBeLessThanOrEqual(1);
     const ids = (await visibleCarets(host)).map((c) => c.id);
     expect(ids, `solo restart ${i}`).toEqual(["caret"]);
   }
