@@ -53,7 +53,7 @@ export function RaceOverlay(): JSXElement {
                     : "show opponents"
                   : showOpponentCarets()
                     ? "hide opponent carets"
-                  : "show opponent carets",
+                    : "show opponent carets",
                 position: "left",
               }}
               dataset={{ "data-testid": "mp-toggle-carets" }}
