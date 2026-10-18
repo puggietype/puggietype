@@ -29,7 +29,9 @@ export function RaceOverlay(): JSXElement {
           {/* one row: the info truncates, the actions go icon-only on phones */}
           <div class="flex min-w-0 items-center gap-x-4 text-sm font-(--font) text-sub">
             <span class="min-w-0 flex-1 truncate">
-              <span class="hidden sm:inline">private · </span>
+              <span class="hidden sm:inline">
+                {room()?.open ? "open" : "private"} ·{" "}
+              </span>
               {room()?.code} · {settingsSummary(info().settings)}
             </span>
             <Button
