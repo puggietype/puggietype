@@ -10,7 +10,7 @@ export function AboutPage(): JSXElement {
   return (
     <div class="content-grid grid gap-8">
       <section class="grid justify-items-center gap-2 text-center text-sub">
-        <PugHead class="h-16 w-16 text-main" />
+        <PugHead class="h-16 w-16" />
         type fast. stay cute.
       </section>
       <section>

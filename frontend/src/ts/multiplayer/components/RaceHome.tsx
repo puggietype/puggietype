@@ -108,7 +108,7 @@ export function RaceHome(props: { code?: string }): JSXElement {
         </section>
       </div>
       <section class="hidden content-center justify-items-center gap-4 rounded-lg bg-sub-alt p-6 text-center text-sub md:grid">
-        <PugHead class="h-24 w-24 text-main" />
+        <PugHead class="h-24 w-24" />
         <div class="text-2xl text-text">race your friends</div>
         <div>
           same words, same settings, live carets. first to the finish (or the

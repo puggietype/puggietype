@@ -25,8 +25,8 @@ export function Logo(): JSXElement {
       }}
     >
       <PugHead
-        class={cn("h-full w-auto shrink-0 text-main transition-colors", {
-          "text-sub": getFocus(),
+        class={cn("h-full w-auto shrink-0 transition-opacity", {
+          "opacity-50": getFocus(),
         })}
       />
       {/* tagline sits in normal flow above the wordmark (no negative offsets

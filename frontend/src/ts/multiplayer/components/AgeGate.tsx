@@ -14,7 +14,7 @@ export function AgeGate(): JSXElement {
       data-testid="mp-age-gate"
       aria-labelledby="mpAgeGateTitle"
     >
-      <PugHead class="h-16 w-16 text-main" />
+      <PugHead class="h-16 w-16" />
       <h2 id="mpAgeGateTitle" class="text-2xl text-text">
         You must be 13 or older to play multiplayer
       </h2>
