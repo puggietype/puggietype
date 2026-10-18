@@ -1,6 +1,6 @@
-# Terms of Service additions: launch version
+# Terms of Service
 
-_Launch draft v1.3 for attorney review. Effective date: **October 17, 2026**. Insert into `frontend/src/terms-of-service.html`. "We", "us" and "our" mean the PuggieType team. Launch scope: solo typing tests plus private-lobby multiplayer with random server-assigned nicknames. There is no chat and no quick-chat. Public matches are "coming soon". Parked items are in `parked-chat-clauses.md`._
+_Effective date: October 17, 2026. Last updated: October 18, 2026. "We", "us" and "our" mean the PuggieType team._
 
 ## 1. Age requirement
 PuggieType's solo typing test needs no account and collects no account data. You must be **at least 13 years old** to use multiplayer. If you are under 18, or under the age of majority where you live, use multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.
