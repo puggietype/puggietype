@@ -10,8 +10,8 @@ import {
 import { skipNgrokWarning } from "./tunnel";
 
 // Character select (spec §11). Needs the WS server with
-// FEATURE_CHARACTER_SELECT=1; the client flags come from ?flags=.
-const FLAGS = "?flags=characterSelect,opponentDogs";
+// FEATURE_CHARACTER_SELECT=1. Client flags are on by default (no ?flags=).
+const FLAGS = "";
 const AGE_KEY = "puggie-mp-age-confirmed";
 const CHARACTER_KEY = "puggie-mp-character";
 

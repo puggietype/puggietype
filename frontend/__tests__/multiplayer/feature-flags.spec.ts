@@ -21,9 +21,9 @@ function memoryStorage(initial: Record<string, string> = {}): MemoryStorage {
 }
 
 describe("feature flags", () => {
-  it("are all off by default (prod: no VITE_FLAGS, no ?flags)", () => {
+  it("are all on by default (prod: no VITE_FLAGS, no ?flags)", () => {
     const flags = resolveFlags("", memoryStorage(), undefined);
-    expect(flags.size).toBe(0);
+    expect([...flags].sort()).toEqual(["characterSelect", "opponentDogs"]);
   });
 
   it("parses known flags only", () => {
@@ -34,31 +34,36 @@ describe("feature flags", () => {
     expect(parseFlagList(null)).toEqual([]);
   });
 
-  it("build-time VITE_FLAGS turns flags on", () => {
-    const flags = resolveFlags("", memoryStorage(), "opponentDogs");
-    expect([...flags]).toEqual(["opponentDogs"]);
+  it("build-time VITE_FLAGS limits the flags", () => {
+    expect([...resolveFlags("", memoryStorage(), "opponentDogs")]).toEqual([
+      "opponentDogs",
+    ]);
+    expect(resolveFlags("", memoryStorage(), "none").size).toBe(0);
+    expect(resolveFlags("", memoryStorage(), "").size).toBe(2);
   });
 
-  it("?flags= turns flags on and persists them for the tab", () => {
+  it("?flags=<list> limits the tab to those flags and persists", () => {
     const storage = memoryStorage();
-    const flags = resolveFlags(
-      "?flags=characterSelect,opponentDogs",
-      storage,
-      undefined,
-    );
-    expect([...flags].sort()).toEqual(["characterSelect", "opponentDogs"]);
-    expect(storage.data.get(FLAGS_SESSION_KEY)).toBe(
-      "characterSelect,opponentDogs",
-    );
-    // a later page load without the param keeps them
-    expect(resolveFlags("", storage, undefined).has("characterSelect")).toBe(
-      true,
-    );
+    const flags = resolveFlags("?flags=characterSelect", storage, undefined);
+    expect([...flags]).toEqual(["characterSelect"]);
+    expect(storage.data.get(FLAGS_SESSION_KEY)).toBe("characterSelect");
+    // a later page load without the param keeps the override
+    expect([...resolveFlags("", storage, undefined)]).toEqual([
+      "characterSelect",
+    ]);
   });
 
-  it("?flags=none clears the tab's flags", () => {
-    const storage = memoryStorage({ [FLAGS_SESSION_KEY]: "characterSelect" });
+  it("?flags=none is a kill switch for the rest of the tab", () => {
+    const storage = memoryStorage();
     expect(resolveFlags("?flags=none", storage, undefined).size).toBe(0);
+    expect(resolveFlags("", storage, undefined).size).toBe(0);
+    // beats the build-time list too
+    expect(resolveFlags("", storage, "characterSelect").size).toBe(0);
+  });
+
+  it("?flags=default (or any unknown value) clears the override", () => {
+    const storage = memoryStorage({ [FLAGS_SESSION_KEY]: "none" });
+    expect(resolveFlags("?flags=default", storage, undefined).size).toBe(2);
     expect(storage.data.has(FLAGS_SESSION_KEY)).toBe(false);
   });
 });

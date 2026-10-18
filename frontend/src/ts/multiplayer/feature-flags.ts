@@ -1,9 +1,9 @@
 /**
- * Client feature flags for staged rollouts. All default OFF. Two ways on:
- *  - build time: VITE_FLAGS="characterSelect,opponentDogs" (set only on the
- *    preview Pages environment, never production)
- *  - per tab: ?flags=characterSelect,opponentDogs (kept in sessionStorage for
- *    the rest of the tab; ?flags=none clears it)
+ * Client feature flags for staged rollouts. All default ON. Overrides:
+ *  - build time: VITE_FLAGS="opponentDogs" (only those) or "none" (all off)
+ *  - per tab: ?flags=characterSelect (only those) or ?flags=none (kill
+ *    switch); kept in sessionStorage for the rest of the tab. Any other
+ *    ?flags= value (e.g. ?flags=default) clears the override.
  */
 export const FEATURE_FLAGS = ["characterSelect", "opponentDogs"] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
@@ -20,9 +20,21 @@ export function parseFlagList(value: string | null | undefined): FeatureFlag[] {
     );
 }
 
+const NONE = "none";
+
+/** "none" -> [], a flag list -> those flags, unset/unknown -> undefined */
+function parseOverride(
+  value: string | null | undefined,
+): FeatureFlag[] | undefined {
+  if (value === null || value === undefined) return undefined;
+  if (value.trim() === NONE) return [];
+  const list = parseFlagList(value);
+  return list.length > 0 ? list : undefined;
+}
+
 /**
- * The enabled flags: the build-time list plus the tab's ?flags= (which is
- * persisted to `storage`, or cleared by ?flags=none).
+ * The enabled flags: the tab's ?flags= override (persisted to `storage`),
+ * else the build-time list, else all of them.
  */
 export function resolveFlags(
   search: string,
@@ -31,14 +43,21 @@ export function resolveFlags(
 ): Set<FeatureFlag> {
   const param = new URLSearchParams(search).get("flags");
   if (param !== null) {
-    const list = parseFlagList(param);
-    if (list.length > 0) storage.setItem(FLAGS_SESSION_KEY, list.join(","));
-    else storage.removeItem(FLAGS_SESSION_KEY);
+    const list = parseOverride(param);
+    if (list === undefined) {
+      storage.removeItem(FLAGS_SESSION_KEY);
+    } else {
+      storage.setItem(
+        FLAGS_SESSION_KEY,
+        list.length > 0 ? list.join(",") : NONE,
+      );
+    }
   }
-  return new Set([
-    ...parseFlagList(buildFlags),
-    ...parseFlagList(storage.getItem(FLAGS_SESSION_KEY)),
-  ]);
+  return new Set(
+    parseOverride(storage.getItem(FLAGS_SESSION_KEY)) ??
+      parseOverride(buildFlags) ??
+      FEATURE_FLAGS,
+  );
 }
 
 // read once at startup, before client-side navigation drops the query string
