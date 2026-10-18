@@ -5,6 +5,7 @@ import {
   Component,
   createMemo,
   createSignal,
+  ErrorBoundary,
   JSXElement,
   onCleanup,
   onMount,
@@ -183,7 +184,22 @@ function Page(props: { name: PageName; entry: PageRegistryEntry }): JSXElement {
       ref={(el) => (pageEl = el)}
     >
       <Show when={isAttached() && isAllowed()}>
-        <Dynamic component={props.entry.component} />
+        <ErrorBoundary
+          fallback={
+            <p class="text-center text-sub">
+              Failed to load this page.{" "}
+              <button
+                type="button"
+                class="text-main underline"
+                onClick={() => location.reload()}
+              >
+                reload
+              </button>
+            </p>
+          }
+        >
+          <Dynamic component={props.entry.component} />
+        </ErrorBoundary>
       </Show>
     </div>
   );

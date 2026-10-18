@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { lazyModal } from "../../../src/ts/components/modals/lazy-modal";
 import {
+  getModalVisibility,
   hideModalAndClearChain,
   showModal,
 } from "../../../src/ts/states/modals";
@@ -27,5 +28,20 @@ describe("lazyModal", () => {
 
     hideModalAndClearChain("QuoteReport");
     expect(queryByTestId("fake-modal")).not.toBeNull();
+  });
+});
+
+describe("lazyModal load failure", () => {
+  it("closes the modal instead of leaving it open in the store", async () => {
+    const Modal = lazyModal(
+      ["PbTables"],
+      async () => Promise.reject(new Error("chunk 404")),
+      "Nope",
+    );
+    render(() => <Modal />);
+    showModal("PbTables");
+    await vi.waitFor(() => {
+      expect(getModalVisibility("PbTables")?.visible).toBe(false);
+    });
   });
 });
