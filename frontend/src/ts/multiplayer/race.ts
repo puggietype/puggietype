@@ -32,6 +32,7 @@ import {
   setRaceWords,
   type RaceFinishData,
 } from "./engine-hooks";
+import { isFlagEnabled } from "./feature-flags";
 import { MULTIPLAYER_ENABLED } from "./flags";
 import {
   finishInput,
@@ -45,15 +46,19 @@ import {
   type ProgressPayload,
   type RacePosition,
 } from "./helpers";
+import { parseRoomsList } from "./open-rooms";
 import type {
   Character,
   ClientMessage,
+  PlayerState,
+  RoomState,
   ServerMessage,
   SettingsPatch,
 } from "./protocol";
 import {
   characterSelectOn,
   myId,
+  openRoomsOn,
   opponentProgress,
   race,
   room,
@@ -61,6 +66,7 @@ import {
   setCountdown,
   setLastError,
   setMyId,
+  setOpenRooms,
   setOpponentProgress,
   setRace,
   setRaceFinished,
@@ -87,6 +93,10 @@ let resumeFloor: RacePosition | undefined;
 let finishSent = false;
 /** bumped per race so a stale async setup can bail out */
 let raceToken = 0;
+/** the hub shows the open rooms list */
+let roomsWatched = false;
+/** this socket asked for rooms:list (a new socket must ask again) */
+let roomsSubscribed = false;
 
 const client = new MultiplayerClient({
   onMessage: handleMessage,
@@ -158,6 +168,40 @@ export function rematch(): void {
   send({ type: "race:rematch" });
 }
 
+/** host only: list (or unlist) our lobby in open rooms */
+export function setRoomOpen(open: boolean): void {
+  if (openRoomsOn()) send({ type: "room:setOpen", open });
+}
+
+/**
+ * The hub is showing: subscribe to the open rooms list. Connects only with
+ * the client flag on; asks only once the server said it has open rooms.
+ */
+export function watchOpenRooms(): void {
+  if (!isFlagEnabled("openRooms")) return;
+  roomsWatched = true;
+  client.connect();
+  requestRoomsList();
+}
+
+export function unwatchOpenRooms(): void {
+  if (!roomsWatched) return;
+  roomsWatched = false;
+  setOpenRooms(undefined);
+  if (roomsSubscribed && client.connected) {
+    client.send({ type: "rooms:unsubscribe" });
+  }
+  roomsSubscribed = false;
+}
+
+function requestRoomsList(): void {
+  // before welcome the features are unknown; the welcome handler retries
+  if (!roomsWatched || roomsSubscribed || !client.connected) return;
+  if (!openRoomsOn()) return;
+  roomsSubscribed = true;
+  client.send({ type: "rooms:list" });
+}
+
 /**
  * After a reload: rejoin the room this tab was in (the server keeps us for
  * 20 s), and put back config a race had overridden.
@@ -219,10 +263,16 @@ function handleMessage(msg: ServerMessage): void {
         setMyId(msg.playerId);
         setServerFeatures(msg.features);
       });
+      // a fresh socket: the old subscription is gone
+      roomsSubscribed = false;
+      requestRoomsList();
+      return;
+    case "rooms:list":
+      if (roomsWatched) setOpenRooms(parseRoomsList(msg));
       return;
     case "room:state": {
       const prev = room();
-      setRoom(msg);
+      setRoom(withRoomDefaults(msg));
       sessionStorage.setItem(ROOM_KEY, msg.code);
       // the host lands here from /race: make the URL shareable and reloadable
       syncRaceUrl(msg.code);
@@ -246,7 +296,7 @@ function handleMessage(msg: ServerMessage): void {
       return;
     case "race:results":
       endRace();
-      setResults(msg.results);
+      setResults(msg.results.map(withBotDefault));
       if (getActivePage() !== "race") goTo(`/r/${room()?.code ?? ""}`);
       return;
     case "error":
@@ -279,6 +329,31 @@ function handleMessage(msg: ServerMessage): void {
     case "pong":
       return;
   }
+}
+
+/** room:state from a server without open rooms (and so without bots) */
+type LegacyRoomState = Omit<RoomState, "open" | "players"> & {
+  open?: boolean;
+  players: (Omit<PlayerState, "isBot"> & { isBot?: boolean })[];
+};
+
+/** older servers omit the open rooms fields: private room, all humans */
+function withRoomDefaults(msg: LegacyRoomState): RoomState {
+  return {
+    code: msg.code,
+    hostId: msg.hostId,
+    phase: msg.phase,
+    settings: msg.settings,
+    settingsVersion: msg.settingsVersion,
+    open: msg.open === true,
+    players: msg.players.map(withBotDefault),
+  };
+}
+
+function withBotDefault<T extends { isBot?: boolean }>(
+  p: T,
+): T & { isBot: boolean } {
+  return { ...p, isBot: p.isBot === true };
 }
 
 function onCountdown(info: RaceInfo): void {

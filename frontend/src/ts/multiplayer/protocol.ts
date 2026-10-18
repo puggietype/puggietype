@@ -45,6 +45,14 @@ export const DEFAULT_CHARACTER: Character = "puggie";
 export const CHARACTER_CHANGE_LIMIT = 10;
 export const CHARACTER_CHANGE_WINDOW_MS = 10_000;
 
+/** Open rooms: at most one `rooms:list` push per subscriber per this many ms. */
+export const ROOMS_LIST_THROTTLE_MS = 1000;
+/** Open rooms: entries per `rooms:list` (newest first). */
+export const MAX_LISTED_ROOMS = 50;
+/** `room:setOpen` and `rooms:list` requests allowed per session per window, then RATE_LIMITED. */
+export const OPEN_ROOMS_REQUEST_LIMIT = 10;
+export const OPEN_ROOMS_REQUEST_WINDOW_MS = 10_000;
+
 // ---------------------------------------------------------------- settings
 
 export const SettingsSchema = z
@@ -125,6 +133,11 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("player:reroll") }),
   /** Lobby or results phase while not ready: pick your dog. */
   z.object({ type: z.literal("player:character"), character: CharacterSchema }),
+  /** Open rooms (flag): host only, lobby only. Open lobbies appear in `rooms:list`. */
+  z.object({ type: z.literal("room:setOpen"), open: z.boolean() }),
+  /** Open rooms (flag): get the public list now and subscribe to throttled updates. */
+  z.object({ type: z.literal("rooms:list") }),
+  z.object({ type: z.literal("rooms:unsubscribe") }),
   z.object({ type: z.literal("race:start") }),
   z.object({
     type: z.literal("race:progress"),
@@ -168,6 +181,8 @@ export interface Progress {
 export interface PlayerState {
   id: string;
   name: string;
+  /** Server-side synthetic player (Quick Match, not implemented yet): always false today. */
+  isBot: boolean;
   color: PlayerColor;
   ready: boolean;
   connected: boolean;
@@ -183,7 +198,29 @@ export interface RoomState {
   phase: Phase;
   settings: Settings;
   settingsVersion: number;
+  /** Listed in the public `rooms:list` while in the lobby and not full. Always false with the flag off. */
+  open: boolean;
   players: PlayerState[];
+}
+
+/** Coarse room age for the public list (exact creation times are not exposed). */
+export type RoomAge = "lt1m" | "lt5m" | "lt15m" | "lt1h" | "gte1h";
+
+/**
+ * One public `rooms:list` entry. Deliberately no nicknames, player ids, host id, IPs or tokens:
+ * only what a stranger needs to pick a lobby and join it by code.
+ */
+export interface OpenRoomEntry {
+  code: string;
+  settings: Settings;
+  /** Human players only. */
+  humans: number;
+  /** Server-side bots (always 0 until Quick Match). */
+  bots: number;
+  maxPlayers: number;
+  /** Always "lobby": racing/full/closed rooms are not listed. */
+  phase: Phase;
+  createdAgo: RoomAge;
 }
 
 export interface PlayerProgress extends Progress {
@@ -202,6 +239,8 @@ export type FlagReason =
 export interface RaceResult {
   playerId: string;
   name: string;
+  /** Mirrors PlayerState.isBot; bots are excluded from stats (see src/stats.ts). */
+  isBot: boolean;
   place: number;
   wpm: number;
   raw: number;
@@ -237,6 +276,8 @@ export type ErrorCode =
 export interface Features {
   /** Off: everyone is puggie, `player:character` is rejected, clients hide the picker. */
   characterSelect: boolean;
+  /** Off: `room:setOpen`, `rooms:list` and `rooms:unsubscribe` fail with FEATURE_DISABLED. */
+  openRooms: boolean;
 }
 
 export type ServerMessage =
@@ -259,6 +300,8 @@ export type ServerMessage =
     }
   | { type: "race:progress"; players: PlayerProgress[] }
   | { type: "race:results"; results: RaceResult[] }
+  /** Public open-room list; `racing` = humans currently in a countdown or race, server-wide. */
+  | { type: "rooms:list"; rooms: OpenRoomEntry[]; racing: number }
   /** The server closed your room (inactivity); you are no longer in it and its code is gone. */
   | { type: "room:closed"; reason: "idle" }
   /** The host removed you from your room. */

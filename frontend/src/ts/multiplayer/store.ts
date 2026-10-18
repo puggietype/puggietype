@@ -3,6 +3,7 @@ import { createSignal } from "solid-js";
 import { loadCharacter, saveCharacter } from "./character-storage";
 import type { ConnectionStatus } from "./client";
 import { isFlagEnabled } from "./feature-flags";
+import type { RoomsList } from "./open-rooms";
 import {
   DEFAULT_CHARACTER,
   type Character,
@@ -71,6 +72,14 @@ export function characterSelectOn(): boolean {
     serverFeatures()?.characterSelect === true
   );
 }
+
+/** open rooms are on here (client flag) and on the server we talk to */
+export function openRoomsOn(): boolean {
+  return isFlagEnabled("openRooms") && serverFeatures()?.openRooms === true;
+}
+
+/** the public lobby list while the hub watches it */
+export const [openRooms, setOpenRooms] = createSignal<RoomsList | undefined>();
 
 /** the dog we type as: our seat's in a room, else the saved pick (solo) */
 export function myCharacter(): Character {

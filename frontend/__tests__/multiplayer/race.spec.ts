@@ -30,6 +30,8 @@ const engine = vi.hoisted(() => ({
 
 const fakeClient = vi.hoisted(() => ({
   sent: [] as ClientMessage[],
+  connected: true,
+  connects: 0,
   handlers: undefined as
     | {
         onMessage: (m: ServerMessage) => void;
@@ -43,8 +45,12 @@ vi.mock("../../src/ts/multiplayer/client", () => ({
     constructor(handlers: typeof fakeClient.handlers) {
       fakeClient.handlers = handlers;
     }
+    get connected(): boolean {
+      return fakeClient.connected;
+    }
     connect(): void {
-      // connection is irrelevant here, messages are injected
+      // no real socket, messages are injected
+      fakeClient.connects++;
     }
     send(msg: ClientMessage): void {
       fakeClient.sent.push(msg);
@@ -53,6 +59,10 @@ vi.mock("../../src/ts/multiplayer/client", () => ({
       return Date.now();
     }
   },
+}));
+const clientFlags = vi.hoisted(() => new Set<string>());
+vi.mock("../../src/ts/multiplayer/feature-flags", () => ({
+  isFlagEnabled: (flag: string) => clientFlags.has(flag),
 }));
 vi.mock("../../src/ts/config/store", () => ({ Config: engine.config }));
 vi.mock("../../src/ts/config/setters", () => ({
@@ -152,10 +162,12 @@ function roomState(overrides: Partial<RoomState> = {}): ServerMessage {
       language: "english",
     },
     settingsVersion: 1,
+    open: false,
     players: [
       {
         id: "me",
         name: "me",
+        isBot: false,
         color: "opp1",
         ready: true,
         connected: true,
@@ -592,5 +604,134 @@ describe("race lifecycle", () => {
     window.history.replaceState(null, "", "/settings");
     receive(roomState());
     expect(window.location.pathname).toBe("/settings");
+  });
+});
+
+describe("open rooms", () => {
+  const welcome = (openRooms: boolean): ServerMessage => ({
+    type: "welcome",
+    playerId: "me",
+    sessionToken: "t",
+    name: "ZippyPug42",
+    protocol: 1,
+    features: { characterSelect: false, openRooms },
+  });
+  const listed = {
+    code: "ABCD2345",
+    settings: {
+      mode: "time",
+      mode2: 30,
+      punctuation: false,
+      numbers: false,
+      language: "english",
+    },
+    humans: 3,
+    bots: 0,
+    maxPlayers: 8,
+    phase: "lobby",
+    createdAgo: "lt1m",
+  } as const;
+  const roomsSent = (): string[] =>
+    fakeClient.sent
+      .map((m) => m.type)
+      .filter((t) => t.startsWith("rooms:") || t === "room:setOpen");
+
+  beforeEach(() => {
+    Race.unwatchOpenRooms();
+    clientFlags.clear();
+    fakeClient.sent = [];
+    fakeClient.connects = 0;
+    fakeClient.connected = true;
+    receive(welcome(false));
+  });
+  afterEach(() => {
+    Race.unwatchOpenRooms();
+    clientFlags.clear();
+  });
+
+  it("client flag off: no socket, no rooms:list, even if the server has them", () => {
+    receive(welcome(true));
+    Race.watchOpenRooms();
+    expect(fakeClient.connects).toBe(0);
+    expect(roomsSent()).toEqual([]);
+    expect(Store.openRoomsOn()).toBe(false);
+    Race.setRoomOpen(true);
+    expect(roomsSent()).toEqual([]);
+  });
+
+  it("server flag off: connects but never asks for rooms:list", () => {
+    clientFlags.add("openRooms");
+    Race.watchOpenRooms();
+    expect(fakeClient.connects).toBe(1);
+    expect(roomsSent()).toEqual([]);
+    expect(Store.openRoomsOn()).toBe(false);
+  });
+
+  it("subscribes after welcome, stores the list, unsubscribes on leave", () => {
+    clientFlags.add("openRooms");
+    fakeClient.connected = false;
+    Race.watchOpenRooms();
+    expect(roomsSent()).toEqual([]);
+    fakeClient.connected = true;
+    receive(welcome(true));
+    expect(roomsSent()).toEqual(["rooms:list"]);
+
+    receive({ type: "rooms:list", rooms: [listed], racing: 4 });
+    expect(Store.openRooms()).toEqual({ rooms: [listed], racing: 4 });
+
+    Race.unwatchOpenRooms();
+    expect(roomsSent()).toEqual(["rooms:list", "rooms:unsubscribe"]);
+    expect(Store.openRooms()).toBeUndefined();
+    // pushes after unsubscribing are ignored
+    receive({ type: "rooms:list", rooms: [listed], racing: 4 });
+    expect(Store.openRooms()).toBeUndefined();
+  });
+
+  it("resubscribes on a new socket (reconnect)", () => {
+    clientFlags.add("openRooms");
+    receive(welcome(true));
+    Race.watchOpenRooms();
+    Race.watchOpenRooms();
+    expect(roomsSent()).toEqual(["rooms:list"]);
+    receive(welcome(true));
+    expect(roomsSent()).toEqual(["rooms:list", "rooms:list"]);
+  });
+
+  it("strips anything but counts and settings from list entries", () => {
+    clientFlags.add("openRooms");
+    receive(welcome(true));
+    Race.watchOpenRooms();
+    receive({
+      type: "rooms:list",
+      rooms: [
+        { ...listed, hostName: "ZippyPug42", players: [{ name: "x" }] },
+        { ...listed, code: "bad" },
+      ],
+      racing: 0,
+    } as unknown as ServerMessage);
+    expect(Store.openRooms()?.rooms).toEqual([listed]);
+    expect(JSON.stringify(Store.openRooms())).not.toContain("ZippyPug42");
+  });
+
+  it("host sends room:setOpen with both flags on", () => {
+    clientFlags.add("openRooms");
+    receive(welcome(true));
+    Race.setRoomOpen(true);
+    expect(fakeClient.sent).toContainEqual({
+      type: "room:setOpen",
+      open: true,
+    });
+  });
+
+  it("defaults open and isBot for servers that don't send them", () => {
+    const legacy = roomState() as unknown as Record<string, unknown>;
+    delete legacy["open"];
+    for (const p of legacy["players"] as Record<string, unknown>[]) {
+      delete p["isBot"];
+    }
+    receive(legacy as unknown as ServerMessage);
+    expect(Store.room()?.open).toBe(false);
+    expect(Store.room()?.players[0]?.isBot).toBe(false);
+    Race.leaveRoom();
   });
 });

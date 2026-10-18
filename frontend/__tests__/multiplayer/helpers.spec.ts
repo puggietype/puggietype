@@ -100,9 +100,11 @@ function room(players: Partial<RoomState["players"][number]>[]): RoomState {
     phase: "lobby",
     settings: DEFAULT_SETTINGS,
     settingsVersion: 1,
+    open: false,
     players: players.map((p, i) => ({
       id: `p${i}`,
       name: `p${i}`,
+      isBot: false,
       color: "opp1",
       ready: false,
       connected: true,
