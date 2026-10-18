@@ -5,11 +5,13 @@ import { configLoadPromise } from "./config/lifecycle";
 import { authPromise } from "./firebase";
 import { animate } from "animejs";
 import { onDOMReady, onWindowLoad, qs } from "./utils/dom";
+import { markBootSettled } from "./states/boot";
 import { isDevEnvironment } from "./utils/env";
 
 onDOMReady(async () => {
   await configLoadPromise;
   await authPromise;
+  markBootSettled();
 
   //this line goes back to pretty much the beginning of the project and im pretty sure its here
   //to make sure the initial theme application doesnt animate the background color

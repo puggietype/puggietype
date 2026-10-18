@@ -68,9 +68,14 @@ if (import.meta.env.DEV) {
 // build (at most once a minute, so a truly missing chunk can't loop)
 window.addEventListener("vite:preloadError", (event) => {
   const key = "chunkReloadAt";
-  const last = Number(sessionStorage.getItem(key) ?? 0);
-  if (Date.now() - last < 60_000) return;
-  sessionStorage.setItem(key, String(Date.now()));
+  try {
+    const last = Number(sessionStorage.getItem(key) ?? 0);
+    if (Date.now() - last < 60_000) return;
+    sessionStorage.setItem(key, String(Date.now()));
+  } catch {
+    // storage blocked: no auto-reload, the error boundaries take over
+    return;
+  }
   event.preventDefault();
   location.reload();
 });
