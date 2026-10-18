@@ -15,6 +15,7 @@ import { characterSelectOn, isHost, myId } from "../store";
 import { CharacterImage } from "./CharacterImage";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
+import { ReportButton } from "./ReportButton";
 import {
   ordinal,
   PLAYER_BG,
@@ -173,6 +174,14 @@ export function Podium(props: {
                             <Fa icon="fa-flag" />
                           </span>
                         </Show>
+                        <ReportButton
+                          room={props.room}
+                          player={{
+                            id: r.playerId,
+                            name: r.name,
+                            isBot: r.isBot,
+                          }}
+                        />
                         <KickButton
                           room={props.room}
                           playerId={r.playerId}

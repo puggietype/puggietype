@@ -34,3 +34,11 @@ export function excludeBots<T extends MaybeBot>(results: readonly T[]): T[] {
 export function displayName(p: MaybeBot & { name: string }): string {
   return isBot(p) ? `${BOT_BADGE} ${BOT_LABEL} ${p.name}` : p.name;
 }
+
+/** "2 humans · 🤖 3 bots" for a room with bots, undefined without */
+export function botMixText(players: readonly MaybeBot[]): string | undefined {
+  const bots = botCount(players);
+  if (bots === 0) return undefined;
+  const humans = humanCount(players);
+  return `${humans} ${humans === 1 ? "human" : "humans"} · ${BOT_BADGE} ${bots} ${bots === 1 ? "bot" : "bots"}`;
+}

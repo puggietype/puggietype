@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   BOT_NAME_PATTERN,
   botCount,
+  botMixText,
   displayName,
   excludeBots,
   humanCount,
@@ -49,5 +50,13 @@ describe("bots", () => {
     expect("Pug Bot · 08 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("Pug Bot - 80 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("ZippyPug42").not.toMatch(BOT_NAME_PATTERN);
+  });
+
+  it("botMixText splits humans from bots, nothing without bots", () => {
+    expect(botMixText([human, legacy])).toBeUndefined();
+    expect(botMixText([human, bot])).toBe("1 human · 🤖 1 bot");
+    expect(botMixText([human, legacy, bot, bot, bot])).toBe(
+      "2 humans · 🤖 3 bots",
+    );
   });
 });

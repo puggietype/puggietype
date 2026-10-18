@@ -19,7 +19,7 @@ import {
   showSuccessNotification,
 } from "../../states/notifications";
 import { cn } from "../../utils/cn";
-import { displayName } from "../bots";
+import { botMixText, displayName } from "../bots";
 import { isFlagEnabled } from "../feature-flags";
 import { canStartRace, inviteLink } from "../helpers";
 import {
@@ -48,6 +48,7 @@ import { CharacterImage } from "./CharacterImage";
 import { CharacterPicker } from "./CharacterPicker";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
+import { ReportButton } from "./ReportButton";
 import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
 const CARD = "grid content-start gap-4 rounded-lg bg-sub-alt p-6";
@@ -303,8 +304,11 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             </div>
           )}
         </Show>
-        <div class={LABEL}>
+        <div class={LABEL} data-testid="mp-player-count">
           players · {props.room.players.length}/{MAX_PLAYERS}
+          <Show when={botMixText(props.room.players)}>
+            {(mix) => ` · ${mix()}`}
+          </Show>
         </div>
         <ul
           class={cn(
@@ -384,6 +388,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     {p.ready ? "ready" : "not ready"}
                   </span>
                 </Show>
+                <ReportButton room={props.room} player={p} />
                 <KickButton
                   room={props.room}
                   playerId={p.id}
