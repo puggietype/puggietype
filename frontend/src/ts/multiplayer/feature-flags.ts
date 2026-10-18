@@ -1,12 +1,20 @@
 /**
- * Client feature flags for staged rollouts. All default ON. Overrides:
+ * Client feature flags for staged rollouts. All default ON except
+ * DEFAULT_OFF_FLAGS, which only an explicit list turns on. Overrides:
  *  - build time: VITE_FLAGS="opponentDogs" (only those) or "none" (all off)
  *  - per tab: ?flags=characterSelect (only those) or ?flags=none (kill
  *    switch); kept in sessionStorage for the rest of the tab. Any other
  *    ?flags= value (e.g. ?flags=default) clears the override.
  */
-export const FEATURE_FLAGS = ["characterSelect", "opponentDogs"] as const;
+export const FEATURE_FLAGS = [
+  "characterSelect",
+  "opponentDogs",
+  "openRooms",
+] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
+
+/** off unless named in VITE_FLAGS or ?flags= (not yet on in prod) */
+export const DEFAULT_OFF_FLAGS: readonly FeatureFlag[] = ["openRooms"];
 
 export const FLAGS_SESSION_KEY = "puggie-flags";
 
@@ -34,7 +42,7 @@ function parseOverride(
 
 /**
  * The enabled flags: the tab's ?flags= override (persisted to `storage`),
- * else the build-time list, else all of them.
+ * else the build-time list, else all but DEFAULT_OFF_FLAGS.
  */
 export function resolveFlags(
   search: string,
@@ -56,7 +64,7 @@ export function resolveFlags(
   return new Set(
     parseOverride(storage.getItem(FLAGS_SESSION_KEY)) ??
       parseOverride(buildFlags) ??
-      FEATURE_FLAGS,
+      FEATURE_FLAGS.filter((f) => !DEFAULT_OFF_FLAGS.includes(f)),
   );
 }
 

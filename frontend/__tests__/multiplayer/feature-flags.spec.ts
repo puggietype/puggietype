@@ -21,16 +21,36 @@ function memoryStorage(initial: Record<string, string> = {}): MemoryStorage {
 }
 
 describe("feature flags", () => {
-  it("are all on by default (prod: no VITE_FLAGS, no ?flags)", () => {
+  it("are on by default except openRooms (prod: no VITE_FLAGS, no ?flags)", () => {
     const flags = resolveFlags("", memoryStorage(), undefined);
     expect([...flags].sort()).toEqual(["characterSelect", "opponentDogs"]);
+    expect(flags.has("openRooms")).toBe(false);
+  });
+
+  it("openRooms only turns on when listed", () => {
+    expect(
+      resolveFlags(
+        "?flags=openRooms,characterSelect",
+        memoryStorage(),
+        undefined,
+      ).has("openRooms"),
+    ).toBe(true);
+    expect(
+      resolveFlags("", memoryStorage(), "openRooms,opponentDogs").has(
+        "openRooms",
+      ),
+    ).toBe(true);
+    expect(
+      resolveFlags("?flags=default", memoryStorage(), undefined).has(
+        "openRooms",
+      ),
+    ).toBe(false);
   });
 
   it("parses known flags only", () => {
-    expect(parseFlagList("characterSelect, opponentDogs,bogus,")).toEqual([
-      "characterSelect",
-      "opponentDogs",
-    ]);
+    expect(
+      parseFlagList("characterSelect, opponentDogs,openRooms,bogus,"),
+    ).toEqual(["characterSelect", "opponentDogs", "openRooms"]);
     expect(parseFlagList(null)).toEqual([]);
   });
 
