@@ -36,7 +36,7 @@ export function VisibilityChoice(props: {
       <legend class={cn(LABEL, "mb-2")}>who can join</legend>
       <For each={VISIBILITY_CHOICES}>
         {(choice) => (
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div class="grid grid-cols-[5.5rem_1fr] items-baseline gap-x-3">
             <label class="flex cursor-pointer items-center gap-2 text-text">
               <input
                 type="radio"
