@@ -1,9 +1,9 @@
 import { createSignal } from "solid-js";
 
+import { loadCharacter, saveCharacter } from "./character-storage";
 import type { ConnectionStatus } from "./client";
 import { isFlagEnabled } from "./feature-flags";
 import {
-  CharacterSchema,
   DEFAULT_CHARACTER,
   type Character,
   type Features,
@@ -20,7 +20,6 @@ export type RaceInfo = {
 };
 
 const SHOW_CARETS_KEY = "puggie-mp-show-carets";
-export const CHARACTER_KEY = "puggie-mp-character";
 
 export const [connectionStatus, setConnectionStatus] =
   createSignal<ConnectionStatus>("idle");
@@ -50,21 +49,6 @@ export { showOpponentCarets };
 export function setShowOpponentCarets(show: boolean): void {
   localStorage.setItem(SHOW_CARETS_KEY, String(show));
   setShowOpponentCaretsSignal(show);
-}
-
-/** the saved dog pick (localStorage), puggie if unset or unknown */
-export function loadCharacter(
-  storage: Pick<Storage, "getItem"> = localStorage,
-): Character {
-  const parsed = CharacterSchema.safeParse(storage.getItem(CHARACTER_KEY));
-  return parsed.success ? parsed.data : DEFAULT_CHARACTER;
-}
-
-export function saveCharacter(
-  character: Character,
-  storage: Pick<Storage, "setItem"> = localStorage,
-): void {
-  storage.setItem(CHARACTER_KEY, character);
 }
 
 const [savedCharacter, setSavedCharacterSignal] = createSignal(loadCharacter());

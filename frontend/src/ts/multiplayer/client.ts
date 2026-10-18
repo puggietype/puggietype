@@ -4,7 +4,7 @@ import { CONFIGURED_WS_URL } from "./flags";
 import { isFlagEnabled } from "./feature-flags";
 import { wsUrl } from "./helpers";
 import type { ClientMessage, ServerMessage } from "./protocol";
-import { loadCharacter } from "./store";
+import { loadCharacter } from "./character-storage";
 
 const SESSION_KEY = "puggie-mp-session";
 const PING_SAMPLES = 5;

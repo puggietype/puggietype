@@ -5,7 +5,7 @@ import {
   CHARACTER_KEY,
   loadCharacter,
   saveCharacter,
-} from "../../src/ts/multiplayer/store";
+} from "../../src/ts/multiplayer/character-storage";
 
 describe("character persistence", () => {
   it("round-trips through puggie-mp-character", () => {
