@@ -19,6 +19,7 @@ import {
   showSuccessNotification,
 } from "../../states/notifications";
 import { cn } from "../../utils/cn";
+import { displayName } from "../bots";
 import { isFlagEnabled } from "../feature-flags";
 import { canStartRace, inviteLink } from "../helpers";
 import {
@@ -32,10 +33,17 @@ import {
   leaveRoom,
   rerollName,
   setReady,
+  setRoomOpen,
   startRace,
   updateSettings,
 } from "../race";
-import { characterSelectOn, isHost, myCharacter, myId } from "../store";
+import {
+  characterSelectOn,
+  isHost,
+  myCharacter,
+  myId,
+  openRoomsOn,
+} from "../store";
 import { CharacterImage } from "./CharacterImage";
 import { CharacterPicker } from "./CharacterPicker";
 import { KickButton } from "./KickButton";
@@ -123,7 +131,48 @@ export function Lobby(props: { room: RoomState }): JSXElement {
     <div class="grid gap-6 md:grid-cols-[3fr_2fr]" data-testid="mp-lobby">
       <div class="grid content-start gap-6">
         <section class={CARD}>
-          <div class={LABEL}>private match</div>
+          <Show
+            when={openRoomsOn()}
+            fallback={<div class={LABEL}>private match</div>}
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class={LABEL}>
+                {props.room.open ? "open match" : "private match"}
+              </div>
+              <Show
+                when={isHost()}
+                fallback={
+                  <span
+                    class={cn(
+                      "rounded-full px-3 py-0.5 text-xs font-(--font)",
+                      props.room.open ? "bg-main text-bg" : "bg-bg text-sub",
+                    )}
+                    data-testid="mp-open-badge"
+                  >
+                    {props.room.open ? "open" : "private"}
+                  </span>
+                }
+              >
+                <label class="flex cursor-pointer items-center gap-2 text-sm text-sub">
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    class="size-4 cursor-pointer accent-main"
+                    data-testid="mp-open-toggle"
+                    checked={props.room.open}
+                    disabled={props.room.phase !== "lobby"}
+                    onChange={(e) => {
+                      const open = e.currentTarget.checked;
+                      // show the server's state until room:state confirms
+                      e.currentTarget.checked = props.room.open;
+                      setRoomOpen(open);
+                    }}
+                  />
+                  list in open rooms
+                </label>
+              </Show>
+            </div>
+          </Show>
           <div class="flex flex-wrap items-center gap-4">
             <div
               class="grow rounded bg-bg px-5 py-3 text-4xl font-(--font) tracking-[0.3em] text-text"
@@ -304,7 +353,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                   </span>
                 </Show>
                 <span class="min-w-0 truncate font-(--font) text-text">
-                  {p.name}
+                  {displayName(p)}
                 </span>
                 <Show when={p.id === myId()}>
                   <span class="shrink-0 text-sm text-sub">(you)</span>
@@ -332,7 +381,11 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     {p.ready ? "ready" : "not ready"}
                   </span>
                 </Show>
-                <KickButton room={props.room} playerId={p.id} name={p.name} />
+                <KickButton
+                  room={props.room}
+                  playerId={p.id}
+                  name={displayName(p)}
+                />
               </li>
             )}
           </For>

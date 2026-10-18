@@ -1,4 +1,11 @@
-import { createSignal, JSXElement, Show, untrack } from "solid-js";
+import {
+  createSignal,
+  JSXElement,
+  onCleanup,
+  onMount,
+  Show,
+  untrack,
+} from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { PugHead } from "../../components/common/PugHead";
@@ -7,8 +14,15 @@ import { cn } from "../../utils/cn";
 import { PUBLIC_MATCHES_ENABLED } from "../flags";
 import { normalizeRoomCode } from "../helpers";
 import { MAX_PLAYERS } from "../protocol";
-import { connect, createRoom, joinRoom } from "../race";
-import { connectionStatus } from "../store";
+import {
+  connect,
+  createRoom,
+  joinRoom,
+  unwatchOpenRooms,
+  watchOpenRooms,
+} from "../race";
+import { connectionStatus, openRooms, openRoomsOn } from "../store";
+import { OpenRoomsList } from "./OpenRoomsList";
 import { PRIMARY_BUTTON } from "./ui";
 
 const CARD = "grid gap-3 rounded-lg bg-sub-alt p-6";
@@ -27,6 +41,10 @@ export function RaceHome(props: { code?: string }): JSXElement {
     connect();
     action();
   };
+
+  // no-op unless the openRooms client flag is on
+  onMount(watchOpenRooms);
+  onCleanup(unwatchOpenRooms);
 
   return (
     <div class="grid gap-6 md:grid-cols-[3fr_2fr]">
@@ -79,6 +97,16 @@ export function RaceHome(props: { code?: string }): JSXElement {
             />
           </form>
         </section>
+        <Show when={openRoomsOn()}>
+          <section class={CARD} data-testid="mp-open-rooms">
+            <h2 class={LABEL}>open rooms</h2>
+            <OpenRoomsList
+              list={openRooms()}
+              disabled={busy()}
+              onJoin={(c) => withConnection(() => joinRoom(c))}
+            />
+          </section>
+        </Show>
         <section class={CARD}>
           <div class={LABEL}>quick play</div>
           <div class="flex flex-wrap items-center justify-between gap-4">
