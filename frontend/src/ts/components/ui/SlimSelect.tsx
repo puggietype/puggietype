@@ -528,7 +528,8 @@ function moveListboxRole(select: SlimSelectCore): void {
   const render = select.render;
   const content = render.content;
   content.main.removeAttribute("role");
-  content.list.id = `${content.main.id}-list`;
+  // slim-select never sets content.main.id; settings.id is unique (ss-<id>)
+  content.list.id = `${select.settings.id}-list`;
   content.list.setAttribute("role", "listbox");
   render.main.main.setAttribute("aria-controls", content.list.id);
 }
