@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": [
+    "/js/*",
+    "/css/*",
+    "/images/*",
+    "/webfonts/*",
+    "/webfonts-preview/*",
+    "/sounds/*",
+    "/languages/*",
+    "/quotes/*",
+    "/themes/*",
+    "/funbox/*",
+    "/challenges/*",
+    "/layouts/*",
+    "/assets/*",
+    "/fonts/*"
+  ]
+}
