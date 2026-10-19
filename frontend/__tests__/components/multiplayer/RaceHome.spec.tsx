@@ -11,6 +11,7 @@ const store = vi.hoisted(() => ({ openRoomsOn: false }));
 vi.mock("../../../src/ts/multiplayer/race", () => ({
   connect: mocks.connect,
   createRoom: mocks.createRoom,
+  joinQueue: vi.fn(),
   joinRoom: vi.fn(),
   watchOpenRooms: vi.fn(),
   unwatchOpenRooms: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock("../../../src/ts/multiplayer/store", () => ({
   connectionStatus: () => "open",
   openRooms: () => ({ rooms: [], racing: 0 }),
   openRoomsOn: () => store.openRoomsOn,
+  quickMatchOn: () => false,
 }));
 vi.mock("../../../src/ts/states/notifications", () => ({
   showNoticeNotification: vi.fn(),
@@ -46,8 +48,8 @@ describe("RaceHome create room", () => {
     const { getByRole, getByLabelText } = render(() => <RaceHome />);
     const group = getByRole("group", { name: "who can join" });
     expect(group.tagName).toBe("FIELDSET");
-    const priv = getByLabelText("Private") as HTMLInputElement;
-    const open = getByLabelText("Open") as HTMLInputElement;
+    const priv = getByLabelText<HTMLInputElement>("Private");
+    const open = getByLabelText<HTMLInputElement>("Open");
     expect(priv.type).toBe("radio");
     expect(open.type).toBe("radio");
     expect(priv.name).toBe(open.name);

@@ -1,13 +1,28 @@
-import { createEffect, JSXElement, Match, on, Show, Switch } from "solid-js";
+import {
+  createEffect,
+  JSXElement,
+  Match,
+  on,
+  onCleanup,
+  Show,
+  Switch,
+} from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
 import { ageConfirmed } from "../age-gate";
 import { MULTIPLAYER_ENABLED } from "../flags";
-import { connect, joinRoom, leaveRoom, resumeSession } from "../race";
+import {
+  connect,
+  joinRoom,
+  leaveQueue,
+  leaveRoom,
+  resumeSession,
+} from "../race";
 import {
   connectionStatus,
   inviteCode,
+  queue,
   race,
   raceFinished,
   results,
@@ -17,6 +32,7 @@ import {
 import { AgeGate } from "./AgeGate";
 import { Lobby } from "./Lobby";
 import { Podium } from "./Podium";
+import { QuickMatchQueue } from "./QuickMatchQueue";
 import { RaceHome } from "./RaceHome";
 import { RaceProgressBars } from "./RaceProgressBars";
 
@@ -30,6 +46,9 @@ export function RacePage(): JSXElement {
       }
     }),
   );
+
+  // navigating away gives up a Quick Match wait (no-op unless queued)
+  onCleanup(leaveQueue);
 
   // /r/CODE: join straight away (the server assigns a nickname)
   createEffect(() => {
@@ -57,7 +76,14 @@ export function RacePage(): JSXElement {
               <Fa icon="fa-circle-notch" spin /> reconnecting...
             </div>
           </Show>
-          <Show when={room()} fallback={<RaceHome />}>
+          <Show
+            when={room()}
+            fallback={
+              <Show when={queue()} fallback={<RaceHome />}>
+                {(q) => <QuickMatchQueue state={q()} onCancel={leaveQueue} />}
+              </Show>
+            }
+          >
             {(r) => (
               <Switch fallback={<Lobby room={r()} />}>
                 <Match when={results()}>

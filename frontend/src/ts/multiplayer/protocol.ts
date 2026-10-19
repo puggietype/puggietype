@@ -1,18 +1,17 @@
-// Copied verbatim from puggietype-server/src/protocol.ts. Keep in sync.
-/* eslint-disable typescript/consistent-type-definitions, prefer-template, typescript/prefer-optional-chain -- verbatim copy */
+// Mirrors the multiplayer server's message contract. Update both sides together.
+/* eslint-disable typescript/consistent-type-definitions, prefer-template, typescript/prefer-optional-chain -- matches server style */
 /**
- * PuggieType multiplayer wire protocol.
+ * Client-side types and zod schemas for the multiplayer WebSocket messages.
  *
- * Standalone: depends only on zod, so the frontend can copy this file verbatim.
- * Every message is a JSON object with a `type` discriminator. See PROTOCOL.md.
+ * Only zod is imported. Each frame is JSON with a `type` field selecting the variant.
  */
 import { z } from "zod";
 
 export const PROTOCOL_VERSION = 1;
 export const MAX_PLAYERS = 8;
-/** 31^8 ≈ 8.5e11 codes; with join rate limits, guessing a live lobby is impractical. */
+/** Code space is 31^8 (~8.5e11); combined with join throttling, brute-forcing a lobby isn't realistic. */
 export const ROOM_CODE_LENGTH = 8;
-/** Unambiguous alphabet: no 0/O, 1/I/L. */
+/** Excludes look-alike glyphs (0/O, 1/I/L). */
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const PLAYER_COLORS = [
   "opp1",
@@ -27,7 +26,7 @@ export const PLAYER_COLORS = [
 export const TIME_MODE2 = [15, 30, 60, 120] as const;
 export const WORDS_MODE2 = [10, 25, 50, 100] as const;
 
-/** Selectable dogs (character select). Enum only: never free text, never stored after the room. */
+/** Dogs a player can pick. Fixed enum (no user text); not kept once the room ends. */
 export const CHARACTERS = [
   "puggie",
   "chowie",
@@ -41,19 +40,37 @@ export const CHARACTERS = [
 export const CharacterSchema = z.enum(CHARACTERS);
 export type Character = z.infer<typeof CharacterSchema>;
 export const DEFAULT_CHARACTER: Character = "puggie";
-/** Character changes allowed per player per window; extra changes are silently dropped. */
+/** Max dog switches per player in each window; anything over is ignored without an error. */
 export const CHARACTER_CHANGE_LIMIT = 10;
 export const CHARACTER_CHANGE_WINDOW_MS = 10_000;
 
-/** Open rooms: at most one `rooms:list` push per subscriber per this many ms. */
+/** Open rooms: minimum gap (ms) between `rooms:list` pushes to one subscriber. */
 export const ROOMS_LIST_THROTTLE_MS = 1000;
-/** Open rooms: entries per `rooms:list` (newest first). */
+/** Open rooms: cap on entries in one `rooms:list`, most recent first. */
 export const MAX_LISTED_ROOMS = 50;
-/** `room:setOpen` and `rooms:list` requests allowed per session per window, then RATE_LIMITED. */
+/** Per-session budget for `room:setOpen` + `rooms:list` in each window; over it -> RATE_LIMITED. */
 export const OPEN_ROOMS_REQUEST_LIMIT = 10;
 export const OPEN_ROOMS_REQUEST_WINDOW_MS = 10_000;
 
-// ---------------------------------------------------------------- settings
+/** Quick Match: `queue:join` budget per window, per session and per IP. */
+export const QUEUE_JOIN_LIMIT = 6;
+export const QUEUE_JOIN_IP_LIMIT = 20;
+export const QUEUE_JOIN_WINDOW_MS = 60_000;
+/** Quick Match: max queued players; once reached `queue:join` returns QUEUE_FULL. */
+export const MAX_QUEUE = 1000;
+/** Quick Match: upper bound applied to `claimedWpm` (lower bound 0). */
+export const MAX_CLAIMED_WPM = 300;
+
+/** Reasons a report may carry. Fixed list; no user-written text. */
+export const REPORT_REASONS = ["cheating", "afk", "name", "other"] as const;
+export const ReportReasonSchema = z.enum(REPORT_REASONS);
+export type ReportReason = z.infer<typeof ReportReasonSchema>;
+/** `report:player` budget per window, per session and per IP. */
+export const REPORT_LIMIT = 5;
+export const REPORT_IP_LIMIT = 15;
+export const REPORT_WINDOW_MS = 10 * 60_000;
+
+// === Room settings ===
 
 export const SettingsSchema = z
   .object({
@@ -76,7 +93,7 @@ export const SettingsSchema = z
   });
 export type Settings = z.infer<typeof SettingsSchema>;
 
-/** Partial settings as sent by clients; merged over the current settings, then validated. */
+/** Client-sent subset of settings; applied on top of the room's settings before validation. */
 export const SettingsPatchSchema = z
   .object({
     mode: z.enum(["time", "words"]),
@@ -88,7 +105,7 @@ export const SettingsPatchSchema = z
   .partial();
 export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;
 
-/** mode2 used when the mode changes and the old mode2 is not valid for the new mode. */
+/** Fallback mode2 when switching mode leaves the previous mode2 invalid. */
 export const DEFAULT_MODE2 = { time: 30, words: 25 } as const;
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -99,7 +116,7 @@ export const DEFAULT_SETTINGS: Settings = {
   language: "english",
 };
 
-// ---------------------------------------------------------------- client -> server
+// === Messages sent by the client ===
 
 const finite = z.number().finite();
 const nonNeg = finite.min(0);
@@ -107,13 +124,13 @@ const nonNeg = finite.min(0);
 export const ClientMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("hello"),
-    // No `name`: the server assigns nicknames. Unknown keys (e.g. a legacy `name`) are stripped.
-    /** Reconnect: both the public playerId and the secret sessionToken from `welcome`. */
+    // Nicknames come from the server, so there's no `name`; extra keys like an old `name` get dropped.
+    /** To resume a session, send back both values received in `welcome` (id is public, token is secret). */
     playerId: z.string().min(1).max(64).optional(),
     sessionToken: z.string().min(1).max(128).optional(),
-    /** The user confirmed the age gate (13+). Required before room:create / room:join. */
+    /** Set once the 13+ age check is accepted; room:create and room:join need it. */
     ageConfirmed: z.boolean().optional(),
-    /** Initial dog. Unknown or invalid values become "puggie" (never an error, so old clients work). */
+    /** Starting dog. Bad or unknown values fall back to "puggie" rather than erroring, for older clients. */
     character: CharacterSchema.catch(DEFAULT_CHARACTER).optional(),
   }),
   z.object({
@@ -122,20 +139,35 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("room:join"), code: z.string().min(1).max(16) }),
   z.object({ type: z.literal("room:leave") }),
-  /** Host only, lobby or results phase: remove a player; they can't rejoin this code for 10 min. */
+  /** Host, in lobby/results: kick someone. That player is barred from this code for 10 minutes. */
   z.object({
     type: z.literal("room:kick"),
     playerId: z.string().min(1).max(64),
   }),
   z.object({ type: z.literal("room:settings"), settings: SettingsPatchSchema }),
   z.object({ type: z.literal("player:ready"), ready: z.boolean() }),
-  /** Lobby only: swap your server-assigned nickname for a new one, unique in the room. */
+  /** In lobby: ask the server for a different nickname (still unique within the room). */
   z.object({ type: z.literal("player:reroll") }),
-  /** Lobby or results phase while not ready: pick your dog. */
+  /** Choose a dog; allowed in lobby/results as long as you aren't marked ready. */
   z.object({ type: z.literal("player:character"), character: CharacterSchema }),
-  /** Open rooms (flag): host only, lobby only. Open lobbies appear in `rooms:list`. */
+  /** Open rooms (flagged): host toggles listing during lobby; listed lobbies show in `rooms:list`. */
   z.object({ type: z.literal("room:setOpen"), open: z.boolean() }),
-  /** Open rooms (flag): get the public list now and subscribe to throttled updates. */
+  /**
+   * Quick Match (flagged): join matchmaking, leaving any current room. `claimedWpm` is the pace
+   * the client reports; the server clamps it and prefers a pace it has verified itself when available.
+   */
+  z.object({ type: z.literal("queue:join"), claimedWpm: finite.optional() }),
+  z.object({ type: z.literal("queue:leave") }),
+  /**
+   * Player reports (flagged): flag a human in the same room. Strict schema, so unexpected keys
+   * such as a comment field make the message invalid and nothing extra is kept.
+   */
+  z.strictObject({
+    type: z.literal("report:player"),
+    playerId: z.string().min(1).max(64),
+    reason: ReportReasonSchema,
+  }),
+  /** Open rooms (flagged): fetch the listing immediately and keep receiving rate-limited updates. */
   z.object({ type: z.literal("rooms:list") }),
   z.object({ type: z.literal("rooms:unsubscribe") }),
   z.object({ type: z.literal("race:start") }),
@@ -166,7 +198,7 @@ export type ClientMessageOf<T extends ClientMessageType> = Extract<
   { type: T }
 >;
 
-// ---------------------------------------------------------------- server -> client
+// === Messages sent by the server ===
 
 export type Phase = "lobby" | "countdown" | "racing" | "results";
 export type PlayerColor = (typeof PLAYER_COLORS)[number];
@@ -181,7 +213,7 @@ export interface Progress {
 export interface PlayerState {
   id: string;
   name: string;
-  /** Server-side synthetic player (Quick Match, not implemented yet): always false today. */
+  /** True for server-run bot players (planned for Quick Match); currently never set. */
   isBot: boolean;
   color: PlayerColor;
   ready: boolean;
@@ -198,27 +230,29 @@ export interface RoomState {
   phase: Phase;
   settings: Settings;
   settingsVersion: number;
-  /** Listed in the public `rooms:list` while in the lobby and not full. Always false with the flag off. */
+  /** Whether the room shows in `rooms:list` (lobby and has space). False whenever the flag is disabled. */
   open: boolean;
+  /** Whether Quick Match made the room. Older servers omit it (false). */
+  quickMatch: boolean;
   players: PlayerState[];
 }
 
-/** Coarse room age for the public list (exact creation times are not exposed). */
+/** Bucketed room age for listings, so precise creation times stay private. */
 export type RoomAge = "lt1m" | "lt5m" | "lt15m" | "lt1h" | "gte1h";
 
 /**
- * One public `rooms:list` entry. Deliberately no nicknames, player ids, host id, IPs or tokens:
- * only what a stranger needs to pick a lobby and join it by code.
+ * A single row of `rooms:list`. Carries just enough to choose and join a lobby by code; it
+ * intentionally leaves out names, ids (players or host), IP addresses and tokens.
  */
 export interface OpenRoomEntry {
   code: string;
   settings: Settings;
-  /** Human players only. */
+  /** Count of non-bot players. */
   humans: number;
-  /** Server-side bots (always 0 until Quick Match). */
+  /** Count of bots; stays 0 until Quick Match ships. */
   bots: number;
   maxPlayers: number;
-  /** Always "lobby": racing/full/closed rooms are not listed. */
+  /** Only ever "lobby", since full, racing or closed rooms are omitted. */
   phase: Phase;
   createdAgo: RoomAge;
 }
@@ -239,7 +273,7 @@ export type FlagReason =
 export interface RaceResult {
   playerId: string;
   name: string;
-  /** Mirrors PlayerState.isBot; bots are excluded from stats (see src/stats.ts). */
+  /** Same as PlayerState.isBot; bot results don't count toward stats. */
   isBot: boolean;
   place: number;
   wpm: number;
@@ -271,13 +305,20 @@ export type ErrorCode =
   | "PLAYER_NOT_FOUND"
   | "KICKED"
   | "SERVER_FULL"
+  | "QUEUE_FULL"
+  | "CANNOT_REPORT"
+  | "ALREADY_REPORTED"
   | "INTERNAL";
 
 export interface Features {
-  /** Off: everyone is puggie, `player:character` is rejected, clients hide the picker. */
+  /** Disabled: all players are puggie, `player:character` errors, and the picker is hidden. */
   characterSelect: boolean;
-  /** Off: `room:setOpen`, `rooms:list` and `rooms:unsubscribe` fail with FEATURE_DISABLED. */
+  /** Disabled: `room:setOpen`, `rooms:list` and `rooms:unsubscribe` return FEATURE_DISABLED. */
   openRooms: boolean;
+  /** Disabled: queue messages return FEATURE_DISABLED and the Quick Match UI is hidden. */
+  quickMatch: boolean;
+  /** Disabled: `report:player` returns FEATURE_DISABLED and the report control is hidden. */
+  report: boolean;
 }
 
 export type ServerMessage =
@@ -287,7 +328,7 @@ export type ServerMessage =
       sessionToken: string;
       name: string;
       protocol: number;
-      /** Server feature flags the client should follow (absent on older servers). */
+      /** Feature toggles the client should respect; older servers omit this. */
       features?: Features;
     }
   | { type: "pong"; t: number; serverNow: number }
@@ -300,16 +341,27 @@ export type ServerMessage =
     }
   | { type: "race:progress"; players: PlayerProgress[] }
   | { type: "race:results"; results: RaceResult[] }
-  /** Public open-room list; `racing` = humans currently in a countdown or race, server-wide. */
+  /** Listing of open rooms; `racing` counts humans in a countdown or race across the server. */
   | { type: "rooms:list"; rooms: OpenRoomEntry[]; racing: number }
-  /** The server closed your room (inactivity); you are no longer in it and its code is gone. */
+  /**
+   * Quick Match: pushed when you join and then once a second while waiting. `band` = your pace
+   * bucket (like "60–80 wpm"), `widenedTo` = range being matched now, `waitedMs` = time queued.
+   */
+  | { type: "queue:status"; band: string; widenedTo: string; waitedMs: number }
+  /** Quick Match: match found in room `code`; expect `room:state` then `race:countdown`. */
+  | { type: "queue:matched"; code: string }
+  /** Quick Match: removed from the queue. `left` = you left or created/joined a room; `timeout` = 60 s elapsed. */
+  | { type: "queue:left"; reason: "left" | "timeout" }
+  /** Player reports: acknowledgement that the report went through. */
+  | { type: "report:received" }
+  /** Room shut down for inactivity; you've been removed and the code no longer exists. */
   | { type: "room:closed"; reason: "idle" }
-  /** The host removed you from your room. */
+  /** You were kicked by the host. */
   | { type: "room:kicked" }
   | { type: "error"; code: ErrorCode; message: string };
 export type ServerMessageType = ServerMessage["type"];
 
-/** Parse a raw inbound frame. Returns the message or a human-readable error. */
+/** Decode and validate one incoming frame, yielding the message or a readable error string. */
 export function parseClientMessage(
   raw: string,
 ): { ok: true; msg: ClientMessage } | { ok: false; error: string } {

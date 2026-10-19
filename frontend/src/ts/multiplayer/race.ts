@@ -50,17 +50,24 @@ import { parseRoomsList } from "./open-rooms";
 import type {
   Character,
   ClientMessage,
+  ErrorCode,
   PlayerState,
+  ReportReason,
   RoomState,
   ServerMessage,
   SettingsPatch,
 } from "./protocol";
+import { applyQueueStatus, startQueue } from "./quick-match";
 import {
   characterSelectOn,
   myId,
   openRoomsOn,
   opponentProgress,
+  queue,
+  quickMatchOn,
   race,
+  reportOn,
+  reports,
   room,
   setConnectionStatus,
   setCountdown,
@@ -68,8 +75,10 @@ import {
   setMyId,
   setOpenRooms,
   setOpponentProgress,
+  setQueue,
   setRace,
   setRaceFinished,
+  setReports,
   setResults,
   setRoom,
   setSavedCharacter,
@@ -97,6 +106,26 @@ let raceToken = 0;
 let roomsWatched = false;
 /** this socket asked for rooms:list (a new socket must ask again) */
 let roomsSubscribed = false;
+/** players we sent report:player for, oldest first; the server answers in order */
+let pendingReports: string[] = [];
+
+/** errors that end a queue:join that hasn't been answered yet */
+const QUEUE_JOIN_ERRORS = new Set<ErrorCode>([
+  "QUEUE_FULL",
+  "RATE_LIMITED",
+  "FEATURE_DISABLED",
+  "AGE_REQUIRED",
+]);
+/** errors that answer a pending report:player */
+const REPORT_ERRORS = new Set<ErrorCode>([
+  "CANNOT_REPORT",
+  "ALREADY_REPORTED",
+  "PLAYER_NOT_FOUND",
+  "NOT_IN_ROOM",
+  "RATE_LIMITED",
+  "FEATURE_DISABLED",
+]);
+
 /** room:create asked for an open room: list it once we're the host */
 let openOnCreate = false;
 
@@ -181,6 +210,54 @@ export function setRoomOpen(open: boolean): void {
 }
 
 /**
+ * Quick Match: queue up (13+ only). `claimedWpm` is our recent pace, if we
+ * have one. Needs both flags; a queue:matched later drops us into a room.
+ */
+export function joinQueue(claimedWpm?: number): void {
+  if (!quickMatchOn() || !isAgeConfirmed() || queue() !== undefined) return;
+  setQueue(startQueue(Date.now()));
+  client.connect();
+  send(
+    claimedWpm === undefined
+      ? { type: "queue:join" }
+      : { type: "queue:join", claimedWpm },
+  );
+}
+
+/** stop waiting for a Quick Match (no-op when not queued) */
+export function leaveQueue(): void {
+  if (queue() === undefined) return;
+  setQueue(undefined);
+  if (quickMatchOn()) send({ type: "queue:leave" });
+}
+
+/** report another human in our room for a preset reason (once per player) */
+export function reportPlayer(playerId: string, reason: ReportReason): void {
+  if (!reportOn() || reports().has(playerId)) return;
+  const target = room()?.players.find((p) => p.id === playerId);
+  if (target === undefined || target.isBot || playerId === myId()) return;
+  pendingReports.push(playerId);
+  setReportStatus(playerId, "sending");
+  send({ type: "report:player", playerId, reason });
+}
+
+function setReportStatus(
+  playerId: string,
+  status: "sending" | "received" | undefined,
+): void {
+  const next = new Map(reports());
+  if (status === undefined) next.delete(playerId);
+  else next.set(playerId, status);
+  setReports(next);
+}
+
+/** the server answered our oldest report: accepted (true) or refused */
+function settleReport(received: boolean): void {
+  const id = pendingReports.shift();
+  if (id !== undefined) setReportStatus(id, received ? "received" : undefined);
+}
+
+/**
  * The hub is showing: subscribe to the open rooms list. Connects only with
  * the client flag on; asks only once the server said it has open rooms.
  */
@@ -254,9 +331,11 @@ function dropRoom(): void {
   sessionStorage.removeItem(ROOM_KEY);
   syncRaceUrl(undefined);
   endRace();
+  pendingReports = [];
   batch(() => {
     setRoom(undefined);
     setResults(undefined);
+    setReports(new Map());
   });
   // don't leave the race words on screen for a solo test
   if (wasRacing && getActivePage() === "test") void restart({ noAnim: true });
@@ -274,12 +353,42 @@ function handleMessage(msg: ServerMessage): void {
       // a fresh socket: the old subscription is gone
       roomsSubscribed = false;
       requestRoomsList();
+      // and so is our queue entry (a join still in flight is fine)
+      if (queue()?.phase === "queued") {
+        setQueue(undefined);
+        showNoticeNotification(
+          "Lost the connection, so you left the Quick Match queue.",
+        );
+      }
+      pendingReports = [];
+      return;
+    case "queue:status":
+      // ignore a status that crossed our queue:leave
+      if (queue() !== undefined) setQueue(applyQueueStatus(msg, Date.now()));
+      return;
+    case "queue:matched":
+      // room:state and race:countdown follow and take it from here
+      setQueue(undefined);
+      return;
+    case "queue:left":
+      if (queue() !== undefined && msg.reason === "timeout") {
+        showNoticeNotification("No match found. Try again in a bit.");
+      }
+      setQueue(undefined);
+      return;
+    case "report:received":
+      settleReport(true);
       return;
     case "rooms:list":
       if (roomsWatched) setOpenRooms(parseRoomsList(msg));
       return;
     case "room:state": {
       const prev = room();
+      if (prev?.code !== msg.code) {
+        pendingReports = [];
+        setReports(new Map());
+      }
+      setQueue(undefined);
       setRoom(withRoomDefaults(msg));
       sessionStorage.setItem(ROOM_KEY, msg.code);
       // the host lands here from /race: make the URL shareable and reloadable
@@ -315,6 +424,20 @@ function handleMessage(msg: ServerMessage): void {
     case "error":
       setLastError(msg.message);
       openOnCreate = false;
+      if (pendingReports.length > 0 && REPORT_ERRORS.has(msg.code)) {
+        // already reported counts as done: the button stays settled
+        settleReport(msg.code === "ALREADY_REPORTED");
+        if (msg.code === "ALREADY_REPORTED") return;
+      }
+      if (queue()?.phase === "joining" && QUEUE_JOIN_ERRORS.has(msg.code)) {
+        setQueue(undefined);
+        if (msg.code === "RATE_LIMITED") {
+          showNoticeNotification(
+            "Too many Quick Match tries. Wait a minute and try again.",
+          );
+          return;
+        }
+      }
       if (
         msg.code === "ROOM_NOT_FOUND" ||
         msg.code === "ROOM_FULL" ||
@@ -346,8 +469,9 @@ function handleMessage(msg: ServerMessage): void {
 }
 
 /** room:state from a server without open rooms (and so without bots) */
-type LegacyRoomState = Omit<RoomState, "open" | "players"> & {
+type LegacyRoomState = Omit<RoomState, "open" | "quickMatch" | "players"> & {
   open?: boolean;
+  quickMatch?: boolean;
   players: (Omit<PlayerState, "isBot"> & { isBot?: boolean })[];
 };
 
@@ -360,6 +484,7 @@ function withRoomDefaults(msg: LegacyRoomState): RoomState {
     settings: msg.settings,
     settingsVersion: msg.settingsVersion,
     open: msg.open === true,
+    quickMatch: msg.quickMatch === true,
     players: msg.players.map(withBotDefault),
   };
 }

@@ -14,9 +14,13 @@ describe("BotLabel", () => {
     expect(label).toHaveTextContent("Bot");
     expect(label).toHaveAttribute(
       "aria-label",
-      "Bot: computer-controlled player",
+      "Bot: computer-controlled player; ~ means approximate speed",
     );
-    expect(getByLabelText("Bot: computer-controlled player")).toBe(label);
+    expect(
+      getByLabelText(
+        "Bot: computer-controlled player; ~ means approximate speed",
+      ),
+    ).toBe(label);
   });
 });
 
@@ -52,10 +56,20 @@ describe("PlayerName", () => {
     expect(el).toHaveClass("truncate");
   });
 
-  it("renders a flagged bot with a malformed name as a plain name", () => {
+  it("labels a flagged bot with a malformed name, but renders the name plain", () => {
     const name = "Evil · ~50 wpm";
-    const { container, queryByTestId, getByTitle } = render(() => (
+    const { container, getByTestId, getByTitle } = render(() => (
       <PlayerName player={{ name, isBot: true }} />
+    ));
+    expect(getByTestId("mp-bot-label")).toHaveTextContent("Bot");
+    expect(getByTitle(name)).toHaveTextContent(name);
+    expect(container.querySelector(".whitespace-nowrap")).toBeNull();
+  });
+
+  it("never labels a human whose name looks like a bot's", () => {
+    const name = "Pug Bot · ~80 wpm";
+    const { container, queryByTestId, getByTitle } = render(() => (
+      <PlayerName player={{ name, isBot: false }} />
     ));
     expect(queryByTestId("mp-bot-label")).toBeNull();
     expect(getByTitle(name)).toHaveTextContent(name);

@@ -19,7 +19,7 @@ import {
   showSuccessNotification,
 } from "../../states/notifications";
 import { cn } from "../../utils/cn";
-import { displayName, isBot, showBotBadge } from "../bots";
+import { botMixText, displayName, isBot } from "../bots";
 import { isFlagEnabled } from "../feature-flags";
 import { canStartRace, inviteLink } from "../helpers";
 import {
@@ -48,6 +48,7 @@ import { CharacterImage } from "./CharacterImage";
 import { CharacterPicker } from "./CharacterPicker";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
+import { ReportButton } from "./ReportButton";
 import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
 // below md the implicit grid column's min-content would push cards past a
@@ -311,8 +312,11 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             </div>
           )}
         </Show>
-        <div class={LABEL}>
+        <div class={LABEL} data-testid="mp-player-count">
           players · {props.room.players.length}/{MAX_PLAYERS}
+          <Show when={botMixText(props.room.players)}>
+            {(mix) => ` · ${mix()}`}
+          </Show>
         </div>
         <ul
           class={cn(
@@ -371,7 +375,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                       "leading-tight font-(--font) text-text",
                       // humans keep the one-line truncate; bot names never shrink
                       // below min-content (halves may still wrap between them)
-                      showBotBadge(p) ? "min-w-min" : "min-w-0 truncate",
+                      isBot(p) ? "min-w-min" : "min-w-0 truncate",
                     )}
                     title={p.name}
                     aria-label={isBot(p) ? displayName(p) : undefined}
@@ -391,7 +395,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     </span>
                   </Show>
                 </span>
-                <span class="ml-auto flex shrink-0 items-center gap-3">
+                <span class="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
                   <Show
                     when={p.id !== props.room.hostId}
                     fallback={<span class="text-sm text-sub">host</span>}
@@ -405,6 +409,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                       {p.ready ? "ready" : "not ready"}
                     </span>
                   </Show>
+                  <ReportButton room={props.room} player={p} />
                   <KickButton
                     room={props.room}
                     playerId={p.id}

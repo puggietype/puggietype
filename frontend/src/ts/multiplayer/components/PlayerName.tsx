@@ -1,6 +1,6 @@
 import { For, JSXElement, Show } from "solid-js";
 
-import { showBotBadge } from "../bots";
+import { isBot, showBotBadge } from "../bots";
 import { BotLabel } from "./BotLabel";
 
 const SEP = " · ";
@@ -17,35 +17,40 @@ function nameChunks(name: string): string[] {
   return [`${name.slice(0, i)} ·`, name.slice(i + SEP.length)];
 }
 
-/** a player's name in JSX: bots get the BotLabel badge before it */
+/** a player's name in JSX: every isBot player gets the BotLabel badge before it */
 export function PlayerName(props: {
   player: { name: string; isBot?: boolean };
   /** humans only: one line with ellipsis (block, needs a width-bound parent) */
   truncate?: boolean;
 }): JSXElement {
   return (
-    <Show
-      when={showBotBadge(props.player)}
-      fallback={
-        <span
-          class={props.truncate ? "block w-full min-w-0 truncate" : undefined}
-          title={props.player.name}
-        >
-          {props.player.name}
+    <>
+      {/* every flagged bot carries the label (Legal); the pattern only picks the layout */}
+      <Show when={isBot(props.player)}>
+        <BotLabel />
+      </Show>
+      <Show
+        when={showBotBadge(props.player)}
+        fallback={
+          <span
+            class={props.truncate ? "block w-full min-w-0 truncate" : undefined}
+            title={props.player.name}
+          >
+            {props.player.name}
+          </span>
+        }
+      >
+        <span>
+          <For each={nameChunks(props.player.name)}>
+            {(chunk, i) => (
+              <>
+                {i() > 0 ? " " : ""}
+                <span class="whitespace-nowrap">{chunk}</span>
+              </>
+            )}
+          </For>
         </span>
-      }
-    >
-      <BotLabel />
-      <span>
-        <For each={nameChunks(props.player.name)}>
-          {(chunk, i) => (
-            <>
-              {i() > 0 ? " " : ""}
-              <span class="whitespace-nowrap">{chunk}</span>
-            </>
-          )}
-        </For>
-      </span>
-    </Show>
+      </Show>
+    </>
   );
 }

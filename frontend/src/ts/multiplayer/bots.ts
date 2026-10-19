@@ -8,7 +8,8 @@ type MaybeBot = { isBot?: boolean };
 
 export const BOT_BADGE = "🤖";
 export const BOT_LABEL = "Bot";
-export const BOT_LABEL_ARIA = "Bot: computer-controlled player";
+export const BOT_LABEL_ARIA =
+  "Bot: computer-controlled player; ~ means approximate speed";
 
 /** mirrors the server: bot names are "Pug Bot · ~NN wpm" (~ = approximate) */
 export const BOT_NAME_PATTERN = /^Pug Bot \u00B7 ~([1-9]\d{1,2}) wpm$/;
@@ -38,4 +39,12 @@ export function excludeBots<T extends MaybeBot>(results: readonly T[]): T[] {
 /** plain-text name (aria, titles): bots carry "🤖 Bot"; JSX uses PlayerName */
 export function displayName(p: MaybeBot & { name: string }): string {
   return isBot(p) ? `${BOT_BADGE} ${BOT_LABEL} ${p.name}` : p.name;
+}
+
+/** "2 humans · 🤖 3 bots" for a room with bots, undefined without */
+export function botMixText(players: readonly MaybeBot[]): string | undefined {
+  const bots = botCount(players);
+  if (bots === 0) return undefined;
+  const humans = humanCount(players);
+  return `${humans} ${humans === 1 ? "human" : "humans"} · ${BOT_BADGE} ${bots} ${bots === 1 ? "bot" : "bots"}`;
 }
