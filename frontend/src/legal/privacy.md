@@ -1,12 +1,12 @@
 # Privacy Policy
 
-_Effective date: October 18, 2026. Last updated: October 18, 2026._
+_Effective date: October 18, 2026. Last updated: October 19, 2026._
 
 ## Who we are
 PuggieType is run by the PuggieType team. For any privacy question or request, email support@puggietype.com.
 
 ## Solo typing tests
-The solo typing test needs no account. Your settings, themes, custom text, tags and test results are stored only in your browser (localStorage). For Quick Match, your browser also keeps a short list (key "puggie-mp-recent-pace") of the speed, test mode, length and language of your last 10 solo 30-second English tests, with no dates or text; it is only used to send your average speed when you join Quick Match. They never leave your device unless you export them yourself. Clearing your browser data deletes them. Some optional features make your browser contact a third party directly, which then receives your IP address: opening the release notes (GitHub's public API), the poetry and Wikipedia text modes (poetrydb.org and Wikipedia), and an optional easter-egg video (YouTube, which may set its own cookies).
+The solo typing test needs no account. Your settings, themes, custom text, tags and test results are stored only in your browser (localStorage). For Quick Match, your browser also keeps a short list (key "puggie-mp-recent-pace") of the speed, test mode, length and language of your last 10 solo 30-second English tests, with no dates or text; it is only used to send your average speed when you join Quick Match. Your browser also keeps a random Quick Match ID (key "puggie-mp-client-id"). It isn't linked to your nickname or account and is sent to our server only when you join Quick Match, so we never match you against yourself (for example, from a second tab). The server holds it in memory only while you're in the queue and never logs or stores it. Apart from that average speed and this ID, this data never leaves your device unless you export it yourself. Clearing your browser data deletes them. Some optional features make your browser contact a third party directly, which then receives your IP address: opening the release notes (GitHub's public API), the poetry and Wikipedia text modes (poetrydb.org and Wikipedia), and an optional easter-egg video (YouTube, which may set its own cookies).
 
 ## Multiplayer (ages 13+)
 Multiplayer has three modes: **private lobbies** (join by invite link or code), **Open Rooms** (public lobbies anyone can browse and join), and **Quick Match** (we match you with players near your speed). When you use multiplayer, our game server at ws.puggietype.com processes:
@@ -58,7 +58,7 @@ Depending on where you live (for example under the EU or UK GDPR, or California'
 ## Retention summary
 | Data | How long we keep it |
 |---|---|
-| Solo settings and results, and the Quick Match speed list ("puggie-mp-recent-pace", last 10 entries) | in your browser only, until you clear them |
+| Solo settings and results, the Quick Match speed list ("puggie-mp-recent-pace", last 10 entries) and the random Quick Match ID ("puggie-mp-client-id"; on our server only in memory while you're queued) | in your browser only, until you clear them |
 | Nickname, lobby code, race data, IP address, speed for matching, and reporter counts (game server) | in memory until your session or room ends, plus a 20-second reconnect window; not written to disk or logs |
 | Player reports (report ID, room code, reason, time, hashed IP address) | 7 days, then deleted automatically |
 | Game server logs | startup and error messages, 5-minute overall counts and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |
