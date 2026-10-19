@@ -54,7 +54,8 @@ export function ReportButton(props: {
         when={status() === undefined}
         fallback={
           <span
-            class="shrink-0 text-sm text-sub"
+            // shrinks/wraps (own line in a wrapping row) instead of squeezing the name
+            class="min-w-0 text-sm text-sub"
             role="status"
             data-testid="mp-report-thanks"
             data-player-id={props.player.id}

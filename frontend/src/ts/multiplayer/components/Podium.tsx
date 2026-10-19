@@ -9,7 +9,7 @@ import {
   DEFAULT_CHARACTER,
 } from "../../components/pages/test/character-frames";
 import { cn } from "../../utils/cn";
-import { displayName } from "../bots";
+import { displayName, isBot } from "../bots";
 import { roomKindLabel } from "../helpers";
 import { leaveRoom, rematch } from "../race";
 import { characterSelectOn, isHost, myId } from "../store";
@@ -141,23 +141,41 @@ export function Podium(props: {
                         dense() ? "py-1.5" : "py-3",
                       )}
                     >
-                      <span class="flex min-w-0 items-center gap-2">
+                      {/* wraps: (you)/dnf/report/kick drop below rather than squeeze or overlap the name */}
+                      <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                         <span
                           class={cn(
-                            "h-2.5 w-2.5 shrink-0 rounded-full",
-                            PLAYER_BG[colorOf(r.playerId)],
+                            "flex max-w-full items-center gap-2",
+                            // humans truncate; a bot's group never shrinks below min-content
+                            isBot(r) ? "min-w-min" : "min-w-0",
                           )}
-                        ></span>
-                        <Show when={characterSelectOn()}>
-                          <CharacterImage
-                            character={dogOf(r.playerId)}
-                            frame="head"
-                            class="h-7 w-8 shrink-0"
-                            testId="mp-result-character"
-                          />
-                        </Show>
-                        <span class="truncate text-text">
-                          <PlayerName player={r} />
+                        >
+                          <span
+                            class={cn(
+                              "h-2.5 w-2.5 shrink-0 rounded-full",
+                              PLAYER_BG[colorOf(r.playerId)],
+                            )}
+                          ></span>
+                          <Show when={characterSelectOn()}>
+                            <CharacterImage
+                              character={dogOf(r.playerId)}
+                              frame="head"
+                              class="h-7 w-8 shrink-0"
+                              testId="mp-result-character"
+                            />
+                          </Show>
+                          <span
+                            class={cn(
+                              "leading-tight text-text",
+                              // bot halves may wrap between them, never inside
+                              isBot(r) ? "min-w-min" : "min-w-0 truncate",
+                            )}
+                            title={r.name}
+                            aria-label={isBot(r) ? displayName(r) : undefined}
+                            data-testid="mp-result-name"
+                          >
+                            <PlayerName player={r} />
+                          </span>
                         </span>
                         <Show when={r.playerId === myId()}>
                           <span class="shrink-0 text-sm text-sub">(you)</span>

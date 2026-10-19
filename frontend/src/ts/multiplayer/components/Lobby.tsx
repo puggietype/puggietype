@@ -395,7 +395,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     </span>
                   </Show>
                 </span>
-                <span class="ml-auto flex shrink-0 items-center gap-3">
+                <span class="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
                   <Show
                     when={p.id !== props.room.hostId}
                     fallback={<span class="text-sm text-sub">host</span>}
