@@ -109,11 +109,11 @@ function OpponentDog(props: {
       <Show when={!props.dense}>
         <span
           class={cn(
-            "w-full truncate text-center text-xs font-(--font)",
+            "w-full min-w-0 text-center text-xs leading-tight font-(--font)",
             PLAYER_TEXT[props.player.color],
           )}
         >
-          <PlayerName player={props.player} />
+          <PlayerName player={props.player} truncate />
         </span>
       </Show>
       <span class="text-xs leading-none font-(--font) whitespace-nowrap text-sub">

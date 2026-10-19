@@ -6,6 +6,7 @@ import {
   displayName,
   excludeBots,
   humanCount,
+  showBotBadge,
 } from "../../src/ts/multiplayer/bots";
 
 const human = { name: "ZippyPug42", isBot: false };
@@ -42,12 +43,30 @@ describe("bots", () => {
   });
 
   it("BOT_NAME_PATTERN matches server bot names only", () => {
-    expect("Pug Bot \u00B7 80 wpm").toMatch(BOT_NAME_PATTERN);
-    expect("Pug Bot · 120 wpm".match(BOT_NAME_PATTERN)?.[1]).toBe("120");
-    expect("Pug Bot · 8 wpm").not.toMatch(BOT_NAME_PATTERN);
-    expect("Pug Bot · 1000 wpm").not.toMatch(BOT_NAME_PATTERN);
-    expect("Pug Bot · 08 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot \u00B7 ~80 wpm").toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · ~120 wpm".match(BOT_NAME_PATTERN)?.[1]).toBe("120");
+    expect("Pug Bot · ~8 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · ~1000 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · ~08 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot · 80 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("Pug Bot - 80 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("ZippyPug42").not.toMatch(BOT_NAME_PATTERN);
+  });
+
+  it("badges only flagged bots with a well-formed bot name", () => {
+    expect(showBotBadge({ name: "Pug Bot · ~50 wpm", isBot: true })).toBe(true);
+    for (const name of [
+      "Pug Bot · ~5 wpm",
+      "Pug Bot · ~1000 wpm",
+      "Pug Bot · ~050 wpm",
+      "Evil · ~50 wpm",
+      "Pug Bot ~50 wpm",
+    ]) {
+      expect(showBotBadge({ name, isBot: true }), name).toBe(false);
+    }
+    expect(showBotBadge({ name: "Pug Bot · ~50 wpm", isBot: false })).toBe(
+      false,
+    );
+    expect(showBotBadge({ name: "Pug Bot · ~50 wpm" })).toBe(false);
   });
 });
