@@ -1,6 +1,6 @@
 # Terms of Service
 
-_Effective date: October 18, 2026. Last updated: October 18, 2026. "We", "us" and "our" mean the PuggieType team._
+_Effective date: [ADS_EFFECTIVE_DATE]. Last updated: [ADS_EFFECTIVE_DATE]. "We", "us" and "our" mean the PuggieType team._
 
 ## 1. Age requirement
 PuggieType's solo typing test needs no account and collects no account data. You must be **at least 13 years old** to use multiplayer. If you are under 18, or under the age of majority where you live, use multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.
@@ -36,6 +36,9 @@ We respect intellectual property rights. If you believe content on PuggieType (f
 (f) a statement, under penalty of perjury, that the information in your notice is accurate and that you are the copyright owner or authorized to act on the owner's behalf.
 
 We will review valid notices and remove or replace infringing material.
+
+## 6a. Advertising
+PuggieType is free and supported by ads from Google AdSense, shown only on the results screen and in the sidebars, never during a test or race. Ads are provided by Google and other advertisers, not by us; we don't endorse the products advertised. Don't click ads on purpose to generate revenue, and don't use tools to click them for you. Our [Privacy Policy](/privacy) explains how ads use data and how to opt out.
 
 ## 7. No warranty
 PuggieType is provided "as is", without warranty of any kind, to the extent permitted by law.

@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Effective date: October 18, 2026. Last updated: October 18, 2026._
+_Effective date: [ADS_EFFECTIVE_DATE]. Last updated: [ADS_EFFECTIVE_DATE]._
 
 ## Who we are
 PuggieType is run by the PuggieType team. For any privacy question or request, email support@puggietype.com.
@@ -39,6 +39,7 @@ We don't keep your IP address itself, player IDs, nicknames, messages or any oth
 - To provide the typing test and the multiplayer races you ask for (Art. 6(1)(b), performance of a contract).
 - To keep the service secure and prevent cheating and abuse (Art. 6(1)(f), legitimate interests).
 - To comply with legal obligations (Art. 6(1)(c)).
+- To show ads: in the EEA, UK and Switzerland, your consent for storing or reading information on your device (Art. 6(1)(a) and the ePrivacy rules); you can withdraw it at any time. Elsewhere, our legitimate interest in funding the service with non-personalized ads (Art. 6(1)(f)).
 
 ## Service providers
 - **Cloudflare, Inc.** hosts the website (Cloudflare Pages) and provides DNS and security.
@@ -46,14 +47,45 @@ We don't keep your IP address itself, player IDs, nicknames, messages or any oth
 
 These providers process IP addresses and technical request data on our behalf. Fly.io keeps our game server's log output for 7 days ([Fly.io logging overview](https://fly.io/docs/monitoring/logging-overview/)). We don't receive or store raw visitor request logs from Cloudflare; Cloudflare processes and retains its own operational data as described in [Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/). Cloudflare also asks browsers to report network errors to it (Network Error Logging), and loads a small script that protects email addresses on our pages from spam bots. If Cloudflare's bot protection is triggered, it may set strictly necessary security cookies such as `__cf_bm` or `cf_clearance`. We don't use Cloudflare Web Analytics.
 
+## Advertising (Google AdSense)
+PuggieType shows ads from **Google AdSense** to help pay for the service. Ads appear only on the results screen and in the sidebars, never during a test or race.
+
+**Non-personalized ads by default.** We set AdSense to show non-personalized ads to everyone. These ads are chosen from context (for example, the page you're on and your general location), not from a profile of your interests. Even so, Google, as a third-party vendor, uses cookies and similar technologies (such as local storage and device identifiers) to serve ads on our site. Non-personalized ads still use cookies or similar technologies for frequency capping, aggregated ad reporting, and to combat fraud and abuse. When Google serves an ad, your browser connects to Google directly, and Google receives your IP address, browser and device information, and the page you're viewing.
+
+**Consent.** If you are in the European Economic Area, the United Kingdom or Switzerland, we use Google's consent message (a Google-certified consent management platform using the IAB Transparency & Consent Framework). Ads and ad cookies are not loaded until you make a choice, and if you decline storage on your device, Google shows only limited ads, which don't use personal data for personalization and don't use cookies for advertising. Google may still use cookies or local storage only to detect fraud and abuse. You can change your choice at any time with the "Privacy and cookie settings" link at the bottom of every page. The consent message never appears during a test or race.
+
+**How Google uses data.** Google's use of advertising cookies enables it and its partners to serve ads based on visits to this and other sites. Learn more at [How Google uses information from sites or apps that use our services](https://policies.google.com/technologies/partner-sites) and in [Google's privacy policy](https://policies.google.com/privacy). Google acts as an independent controller for its own use of this data.
+
+**Opting out of personalized ads.** You can manage or turn off personalized advertising from Google in [My Ad Center](https://myadcenter.google.com/) (or [Ads Settings](https://adssettings.google.com/)). You can also opt out of personalized advertising by many third-party vendors at [aboutads.info](https://www.aboutads.info/choices/) (US) and [youronlinechoices.eu](https://www.youronlinechoices.eu/) (EU/UK).
+
+**ads.txt.** Our authorized ad sellers are listed in our public [ads.txt](https://puggietype.com/ads.txt) file, an industry standard that helps prevent ad fraud.
+
 ## Cookies, analytics and error reporting
-PuggieType doesn't load any analytics, error-reporting or advertising scripts, and doesn't set analytics or advertising cookies. We do not sell or share personal information for cross-context behavioral advertising. If we ever add analytics or error reporting, we will update this policy and ask for your consent first.
+Apart from the Google advertising technologies described above and Cloudflare's strictly necessary security cookies, PuggieType doesn't set cookies. We don't load any analytics or error-reporting scripts. If we ever add analytics or error reporting, we will update this policy and ask for your consent where the law requires it.
 
 ## Children
-Multiplayer is only for users aged 13 and over. We do not knowingly collect personal information from children under 13. If a parent or guardian tells us at support@puggietype.com that a child under 13 used multiplayer, we will delete any information we hold. Most multiplayer data is deleted when the session or room ends, and player reports are deleted after 7 days, so it is usually already gone.
+Multiplayer is only for users aged 13 and over. Ads are non-personalized for everyone, and we don't knowingly allow personalized advertising to users under 16. We do not knowingly collect personal information from children under 13. If a parent or guardian tells us at support@puggietype.com that a child under 13 used multiplayer, we will delete any information we hold. Most multiplayer data is deleted when the session or room ends, and player reports are deleted after 7 days, so it is usually already gone.
 
 ## Your rights
-Depending on where you live (for example under the EU or UK GDPR, or California's CCPA/CPRA), you may have the right to access, correct, delete or port your data, to object to or restrict its processing, and to complain to your data protection authority. We do not sell or share your personal information. We will not discriminate against you for exercising your rights. To make a request, email support@puggietype.com.
+Depending on where you live (for example under the EU or UK GDPR, or California's CCPA/CPRA), you may have the right to access, correct, delete or port your data, to object to or restrict its processing, and to complain to your data protection authority. We will not discriminate against you for exercising your rights. To make a request, email support@puggietype.com.
+
+## Your choices: Do Not Sell or Share (US state privacy laws)
+We don't sell your personal information for money, and we don't use it for targeted (cross-context behavioral) advertising. Because Google receives identifiers such as cookie IDs and your IP address when it serves ads, some US state laws (including California's CCPA/CPRA) may treat this as a "sale" or "sharing." To limit this, we turn on Google's **restricted data processing** for all users, so Google uses the data only for limited purposes (such as showing non-personalized ads, measurement and fraud prevention) and not to build advertising profiles. We don't knowingly sell or share the personal information of anyone under 16.
+
+- **Opt out:** use the **"Do Not Sell or Share My Personal Information"** link at the bottom of every page, or email support@puggietype.com.
+- **Global Privacy Control (GPC):** if your browser sends a GPC signal, we treat it as a valid request to opt out of sale and sharing for that browser, without you needing to do anything else. Our site shows whether your GPC signal has been honored.
+
+In the last 12 months, the categories of personal information disclosed to Google for advertising were identifiers (IP address, cookie and device identifiers) and internet activity (the pages you view on PuggieType and your interactions with ads).
+
+## Categories of personal information
+| Category | Examples | Source | Purpose | Disclosed to |
+|---|---|---|---|---|
+| Identifiers | IP address, random player ID and session token, cookie and device IDs used by Google | you / your browser | providing multiplayer, security, serving ads | Fly.io, Cloudflare (service providers); Google (advertising, see above) |
+| Internet or network activity | pages viewed, race data, interactions with ads | your browser | providing the service, serving and measuring ads, fraud prevention | Fly.io (service provider); Google (advertising) |
+| Approximate location | derived from IP address (country or region) | your IP address | consent rules, serving ads | Google (advertising) |
+| Inferences | none: we don't build profiles | – | – | – |
+
+We don't collect sensitive personal information.
 
 ## Retention summary
 | Data | How long we keep it |
@@ -63,6 +95,8 @@ Depending on where you live (for example under the EU or UK GDPR, or California'
 | Player reports (report ID, room code, reason, time, hashed IP address) | 7 days, then deleted automatically |
 | Game server logs | startup and error messages, 5-minute overall counts and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |
 | Cloudflare and Fly.io operational data | as described in each provider's own privacy policy |
+| Advertising data collected by Google (cookies, IP address, ad interactions) | by Google, as described in [Google's privacy policy](https://policies.google.com/privacy) and [how Google retains data](https://policies.google.com/technologies/retention); ad cookies stay in your browser until they expire or you clear them |
+| Your consent and opt-out choices | in your browser (cookie/local storage set by Google's consent message) until you change them or clear your browser data, up to 13 months |
 | Emails you send us | as long as needed to answer you, then deleted |
 
 ## Changes
