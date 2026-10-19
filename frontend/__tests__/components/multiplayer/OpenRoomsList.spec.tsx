@@ -41,7 +41,7 @@ describe("OpenRoomsList", () => {
       racing: 0,
     });
     expect(getByTestId("mp-open-rooms-empty")).toHaveTextContent(
-      "no open rooms yet — open your lobby to list it",
+      "no open rooms yet — create an Open room to list one",
     );
     expect(queryAllByTestId("mp-open-room")).toHaveLength(0);
   });

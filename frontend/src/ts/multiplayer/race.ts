@@ -126,6 +126,9 @@ const REPORT_ERRORS = new Set<ErrorCode>([
   "FEATURE_DISABLED",
 ]);
 
+/** room:create asked for an open room: list it once we're the host */
+let openOnCreate = false;
+
 const client = new MultiplayerClient({
   onMessage: handleMessage,
   onStatus: setConnectionStatus,
@@ -149,11 +152,16 @@ export function connect(): void {
   client.connect();
 }
 
-export function createRoom(settings?: SettingsPatch): void {
+export function createRoom(
+  settings?: SettingsPatch,
+  opts: { open?: boolean } = {},
+): void {
+  openOnCreate = opts.open === true && openRoomsOn();
   send({ type: "room:create", settings });
 }
 
 export function joinRoom(code: string): void {
+  openOnCreate = false;
   send({ type: "room:join", code });
 }
 
@@ -318,6 +326,7 @@ function syncRaceUrl(code: string | undefined): void {
 
 /** forget the room locally (left, kicked out or session taken over) */
 function dropRoom(): void {
+  openOnCreate = false;
   const wasRacing = isRaceActive();
   sessionStorage.removeItem(ROOM_KEY);
   syncRaceUrl(undefined);
@@ -384,6 +393,11 @@ function handleMessage(msg: ServerMessage): void {
       sessionStorage.setItem(ROOM_KEY, msg.code);
       // the host lands here from /race: make the URL shareable and reloadable
       syncRaceUrl(msg.code);
+      // the room we just created: list it right away
+      if (openOnCreate && msg.hostId === myId()) {
+        openOnCreate = false;
+        if (!msg.open) setRoomOpen(true);
+      }
       if (msg.phase === "lobby" && prev?.phase !== "lobby") {
         // rematch (or a fresh join): back to the lobby
         endRace();
@@ -409,6 +423,7 @@ function handleMessage(msg: ServerMessage): void {
       return;
     case "error":
       setLastError(msg.message);
+      openOnCreate = false;
       if (pendingReports.length > 0 && REPORT_ERRORS.has(msg.code)) {
         // already reported counts as done: the button stays settled
         settleReport(msg.code === "ALREADY_REPORTED");

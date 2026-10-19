@@ -8,7 +8,7 @@ PuggieType's solo typing test needs no account and collects no account data. You
 ## 2. Multiplayer
 Multiplayer races take place in rooms of up to 8 players. **Private lobbies:** when you create one you get an invite link and code, and anyone who has the link or code can join while it is open, so share it only with people you want to race. **Open Rooms** are public lobbies that anyone can browse and join. **Quick Match** (coming soon) will put you in a public room with players near your speed. Rooms close when everyone leaves, or after a period of inactivity.
 
-When available, Quick Match may include computer-controlled Pug Bots. Bots are named "Pug Bot · NN wpm", always carry a visible "Bot" label, and never count toward stats or leaderboards.
+When available, Quick Match may include computer-controlled Pug Bots. Bots are named "Pug Bot · ~NN wpm" (the number is the bot's approximate target pace, not its result), always carry a visible "Bot" label, and never count toward stats or leaderboards.
 
 ## 3. Nicknames
 In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown only to the other players in your lobby and is not stored after the lobby closes. There is no chat, and players can't send each other messages.

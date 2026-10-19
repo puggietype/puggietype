@@ -729,6 +729,71 @@ describe("open rooms", () => {
     });
   });
 
+  const setOpenSent = (): ClientMessage[] =>
+    fakeClient.sent.filter((m) => m.type === "room:setOpen");
+
+  it("create open: lists the room on the first room:state as host", () => {
+    clientFlags.add("openRooms");
+    receive(welcome(true));
+    Race.createRoom(undefined, { open: true });
+    expect(fakeClient.sent).toContainEqual({
+      type: "room:create",
+      settings: undefined,
+    });
+    expect(setOpenSent()).toEqual([]);
+    receive(roomState());
+    expect(setOpenSent()).toEqual([{ type: "room:setOpen", open: true }]);
+    // only once: later snapshots (or the host unlisting) don't re-open it
+    receive(roomState({ settingsVersion: 2 }));
+    receive(roomState({ open: true }));
+    receive(roomState({ open: false }));
+    expect(setOpenSent()).toHaveLength(1);
+    Race.leaveRoom();
+  });
+
+  it("create private (default): never sends room:setOpen", () => {
+    clientFlags.add("openRooms");
+    receive(welcome(true));
+    Race.createRoom();
+    receive(roomState());
+    Race.createRoom(undefined, { open: false });
+    receive(roomState());
+    expect(setOpenSent()).toEqual([]);
+    Race.leaveRoom();
+  });
+
+  it("create open with open rooms off: stays private", () => {
+    receive(welcome(true));
+    Race.createRoom(undefined, { open: true });
+    receive(roomState());
+    expect(setOpenSent()).toEqual([]);
+    Race.leaveRoom();
+  });
+
+  it("create open: not as a joiner, and not after a failed create", () => {
+    clientFlags.add("openRooms");
+    receive(welcome(true));
+    Race.createRoom(undefined, { open: true });
+    receive({ type: "error", code: "RATE_LIMITED", message: "slow down" });
+    receive(roomState());
+    expect(setOpenSent()).toEqual([]);
+    Race.leaveRoom();
+
+    Race.createRoom(undefined, { open: true });
+    Race.joinRoom("ABC234");
+    receive(roomState());
+    expect(setOpenSent()).toEqual([]);
+    Race.leaveRoom();
+
+    // someone else's room: wait for our own
+    Race.createRoom(undefined, { open: true });
+    receive(roomState({ hostId: "other" }));
+    expect(setOpenSent()).toEqual([]);
+    receive(roomState());
+    expect(setOpenSent()).toHaveLength(1);
+    Race.leaveRoom();
+  });
+
   it("defaults open, quickMatch and isBot for servers that don't send them", () => {
     const legacy = roomState() as unknown as Record<string, unknown>;
     delete legacy["open"];

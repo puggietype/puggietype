@@ -101,7 +101,7 @@ export function OpenRoomsList(props: {
             when={list().rooms.length > 0}
             fallback={
               <div class="text-sub" data-testid="mp-open-rooms-empty">
-                no open rooms yet — open your lobby to list it
+                no open rooms yet — create an Open room to list one
               </div>
             }
           >

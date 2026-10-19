@@ -55,6 +55,7 @@ describe("bots", () => {
     expect("Pug Bot · ~08 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("Pug Bot · ~ 80 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("Pug Bot - ~80 wpm").not.toMatch(BOT_NAME_PATTERN);
+    expect("Pug Bot - 80 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("ZippyPug42").not.toMatch(BOT_NAME_PATTERN);
   });
 
