@@ -61,7 +61,7 @@ export function Podium(props: {
     <div
       // side by side from a 1280px viewport; below that the table needs the full width for names.
       // arbitrary min-[1280px]: our xl is 1361px (tailwind.css @theme), not Tailwind's default 1280
-      class="mx-auto grid w-full max-w-3xl items-center gap-8 min-[1280px]:max-w-none min-[1280px]:grid-cols-[2fr_3fr]"
+      class="mx-auto grid w-full max-w-3xl grid-cols-[minmax(0,1fr)] items-center gap-8 min-[1280px]:max-w-none min-[1280px]:grid-cols-[2fr_3fr]"
       data-testid="mp-podium"
     >
       <CharacterImage
@@ -76,7 +76,7 @@ export function Podium(props: {
         testId="mp-pug-winner"
         alt={winnerAlt()}
       />
-      <div class="grid gap-4">
+      <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
         <div class="text-sm font-(--font) text-sub">
           race over · {roomKindLabel(props.room)} · {props.room.code} ·{" "}
           {settingsSummary(props.room.settings)}
@@ -84,7 +84,7 @@ export function Podium(props: {
         <Show when={winner()}>
           {(w) => (
             <h2
-              class="text-4xl leading-tight break-words sm:text-5xl"
+              class="min-w-0 text-4xl leading-tight [overflow-wrap:anywhere] sm:text-5xl"
               data-testid="mp-winner"
             >
               <span class={PLAYER_TEXT[colorOf(w().playerId)]}>

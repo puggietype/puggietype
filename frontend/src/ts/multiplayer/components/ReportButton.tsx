@@ -139,7 +139,7 @@ export function ReportButton(props: {
               data-testid="mp-report-menu"
             >
               <div
-                class="px-2 text-xs break-words text-sub"
+                class="min-w-0 px-2 text-xs [overflow-wrap:anywhere] text-sub"
                 data-testid="mp-report-menu-header"
               >
                 report {props.player.name} for

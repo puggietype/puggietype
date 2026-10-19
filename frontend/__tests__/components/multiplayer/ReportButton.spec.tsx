@@ -183,7 +183,7 @@ describe("ReportButton", () => {
         expect(menu).toHaveAttribute("aria-label", `report ${LONG} for`);
         const header = getByTestId("mp-report-menu-header");
         expect(header).toHaveTextContent(`report ${LONG} for`);
-        expect(header).toHaveClass("break-words");
+        expect(header).toHaveClass("[overflow-wrap:anywhere]");
         expect(header).not.toHaveClass("truncate");
       });
     }
