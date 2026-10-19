@@ -6,34 +6,34 @@ _Effective date: October 18, 2026. Last updated: October 18, 2026._
 PuggieType is run by the PuggieType team. For any privacy question or request, email support@puggietype.com.
 
 ## Solo typing tests
-The solo typing test needs no account. Your settings, themes, custom text, tags and test results are stored only in your browser (localStorage). They never leave your device unless you export them yourself. Clearing your browser data deletes them. Some optional features make your browser contact a third party directly, which then receives your IP address: opening the release notes (GitHub's public API), the poetry and Wikipedia text modes (poetrydb.org and Wikipedia), and an optional easter-egg video (YouTube, which may set its own cookies).
+The solo typing test needs no account. Your settings, themes, custom text, tags and test results are stored only in your browser (localStorage). For Quick Match, your browser also keeps a short list (key "puggie-mp-recent-pace") of the speed, test mode, length and language of your last 10 solo 30-second English tests, with no dates or text; it is only used to send your average speed when you join Quick Match. They never leave your device unless you export them yourself. Clearing your browser data deletes them. Some optional features make your browser contact a third party directly, which then receives your IP address: opening the release notes (GitHub's public API), the poetry and Wikipedia text modes (poetrydb.org and Wikipedia), and an optional easter-egg video (YouTube, which may set its own cookies).
 
 ## Multiplayer (ages 13+)
-Multiplayer has three modes: **private lobbies** (join by invite link or code), **Open Rooms** (public lobbies anyone can browse and join), and, when available, **Quick Match** (we match you with players near your speed). When you use multiplayer, our game server at ws.puggietype.com processes:
+Multiplayer has three modes: **private lobbies** (join by invite link or code), **Open Rooms** (public lobbies anyone can browse and join), and **Quick Match** (we match you with players near your speed). When you use multiplayer, our game server at ws.puggietype.com processes:
 - **a random nickname** that the server assigns (you can't type your own);
 - **the lobby code** and lobby settings;
 - **race data**: progress, speed, accuracy and results;
 - **connection data**: your IP address (needed to connect you, and to apply connection and spam limits), and a random player ID and session token.
 
-**Who sees what.** Your nickname and race data are shown to the players in your room. Anyone with a private lobby's invite link or code can join it while it is open. Lobbies are private unless the host chooses to list them in Open Rooms. A listed lobby is public: anyone can see its code and join it. When Quick Match is available, Quick Match rooms will be public in the same way. The public Open Rooms list shows each listed lobby's code, its race settings, how many players and bots are in it out of the maximum, and roughly how long ago it was opened (for example "opened < 5 min ago"). It also shows a total of players racing right now, which counts people only, never bots. It doesn't show nicknames or anything else about the players.
+**Who sees what.** Your nickname and race data are shown to the players in your room. Anyone with a private lobby's invite link or code can join it while it is open. Lobbies are private unless the host chooses to list them in Open Rooms. A listed lobby is public: anyone can see its code and join it. Quick Match rooms are public in the same way. The public Open Rooms list shows each listed lobby's code, its race settings, how many players and bots are in it out of the maximum, and roughly how long ago it was opened (for example "opened < 5 min ago"). It also shows a total of players racing right now, which counts people only, never bots. It doesn't show nicknames or anything else about the players.
 
-**Speed matching (with Quick Match, when available).** To match you with players near your speed, your browser will send the server your recent average typing speed, calculated from your last 10 tests and stored in your browser. During your session, the server will also keep a verified speed based on your multiplayer races. We will use these only to match you with similar players. They will be kept in memory for your session and never saved.
+**Speed matching (Quick Match).** To match you with players near your speed, your browser sends the server the average speed of your last 10 solo tests in the Quick Match setup (30 seconds, English), taken from a small list kept in your browser (see above). If you have no such tests, it sends 50 wpm. During your session, the server also keeps a verified speed based on your multiplayer races. We use these only to match you with similar players, and we also use your IP address to apply Quick Match rate limits. They are kept in memory for your session and never saved.
 
-**Pug Bots (with Quick Match, when available).** Quick Match may include computer-controlled Pug Bots. Bots are named "Pug Bot · ~NN wpm" (for example, "Pug Bot · ~70 wpm") and always carry a visible "Bot" label. The number is the bot's approximate target pace, not its result. They never count toward stats or rankings and are generated by the server. They don't use any recorded player data.
+**Pug Bots.** Quick Match may include computer-controlled Pug Bots. Bots are named "Pug Bot · ~NN wpm" (for example, "Pug Bot · ~70 wpm") and always carry a visible "Bot" label. The number is the bot's approximate target pace, not its result. They never count toward stats or rankings and are generated by the server. They don't use any recorded player data, they can't be reported, and they are never counted as people in player counts.
 
-**How long we keep it.** Except for player reports (below, when available), all of this is kept in the server's memory only while your session or room exists, plus a 20-second reconnect window if you drop. It isn't saved to disk or a database. There is no chat, and players can't send each other messages.
+**How long we keep it.** Except for player reports (below), all of this is kept in the server's memory only while your session or room exists, plus a 20-second reconnect window if you drop. It isn't saved to disk or a database. There is no chat, and players can't send each other messages.
 
-**Logs.** Our game server doesn't write IP addresses, nicknames, lobby codes, race data or reports to its logs. Its logs contain only startup messages, error reports and overall counts every 5 minutes (for example, how many players are connected). Our hosting providers keep their own technical logs, described below.
+**Logs.** Our game server doesn't write IP addresses, nicknames, lobby codes, race data or reports to its logs. Its logs contain only startup messages, error reports, overall counts every 5 minutes (for example, how many players are connected), and a note, with no details, each time a Quick Match starts. Our hosting providers keep their own technical logs, described below.
 
-## Player reports (when available)
-Player reports are coming with Quick Match. When they are available, you will be able to report a player for cheating, being away (AFK), a problem with a generated name, or another issue, choosing from a fixed list of reasons. You can't type any text. When a report is made, we keep:
+## Player reports
+You can report a player in your room for cheating, being away (AFK), a problem with a generated name, or another issue, choosing from a fixed list of reasons. You can't type any text. When a report is made, we keep:
 - a report ID;
 - the room code;
 - the reason chosen;
 - the time of the report;
-- a **hashed** IP address. This is a one-way code made with a secret key that is held only in memory and replaced every 7 days. It can't be reversed into the IP address, and it can't be linked across 7-day periods.
+- a **hashed** IP address of the reported player's connection (for IPv6, only the first 64 bits are used). This is a one-way code made with a secret key that is held only in memory, never stored, and destroyed and replaced every 7 days. Without that key it can't be turned back into the IP address, and it can't be linked across 7-day periods.
 
-We don't keep your IP address itself, player IDs, nicknames, messages or any other content. Reports are kept separately from our server logs and never written to them. We use reports only to prevent abuse, for example to spot repeat cheaters or spam. Our legal basis is our legitimate interest in keeping races fair and safe (GDPR Art. 6(1)(f)). A hashed IP address is still personal data, so we treat it with the same care. Reports are **deleted automatically after 7 days**. Once Quick Match is available, players caught cheating repeatedly may be limited to matches with Pug Bots for the rest of their session. This limit isn't saved and ends with the session.
+We don't keep your IP address itself, player IDs, nicknames, messages or any other content with a report. Separately, and only in memory for the rest of the reported player's session, the server keeps a hashed IP address of each player who reported them for cheating, so that it can count distinct reporters; your own session also remembers which players you reported, so you can report each one only once. These are deleted when the session ends and are never written to disk or logs. Reports are kept separately from our server logs and never written to them. We use reports only to prevent abuse, for example to spot repeat cheaters or spam. Our legal basis is our legitimate interest in keeping races fair and safe (GDPR Art. 6(1)(f)). A hashed IP address is still personal data, so we treat it with the same care. Reports are **deleted automatically after 7 days**. Players repeatedly reported for cheating by different people, or repeatedly flagged by our automatic race checks, may be limited in Quick Match to matches with Pug Bots for the rest of their session. This limit applies to Quick Match only, isn't saved, and ends with the session.
 
 ## Why we use this data (GDPR legal bases)
 - To provide the typing test and the multiplayer races you ask for (Art. 6(1)(b), performance of a contract).
@@ -58,10 +58,10 @@ Depending on where you live (for example under the EU or UK GDPR, or California'
 ## Retention summary
 | Data | How long we keep it |
 |---|---|
-| Solo settings and results | in your browser only, until you clear them |
-| Nickname, lobby code, race data, IP address, and speed for matching once Quick Match is available (game server) | in memory until your session or room ends, plus a 20-second reconnect window; not written to disk or logs |
-| Player reports, when available (report ID, room code, reason, time, hashed IP address) | 7 days, then deleted automatically |
-| Game server logs | startup and error messages and 5-minute overall counts only; no personal data. Kept by Fly.io for 7 days |
+| Solo settings and results, and the Quick Match speed list ("puggie-mp-recent-pace", last 10 entries) | in your browser only, until you clear them |
+| Nickname, lobby code, race data, IP address, speed for matching, and reporter counts (game server) | in memory until your session or room ends, plus a 20-second reconnect window; not written to disk or logs |
+| Player reports (report ID, room code, reason, time, hashed IP address) | 7 days, then deleted automatically |
+| Game server logs | startup and error messages, 5-minute overall counts and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |
 | Cloudflare and Fly.io operational data | as described in each provider's own privacy policy |
 | Emails you send us | as long as needed to answer you, then deleted |
 
