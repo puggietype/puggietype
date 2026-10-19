@@ -72,4 +72,35 @@ describe("claimed wpm", () => {
     expect(claimedWpm(NaN)).toBeUndefined();
     expect(claimedWpm(Infinity)).toBeUndefined();
   });
+
+  it("keeps a monotonic start across status updates within RESYNC_MS (no stutter)", () => {
+    const a = applyQueueStatus(
+      { band: "x", widenedTo: "x", waitedMs: 0 },
+      10_040,
+    );
+    // next status: server says 1000ms, but it arrived 90ms late
+    const b = applyQueueStatus(
+      { band: "x", widenedTo: "x", waitedMs: 1000 },
+      11_130,
+      a,
+    );
+    expect(b.since).toBe(a.since);
+    // also no jump back when the first status lands after the local join
+    const j = applyQueueStatus(
+      { band: "x", widenedTo: "x", waitedMs: 0 },
+      10_200,
+      { phase: "joining", since: 10_000 },
+    );
+    expect(j.since).toBe(10_000);
+  });
+
+  it("re-syncs when the local clock is off by more than RESYNC_MS", () => {
+    const a = applyQueueStatus({ band: "x", widenedTo: "x", waitedMs: 0 }, 0);
+    const b = applyQueueStatus(
+      { band: "x", widenedTo: "x", waitedMs: 5000 },
+      2000,
+      a,
+    );
+    expect(b.since).toBe(-3000);
+  });
 });

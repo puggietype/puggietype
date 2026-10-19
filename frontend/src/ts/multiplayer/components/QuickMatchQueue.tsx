@@ -1,4 +1,4 @@
-import { createSignal, JSXElement, onCleanup } from "solid-js";
+import { createSignal, JSXElement, onCleanup, onMount } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { PugHead } from "../../components/common/PugHead";
@@ -14,9 +14,19 @@ export function QuickMatchQueue(props: {
   state: QueueState;
   onCancel: () => void;
 }): JSXElement {
+  // tick just after each whole second of the wait (not on a free-running 250ms
+  // interval), so every second shows for a full second
   const [now, setNow] = createSignal(Date.now());
-  const timer = setInterval(() => setNow(Date.now()), 250);
-  onCleanup(() => clearInterval(timer));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const schedule = (): void => {
+    const t = Date.now();
+    setNow(t);
+    const elapsed = t - props.state.since;
+    const wait = 1000 - (((elapsed % 1000) + 1000) % 1000) + 5;
+    timer = setTimeout(schedule, wait);
+  };
+  onMount(schedule);
+  onCleanup(() => clearTimeout(timer));
 
   return (
     <section
