@@ -42,7 +42,7 @@ We don't keep your IP address itself, player IDs, nicknames, messages or any oth
 
 ## Service providers
 - **Cloudflare, Inc.** hosts the website (Cloudflare Pages) and provides DNS and security.
-- **Fly.io, Inc.** hosts the game server on a single server in its San Jose, California (US) region. Fly.io processes this data on our behalf as our service provider.
+- **Fly.io, Inc.** hosts the game server on a single server in its San Jose, California (US) region. Fly.io processes this data on our behalf as our service provider, under a data processing agreement with us that includes the EU Standard Contractual Clauses.
 
 These providers process IP addresses and technical request data on our behalf. Fly.io keeps our game server's log output for 7 days ([Fly.io logging overview](https://fly.io/docs/monitoring/logging-overview/)). We don't receive or store raw visitor request logs from Cloudflare; Cloudflare processes and retains its own operational data as described in [Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/). Cloudflare also asks browsers to report network errors to it (Network Error Logging), and loads a small script that protects email addresses on our pages from spam bots. If Cloudflare's bot protection is triggered, it may set strictly necessary security cookies such as `__cf_bm` or `cf_clearance`. We don't use Cloudflare Web Analytics.
 
