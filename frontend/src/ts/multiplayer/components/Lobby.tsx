@@ -19,7 +19,7 @@ import {
   showSuccessNotification,
 } from "../../states/notifications";
 import { cn } from "../../utils/cn";
-import { displayName, isBot, showBotBadge } from "../bots";
+import { displayName, isBot } from "../bots";
 import { isFlagEnabled } from "../feature-flags";
 import { canStartRace, inviteLink } from "../helpers";
 import {
@@ -371,7 +371,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                       "leading-tight font-(--font) text-text",
                       // humans keep the one-line truncate; bot names never shrink
                       // below min-content (halves may still wrap between them)
-                      showBotBadge(p) ? "min-w-min" : "min-w-0 truncate",
+                      isBot(p) ? "min-w-min" : "min-w-0 truncate",
                     )}
                     title={p.name}
                     aria-label={isBot(p) ? displayName(p) : undefined}
