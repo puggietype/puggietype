@@ -9,7 +9,7 @@ import {
   DEFAULT_CHARACTER,
 } from "../../components/pages/test/character-frames";
 import { cn } from "../../utils/cn";
-import { displayName } from "../bots";
+import { displayName, isBot } from "../bots";
 import { leaveRoom, rematch } from "../race";
 import { characterSelectOn, isHost, myId } from "../store";
 import { CharacterImage } from "./CharacterImage";
@@ -57,7 +57,8 @@ export function Podium(props: {
 
   return (
     <div
-      class="grid items-center gap-8 md:grid-cols-[2fr_3fr]"
+      // side by side only from xl: below that the table needs the full width for names
+      class="mx-auto grid w-full max-w-3xl items-center gap-8 xl:max-w-none xl:grid-cols-[2fr_3fr]"
       data-testid="mp-podium"
     >
       <CharacterImage
@@ -65,7 +66,7 @@ export function Podium(props: {
         frame="winner"
         class={cn(
           "mx-auto aspect-square w-full",
-          dense() ? "max-w-48 md:max-w-80" : "max-w-80",
+          dense() ? "max-w-40 xl:max-w-80" : "max-w-56 xl:max-w-80",
         )}
         testId="mp-pug-winner"
         alt={winnerAlt()}
@@ -99,7 +100,8 @@ export function Podium(props: {
             </div>
           )}
         </Show>
-        <div class="overflow-x-auto rounded-lg bg-sub-alt px-2 py-2 sm:px-4">
+        {/* no overflow clip: the report menu pops out of a row; relative z-10 keeps it above the buttons below */}
+        <div class="relative z-10 rounded-lg bg-sub-alt px-2 py-2 sm:px-4">
           <table class="w-full font-(--font)" data-testid="mp-results-table">
             <thead>
               <tr class="text-left text-xs text-sub">
@@ -139,30 +141,48 @@ export function Podium(props: {
                         dense() ? "py-1.5" : "py-3",
                       )}
                     >
-                      <span class="flex min-w-0 items-center gap-2">
+                      {/* wraps: only flag/report/kick drop below; name + (you)/dnf stay on one line */}
+                      <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                         <span
                           class={cn(
-                            "h-2.5 w-2.5 shrink-0 rounded-full",
-                            PLAYER_BG[colorOf(r.playerId)],
+                            "flex max-w-full items-center gap-2",
+                            // humans truncate; a bot's group never shrinks below min-content
+                            isBot(r) ? "min-w-min" : "min-w-0",
                           )}
-                        ></span>
-                        <Show when={characterSelectOn()}>
-                          <CharacterImage
-                            character={dogOf(r.playerId)}
-                            frame="head"
-                            class="h-7 w-8 shrink-0"
-                            testId="mp-result-character"
-                          />
-                        </Show>
-                        <span class="truncate text-text">
-                          <PlayerName player={r} />
+                        >
+                          <span
+                            class={cn(
+                              "h-2.5 w-2.5 shrink-0 rounded-full",
+                              PLAYER_BG[colorOf(r.playerId)],
+                            )}
+                          ></span>
+                          <Show when={characterSelectOn()}>
+                            <CharacterImage
+                              character={dogOf(r.playerId)}
+                              frame="head"
+                              class="h-7 w-8 shrink-0"
+                              testId="mp-result-character"
+                            />
+                          </Show>
+                          <span
+                            class={cn(
+                              "leading-tight text-text",
+                              // bot halves may wrap between them, never inside
+                              isBot(r) ? "min-w-min" : "min-w-0 truncate",
+                            )}
+                            title={r.name}
+                            aria-label={isBot(r) ? displayName(r) : undefined}
+                            data-testid="mp-result-name"
+                          >
+                            <PlayerName player={r} />
+                          </span>
+                          <Show when={r.playerId === myId()}>
+                            <span class="shrink-0 text-sm text-sub">(you)</span>
+                          </Show>
+                          <Show when={!r.finished}>
+                            <span class="shrink-0 text-sm text-sub">dnf</span>
+                          </Show>
                         </span>
-                        <Show when={r.playerId === myId()}>
-                          <span class="shrink-0 text-sm text-sub">(you)</span>
-                        </Show>
-                        <Show when={!r.finished}>
-                          <span class="shrink-0 text-sm text-sub">dnf</span>
-                        </Show>
                         <Show when={r.flagged}>
                           <span
                             class="shrink-0 text-sm text-error sm:hidden"
