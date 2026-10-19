@@ -32,10 +32,13 @@ const fakeClient = vi.hoisted(() => ({
   sent: [] as ClientMessage[],
   connected: true,
   connects: 0,
+  retries: 0,
+  closes: 0,
   handlers: undefined as
     | {
         onMessage: (m: ServerMessage) => void;
         onTerminated: (code: number) => void;
+        onFull: (retryAfterMs: number | undefined) => void;
       }
     | undefined,
 }));
@@ -54,6 +57,12 @@ vi.mock("../../src/ts/multiplayer/client", () => ({
     }
     send(msg: ClientMessage): void {
       fakeClient.sent.push(msg);
+    }
+    retryFull(): void {
+      fakeClient.retries++;
+    }
+    close(): void {
+      fakeClient.closes++;
     }
     serverNow(): number {
       return Date.now();
@@ -81,8 +90,9 @@ vi.mock("../../src/ts/states/core", () => ({
   getActivePage: () => engine.page,
 }));
 const notices = vi.hoisted(() => vi.fn());
+const errorNotices = vi.hoisted(() => vi.fn());
 vi.mock("../../src/ts/states/notifications", () => ({
-  showErrorNotification: vi.fn(),
+  showErrorNotification: errorNotices,
   showNoticeNotification: notices,
 }));
 vi.mock("../../src/ts/states/test", () => ({
@@ -122,6 +132,7 @@ const AgeGate = await import("../../src/ts/multiplayer/age-gate");
 const Race = await import("../../src/ts/multiplayer/race");
 const Hooks = await import("../../src/ts/multiplayer/engine-hooks");
 const Store = await import("../../src/ts/multiplayer/store");
+const Capacity = await import("../../src/ts/multiplayer/capacity");
 engine.isLocked = Hooks.isRaceInputLocked;
 
 // ---- helpers
@@ -1034,5 +1045,180 @@ describe("player reports", () => {
     Race.reportPlayer("them", "other");
     receive({ type: "error", code: "ALREADY_REPORTED", message: "already" });
     expect(Store.reports().get("them")).toBe("received");
+  });
+});
+
+describe("server full", () => {
+  const welcomeMsg: ServerMessage = {
+    type: "welcome",
+    playerId: "me",
+    sessionToken: "t",
+    name: "ZippyPug42",
+    protocol: 1,
+    features: {
+      characterSelect: false,
+      openRooms: false,
+      quickMatch: true,
+      report: false,
+    },
+  };
+  const serverFullError = (retryAfterMs?: number): ServerMessage => ({
+    type: "error",
+    code: "SERVER_FULL",
+    message: "Server is full, try again later",
+    ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    sessionStorage.clear();
+    AgeGate.confirmAge();
+    clientFlags.clear();
+    fakeClient.sent = [];
+    fakeClient.retries = 0;
+    fakeClient.closes = 0;
+    errorNotices.mockClear();
+    notices.mockClear();
+    engine.page = "race";
+  });
+  afterEach(() => {
+    Race.abandonFullWait();
+    Race.leaveRoom();
+    Store.setServerFeatures(undefined);
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("SERVER_FULL on create: full state, no error toast, socket kept", () => {
+    Race.createRoom();
+    receive(serverFullError(5_000));
+    expect(Capacity.serverFull()).toMatchObject({
+      scope: "room",
+      retrying: false,
+    });
+    expect(Capacity.serverFull()?.retryAt).toBe(Date.now() + 5_000);
+    expect(errorNotices).not.toHaveBeenCalled();
+    expect(Store.lastError()).toBeUndefined();
+    expect(fakeClient.closes).toBe(0);
+    expect(fakeClient.retries).toBe(0);
+  });
+
+  it("retries the refused create after retryAfterMs, then recovers", async () => {
+    Race.createRoom();
+    receive(serverFullError(5_000));
+    fakeClient.sent = [];
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(fakeClient.sent).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fakeClient.sent).toEqual([{ type: "room:create" }]);
+    expect(Capacity.serverFull()?.retrying).toBe(true);
+    // the room cap is per create: the socket was never touched
+    expect(fakeClient.retries).toBe(0);
+
+    receive(roomState());
+    expect(Capacity.serverFull()).toBeUndefined();
+    expect(Store.room()?.code).toBe("ABC234");
+  });
+
+  it("defaults to a 60 s wait without retryAfterMs", async () => {
+    Race.joinRoom("ABC234");
+    receive(serverFullError());
+    fakeClient.sent = [];
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(fakeClient.sent).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fakeClient.sent).toEqual([{ type: "room:join", code: "ABC234" }]);
+  });
+
+  it("a refused retry waits again", async () => {
+    Race.createRoom();
+    receive(serverFullError(5_000));
+    await vi.advanceTimersByTimeAsync(5_000);
+    receive(serverFullError(5_000));
+    expect(Capacity.serverFull()).toMatchObject({ retrying: false });
+    fakeClient.sent = [];
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(fakeClient.sent).toEqual([{ type: "room:create" }]);
+  });
+
+  it("try now retries at once and cancels the timer", async () => {
+    Race.createRoom();
+    receive(serverFullError(30_000));
+    fakeClient.sent = [];
+    Capacity.retryFullNow();
+    expect(fakeClient.sent).toEqual([{ type: "room:create" }]);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fakeClient.sent).toHaveLength(1);
+  });
+
+  it("another answer to the retry ends the full state with the usual error", async () => {
+    Race.joinRoom("ABC234");
+    receive(serverFullError(1_000));
+    await vi.advanceTimersByTimeAsync(1_000);
+    receive({
+      type: "error",
+      code: "ROOM_NOT_FOUND",
+      message: "Room not found",
+    });
+    expect(Capacity.serverFull()).toBeUndefined();
+    expect(errorNotices).toHaveBeenCalledWith("Multiplayer: Room not found");
+  });
+
+  it("Quick Match: SERVER_FULL leaves the queue, the retry queues again", async () => {
+    clientFlags.add("quickMatch");
+    receive(welcomeMsg);
+    Race.joinQueue(42);
+    expect(Store.queue()).toBeDefined();
+    receive(serverFullError(2_000));
+    expect(Store.queue()).toBeUndefined();
+    expect(Capacity.serverFull()?.scope).toBe("room");
+    fakeClient.sent = [];
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(fakeClient.sent).toEqual([{ type: "queue:join", claimedWpm: 42 }]);
+    receive({
+      type: "queue:status",
+      band: "22–62 wpm",
+      widenedTo: "22–62 wpm",
+      waitedMs: 0,
+    });
+    expect(Capacity.serverFull()).toBeUndefined();
+    expect(Store.queue()?.phase).toBe("queued");
+    Race.leaveQueue();
+  });
+
+  it("socket full (4503): full state, reconnects through retryFull, welcome recovers", async () => {
+    fakeClient.handlers?.onFull(10_000);
+    expect(Capacity.serverFull()).toMatchObject({ scope: "socket" });
+    expect(notices).not.toHaveBeenCalled();
+    expect(errorNotices).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(fakeClient.retries).toBe(1);
+    expect(Capacity.serverFull()?.retrying).toBe(true);
+    receive(welcomeMsg);
+    expect(Capacity.serverFull()).toBeUndefined();
+  });
+
+  it("socket full with a pending create: redone on the new socket", async () => {
+    Race.createRoom();
+    fakeClient.handlers?.onFull(undefined);
+    fakeClient.sent = [];
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fakeClient.retries).toBe(1);
+    expect(fakeClient.sent).toEqual([{ type: "room:create" }]);
+    // the welcome alone isn't the answer to the create
+    receive(welcomeMsg);
+    expect(Capacity.serverFull()).toBeDefined();
+    receive(roomState());
+    expect(Capacity.serverFull()).toBeUndefined();
+  });
+
+  it("leaving the race page stops retrying and resets the refused socket", async () => {
+    fakeClient.handlers?.onFull(5_000);
+    Race.abandonFullWait();
+    expect(Capacity.serverFull()).toBeUndefined();
+    expect(fakeClient.closes).toBe(1);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fakeClient.retries).toBe(0);
   });
 });

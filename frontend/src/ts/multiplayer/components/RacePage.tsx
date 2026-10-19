@@ -11,8 +11,10 @@ import {
 import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
 import { ageConfirmed } from "../age-gate";
+import { retryFullNow, serverFull } from "../capacity";
 import { MULTIPLAYER_ENABLED } from "../flags";
 import {
+  abandonFullWait,
   connect,
   joinRoom,
   leaveQueue,
@@ -35,6 +37,7 @@ import { Podium } from "./Podium";
 import { QuickMatchQueue } from "./QuickMatchQueue";
 import { RaceHome } from "./RaceHome";
 import { RaceProgressBars } from "./RaceProgressBars";
+import { ServerFull } from "./ServerFull";
 
 export function RacePage(): JSXElement {
   // nothing connects before the 13+ confirmation
@@ -49,6 +52,8 @@ export function RacePage(): JSXElement {
 
   // navigating away gives up a Quick Match wait (no-op unless queued)
   onCleanup(leaveQueue);
+  // and stops retrying a full server (solo stays undisturbed)
+  onCleanup(abandonFullWait);
 
   // /r/CODE: join straight away (the server assigns a nickname)
   createEffect(() => {
@@ -79,8 +84,17 @@ export function RacePage(): JSXElement {
           <Show
             when={room()}
             fallback={
-              <Show when={queue()} fallback={<RaceHome />}>
-                {(q) => <QuickMatchQueue state={q()} onCancel={leaveQueue} />}
+              <Show
+                when={serverFull()}
+                fallback={
+                  <Show when={queue()} fallback={<RaceHome />}>
+                    {(q) => (
+                      <QuickMatchQueue state={q()} onCancel={leaveQueue} />
+                    )}
+                  </Show>
+                }
+              >
+                {(f) => <ServerFull state={f()} onRetry={retryFullNow} />}
               </Show>
             }
           >

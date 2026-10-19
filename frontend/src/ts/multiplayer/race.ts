@@ -22,6 +22,7 @@ import { restart, startTest, stop as stopTest } from "../test/test-logic";
 import { focusWords, isMounted as isTestUIMounted } from "../test/test-ui";
 import { words as testWords } from "../test/test-words";
 import { isAgeConfirmed } from "./age-gate";
+import { clearFull, enterFull, serverFull, type FullScope } from "./capacity";
 import { MultiplayerClient } from "./client";
 import {
   discardPendingRaceFinish,
@@ -112,6 +113,7 @@ let pendingReports: string[] = [];
 /** errors that end a queue:join that hasn't been answered yet */
 const QUEUE_JOIN_ERRORS = new Set<ErrorCode>([
   "QUEUE_FULL",
+  "SERVER_FULL",
   "RATE_LIMITED",
   "FEATURE_DISABLED",
   "AGE_REQUIRED",
@@ -128,19 +130,53 @@ const REPORT_ERRORS = new Set<ErrorCode>([
 
 /** room:create asked for an open room: list it once we're the host */
 let openOnCreate = false;
+/** the last create / join / Quick Match, redone when a full server lets us in */
+let pendingIntent: (() => void) | undefined;
 
 const client = new MultiplayerClient({
   onMessage: handleMessage,
   onStatus: setConnectionStatus,
-  onTerminated: (code) => {
+  // 4000: replaced by a newer socket (full is reported through onFull)
+  onTerminated: () => {
     dropRoom();
-    showNoticeNotification(
-      code === 4000
-        ? "This race continued in another tab."
-        : "The race server is full, try again later.",
-    );
+    showNoticeNotification("This race continued in another tab.");
   },
+  onFull: (retryAfterMs) => serverIsFull("socket", retryAfterMs),
 });
+
+/** a full server: no room for us; show the full state and retry later */
+function serverIsFull(
+  scope: FullScope,
+  retryAfterMs: number | undefined,
+): void {
+  if (scope === "socket") dropRoom();
+  setQueue(undefined);
+  enterFull(scope, retryAfterMs, () => {
+    if (scope === "socket") client.retryFull();
+    const intent = pendingIntent;
+    if (intent !== undefined) intent();
+    // a bare connect: the welcome ends it
+    else if (scope === "room") clearFull();
+  });
+}
+
+/** we got in: the full state is over */
+function fullResolved(): void {
+  pendingIntent = undefined;
+  if (serverFull() !== undefined) clearFull();
+}
+
+/**
+ * Leaving the race page: stop waiting for a full server (no auto-retry
+ * behind a solo test). A refused socket is reset so the next visit connects.
+ */
+export function abandonFullWait(): void {
+  const state = serverFull();
+  pendingIntent = undefined;
+  if (state === undefined) return;
+  clearFull();
+  if (state.scope === "socket") client.close();
+}
 
 export function serverNow(): number {
   return client.serverNow();
@@ -157,11 +193,13 @@ export function createRoom(
   opts: { open?: boolean } = {},
 ): void {
   openOnCreate = opts.open === true && openRoomsOn();
+  pendingIntent = () => createRoom(settings, opts);
   send({ type: "room:create", settings });
 }
 
 export function joinRoom(code: string): void {
   openOnCreate = false;
+  pendingIntent = () => joinRoom(code);
   send({ type: "room:join", code });
 }
 
@@ -215,6 +253,7 @@ export function setRoomOpen(open: boolean): void {
  */
 export function joinQueue(claimedWpm?: number): void {
   if (!quickMatchOn() || !isAgeConfirmed() || queue() !== undefined) return;
+  pendingIntent = () => joinQueue(claimedWpm);
   setQueue(startQueue(Date.now()));
   client.connect();
   send(
@@ -353,6 +392,10 @@ function handleMessage(msg: ServerMessage): void {
       // a fresh socket: the old subscription is gone
       roomsSubscribed = false;
       requestRoomsList();
+      // in again after a full refusal; a redone create/join answers for itself
+      if (serverFull()?.scope === "socket" && pendingIntent === undefined) {
+        clearFull();
+      }
       // and so is our queue entry (a join still in flight is fine)
       if (queue()?.phase === "queued") {
         setQueue(undefined);
@@ -363,10 +406,12 @@ function handleMessage(msg: ServerMessage): void {
       pendingReports = [];
       return;
     case "queue:status":
+      fullResolved();
       // ignore a status that crossed our queue:leave
       if (queue() !== undefined) setQueue(applyQueueStatus(msg, Date.now()));
       return;
     case "queue:matched":
+      fullResolved();
       // room:state and race:countdown follow and take it from here
       setQueue(undefined);
       return;
@@ -389,6 +434,7 @@ function handleMessage(msg: ServerMessage): void {
         setReports(new Map());
       }
       setQueue(undefined);
+      fullResolved();
       setRoom(withRoomDefaults(msg));
       sessionStorage.setItem(ROOM_KEY, msg.code);
       // the host lands here from /race: make the URL shareable and reloadable
@@ -422,6 +468,14 @@ function handleMessage(msg: ServerMessage): void {
       if (getActivePage() !== "race") goTo(`/r/${room()?.code ?? ""}`);
       return;
     case "error":
+      if (msg.code === "SERVER_FULL") {
+        // no room for a new race (create, join or Quick Match); the socket stays
+        openOnCreate = false;
+        serverIsFull("room", msg.retryAfterMs);
+        return;
+      }
+      // a retry got another answer (unknown code, ...): shown as usual below
+      fullResolved();
       setLastError(msg.message);
       openOnCreate = false;
       if (pendingReports.length > 0 && REPORT_ERRORS.has(msg.code)) {

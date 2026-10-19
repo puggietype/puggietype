@@ -1,4 +1,5 @@
 import { isAgeConfirmed } from "./age-gate";
+import { FULL_CLOSE_CODES } from "./capacity";
 import { computeClockOffset, type ClockSample } from "./clock";
 import { CONFIGURED_WS_URL } from "./flags";
 import { isFlagEnabled } from "./feature-flags";
@@ -10,9 +11,15 @@ const SESSION_KEY = "puggie-mp-session";
 const PING_SAMPLES = 5;
 const RECONNECT_DELAYS = [500, 1000, 2000, 4000];
 /** close codes after which reconnecting would be wrong */
-const NO_RECONNECT_CODES = new Set([4000, 4002]);
+const NO_RECONNECT_CODES = new Set([4000]);
 
-export type ConnectionStatus = "idle" | "connecting" | "open" | "reconnecting";
+/** "full": the server refused the socket, no reconnects until `retryFull` */
+export type ConnectionStatus =
+  | "idle"
+  | "connecting"
+  | "open"
+  | "reconnecting"
+  | "full";
 
 type Session = { playerId: string; sessionToken: string };
 
@@ -21,6 +28,8 @@ type Handlers = {
   onStatus: (status: ConnectionStatus) => void;
   /** the server ended the session for good (replaced by another tab, full) */
   onTerminated: (code: number) => void;
+  /** the server is at its socket cap (`server_full`, close 4503) */
+  onFull: (retryAfterMs: number | undefined) => void;
 };
 
 function loadSession(): Session | undefined {
@@ -58,6 +67,9 @@ export class MultiplayerClient {
   private closedByUser = false;
   private queue: ClientMessage[] = [];
   private helloDone = false;
+  /** refused for capacity: connect() stays a no-op until retryFull() */
+  private full = false;
+  private fullRetryAfterMs: number | undefined;
   private readonly handlers: Handlers;
 
   constructor(handlers: Handlers) {
@@ -77,8 +89,17 @@ export class MultiplayerClient {
   connect(): void {
     if (!isAgeConfirmed()) return;
     this.closedByUser = false;
-    if (this.ws !== undefined) return;
+    if (this.ws !== undefined || this.full) return;
     this.open("connecting");
+  }
+
+  /** after a full refusal: try a fresh socket now (the caller paces this) */
+  retryFull(): void {
+    if (!isAgeConfirmed() || !this.full) return;
+    this.full = false;
+    this.closedByUser = false;
+    this.reconnectAttempt = 0;
+    if (this.ws === undefined) this.open("connecting");
   }
 
   /**
@@ -96,6 +117,7 @@ export class MultiplayerClient {
 
   close(): void {
     this.closedByUser = true;
+    this.full = false;
     clearTimeout(this.reconnectTimer);
     this.queue = [];
     this.ws?.close(1000);
@@ -155,6 +177,17 @@ export class MultiplayerClient {
         this.handlers.onStatus("idle");
         return;
       }
+      if (this.full || FULL_CLOSE_CODES.has(event.code)) {
+        // no backoff loop against a full server: the caller retries later
+        this.full = true;
+        this.queue = [];
+        this.reconnectAttempt = 0;
+        const retryAfterMs = this.fullRetryAfterMs;
+        this.fullRetryAfterMs = undefined;
+        this.handlers.onStatus("full");
+        this.handlers.onFull(retryAfterMs);
+        return;
+      }
       if (NO_RECONNECT_CODES.has(event.code)) {
         this.queue = [];
         this.handlers.onStatus("idle");
@@ -176,6 +209,13 @@ export class MultiplayerClient {
   }
 
   private receive(msg: ServerMessage): void {
+    if (msg.type === "server_full") {
+      // the 4503 close follows (closing first is harmless); it reports this
+      this.full = true;
+      this.fullRetryAfterMs = msg.retryAfterMs;
+      this.ws?.close(1000);
+      return;
+    }
     if (msg.type === "pong") {
       const sentAt = this.pingSentAt.get(msg.t);
       if (sentAt === undefined) return;

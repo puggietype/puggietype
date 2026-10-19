@@ -358,7 +358,10 @@ export type ServerMessage =
   | { type: "room:closed"; reason: "idle" }
   /** You were kicked by the host. */
   | { type: "room:kicked" }
-  | { type: "error"; code: ErrorCode; message: string };
+  /** Socket cap reached: sent once, then the socket is closed with 4503 "server_full". */
+  | { type: "server_full"; retryAfterMs: number; message: string }
+  /** `retryAfterMs` is set on SERVER_FULL (room cap): try again after that long. */
+  | { type: "error"; code: ErrorCode; message: string; retryAfterMs?: number };
 export type ServerMessageType = ServerMessage["type"];
 
 /** Decode and validate one incoming frame, yielding the message or a readable error string. */

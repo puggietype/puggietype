@@ -54,16 +54,19 @@ function setup(): {
   messages: ServerMessage[];
   statuses: string[];
   terminated: number[];
+  full: (number | undefined)[];
 } {
   const messages: ServerMessage[] = [];
   const statuses: string[] = [];
   const terminated: number[] = [];
+  const full: (number | undefined)[] = [];
   const client = new MultiplayerClient({
     onMessage: (m) => messages.push(m),
     onStatus: (s) => statuses.push(s),
     onTerminated: (c) => terminated.push(c),
+    onFull: (ms) => full.push(ms),
   });
-  return { client, messages, statuses, terminated };
+  return { client, messages, statuses, terminated, full };
 }
 
 const welcome: ServerMessage = {
@@ -116,6 +119,7 @@ describe("MultiplayerClient", () => {
       onMessage: () => undefined,
       onStatus: () => undefined,
       onTerminated: () => undefined,
+      onFull: () => undefined,
     });
     client.connect();
     client.send({ type: "room:create" });
@@ -182,6 +186,81 @@ describe("MultiplayerClient", () => {
     vi.advanceTimersByTime(10_000);
     expect(terminated).toEqual([4000]);
     expect(FakeSocket.instances).toHaveLength(1);
+  });
+
+  it("4503 close: full, no reconnect backoff, connect() waits for retryFull", () => {
+    const { client, statuses, terminated, full } = setup();
+    client.connect();
+    lastSocket().open();
+    lastSocket().serverClose(4503);
+    expect(statuses.at(-1)).toBe("full");
+    expect(full).toEqual([undefined]);
+    expect(terminated).toEqual([]);
+    vi.advanceTimersByTime(120_000);
+    expect(FakeSocket.instances).toHaveLength(1);
+    // other callers (hub mount, open rooms) don't hammer a full server
+    client.connect();
+    expect(FakeSocket.instances).toHaveLength(1);
+
+    client.retryFull();
+    expect(FakeSocket.instances).toHaveLength(2);
+    expect(statuses.at(-1)).toBe("connecting");
+    lastSocket().open();
+    lastSocket().receive(welcome);
+    expect(statuses.at(-1)).toBe("open");
+    expect(client.connected).toBe(true);
+  });
+
+  it("server_full message: passes retryAfterMs on, not to onMessage", () => {
+    const { client, messages, full } = setup();
+    client.connect();
+    lastSocket().open();
+    lastSocket().receive({
+      type: "server_full",
+      retryAfterMs: 30_000,
+      message: "Server is full",
+    });
+    expect(messages).toEqual([]);
+    lastSocket().serverClose(4503);
+    expect(full).toEqual([30_000]);
+    vi.advanceTimersByTime(60_000);
+    expect(FakeSocket.instances).toHaveLength(1);
+  });
+
+  it("treats the legacy 4002 close as full too", () => {
+    const { client, full, terminated } = setup();
+    client.connect();
+    lastSocket().open();
+    lastSocket().serverClose(4002);
+    expect(full).toEqual([undefined]);
+    expect(terminated).toEqual([]);
+  });
+
+  it("a full refusal drops queued messages (the caller redoes them)", () => {
+    const { client } = setup();
+    client.connect();
+    client.send({ type: "room:create" });
+    lastSocket().serverClose(4503);
+    client.retryFull();
+    lastSocket().open();
+    lastSocket().receive(welcome);
+    expect(lastSocket().types()).not.toContain("room:create");
+  });
+
+  it("an error with SERVER_FULL keeps the socket open", () => {
+    const { client, messages, statuses } = setup();
+    client.connect();
+    lastSocket().open();
+    lastSocket().receive(welcome);
+    lastSocket().receive({
+      type: "error",
+      code: "SERVER_FULL",
+      message: "Server is full",
+      retryAfterMs: 5_000,
+    });
+    expect(messages.at(-1)).toMatchObject({ code: "SERVER_FULL" });
+    expect(statuses.at(-1)).toBe("open");
+    expect(client.connected).toBe(true);
   });
 
   it("estimates the server clock from pongs", () => {
