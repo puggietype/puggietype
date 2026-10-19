@@ -30,8 +30,28 @@ describe("QuickMatchQueue", () => {
       "your pace: 60–80 wpm · matching 40–100 wpm",
     );
     expect(getByTestId("mp-queue-elapsed")).toHaveTextContent("0:05");
-    vi.advanceTimersByTime(3000);
+    vi.advanceTimersByTime(3010);
     expect(getByTestId("mp-queue-elapsed")).toHaveTextContent("0:08");
+  });
+
+  it("flips each second on the second boundary, every digit held ~1s (no stutter)", () => {
+    // wait started 4.6s ago: first flip due in 400ms, then every 1000ms
+    const state = { phase: "queued" as const, since: Date.now() - 4600 };
+    const { getByTestId } = render(() => (
+      <QuickMatchQueue state={state} onCancel={vi.fn()} />
+    ));
+    const el = getByTestId("mp-queue-elapsed");
+    expect(el).toHaveTextContent("0:04");
+    vi.advanceTimersByTime(390);
+    expect(el).toHaveTextContent("0:04");
+    vi.advanceTimersByTime(20);
+    expect(el).toHaveTextContent("0:05");
+    for (let s = 6; s <= 12; s++) {
+      vi.advanceTimersByTime(980);
+      expect(el).toHaveTextContent(`0:${String(s - 1).padStart(2, "0")}`);
+      vi.advanceTimersByTime(20);
+      expect(el).toHaveTextContent(`0:${String(s).padStart(2, "0")}`);
+    }
   });
 
   it("cancel calls onCancel", () => {

@@ -364,7 +364,12 @@ function handleMessage(msg: ServerMessage): void {
       return;
     case "queue:status":
       // ignore a status that crossed our queue:leave
-      if (queue() !== undefined) setQueue(applyQueueStatus(msg, Date.now()));
+      {
+        const prev = queue();
+        if (prev !== undefined) {
+          setQueue(applyQueueStatus(msg, Date.now(), prev));
+        }
+      }
       return;
     case "queue:matched":
       // room:state and race:countdown follow and take it from here
