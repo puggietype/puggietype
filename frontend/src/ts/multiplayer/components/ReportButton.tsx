@@ -83,7 +83,8 @@ export function ReportButton(props: {
             class="py-1 text-sm"
             ariaLabel={`report ${props.player.name}`}
             balloon={{
-              text: `report ${props.player.name}`,
+              // short in results rows so the tooltip fits on phones (name is in aria-label + menu)
+              text: alignLeft() ? "report" : `report ${props.player.name}`,
               position: alignLeft() ? "right" : "left",
             }}
             dataset={{
