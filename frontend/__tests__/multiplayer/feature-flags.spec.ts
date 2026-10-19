@@ -80,7 +80,9 @@ describe("feature flags", () => {
       resolveFlags("", memoryStorage(), "opponentDogs").has("openRooms"),
     ).toBe(false);
     expect(resolveFlags("", memoryStorage(), "none").size).toBe(0);
-    expect(resolveFlags("", memoryStorage(), "").size).toBe(3);
+    expect(resolveFlags("", memoryStorage(), "").size).toBe(
+      FEATURE_FLAGS.length,
+    );
   });
 
   it("?flags=<list> limits the tab to those flags and persists", () => {
@@ -105,7 +107,9 @@ describe("feature flags", () => {
 
   it("?flags=default (or any unknown value) clears the override", () => {
     const storage = memoryStorage({ [FLAGS_SESSION_KEY]: "none" });
-    expect(resolveFlags("?flags=default", storage, undefined).size).toBe(3);
+    expect(resolveFlags("?flags=default", storage, undefined).size).toBe(
+      FEATURE_FLAGS.length,
+    );
     expect(storage.data.has(FLAGS_SESSION_KEY)).toBe(false);
   });
 });
