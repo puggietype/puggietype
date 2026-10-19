@@ -6,6 +6,7 @@ import {
   displayName,
   excludeBots,
   humanCount,
+  showBotBadge,
 } from "../../src/ts/multiplayer/bots";
 
 const human = { name: "ZippyPug42", isBot: false };
@@ -50,5 +51,22 @@ describe("bots", () => {
     expect("Pug Bot · 80 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("Pug Bot - 80 wpm").not.toMatch(BOT_NAME_PATTERN);
     expect("ZippyPug42").not.toMatch(BOT_NAME_PATTERN);
+  });
+
+  it("badges only flagged bots with a well-formed bot name", () => {
+    expect(showBotBadge({ name: "Pug Bot · ~50 wpm", isBot: true })).toBe(true);
+    for (const name of [
+      "Pug Bot · ~5 wpm",
+      "Pug Bot · ~1000 wpm",
+      "Pug Bot · ~050 wpm",
+      "Evil · ~50 wpm",
+      "Pug Bot ~50 wpm",
+    ]) {
+      expect(showBotBadge({ name, isBot: true }), name).toBe(false);
+    }
+    expect(showBotBadge({ name: "Pug Bot · ~50 wpm", isBot: false })).toBe(
+      false,
+    );
+    expect(showBotBadge({ name: "Pug Bot · ~50 wpm" })).toBe(false);
   });
 });
