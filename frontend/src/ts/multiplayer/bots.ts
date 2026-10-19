@@ -18,6 +18,11 @@ export function isBot(p: MaybeBot): boolean {
   return p.isBot === true;
 }
 
+/** badge + two-chunk name only for a flagged bot with a well-formed bot name */
+export function showBotBadge(p: MaybeBot & { name: string }): boolean {
+  return isBot(p) && BOT_NAME_PATTERN.test(p.name);
+}
+
 export function humanCount(players: readonly MaybeBot[]): number {
   return players.filter((p) => !isBot(p)).length;
 }

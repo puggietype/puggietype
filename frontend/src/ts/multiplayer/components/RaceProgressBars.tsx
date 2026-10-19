@@ -89,9 +89,11 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
                   class="hidden h-7 w-8 shrink-0 max-[601px]:block"
                 />
               </Show>
-              <span class="min-w-0 leading-tight break-words">
-                <PlayerName player={player} />
-                {player.id === myId() ? " (you)" : ""}
+              <span class="flex min-w-0 items-baseline leading-tight">
+                <PlayerName player={player} truncate />
+                <Show when={player.id === myId()}>
+                  <span class="shrink-0 whitespace-pre"> (you)</span>
+                </Show>
               </span>
             </span>
             <div class="h-1.5 rounded-full bg-bg">

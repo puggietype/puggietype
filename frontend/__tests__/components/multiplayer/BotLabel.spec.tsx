@@ -45,4 +45,38 @@ describe("PlayerName", () => {
     expect(queryByTestId("mp-bot-label")).toBeNull();
     expect(container.textContent).toBe("ZippyPug42BouncyPug11");
   });
+
+  it("gives human names a full-name title and optional truncation", () => {
+    const name = "AVeryLongHumanPlayerNameThatOverflows";
+    const { getByTitle } = render(() => (
+      <PlayerName player={{ name, isBot: false }} truncate />
+    ));
+    const el = getByTitle(name);
+    expect(el).toHaveTextContent(name);
+    expect(el).toHaveClass("truncate");
+  });
+
+  it("renders a flagged bot with a malformed name as a plain name", () => {
+    const name = "Evil · ~50 wpm";
+    const { container, queryByTestId, getByTitle } = render(() => (
+      <PlayerName player={{ name, isBot: true }} />
+    ));
+    expect(queryByTestId("mp-bot-label")).toBeNull();
+    expect(getByTitle(name)).toHaveTextContent(name);
+    expect(container.textContent).toBe(name);
+  });
+
+  it("keeps each bot name half unbroken", () => {
+    const { container } = render(() => (
+      <PlayerName
+        player={{ name: "Pug Bot · ~80 wpm", isBot: true }}
+        truncate
+      />
+    ));
+    const chunks = [...container.querySelectorAll(".whitespace-nowrap")].map(
+      (el) => el.textContent,
+    );
+    expect(chunks).toEqual(["Pug Bot ·", "~80 wpm"]);
+    expect(container.querySelector(".truncate")).toBeNull();
+  });
 });
