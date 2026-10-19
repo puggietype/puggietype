@@ -82,11 +82,13 @@ export function ReportButton(props: {
             fa={{ icon: "fa-flag" }}
             class="py-1 text-sm"
             ariaLabel={`report ${props.player.name}`}
-            balloon={{
-              // short in results rows so the tooltip fits on phones (name is in aria-label + menu)
-              text: alignLeft() ? "report" : `report ${props.player.name}`,
-              position: alignLeft() ? "right" : "left",
-            }}
+            // no hover balloon in results rows: it would run off a phone screen
+            // (the balloon shows the aria-label, which carries the full name)
+            balloon={
+              alignLeft()
+                ? undefined
+                : { text: `report ${props.player.name}`, position: "left" }
+            }
             dataset={{
               "data-testid": "mp-report",
               "data-player-id": props.player.id,
