@@ -51,7 +51,10 @@ import { PlayerName } from "./PlayerName";
 import { ReportButton } from "./ReportButton";
 import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
-const CARD = "grid content-start gap-4 rounded-lg bg-sub-alt p-6";
+// below md the implicit grid column's min-content would push cards past a
+// narrow viewport: pin it to the container and tighten the padding
+const CARD =
+  "grid content-start gap-4 rounded-lg bg-sub-alt p-6 max-md:grid-cols-[minmax(0,1fr)] max-sm:p-4";
 const LABEL = "text-sm tracking-wide text-sub";
 const REROLL_COOLDOWN_MS = 2000;
 
@@ -131,10 +134,10 @@ export function Lobby(props: { room: RoomState }): JSXElement {
 
   return (
     <div
-      class="grid gap-6 md:grid-cols-[1fr_1fr] xl:grid-cols-[3fr_2fr]"
+      class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[1fr_1fr] xl:grid-cols-[3fr_2fr]"
       data-testid="mp-lobby"
     >
-      <div class="grid content-start gap-6">
+      <div class="grid content-start gap-6 max-md:grid-cols-[minmax(0,1fr)]">
         <section class={CARD}>
           <Show
             when={openRoomsOn()}
@@ -182,7 +185,8 @@ export function Lobby(props: { room: RoomState }): JSXElement {
           </Show>
           <div class="flex flex-wrap items-center gap-4">
             <div
-              class="grow rounded bg-bg px-5 py-3 text-4xl font-(--font) tracking-[0.3em] text-text"
+              // 8 letter-spaced chars: shrink with the viewport on phones
+              class="grow rounded bg-bg px-5 py-3 text-4xl font-(--font) tracking-[0.3em] whitespace-nowrap text-text max-sm:px-3 max-sm:text-[length:clamp(1.25rem,calc((100vw_-_6rem)/6.5),2.25rem)] max-sm:tracking-[0.15em]"
               data-testid="mp-room-code"
             >
               {props.room.code}
@@ -266,7 +270,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
               />
             </div>
             <select
-              class="rounded bg-bg px-3 py-1.5 font-(--font) text-text disabled:opacity-100"
+              class="max-w-full rounded bg-bg px-3 py-1.5 font-(--font) text-text disabled:opacity-100"
               data-testid="mp-language"
               aria-label="language"
               disabled={readOnly()}
@@ -290,8 +294,9 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span class="text-sub">you are</span>
               <span
-                class="text-xl font-(--font) text-main"
+                class="max-w-full min-w-0 truncate text-xl font-(--font) text-main"
                 data-testid="mp-my-name"
+                title={p().name}
               >
                 {p().name}
               </span>
@@ -333,60 +338,63 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                 data-player-id={p.id}
                 data-ready={String(p.ready)}
               >
-                <span
-                  class={cn(
-                    "h-3 w-3 shrink-0 rounded-full",
-                    PLAYER_BG[p.color],
-                  )}
-                ></span>
-                <Show when={characterSelectOn()}>
+                {/* dot..crown stay on one line (name truncates); status wraps below */}
+                <span class="flex max-w-full min-w-0 items-center gap-3">
                   <span
-                    class="relative shrink-0"
-                    title={characterName(p.character)}
+                    class={cn(
+                      "h-3 w-3 shrink-0 rounded-full",
+                      PLAYER_BG[p.color],
+                    )}
+                  ></span>
+                  <Show when={characterSelectOn()}>
+                    <span
+                      class="relative shrink-0"
+                      title={characterName(p.character)}
+                    >
+                      <CharacterImage
+                        character={p.character}
+                        frame="head"
+                        class="h-7 w-8"
+                        testId="mp-player-character"
+                      />
+                      <Show when={sharesDog(p.id)}>
+                        <span
+                          class={cn(
+                            "absolute -right-1.5 -bottom-1 grid size-4 place-items-center rounded-full text-[0.625rem] leading-none font-bold text-bg",
+                            PLAYER_BG[p.color],
+                          )}
+                          aria-hidden="true"
+                        >
+                          {p.color.slice(3)}
+                        </span>
+                      </Show>
+                    </span>
+                  </Show>
+                  <span
+                    class={cn(
+                      "leading-tight font-(--font) text-text",
+                      // humans keep the one-line truncate; bot names never shrink
+                      // below min-content (halves may still wrap between them)
+                      showBotBadge(p) ? "min-w-min" : "min-w-0 truncate",
+                    )}
+                    title={p.name}
+                    aria-label={isBot(p) ? displayName(p) : undefined}
                   >
-                    <CharacterImage
-                      character={p.character}
-                      frame="head"
-                      class="h-7 w-8"
-                      testId="mp-player-character"
-                    />
-                    <Show when={sharesDog(p.id)}>
-                      <span
-                        class={cn(
-                          "absolute -right-1.5 -bottom-1 grid size-4 place-items-center rounded-full text-[0.625rem] leading-none font-bold text-bg",
-                          PLAYER_BG[p.color],
-                        )}
-                        aria-hidden="true"
-                      >
-                        {p.color.slice(3)}
-                      </span>
-                    </Show>
+                    <PlayerName player={p} />
                   </span>
-                </Show>
-                <span
-                  class={cn(
-                    "leading-tight font-(--font) text-text",
-                    // humans keep the one-line truncate; bot names never shrink
-                    // below min-content (halves may still wrap between them)
-                    showBotBadge(p) ? "min-w-min" : "min-w-0 truncate",
-                  )}
-                  title={p.name}
-                  aria-label={isBot(p) ? displayName(p) : undefined}
-                >
-                  <PlayerName player={p} />
+                  <Show when={p.id === myId()}>
+                    <span class="shrink-0 text-sm text-sub">(you)</span>
+                  </Show>
+                  <Show when={p.id === props.room.hostId}>
+                    <span
+                      class="shrink-0 text-main"
+                      title="host"
+                      data-testid="mp-host-crown"
+                    >
+                      <Fa icon="fa-crown" />
+                    </span>
+                  </Show>
                 </span>
-                <Show when={p.id === myId()}>
-                  <span class="shrink-0 text-sm text-sub">(you)</span>
-                </Show>
-                <Show when={p.id === props.room.hostId}>
-                  <span
-                    class="shrink-0 text-main"
-                    title="host"
-                    data-testid="mp-host-crown"
-                  >
-                    <Fa icon="fa-crown" />
-                  </span>
-                </Show>
                 <span class="ml-auto flex shrink-0 items-center gap-3">
                   <Show
                     when={p.id !== props.room.hostId}
@@ -416,7 +424,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
           <div class="text-sm text-sub" data-testid="mp-start-hint">
             {startHint()}
           </div>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <Button
               text="leave"
               fa={{ icon: "fa-sign-out-alt" }}

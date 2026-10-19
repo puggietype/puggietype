@@ -47,7 +47,7 @@ export function CharacterPicker(props: {
 
   return (
     <section
-      class="grid content-start gap-4 rounded-lg bg-sub-alt p-6"
+      class="grid content-start gap-4 rounded-lg bg-sub-alt p-6 max-sm:p-4"
       data-testid="mp-character-card"
     >
       <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
