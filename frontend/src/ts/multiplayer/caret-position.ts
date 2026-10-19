@@ -102,3 +102,20 @@ export function stackTagLevels(
   }
   return out;
 }
+
+/**
+ * Horizontal shift (<= 0 unless the tag starts left of `minLeft`) that keeps a
+ * name tag starting at `left` (viewport px) with `width` inside
+ * [minLeft, maxRight]. Overflowing tags slide left; if the tag is wider than
+ * the bounds its left edge wins so the start of the name stays readable.
+ */
+export function clampTagShift(
+  left: number,
+  width: number,
+  maxRight: number,
+  minLeft = 0,
+): number {
+  let shift = Math.min(0, maxRight - (left + width));
+  if (left + shift < minLeft) shift = minLeft - left;
+  return shift;
+}
