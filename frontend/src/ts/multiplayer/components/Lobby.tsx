@@ -130,7 +130,10 @@ export function Lobby(props: { room: RoomState }): JSXElement {
   };
 
   return (
-    <div class="grid gap-6 md:grid-cols-[3fr_2fr]" data-testid="mp-lobby">
+    <div
+      class="grid gap-6 md:grid-cols-[1fr_1fr] xl:grid-cols-[3fr_2fr]"
+      data-testid="mp-lobby"
+    >
       <div class="grid content-start gap-6">
         <section class={CARD}>
           <Show
@@ -321,7 +324,8 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             {(p) => (
               <li
                 class={cn(
-                  "flex min-w-0 items-center gap-3 rounded bg-bg px-4",
+                  // wraps: pill + kick drop to a right-aligned 2nd line, never overlap the name
+                  "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded bg-bg px-4",
                   props.room.players.length > 4 ? "py-2" : "py-3",
                   !p.connected && "opacity-50",
                 )}
@@ -361,9 +365,10 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                 </Show>
                 <span
                   class={cn(
-                    "min-w-0 leading-tight font-(--font) text-text",
-                    // humans keep the one-line truncate; bot names never truncate
-                    !showBotBadge(p) && "truncate",
+                    "leading-tight font-(--font) text-text",
+                    // humans keep the one-line truncate; bot names never shrink
+                    // below min-content (halves may still wrap between them)
+                    showBotBadge(p) ? "min-w-min" : "min-w-0 truncate",
                   )}
                   title={p.name}
                   aria-label={isBot(p) ? displayName(p) : undefined}
@@ -375,33 +380,34 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                 </Show>
                 <Show when={p.id === props.room.hostId}>
                   <span
-                    class="text-main"
+                    class="shrink-0 text-main"
                     title="host"
                     data-testid="mp-host-crown"
                   >
                     <Fa icon="fa-crown" />
                   </span>
                 </Show>
-                <span class="grow"></span>
-                <Show
-                  when={p.id !== props.room.hostId}
-                  fallback={<span class="shrink-0 text-sm text-sub">host</span>}
-                >
-                  <span
-                    class={cn(
-                      "shrink-0 rounded-full px-3 py-0.5 text-xs font-(--font) whitespace-nowrap",
-                      p.ready ? "bg-opp2 text-bg" : "bg-sub-alt text-sub",
-                    )}
+                <span class="ml-auto flex shrink-0 items-center gap-3">
+                  <Show
+                    when={p.id !== props.room.hostId}
+                    fallback={<span class="text-sm text-sub">host</span>}
                   >
-                    {p.ready ? "ready" : "not ready"}
-                  </span>
-                </Show>
-                <ReportButton room={props.room} player={p} />
-                <KickButton
-                  room={props.room}
-                  playerId={p.id}
-                  name={displayName(p)}
-                />
+                    <span
+                      class={cn(
+                        "rounded-full px-3 py-0.5 text-xs font-(--font) whitespace-nowrap",
+                        p.ready ? "bg-opp2 text-bg" : "bg-sub-alt text-sub",
+                      )}
+                    >
+                      {p.ready ? "ready" : "not ready"}
+                    </span>
+                  </Show>
+                  <ReportButton room={props.room} player={p} />
+                  <KickButton
+                    room={props.room}
+                    playerId={p.id}
+                    name={displayName(p)}
+                  />
+                </span>
               </li>
             )}
           </For>
