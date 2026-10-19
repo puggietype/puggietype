@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   createRoom: vi.fn(),
   connect: vi.fn(),
 }));
-const store = vi.hoisted(() => ({ openRoomsOn: false }));
+const store = vi.hoisted(() => ({ openRoomsOn: false, quickMatchOn: false }));
 
 vi.mock("../../../src/ts/multiplayer/race", () => ({
   connect: mocks.connect,
@@ -20,13 +20,14 @@ vi.mock("../../../src/ts/multiplayer/store", () => ({
   connectionStatus: () => "open",
   openRooms: () => ({ rooms: [], racing: 0 }),
   openRoomsOn: () => store.openRoomsOn,
-  quickMatchOn: () => false,
+  quickMatchOn: () => store.quickMatchOn,
 }));
 vi.mock("../../../src/ts/states/notifications", () => ({
   showNoticeNotification: vi.fn(),
 }));
 
 import { RaceHome } from "../../../src/ts/multiplayer/components/RaceHome";
+import { PRIMARY_BUTTON } from "../../../src/ts/multiplayer/components/ui";
 
 const PRIVATE_HINT = "Private: only people with the code can join";
 const OPEN_HINT = "Open: anyone can see this room's code and join";
@@ -34,6 +35,7 @@ const OPEN_HINT = "Open: anyone can see this room's code and join";
 describe("RaceHome create room", () => {
   beforeEach(() => {
     store.openRoomsOn = true;
+    store.quickMatchOn = false;
     mocks.createRoom.mockClear();
   });
   afterEach(() => cleanup());
@@ -117,5 +119,51 @@ describe("RaceHome create room", () => {
     expect(mocks.createRoom).toHaveBeenLastCalledWith(undefined, {
       open: false,
     });
+  });
+});
+
+describe("RaceHome layout", () => {
+  beforeEach(() => {
+    store.openRoomsOn = true;
+  });
+  afterEach(() => cleanup());
+
+  const sections = (container: HTMLElement): string[] =>
+    // left column cards, keyed by their heading (first child)
+    [...(container.firstElementChild?.firstElementChild?.children ?? [])].map(
+      (el) => el.firstElementChild?.textContent?.trim() ?? "",
+    );
+
+  const isPrimary = (el: HTMLElement): boolean =>
+    PRIMARY_BUTTON.split(" ").every((c) => el.classList.contains(c));
+
+  it.each([true, false])(
+    "quickMatchOn=%s: quick play, create, join, open rooms in order",
+    (on) => {
+      store.quickMatchOn = on;
+      const { container } = render(() => <RaceHome />);
+      expect(sections(container)).toEqual([
+        "quick play",
+        "create a room",
+        "join by code",
+        "open rooms",
+      ]);
+    },
+  );
+
+  it("quick match on: find match is the sole primary, create is not", () => {
+    store.quickMatchOn = true;
+    const { getByTestId } = render(() => <RaceHome />);
+    expect(isPrimary(getByTestId("mp-public"))).toBe(true);
+    expect(isPrimary(getByTestId("mp-create"))).toBe(false);
+    expect(getByTestId("mp-create")).toHaveClass("px-5", "py-3");
+  });
+
+  it("quick match off: coming soon, create stays primary", () => {
+    store.quickMatchOn = false;
+    const { getByTestId } = render(() => <RaceHome />);
+    expect(getByTestId("mp-public-soon")).toHaveTextContent("coming soon");
+    expect(isPrimary(getByTestId("mp-public"))).toBe(false);
+    expect(isPrimary(getByTestId("mp-create"))).toBe(true);
   });
 });

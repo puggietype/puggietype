@@ -73,73 +73,6 @@ export function RaceHome(props: { code?: string }): JSXElement {
   return (
     <div class="grid gap-6 md:grid-cols-[3fr_2fr]">
       <div class="grid content-start gap-6">
-        <section class={CARD}>
-          <h2 class={LABEL}>create a room</h2>
-          <div class="text-sub">
-            race up to {MAX_PLAYERS} typists with an invite link. you get a
-            random pug name.
-          </div>
-          <Show when={openRoomsOn()}>
-            <VisibilityChoice
-              value={visibility()}
-              onChange={(v) => setVisibility(v)}
-            />
-          </Show>
-          <div class="flex justify-end">
-            <Button
-              text="Create room"
-              fa={{ icon: "fa-plus" }}
-              class={cn(PRIMARY_BUTTON, "px-5 py-3")}
-              disabled={busy()}
-              dataset={{ "data-testid": "mp-create" }}
-              onClick={() => {
-                const open = openRoomsOn() && visibility() === "open";
-                withConnection(() => createRoom(undefined, { open }));
-              }}
-            />
-          </div>
-        </section>
-        <section class={CARD}>
-          <label class={LABEL} for="mpJoinCode">
-            join by code
-          </label>
-          <form
-            class="flex gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const c = validCode();
-              if (c !== undefined) withConnection(() => joinRoom(c));
-            }}
-          >
-            <input
-              id="mpJoinCode"
-              class={`${INPUT} text-xl tracking-[0.3em] uppercase`}
-              data-testid="mp-join-code"
-              maxLength={9}
-              placeholder="ABCD2345"
-              value={code()}
-              onInput={(e) => setCode(e.currentTarget.value)}
-            />
-            <Button
-              type="submit"
-              text="join"
-              fa={{ icon: "fa-sign-in-alt" }}
-              class={cn(PRIMARY_BUTTON, "px-5")}
-              disabled={validCode() === undefined || busy()}
-              dataset={{ "data-testid": "mp-join" }}
-            />
-          </form>
-        </section>
-        <Show when={openRoomsOn()}>
-          <section class={CARD} data-testid="mp-open-rooms">
-            <h2 class={LABEL}>open rooms</h2>
-            <OpenRoomsList
-              list={openRooms()}
-              disabled={busy()}
-              onJoin={(c) => withConnection(() => joinRoom(c))}
-            />
-          </section>
-        </Show>
         <Show when={quickMatchOn()}>
           <section class={CARD} data-testid="mp-quick-match">
             <div class={LABEL}>quick play</div>
@@ -188,6 +121,74 @@ export function RaceHome(props: { code?: string }): JSXElement {
                 }
               />
             </div>
+          </section>
+        </Show>
+        <section class={CARD}>
+          <h2 class={LABEL}>create a room</h2>
+          <div class="text-sub">
+            race up to {MAX_PLAYERS} typists with an invite link. you get a
+            random pug name.
+          </div>
+          <Show when={openRoomsOn()}>
+            <VisibilityChoice
+              value={visibility()}
+              onChange={(v) => setVisibility(v)}
+            />
+          </Show>
+          <div class="flex justify-end">
+            <Button
+              text="Create room"
+              fa={{ icon: "fa-plus" }}
+              // find match is the sole primary action once Quick Match is live
+              class={cn(!quickMatchOn() && PRIMARY_BUTTON, "px-5 py-3")}
+              disabled={busy()}
+              dataset={{ "data-testid": "mp-create" }}
+              onClick={() => {
+                const open = openRoomsOn() && visibility() === "open";
+                withConnection(() => createRoom(undefined, { open }));
+              }}
+            />
+          </div>
+        </section>
+        <section class={CARD}>
+          <label class={LABEL} for="mpJoinCode">
+            join by code
+          </label>
+          <form
+            class="flex gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const c = validCode();
+              if (c !== undefined) withConnection(() => joinRoom(c));
+            }}
+          >
+            <input
+              id="mpJoinCode"
+              class={`${INPUT} text-xl tracking-[0.3em] uppercase`}
+              data-testid="mp-join-code"
+              maxLength={9}
+              placeholder="ABCD2345"
+              value={code()}
+              onInput={(e) => setCode(e.currentTarget.value)}
+            />
+            <Button
+              type="submit"
+              text="join"
+              fa={{ icon: "fa-sign-in-alt" }}
+              class={cn(PRIMARY_BUTTON, "px-5")}
+              disabled={validCode() === undefined || busy()}
+              dataset={{ "data-testid": "mp-join" }}
+            />
+          </form>
+        </section>
+        <Show when={openRoomsOn()}>
+          <section class={CARD} data-testid="mp-open-rooms">
+            <h2 class={LABEL}>open rooms</h2>
+            <OpenRoomsList
+              list={openRooms()}
+              disabled={busy()}
+              onJoin={(c) => withConnection(() => joinRoom(c))}
+            />
           </section>
         </Show>
       </div>
