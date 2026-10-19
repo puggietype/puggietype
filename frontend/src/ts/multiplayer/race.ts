@@ -23,6 +23,7 @@ import { focusWords, isMounted as isTestUIMounted } from "../test/test-ui";
 import { words as testWords } from "../test/test-words";
 import { isAgeConfirmed } from "./age-gate";
 import { MultiplayerClient } from "./client";
+import { getClientId } from "./client-id";
 import {
   discardPendingRaceFinish,
   isRaceActive,
@@ -217,10 +218,11 @@ export function joinQueue(claimedWpm?: number): void {
   if (!quickMatchOn() || !isAgeConfirmed() || queue() !== undefined) return;
   setQueue(startQueue(Date.now()));
   client.connect();
+  const clientId = getClientId();
   send(
     claimedWpm === undefined
-      ? { type: "queue:join" }
-      : { type: "queue:join", claimedWpm },
+      ? { type: "queue:join", clientId }
+      : { type: "queue:join", claimedWpm, clientId },
   );
 }
 

@@ -155,8 +155,13 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   /**
    * Quick Match (flagged): join matchmaking, leaving any current room. `claimedWpm` is the pace
    * the client reports; the server clamps it and prefers a pace it has verified itself when available.
+   * `clientId` is a random per-browser id so you're never matched against your own other tab.
    */
-  z.object({ type: z.literal("queue:join"), claimedWpm: finite.optional() }),
+  z.object({
+    type: z.literal("queue:join"),
+    claimedWpm: finite.optional(),
+    clientId: z.string().optional(),
+  }),
   z.object({ type: z.literal("queue:leave") }),
   /**
    * Player reports (flagged): flag a human in the same room. Strict schema, so unexpected keys
