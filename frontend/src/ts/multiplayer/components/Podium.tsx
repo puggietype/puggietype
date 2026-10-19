@@ -101,7 +101,8 @@ export function Podium(props: {
             </div>
           )}
         </Show>
-        <div class="overflow-x-auto rounded-lg bg-sub-alt px-2 py-2 sm:px-4">
+        {/* no overflow clip: the report menu pops out of a row; relative z-10 keeps it above the buttons below */}
+        <div class="relative z-10 rounded-lg bg-sub-alt px-2 py-2 sm:px-4">
           <table class="w-full font-(--font)" data-testid="mp-results-table">
             <thead>
               <tr class="text-left text-xs text-sub">
@@ -141,7 +142,7 @@ export function Podium(props: {
                         dense() ? "py-1.5" : "py-3",
                       )}
                     >
-                      {/* wraps: (you)/dnf/report/kick drop below rather than squeeze or overlap the name */}
+                      {/* wraps: only flag/report/kick drop below; name + (you)/dnf stay on one line */}
                       <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                         <span
                           class={cn(
@@ -176,13 +177,13 @@ export function Podium(props: {
                           >
                             <PlayerName player={r} />
                           </span>
+                          <Show when={r.playerId === myId()}>
+                            <span class="shrink-0 text-sm text-sub">(you)</span>
+                          </Show>
+                          <Show when={!r.finished}>
+                            <span class="shrink-0 text-sm text-sub">dnf</span>
+                          </Show>
                         </span>
-                        <Show when={r.playerId === myId()}>
-                          <span class="shrink-0 text-sm text-sub">(you)</span>
-                        </Show>
-                        <Show when={!r.finished}>
-                          <span class="shrink-0 text-sm text-sub">dnf</span>
-                        </Show>
                         <Show when={r.flagged}>
                           <span
                             class="shrink-0 text-sm text-error sm:hidden"
