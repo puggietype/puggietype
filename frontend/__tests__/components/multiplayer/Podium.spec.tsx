@@ -157,4 +157,18 @@ describe("Podium results name cell", () => {
     expect(thanks).not.toHaveClass("shrink-0");
     expect(thanks).toHaveClass("min-w-0");
   });
+
+  it("goes side by side from a 1280px viewport, not from xl (1361px)", () => {
+    const { getByTestId } = render(() => (
+      <Podium room={ROOM} results={RESULTS} />
+    ));
+    const podium = getByTestId("mp-podium");
+    expect(podium).toHaveClass(
+      "grid",
+      "max-w-3xl",
+      "min-[1280px]:max-w-none",
+      "min-[1280px]:grid-cols-[2fr_3fr]",
+    );
+    expect(podium.className).not.toMatch(/(^|\s)(xl|lg|md):grid-cols/);
+  });
 });
