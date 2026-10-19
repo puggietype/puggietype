@@ -51,10 +51,15 @@ const fs = require("fs");
 const [tokensPath, themesDir] = process.argv.slice(2);
 const { themes } = JSON.parse(fs.readFileSync(tokensPath, "utf8"));
 const kebab = (k) => k.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+// untyped words keep the pre-AA sub (the theme's sub was raised for labels);
+// tokens.json `untypedColor` wins if the brand kit adds one
+const untypedColor = { "puggie-dark": "#77706a", "puggie-light": "#857a6f" };
 for (const [name, t] of Object.entries(themes)) {
   // every opponent + pug token the brand kit defines
   const keys = Object.keys(t).filter((k) => /^(opp\d|pug[A-Z])/.test(k));
   const lines = keys.map((k) => `  --${kebab(k)}: ${t[k].toLowerCase()};`);
+  const untyped = t.untypedColor ?? untypedColor[name];
+  if (untyped) lines.push(`  --untyped-color: ${untyped.toLowerCase()};`);
   const css = `/* generated from brand/tokens.json (${name}) */\n:root {\n${lines.join("\n")}\n}\n`;
   const file = `${themesDir}/${name.replace(/-/g, "_")}.css`;
   if (fs.existsSync(file) && fs.readFileSync(file, "utf8") === css) continue;
