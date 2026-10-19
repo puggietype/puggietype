@@ -30,6 +30,13 @@ Solo typing must keep working unchanged. Pug mode works during races.
   the pug-winner frame, table (place, name, wpm, raw, acc, flagged), Rematch (host) / waiting,
   Leave. Results are never saved to the backend.
 - Reconnect with the persisted `playerId` + `sessionToken` (sessionStorage).
+- Server full (`capacity.ts`, `ServerFull.tsx`): socket refused (`server_full` + close 4503, legacy
+  4002) or room cap (`SERVER_FULL` error with `retryAfterMs`, socket kept) on create / join / Quick
+  Match → "We're full right now" panel on `/race` (`role=status`, countdown as `role=timer`),
+  auto-retry after `retryAfterMs` (60 s default, clamped 1 s–10 min) + up to 3 s jitter, "Try now",
+  "Practice solo while you wait" (`/`). No reconnect backoff while full (`connect()` is a no-op
+  until `retryFull`); the refused create / join / queue:join is redone on retry. No error toast.
+  Leaving the race page stops the wait. Copy lives in `FULL_TEXT`.
 
 ## Structure
 
@@ -39,7 +46,8 @@ Solo typing must keep working unchanged. Pug mode works during races.
 | `clock.ts` | clock offset from ping samples, countdown seconds (pure) |
 | `helpers.ts` | room codes, invite links, start rules, config mapping, progress diff/wpm, finish input (pure) |
 | `caret-position.ts` | opponent caret mapping, smoothing, tag stacking (pure) |
-| `client.ts` | WebSocket client: ping sync, hello, session in sessionStorage, reconnect |
+| `client.ts` | WebSocket client: ping sync, hello, session in sessionStorage, reconnect, full (4503) |
+| `capacity.ts` | server-full state: retry delay + jitter, countdown, auto-retry timer, copy |
 | `store.ts` | Solid signals: connection, room, race, progress, results, caret toggle |
 | `race.ts` | actions + engine glue: settings override/restore, countdown, input lock, progress loop, finish |
 | `engine-hooks.ts` | dependency-free state the engine reads (race words, locks, finish callback) |
