@@ -3,7 +3,9 @@ import { MAX_CLAIMED_WPM } from "./protocol";
 /**
  * Quick Match queue as the client sees it: "joining" until the first
  * queue:status, then "queued" with the server's pace band. `since` is the
- * local time the wait started (re-synced from `waitedMs`).
+ * local time the wait started. It is re-synced from `waitedMs` only when the
+ * local clock has drifted by more than RESYNC_MS: re-basing on every status
+ * (once a second, shifted by network/tick jitter) made the timer stutter.
  */
 export type QueueState = {
   phase: "joining" | "queued";
@@ -19,9 +21,13 @@ export function startQueue(now: number): QueueState {
   return { phase: "joining", since: now };
 }
 
+/** keep the local start unless the server's elapsed time disagrees by more than this */
+export const RESYNC_MS = 1500;
+
 export function applyQueueStatus(
   status: { band: unknown; widenedTo: unknown; waitedMs: unknown },
   now: number,
+  prev?: QueueState,
 ): QueueState {
   const waited =
     typeof status.waitedMs === "number" && Number.isFinite(status.waitedMs)
@@ -29,7 +35,10 @@ export function applyQueueStatus(
       : 0;
   return {
     phase: "queued",
-    since: now - waited,
+    since:
+      prev !== undefined && Math.abs(prev.since - (now - waited)) <= RESYNC_MS
+        ? prev.since
+        : now - waited,
     band: bandString(status.band),
     widenedTo: bandString(status.widenedTo),
   };
