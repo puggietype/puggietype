@@ -59,7 +59,8 @@ export function Podium(props: {
 
   return (
     <div
-      class="grid items-center gap-8 md:grid-cols-[2fr_3fr]"
+      // side by side only from xl: below that the table needs the full width for names
+      class="mx-auto grid w-full max-w-3xl items-center gap-8 xl:max-w-none xl:grid-cols-[2fr_3fr]"
       data-testid="mp-podium"
     >
       <CharacterImage
@@ -67,7 +68,7 @@ export function Podium(props: {
         frame="winner"
         class={cn(
           "mx-auto aspect-square w-full",
-          dense() ? "max-w-48 md:max-w-80" : "max-w-80",
+          dense() ? "max-w-40 xl:max-w-80" : "max-w-56 xl:max-w-80",
         )}
         testId="mp-pug-winner"
         alt={winnerAlt()}
@@ -196,6 +197,7 @@ export function Podium(props: {
                         </Show>
                         <ReportButton
                           room={props.room}
+                          align="left"
                           player={{
                             id: r.playerId,
                             name: r.name,

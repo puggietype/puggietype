@@ -3,6 +3,7 @@ import { createSignal, For, JSXElement, onCleanup, Show } from "solid-js";
 import type { ReportReason, RoomState } from "../protocol";
 
 import { Button } from "../../components/common/Button";
+import { cn } from "../../utils/cn";
 import { isBot } from "../bots";
 import { REPORT_REASONS } from "../protocol";
 import { reportPlayer } from "../race";
@@ -24,6 +25,8 @@ export const REPORT_REASON_TEXT: Record<ReportReason, string> = {
 export function ReportButton(props: {
   room: RoomState;
   player: { id: string; name: string; isBot?: boolean };
+  /** menu edge pinned to the flag: "left" opens rightward (flag near the left edge) */
+  align?: "left" | "right";
 }): JSXElement {
   const [open, setOpen] = createSignal(false);
   let wrapper: HTMLSpanElement | undefined;
@@ -34,6 +37,7 @@ export function ReportButton(props: {
     !isBot(props.player) &&
     props.room.players.some((p) => p.id === props.player.id && !isBot(p));
   const status = () => reports().get(props.player.id);
+  const alignLeft = (): boolean => props.align === "left";
 
   const onDocClick = (e: MouseEvent): void => {
     if (wrapper !== undefined && !wrapper.contains(e.target as Node)) {
@@ -78,7 +82,10 @@ export function ReportButton(props: {
             fa={{ icon: "fa-flag" }}
             class="py-1 text-sm"
             ariaLabel={`report ${props.player.name}`}
-            balloon={{ text: `report ${props.player.name}`, position: "left" }}
+            balloon={{
+              text: `report ${props.player.name}`,
+              position: alignLeft() ? "right" : "left",
+            }}
             dataset={{
               "data-testid": "mp-report",
               "data-player-id": props.player.id,
@@ -89,7 +96,10 @@ export function ReportButton(props: {
           />
           <Show when={open()}>
             <div
-              class="absolute top-full right-0 z-10 grid min-w-max gap-1 rounded bg-bg p-2 text-left shadow-lg"
+              class={cn(
+                "absolute top-full z-10 grid min-w-max gap-1 rounded bg-bg p-2 text-left shadow-lg",
+                alignLeft() ? "left-0" : "right-0",
+              )}
               role="menu"
               aria-label={`report ${props.player.name} for`}
               data-testid="mp-report-menu"

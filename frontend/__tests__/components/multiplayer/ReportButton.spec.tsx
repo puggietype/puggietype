@@ -109,6 +109,22 @@ describe("ReportButton", () => {
     expect(container.textContent?.toLowerCase()).not.toContain("anonymous");
   });
 
+  it("anchors the menu right by default, left with align=left", () => {
+    const def = render(() => (
+      <ReportButton room={ROOM} player={player("them")} />
+    ));
+    fireEvent.click(def.getByTestId("mp-report"));
+    expect(def.getByTestId("mp-report-menu")).toHaveClass("right-0");
+    def.unmount();
+    const left = render(() => (
+      <ReportButton room={ROOM} player={player("them")} align="left" />
+    ));
+    fireEvent.click(left.getByTestId("mp-report"));
+    const menu = left.getByTestId("mp-report-menu");
+    expect(menu).toHaveClass("left-0");
+    expect(menu).not.toHaveClass("right-0");
+  });
+
   it("sends the picked reason and closes", () => {
     const { getByTestId, getAllByTestId, queryByTestId } = renderFor("them");
     fireEvent.click(getByTestId("mp-report"));
