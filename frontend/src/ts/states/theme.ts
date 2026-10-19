@@ -9,7 +9,7 @@ const defaultTheme: Theme & { name: ThemeIdentifier } = {
   bg: "#161514",
   main: "#e8a96b",
   caret: "#e8a96b",
-  sub: "#77706a",
+  sub: "#948c84",
   subAlt: "#211f1d",
   text: "#ece6dd",
   error: "#ef6b5f",

@@ -85,7 +85,9 @@
 
   --correct-letter-color: var(--text-color);
   --correct-letter-animation: none;
-  --untyped-letter-color: var(--sub-color);
+  // --untyped-color: optional theme override (puggie themes keep their pre-AA
+  // sub here so typed/untyped contrast holds); falls back to --sub-color
+  --untyped-letter-color: var(--untyped-color, var(--sub-color));
   --untyped-letter-animation: none;
   --incorrect-letter-color: var(--error-color);
   --incorrect-letter-animation: none;
@@ -255,7 +257,7 @@
 
   &.colorfulMode {
     --correct-letter-color: var(--main-color);
-    --untyped-letter-color: var(--sub-color);
+    --untyped-letter-color: var(--untyped-color, var(--sub-color));
     --incorrect-letter-color: var(--colorful-error-color);
     --extra-letter-color: var(--colorful-error-extra-color);
     --c-dot: var(--main-color);
