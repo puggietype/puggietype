@@ -76,7 +76,7 @@ export function Podium(props: {
         testId="mp-pug-winner"
         alt={winnerAlt()}
       />
-      <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
+      <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 min-[1280px]:gap-3">
         <div class="text-sm font-(--font) text-sub">
           race over · {roomKindLabel(props.room)} · {props.room.code} ·{" "}
           {settingsSummary(props.room.settings)}
@@ -84,13 +84,30 @@ export function Podium(props: {
         <Show when={winner()}>
           {(w) => (
             <h2
-              class="min-w-0 text-4xl leading-tight [overflow-wrap:anywhere] sm:text-5xl"
+              // QM-008: only the name is clamped (3 lines, 2 from 1280) so the "winner" label always shows;
+              // a slightly smaller name from 1280 keeps rematch/leave above the fold at 1280x800
+              class="grid min-w-0 gap-1 leading-tight"
+              title={`${displayName(w())} wins!`}
+              aria-label={`${displayName(w())} wins!`}
               data-testid="mp-winner"
             >
-              <span class={PLAYER_TEXT[colorOf(w().playerId)]}>
+              <span
+                class="text-sm font-(--font) text-sub"
+                aria-hidden="true"
+                data-testid="mp-winner-label"
+              >
+                winner
+              </span>
+              <span
+                class={cn(
+                  "line-clamp-3 min-w-0 text-4xl [overflow-wrap:anywhere] sm:text-5xl min-[1280px]:line-clamp-2 min-[1280px]:text-4xl min-[1440px]:text-5xl",
+                  PLAYER_TEXT[colorOf(w().playerId)],
+                )}
+                aria-hidden="true"
+                data-testid="mp-winner-name"
+              >
                 <PlayerName player={w()} />
-              </span>{" "}
-              <span class="text-text">wins!</span>
+              </span>
             </h2>
           )}
         </Show>
@@ -134,7 +151,7 @@ export function Podium(props: {
                     <td
                       class={cn(
                         "px-2 text-lg sm:px-3",
-                        dense() ? "py-1.5" : "py-3",
+                        dense() ? "py-1.5 min-[1280px]:py-1" : "py-3",
                         PLAYER_TEXT[colorOf(r.playerId)],
                       )}
                     >
@@ -143,7 +160,7 @@ export function Podium(props: {
                     <td
                       class={cn(
                         "max-w-0 px-2 sm:px-3",
-                        dense() ? "py-1.5" : "py-3",
+                        dense() ? "py-1.5 min-[1280px]:py-1" : "py-3",
                       )}
                     >
                       {/* wraps: only flag/report/kick drop below; name + (you)/dnf stay on one line */}
@@ -217,7 +234,7 @@ export function Podium(props: {
                     <td
                       class={cn(
                         "px-2 text-right text-text sm:px-3",
-                        dense() ? "py-1.5" : "py-3",
+                        dense() ? "py-1.5 min-[1280px]:py-1" : "py-3",
                       )}
                       data-testid="mp-result-wpm"
                     >
@@ -226,7 +243,7 @@ export function Podium(props: {
                     <td
                       class={cn(
                         "hidden px-2 text-right text-sub sm:table-cell sm:px-3",
-                        dense() ? "py-1.5" : "py-3",
+                        dense() ? "py-1.5 min-[1280px]:py-1" : "py-3",
                       )}
                     >
                       {Math.round(r.raw)}
@@ -234,7 +251,7 @@ export function Podium(props: {
                     <td
                       class={cn(
                         "px-2 text-right text-text sm:px-3",
-                        dense() ? "py-1.5" : "py-3",
+                        dense() ? "py-1.5 min-[1280px]:py-1" : "py-3",
                       )}
                     >
                       {r.acc.toFixed(1)}%
@@ -242,7 +259,7 @@ export function Podium(props: {
                     <td
                       class={cn(
                         "hidden px-3 text-right sm:table-cell",
-                        dense() ? "py-1.5" : "py-3",
+                        dense() ? "py-1.5 min-[1280px]:py-1" : "py-3",
                       )}
                     >
                       <Show
