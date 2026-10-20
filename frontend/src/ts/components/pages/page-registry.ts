@@ -1,5 +1,6 @@
 import { Component, lazy } from "solid-js";
 
+import { InfoAdSlot } from "../ads/InfoAdSlot";
 import { NotFoundPage } from "./404Page";
 import { LoadingPage } from "./LoadingPage";
 import { PageRegistry } from "./Pages";
@@ -62,8 +63,8 @@ export const pageRegistry: PageRegistry = {
       "grid h-full w-full content-center items-center gap-4 place-self-center text-center",
   },
   test: { component: TestPage, class: "full-width content-grid" },
-  settings: { component: SettingsPage },
-  about: { component: AboutPage, class: "full-width" },
+  settings: { component: SettingsPage, footer: InfoAdSlot },
+  about: { component: AboutPage, class: "full-width", footer: InfoAdSlot },
   account: { component: AccountPage, needsAuthentication: true },
   login: { component: LoginPage },
   profile: { component: ProfilePage },

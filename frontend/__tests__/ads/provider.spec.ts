@@ -14,18 +14,26 @@ describe("ad provider", () => {
     expect(noopAdProvider.name).toBe("none");
   });
 
-  it("no-op provider leaves the slot untouched", async () => {
+  it("no-op provider never prepares and leaves the slot untouched", async () => {
     const slot = document.createElement("div");
-    await noopAdProvider.renderResult(slot);
-    noopAdProvider.destroyResult(slot);
+    expect(await noopAdProvider.prepare({ consentUi: true })).toBe(false);
+    noopAdProvider.render(slot, {
+      kind: "result",
+      width: 728,
+      height: 90,
+      slotId: "x",
+    });
+    noopAdProvider.destroy(slot);
     expect(slot.childNodes.length).toBe(0);
   });
 
   it("can swap in a provider", () => {
     const provider: AdProvider = {
       name: "test",
-      renderResult: vi.fn(),
-      destroyResult: vi.fn(),
+      prepare: vi.fn(),
+      render: vi.fn(),
+      destroy: vi.fn(),
+      openPrivacySettings: vi.fn(),
     };
     setAdProvider(provider);
     expect(getAdProvider()).toBe(provider);

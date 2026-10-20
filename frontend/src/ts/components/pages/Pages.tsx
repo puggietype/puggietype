@@ -27,6 +27,8 @@ export type PageRegistryEntry = {
   class?: string;
   /** Signed out, the wrapper renders empty. */
   needsAuthentication?: boolean;
+  /** Rendered below the content, e.g. the info pages' ad unit. */
+  footer?: Component;
 };
 
 export type PageRegistry = Record<PageName, PageRegistryEntry>;
@@ -199,6 +201,9 @@ function Page(props: { name: PageName; entry: PageRegistryEntry }): JSXElement {
           }
         >
           <Dynamic component={props.entry.component} />
+          <Show when={props.entry.footer}>
+            {(footer) => <Dynamic component={footer()} />}
+          </Show>
         </ErrorBoundary>
       </Show>
     </div>

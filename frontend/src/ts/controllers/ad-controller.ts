@@ -1,20 +1,10 @@
-import { getAdProvider } from "../ads/provider";
-import { Config } from "../config/store";
+import { suppressAdsNow } from "../ads/state";
 
-// the results screen is the only ad placement
-function getResultSlot(): HTMLElement | undefined {
-  return document.getElementById("ad-result") ?? undefined;
-}
-
-export async function renderResult(): Promise<void> {
-  if (Config.ads === "off") return;
-  const slot = getResultSlot();
-  if (slot === undefined) return;
-  await getAdProvider().renderResult(slot);
-}
-
-export function destroyResult(): void {
-  const slot = getResultSlot();
-  if (slot === undefined) return;
-  getAdProvider().destroyResult(slot);
+/**
+ * Ad slots are Solid components (components/ads) that fill on mount and
+ * clear on unmount. The engine only needs to hide them the instant a test
+ * or race starts; they come back when it's over (results, idle).
+ */
+export function onTestOrRaceStart(): void {
+  suppressAdsNow();
 }

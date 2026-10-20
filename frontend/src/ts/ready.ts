@@ -7,6 +7,7 @@ import { animate } from "animejs";
 import { onDOMReady, onWindowLoad, qs } from "./utils/dom";
 import { markBootSettled } from "./states/boot";
 import { isDevEnvironment } from "./utils/env";
+import { initAds } from "./ads/state";
 
 onDOMReady(async () => {
   await configLoadPromise;
@@ -28,6 +29,7 @@ onDOMReady(async () => {
   });
 
   void ServerConfiguration.sync();
+  void initAds();
 
   MonkeyPower.init();
 

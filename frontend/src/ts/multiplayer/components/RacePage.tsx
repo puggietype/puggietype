@@ -8,6 +8,7 @@ import {
   Switch,
 } from "solid-js";
 
+import { AdSlot } from "../../components/ads/AdSlot";
 import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
 import { ageConfirmed } from "../age-gate";
@@ -80,14 +81,33 @@ export function RacePage(): JSXElement {
             when={room()}
             fallback={
               <Show when={queue()} fallback={<RaceHome />}>
-                {(q) => <QuickMatchQueue state={q()} onCancel={leaveQueue} />}
+                {(q) => (
+                  <>
+                    <QuickMatchQueue state={q()} onCancel={leaveQueue} />
+                    <AdSlot kind="lobby" />
+                  </>
+                )}
               </Show>
             }
           >
             {(r) => (
-              <Switch fallback={<Lobby room={r()} />}>
+              <Switch
+                fallback={
+                  <>
+                    <Lobby room={r()} />
+                    <Show when={r().phase === "lobby" && race() === undefined}>
+                      <AdSlot kind="lobby" />
+                    </Show>
+                  </>
+                }
+              >
                 <Match when={results()}>
-                  {(res) => <Podium room={r()} results={res()} />}
+                  {(res) => (
+                    <>
+                      <Podium room={r()} results={res()} />
+                      <AdSlot kind="result" />
+                    </>
+                  )}
                 </Match>
                 <Match when={race() && raceFinished()}>
                   <div class="grid gap-4" data-testid="mp-waiting">

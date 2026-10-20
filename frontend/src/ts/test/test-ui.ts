@@ -30,7 +30,6 @@ import {
 } from "../input/input-element";
 import * as MonkeyPower from "../elements/monkey-power";
 import * as SlowTimer from "../legacy-states/slow-timer";
-import * as AdController from "../controllers/ad-controller";
 import * as Joining from "./break-joining";
 import * as ThemeController from "../controllers/theme-controller";
 import { ElementsWithUtils, ElementWithUtils, qs } from "../utils/dom";
@@ -1451,7 +1450,6 @@ export function onTestRestart(source: "testPage" | "resultPage"): void {
   }
 
   currentTestLine = 0;
-  AdController.destroyResult();
   if (Config.compositionDisplay === "below") {
     setCompositionText(" ");
   }

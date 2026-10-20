@@ -3,6 +3,7 @@ import { batch } from "solid-js";
 import { setConfig } from "../config/setters";
 import { Config } from "../config/store";
 import { saveFullConfigToLocalStorage } from "../config/persistence";
+import { onTestOrRaceStart } from "../controllers/ad-controller";
 import { navigationEvent } from "../events/navigation";
 import { getActivePage } from "../states/core";
 import {
@@ -548,6 +549,7 @@ async function beginRace(info: RaceInfo): Promise<void> {
     setOpponentProgress([]);
     setCountdown(Math.max(0, Math.ceil((info.startAt - serverNow()) / 1000)));
   });
+  onTestOrRaceStart();
 
   if (!applyRaceConfig(info)) {
     abortRace("Couldn't apply the race settings.");

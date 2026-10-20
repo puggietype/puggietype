@@ -4,6 +4,7 @@ import { envConfig } from "virtual:env-config";
 import { getIsScreenshotting } from "../../../states/core";
 import { getFocus } from "../../../states/test";
 import { cn } from "../../../utils/cn";
+import { AdFooterLinks } from "../../ads/AdFooterLinks";
 import { Button } from "../../common/Button";
 import { Keytips } from "./Keytips";
 import { ThemeIndicator } from "./ThemeIndicator";
@@ -76,6 +77,7 @@ export function Footer(): JSXElement {
           <VersionButton />
         </div>
       </div>
+      <AdFooterLinks />
     </footer>
   );
 }

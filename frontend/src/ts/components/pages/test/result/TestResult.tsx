@@ -9,8 +9,6 @@ import {
   Suspense,
 } from "solid-js";
 
-import { getAdProvider, noopAdProvider } from "../../../../ads/provider";
-import { getConfig } from "../../../../config/store";
 import { isAuthAvailable } from "../../../../firebase";
 import { useRefWithUtils } from "../../../../hooks/useRefWithUtils";
 import { getIsScreenshotting, isAuthenticated } from "../../../../states/core";
@@ -25,6 +23,7 @@ import {
   applyReducedMotion,
   scrollToCenterOrTop,
 } from "../../../../utils/misc";
+import { AdSlot } from "../../../ads/AdSlot";
 import { Button } from "../../../common/Button";
 import { Fa } from "../../../common/Fa";
 import { UserFlags } from "../../../common/UserFlags";
@@ -109,7 +108,7 @@ export function TestResult(): JSXElement {
           </div>
         )}
       </Show>
-      <ResultAds />
+      <AdSlot kind="result" />
     </div>
   );
 }
@@ -172,32 +171,5 @@ function Watermark(): JSXElement {
         );
       }}
     </Show>
-  );
-}
-
-/**
- * The ad slot is filled and cleared by the ad provider, so the markup must stay static.
- * Hidden while no provider is wired so no empty box shows.
- */
-function ResultAds(): JSXElement {
-  return (
-    <div
-      class={cn("full-width mt-4", {
-        hidden:
-          getIsScreenshotting() ||
-          getConfig.ads === "off" ||
-          getAdProvider() === noopAdProvider,
-      })}
-    >
-      <div id="ad-result-wrapper" class="ad full-width advertisement ad-h">
-        <div class="iconAndText">
-          <div class="icon">
-            <Fa icon="fa-ad" />
-          </div>
-          <div class="text textRight"></div>
-        </div>
-        <div id="ad-result"></div>
-      </div>
-    </div>
   );
 }

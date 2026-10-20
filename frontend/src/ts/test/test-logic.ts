@@ -166,6 +166,7 @@ export function startTest(now: number): boolean {
   }
 
   setTestActive(true);
+  AdController.onTestOrRaceStart();
   TestTimer.clear();
 
   for (const fb of getActiveFunboxesWithFunction("start")) {
@@ -1223,7 +1224,6 @@ async function showResult(
   const resultPrefocusTarget = qs("#resultButtonsPrefocusTarget");
   resultPrefocusTarget?.focus({ preventScroll: true });
 
-  void AdController.renderResult();
   setResultCalculating(false);
   TestUI.clearWords();
 }

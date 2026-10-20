@@ -52,4 +52,9 @@ describe("Footer", () => {
     expect(hrefs).toContain("/privacy");
     expect(hrefs.some((h) => h?.includes("security-policy"))).toBe(false);
   });
+  it("has no ad links while ads are off", () => {
+    const { container } = render(() => <Footer />);
+    expect(container.querySelector("[data-testid='ads-footer']")).toBeNull();
+    expect(container.textContent).not.toMatch(/Do Not Sell|cookie settings/);
+  });
 });

@@ -4,6 +4,7 @@ import { JSXElement } from "solid-js";
 import { queryClient } from "../../queries";
 import { getGlobalOffsetTop } from "../../states/core";
 import { convertRemToPixels } from "../../utils/numbers";
+import { AdRails } from "../ads/AdRails";
 import { DevTools } from "../dev/DevTools";
 import { Footer } from "../layout/footer/Footer";
 import { Header } from "../layout/header/Header";
@@ -36,6 +37,7 @@ export function App(): JSXElement {
           <Pages registry={pageRegistry} />
         </main>
         <Footer />
+        <AdRails />
       </div>
       <DevTools />
     </QueryClientProvider>
