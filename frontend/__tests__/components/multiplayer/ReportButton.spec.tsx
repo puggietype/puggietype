@@ -152,4 +152,91 @@ describe("ReportButton", () => {
     fireEvent.keyDown(getByTestId("mp-report-menu"), { key: "Escape" });
     expect(queryByTestId("mp-report-menu")).toBeNull();
   });
+
+  describe("long names", () => {
+    // 41 chars: the longest name the results/lobby rows have to cope with
+    const LONG = "SparklyDumplingWobblyNoodleTruffleBean417";
+    const long = { ...player("them"), name: LONG };
+    const rect = (left: number, width: number): DOMRect =>
+      ({ left, right: left + width, width }) as DOMRect;
+    const innerWidth = window.innerWidth;
+    afterEach(() => {
+      window.innerWidth = innerWidth;
+    });
+
+    it("is 41 chars", () => {
+      expect(LONG).toHaveLength(41);
+    });
+
+    for (const align of ["left", "right"] as const) {
+      it(`caps the menu width and wraps the full name (align ${align})`, () => {
+        const { getByTestId } = render(() => (
+          <ReportButton room={ROOM} player={long} align={align} />
+        ));
+        fireEvent.click(getByTestId("mp-report"));
+        const menu = getByTestId("mp-report-menu");
+        expect(menu).toHaveClass(
+          "w-max",
+          "max-w-[min(16rem,calc(100vw-2rem))]",
+        );
+        expect(menu).not.toHaveClass("min-w-max");
+        expect(menu).toHaveAttribute("aria-label", `report ${LONG} for`);
+        const header = getByTestId("mp-report-menu-header");
+        expect(header).toHaveTextContent(`report ${LONG} for`);
+        expect(header).toHaveClass("[overflow-wrap:anywhere]");
+        expect(header).not.toHaveClass("truncate");
+      });
+    }
+
+    it("nudges a menu that would run off the right edge back on screen", () => {
+      window.innerWidth = 390;
+      const spy = vi
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValue(rect(200, 256));
+      try {
+        const { getByTestId } = render(() => (
+          <ReportButton room={ROOM} player={long} align="left" />
+        ));
+        // 200 + 256 = 456, limit 390 - 16 = 374 -> pull back 82px
+        fireEvent.click(getByTestId("mp-report"));
+        expect(getByTestId("mp-report-menu").style.transform).toBe(
+          "translateX(-82px)",
+        );
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it("nudges a menu that would run off the left edge back on screen", () => {
+      window.innerWidth = 390;
+      const spy = vi
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValue(rect(-40, 256));
+      try {
+        const { getByTestId } = render(() => (
+          <ReportButton room={ROOM} player={long} />
+        ));
+        fireEvent.click(getByTestId("mp-report"));
+        expect(getByTestId("mp-report-menu").style.transform).toBe(
+          "translateX(56px)",
+        );
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it("leaves a menu that fits alone", () => {
+      window.innerWidth = 390;
+      const spy = vi
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValue(rect(20, 256));
+      try {
+        const { getByTestId } = renderFor("them");
+        fireEvent.click(getByTestId("mp-report"));
+        expect(getByTestId("mp-report-menu").style.transform).toBe("");
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   caretTarget,
+  clampTagShift,
   smoothToward,
   stackIndexes,
   stackTagLevels,
@@ -145,5 +146,39 @@ describe("stackTagLevels", () => {
       p1: 1,
       p2: -1,
     });
+  });
+});
+
+describe("clampTagShift", () => {
+  // QM-007: 390px viewport, ~173px tag, 4px edge margin
+  const maxRight = 390 - 4;
+
+  it("leaves tags that fit unshifted", () => {
+    expect(clampTagShift(100, 173, maxRight)).toBe(0);
+    expect(clampTagShift(213, 173, maxRight)).toBe(0);
+  });
+
+  it("slides tags near the right edge left until they fit", () => {
+    for (const left of [285, 300, 323]) {
+      const shift = clampTagShift(left, 173, maxRight);
+      expect(shift).toBeLessThan(0);
+      expect(left + shift + 173).toBe(maxRight);
+      expect(left + shift).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("keeps the left edge in bounds when the tag is wider than the space", () => {
+    expect(clampTagShift(200, 400, 316)).toBe(-200);
+    expect(clampTagShift(200, 400, 316, 16)).toBe(-184);
+  });
+
+  it("keeps tags inside at common widths", () => {
+    for (const vw of [320, 390, 1024, 1280]) {
+      for (const left of [0, vw / 2, vw - 40, vw - 2]) {
+        const shift = clampTagShift(left, 173, vw - 4);
+        expect(left + shift).toBeGreaterThanOrEqual(0);
+        expect(left + shift + 173).toBeLessThanOrEqual(vw - 4);
+      }
+    }
   });
 });
