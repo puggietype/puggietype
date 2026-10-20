@@ -1,4 +1,3 @@
-import { mapRange } from "@monkeytype/util/numbers";
 import {
   createResource,
   createSignal,
@@ -18,15 +17,19 @@ import { prefersReducedMotion } from "../../../utils/misc";
 import { AnimeShow } from "../../common/anime";
 import { type Character, loadCharacterSvg } from "./character-frames";
 import {
+  getHalfFrameMs,
+  getPugHeat,
+  getPugSpeed,
+  getShakeDuration,
+  isSteaming,
+} from "./pug-fast";
+import {
   getHandsFrame,
   getTransitionFrame,
   PUG_FRAME_FILES,
   PugFrame,
 } from "./pug-frames";
 
-const MIN_WPM = 130;
-const MAX_WPM = 180;
-const HALF_FRAME_MS = 45;
 const BLINK_MS = 140;
 
 const frameNames = Object.keys(PUG_FRAME_FILES) as PugFrame[];
@@ -50,13 +53,9 @@ export function Pug(): JSXElement {
     loadFrames,
   );
 
-  const speed = () =>
-    (getConfig.blindMode ? currentLiveStats.raw : currentLiveStats.wpm) ?? 0;
-
-  const shakeDuration = () => {
-    const duration = mapRange(speed(), MIN_WPM, MAX_WPM, 0.25, 0.01);
-    return duration === 0.25 ? 0 : duration;
-  };
+  const speed = () => getPugSpeed(currentLiveStats, getConfig.blindMode);
+  const heat = () => getPugHeat(speed());
+  const shakeDuration = () => getShakeDuration(speed());
 
   const [frame, setFrame] = createSignal<PugFrame>("idle");
   let halfTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -71,7 +70,7 @@ export function Pug(): JSXElement {
         return;
       }
       setFrame(half);
-      halfTimeout = setTimeout(() => setFrame(next), HALF_FRAME_MS);
+      halfTimeout = setTimeout(() => setFrame(next), getHalfFrameMs(heat()));
     },
   );
 
@@ -103,14 +102,18 @@ export function Pug(): JSXElement {
     <AnimeShow when={getConfig.monkey && isTestActive()}>
       <div
         class="animate-shake mx-auto flex h-0 w-fit justify-center"
+        data-ui-element="pug-shake"
         style={{ "animation-duration": `${shakeDuration()}s` }}
       >
         <div
-          class="absolute h-50 w-50 text-(--pug-ink)"
+          class="pug-fast absolute h-50 w-50 text-(--pug-ink)"
+          style={{ "--pug-heat": heat().toFixed(3) }}
           data-ui-element="pug"
+          data-steaming={isSteaming(heat()) ? "" : undefined}
           data-frame={frame()}
           data-character={myCharacter()}
         >
+          <div class="pug-fast-glow" aria-hidden="true"></div>
           <For each={frameNames}>
             {(name) => (
               <div
@@ -122,6 +125,23 @@ export function Pug(): JSXElement {
               ></div>
             )}
           </For>
+          <div class="pug-steam" aria-hidden="true">
+            <span>
+              <svg viewBox="0 0 12 28">
+                <path d="M6 27c-4-4 4-7 0-12s4-8 0-13"></path>
+              </svg>
+            </span>
+            <span>
+              <svg viewBox="0 0 12 28">
+                <path d="M6 27c-4-4 4-7 0-12s4-8 0-13"></path>
+              </svg>
+            </span>
+            <span>
+              <svg viewBox="0 0 12 28">
+                <path d="M6 27c-4-4 4-7 0-12s4-8 0-13"></path>
+              </svg>
+            </span>
+          </div>
         </div>
       </div>
     </AnimeShow>
