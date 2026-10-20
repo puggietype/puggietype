@@ -122,6 +122,10 @@ const AgeGate = await import("../../src/ts/multiplayer/age-gate");
 const Race = await import("../../src/ts/multiplayer/race");
 const Hooks = await import("../../src/ts/multiplayer/engine-hooks");
 const Store = await import("../../src/ts/multiplayer/store");
+const { getClientId } = await import("../../src/ts/multiplayer/client-id");
+
+const UUID_V4 =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 engine.isLocked = Hooks.isRaceInputLocked;
 
 // ---- helpers
@@ -863,14 +867,18 @@ describe("quick match", () => {
     clientFlags.add("quickMatch");
     receive(welcome(true));
     Race.joinQueue(73);
-    expect(queueSent()).toEqual([{ type: "queue:join", claimedWpm: 73 }]);
+    const clientId = getClientId();
+    expect(clientId).toMatch(UUID_V4);
+    expect(queueSent()).toEqual([
+      { type: "queue:join", claimedWpm: 73, clientId },
+    ]);
     expect(Store.queue()?.phase).toBe("joining");
     // a second click while queued doesn't send again
     Race.joinQueue(80);
     expect(queueSent()).toHaveLength(1);
     Race.leaveQueue();
     Race.joinQueue();
-    expect(queueSent().at(-1)).toEqual({ type: "queue:join" });
+    expect(queueSent().at(-1)).toEqual({ type: "queue:join", clientId });
   });
 
   it("tracks queue:status, cancels with queue:leave", () => {
