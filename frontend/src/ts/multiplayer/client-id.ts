@@ -143,6 +143,25 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
+ * Fallback when IndexedDB is missing, fails or hangs: the localStorage
+ * read-or-mint, serialised across tabs with a Web Lock so a second tab
+ * re-reads the first tab's id instead of minting its own (QM-009). Without
+ * navigator.locks (or if it fails) it is the plain `getClientId()`.
+ */
+async function lockedReadOrMint(): Promise<string> {
+  const locks = (globalThis.navigator as Navigator | undefined)?.locks;
+  if (typeof locks?.request !== "function") return getClientId();
+  try {
+    return await locks.request(STORAGE_KEY, async () => {
+      // re-read inside the lock: another tab may have just stored one
+      return readStoredClientId() ?? getClientId();
+    });
+  } catch {
+    return getClientId();
+  }
+}
+
+/**
  * Call ONLY from the find-match click path (RaceHome findMatch → joinQueue),
  * never at app start, in connect() or onMount (Legal condition, QM-009;
  * enforced by client-id-callers.spec.ts).
@@ -150,17 +169,17 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  * This browser's Quick Match client id, agreed across tabs: when several
  * fresh tabs click find match together they all resolve to the same id
  * (QM-009). Resolves at once when an id is already stored. Without IndexedDB
- * (or if it fails or is slow) falls back to the unlocked `getClientId()`.
+ * (or if it fails or is slow) falls back to `lockedReadOrMint()`.
  */
 export async function acquireClientId(): Promise<string> {
   const stored = readStoredClientId();
   if (stored !== undefined) return stored;
   pending ??= (async () => {
     try {
-      if (typeof indexedDB === "undefined") return getClientId();
+      if (typeof indexedDB === "undefined") return await lockedReadOrMint();
       return await withTimeout(getOrCreateInDb(), DB_TIMEOUT_MS);
     } catch {
-      return readStoredClientId() ?? getClientId();
+      return lockedReadOrMint();
     }
   })().finally(() => {
     pending = undefined;

@@ -233,6 +233,33 @@ function laggyStorage(lagMs = 50): Storage {
   };
 }
 
+/** Web Locks fake: callbacks for the same name run one at a time, cross-tab */
+function fakeLocks(): { request: LockManager["request"]; names: string[] } {
+  const tails = new Map<string, Promise<unknown>>();
+  const names: string[] = [];
+  const request = (async (name: string, cb: () => Promise<unknown>) => {
+    names.push(name);
+    const prev = tails.get(name) ?? Promise.resolve();
+    const run = prev.then(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      return cb();
+    });
+    tails.set(
+      name,
+      run.catch(() => undefined),
+    );
+    return run;
+  }) as unknown as LockManager["request"];
+  return { request, names };
+}
+
+/** IndexedDB whose open() throws synchronously (blocked storage) */
+const throwingIDB = {
+  open: () => {
+    throw new DOMException("blocked", "UnknownError");
+  },
+} as unknown as IDBFactory;
+
 type ClientIdModule = typeof import("../../src/ts/multiplayer/client-id");
 
 /** a fresh module instance, like a new tab */
@@ -352,6 +379,103 @@ describe("acquireClientId (QM-009)", () => {
     vi.stubGlobal("indexedDB", idb.factory);
     expect(await acquireClientId()).toBe(cur);
     expect(idb.log).toEqual(["tx1:get"]);
+  });
+
+  it("IndexedDB throws: two tabs clicking together agree via navigator.locks", async () => {
+    const locks = fakeLocks();
+    vi.stubGlobal("indexedDB", throwingIDB);
+    vi.stubGlobal("localStorage", laggyStorage(2));
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      locks: { request: locks.request },
+    });
+    const [tab1, tab2] = [await openTab(), await openTab()];
+    const [a, b] = await Promise.all([
+      tab1.acquireClientId(),
+      tab2.acquireClientId(),
+    ]);
+    expect(a).toMatch(UUID_V4);
+    expect(b).toBe(a);
+    expect(locks.names).toEqual([KEY, KEY]);
+  });
+
+  it("IndexedDB hangs: tabs agree via navigator.locks after the timeout", async () => {
+    const locks = fakeLocks();
+    vi.stubGlobal("indexedDB", { open: () => ({}) });
+    vi.stubGlobal("localStorage", laggyStorage(2));
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      locks: { request: locks.request },
+    });
+    const [tab1, tab2] = [await openTab(), await openTab()];
+    const [a, b] = await Promise.all([
+      tab1.acquireClientId(),
+      tab2.acquireClientId(),
+    ]);
+    expect(b).toBe(a);
+  }, 10_000);
+
+  it("no IndexedDB: tabs agree via navigator.locks", async () => {
+    const locks = fakeLocks();
+    vi.stubGlobal("indexedDB", undefined);
+    vi.stubGlobal("localStorage", laggyStorage(2));
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      locks: { request: locks.request },
+    });
+    const [tab1, tab2] = [await openTab(), await openTab()];
+    const [a, b] = await Promise.all([
+      tab1.acquireClientId(),
+      tab2.acquireClientId(),
+    ]);
+    expect(b).toBe(a);
+  });
+
+  it("IndexedDB throws and no locks: tabs diverge (control)", async () => {
+    vi.stubGlobal("indexedDB", throwingIDB);
+    vi.stubGlobal("localStorage", laggyStorage(2));
+    vi.stubGlobal("navigator", { ...navigator, locks: undefined });
+    const [tab1, tab2] = [await openTab(), await openTab()];
+    const [a, b] = await Promise.all([
+      tab1.acquireClientId(),
+      tab2.acquireClientId(),
+    ]);
+    expect(b).not.toBe(a);
+  });
+
+  it("re-reads inside the lock and adopts an id stored while waiting", async () => {
+    const other = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+    vi.stubGlobal("indexedDB", throwingIDB);
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      locks: {
+        request: async (_n: string, cb: () => Promise<string>) => {
+          localStorage.setItem(KEY, other); // another tab won the lock first
+          return cb();
+        },
+      },
+    });
+    expect(await acquireClientId()).toBe(other);
+  });
+
+  it("without navigator.locks keeps the plain fallback", async () => {
+    vi.stubGlobal("indexedDB", throwingIDB);
+    vi.stubGlobal("navigator", { ...navigator, locks: undefined });
+    const id = await acquireClientId();
+    expect(id).toMatch(UUID_V4);
+    expect(localStorage.getItem(KEY)).toBe(id);
+  });
+
+  it("falls back to the plain path if the lock request rejects", async () => {
+    vi.stubGlobal("indexedDB", throwingIDB);
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      locks: {
+        request: async () => Promise.reject(new Error("SecurityError")),
+      },
+    });
+    const id = await acquireClientId();
+    expect(localStorage.getItem(KEY)).toBe(id);
   });
 
   it("falls back to localStorage without IndexedDB", async () => {
