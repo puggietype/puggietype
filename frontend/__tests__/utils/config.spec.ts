@@ -23,6 +23,23 @@ describe("config.ts", () => {
         expect(result).toHaveProperty(key, value);
       }
     });
+    describe("typing pug default", () => {
+      it("is on by default", () => {
+        expect(getDefaultConfig().monkey).toBe(true);
+        expect(migrateConfig({}).monkey).toBe(true);
+      });
+      it("keeps the pug off for users who turned it off", () => {
+        expect(migrateConfig({ monkey: false }).monkey).toBe(false);
+      });
+      it("keeps the pug on for users who turned it on", () => {
+        expect(migrateConfig({ monkey: true }).monkey).toBe(true);
+      });
+      it("default stays compatible with default live stat styles", () => {
+        const d = getDefaultConfig();
+        expect(d.liveSpeedStyle).not.toBe("text");
+        expect(d.liveAccStyle).not.toBe("text");
+      });
+    });
     it("should not merge properties which are not in the default config (legacy properties)", () => {
       const partialConfig = {
         legacy: true,

@@ -85,7 +85,7 @@ const obj: Config = {
   strictSpace: false,
   minAcc: "off",
   minAccCustom: 90,
-  monkey: false,
+  monkey: true,
   repeatQuotes: "off",
   resultSaving: true,
   oppositeShiftMode: "off",
