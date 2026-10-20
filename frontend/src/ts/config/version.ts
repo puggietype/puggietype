@@ -68,23 +68,39 @@ export function remoteConfigVersionKey(uid: string): string {
 /**
  * Same one-time migration for a signed-in account's server config. Tracked
  * per account (the local key is already written by the time the server
- * config arrives). Returns the config to apply and whether it changed, so
- * the caller can save the change back to the server. Without a uid nothing
- * runs and nothing is recorded.
+ * config arrives). Returns the config to apply right away; when it changed,
+ * the change is saved to the account and the per-account version is only
+ * recorded once that save succeeds, so a failed save retries next load.
+ * Without a uid nothing runs and nothing is recorded.
  */
 export function runRemoteConfigVersionMigration<T extends Partial<Config>>(
   config: T,
   uid: string | undefined,
   storage: VersionStorage,
-): { config: T; changed: boolean } {
-  if (uid === undefined || uid === "") return { config, changed: false };
+  save: (patch: Partial<Config>) => Promise<boolean>,
+): { config: T; changed: boolean; done: Promise<boolean> } {
+  if (uid === undefined || uid === "") {
+    return { config, changed: false, done: Promise.resolve(false) };
+  }
   const key = remoteConfigVersionKey(uid);
   const raw = storage.getItem(key);
   const parsed = raw === null ? 0 : Number.parseInt(raw, 10);
   const fromVersion = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
   const migrated = migrateConfigVersion(config, fromVersion);
-  if (fromVersion < CONFIG_VERSION) {
-    storage.setItem(key, String(CONFIG_VERSION));
+  const record = (): void => {
+    if (fromVersion < CONFIG_VERSION) {
+      storage.setItem(key, String(CONFIG_VERSION));
+    }
+  };
+  if (migrated === config) {
+    record();
+    return { config, changed: false, done: Promise.resolve(true) };
   }
-  return { config: migrated, changed: migrated !== config };
+  const done = save({ monkey: migrated.monkey })
+    .then((ok) => {
+      if (ok) record();
+      return ok;
+    })
+    .catch(() => false);
+  return { config: migrated, changed: true, done };
 }
