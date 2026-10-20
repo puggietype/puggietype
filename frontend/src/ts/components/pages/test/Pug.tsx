@@ -1,4 +1,5 @@
 import {
+  createMemo,
   createResource,
   createSignal,
   For,
@@ -20,7 +21,7 @@ import {
   getHalfFrameMs,
   getPugHeat,
   getPugSpeed,
-  getShakeDuration,
+  getShakeState,
   isSteaming,
 } from "./pug-fast";
 import {
@@ -55,7 +56,13 @@ export function Pug(): JSXElement {
 
   const speed = () => getPugSpeed(currentLiveStats, getConfig.blindMode);
   const heat = () => getPugHeat(speed());
-  const shakeDuration = () => getShakeDuration(speed());
+  // hysteresis keeps the shake from flickering on and off around 130 wpm
+  let shakeActive = false;
+  const shakeDuration = createMemo(() => {
+    const next = getShakeState(shakeActive, speed());
+    shakeActive = next.active;
+    return next.duration;
+  });
 
   const [frame, setFrame] = createSignal<PugFrame>("idle");
   let halfTimeout: ReturnType<typeof setTimeout> | undefined;

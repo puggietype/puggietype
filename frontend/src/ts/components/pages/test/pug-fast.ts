@@ -42,3 +42,26 @@ export function getHalfFrameMs(heat: number): number {
 export function isSteaming(heat: number): boolean {
   return heat >= 0.15;
 }
+
+/**
+ * Shake with hysteresis, so live wpm jitter around 130 doesn't toggle it on
+ * and off every update. Starts above SHAKE_ON_WPM, stops below
+ * SHAKE_OFF_WPM; in between it keeps the slowest running shake. Above
+ * SHAKE_ON_WPM the duration is exactly getShakeDuration.
+ */
+export const SHAKE_ON_WPM = 133;
+export const SHAKE_OFF_WPM = 128;
+const SHAKE_HOLD_WPM = FAST_MIN_WPM + 1;
+
+export function getShakeState(
+  wasActive: boolean,
+  wpm: number,
+): { active: boolean; duration: number } {
+  const speed = Number.isFinite(wpm) ? wpm : 0;
+  const active = wasActive ? speed >= SHAKE_OFF_WPM : speed >= SHAKE_ON_WPM;
+  if (!active) return { active, duration: 0 };
+  return {
+    active,
+    duration: getShakeDuration(Math.max(speed, SHAKE_HOLD_WPM)),
+  };
+}

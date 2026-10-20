@@ -7,7 +7,10 @@ import {
   getPugHeat,
   getPugSpeed,
   getShakeDuration,
+  getShakeState,
   isSteaming,
+  SHAKE_OFF_WPM,
+  SHAKE_ON_WPM,
 } from "../../../../src/ts/components/pages/test/pug-fast";
 
 describe("pug-fast trigger", () => {
@@ -64,5 +67,54 @@ describe("pug-fast trigger", () => {
     expect(isSteaming(0.1)).toBe(false);
     expect(isSteaming(getPugHeat(140))).toBe(true);
     expect(isSteaming(1)).toBe(true);
+  });
+});
+
+describe("pug shake hysteresis", () => {
+  const run = (wpms: number[]): { active: boolean; duration: number }[] => {
+    let active = false;
+    return wpms.map((w) => {
+      const s = getShakeState(active, w);
+      active = s.active;
+      return s;
+    });
+  };
+
+  it("does not toggle while live wpm jitters at 129-132", () => {
+    const states = run([129, 131, 130, 132, 129, 131, 130, 132]);
+    expect(states.every((s) => !s.active && s.duration === 0)).toBe(true);
+  });
+
+  it("starts at 133 and keeps shaking through 128-132 jitter", () => {
+    const states = run([133, 130, 131, 129, 132, 128, 130]);
+    expect(states.every((s) => s.active && s.duration > 0)).toBe(true);
+  });
+
+  it("stops below 128", () => {
+    const states = run([140, 127]);
+    expect(states[1]).toEqual({ active: false, duration: 0 });
+  });
+
+  it("matches the Monkeytype ramp exactly from 133 up", () => {
+    for (const w of [133, 140, 155, 170, 180, 220]) {
+      expect(getShakeState(true, w).duration).toBe(getShakeDuration(w));
+      expect(getShakeState(false, w).duration).toBe(getShakeDuration(w));
+    }
+  });
+
+  it("holds the slowest shake in the band instead of 0", () => {
+    expect(getShakeState(true, 129).duration).toBe(getShakeDuration(131));
+  });
+
+  it("thresholds sit around Monkeytype's 130", () => {
+    expect(SHAKE_OFF_WPM).toBeLessThan(FAST_MIN_WPM);
+    expect(SHAKE_ON_WPM).toBeGreaterThan(FAST_MIN_WPM);
+  });
+
+  it("treats NaN as stopped", () => {
+    expect(getShakeState(true, Number.NaN)).toEqual({
+      active: false,
+      duration: 0,
+    });
   });
 });

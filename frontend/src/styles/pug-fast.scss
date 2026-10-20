@@ -20,7 +20,7 @@
   );
   --pug-blush: color-mix(
     in oklab,
-    #c81e14 calc(var(--pug-heat-s) * 100%),
+    var(--pug-fast-blush, #c81e14) calc(var(--pug-heat-s) * 100%),
     var(--pug-blush-base, #f4a6a6)
   );
 }
@@ -42,6 +42,12 @@
     var(--pug-fast-red) calc(var(--pug-heat-s) * 20%),
     var(--pug-fill-base, #f0d9b5)
   );
+}
+
+// non-puggie (line-art) themes flush toward the theme's own error colour
+:root[data-pug="mono"] .pug-fast {
+  --pug-fast-red: var(--error-color, #ca4754);
+  --pug-fast-blush: var(--error-color, #ca4754);
 }
 
 // capture the theme values one level up so the child can mix them
