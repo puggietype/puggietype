@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   __resetClientIdForTests,
   getClientId,
+  readStoredClientId,
 } from "../../src/ts/multiplayer/client-id";
 
 const KEY = "puggie-mp-client-id";
@@ -87,5 +88,39 @@ describe("getClientId", () => {
     // new page load gets a new id
     __resetClientIdForTests();
     expect(getClientId()).not.toBe(id);
+  });
+});
+
+describe("readStoredClientId", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetClientIdForTests();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  it("never mints: no key exists before a click", () => {
+    expect(readStoredClientId()).toBeUndefined();
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+
+  it("returns the last valid value written by any tab", () => {
+    getClientId();
+    const later = "bbbbbbbb-bbbb-4bbb-9bbb-bbbbbbbbbbbb";
+    localStorage.setItem(KEY, later);
+    expect(readStoredClientId()).toBe(later);
+  });
+
+  it("ignores malformed values and storage errors", () => {
+    localStorage.setItem(KEY, "123e4567-e89b-12d3-a456-426614174000");
+    expect(readStoredClientId()).toBeUndefined();
+    vi.stubGlobal("localStorage", {
+      getItem: (): never => {
+        throw new Error("SecurityError");
+      },
+    });
+    expect(readStoredClientId()).toBeUndefined();
   });
 });

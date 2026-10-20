@@ -23,7 +23,7 @@ import { focusWords, isMounted as isTestUIMounted } from "../test/test-ui";
 import { words as testWords } from "../test/test-words";
 import { isAgeConfirmed } from "./age-gate";
 import { MultiplayerClient } from "./client";
-import { getClientId } from "./client-id";
+import { getClientId, readStoredClientId } from "./client-id";
 import {
   discardPendingRaceFinish,
   isRaceActive,
@@ -218,7 +218,9 @@ export function joinQueue(claimedWpm?: number): void {
   if (!quickMatchOn() || !isAgeConfirmed() || queue() !== undefined) return;
   setQueue(startQueue(Date.now()));
   client.connect();
-  const clientId = getClientId();
+  // re-read right before sending: if another tab stored its id after this one
+  // minted, adopt the stored value so both tabs send the same id (QM-009)
+  const clientId = readStoredClientId() ?? getClientId();
   send(
     claimedWpm === undefined
       ? { type: "queue:join", clientId }

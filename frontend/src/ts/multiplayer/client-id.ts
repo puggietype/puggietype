@@ -43,6 +43,19 @@ export function getClientId(): string {
   }
 }
 
+/**
+ * Re-read the stored id without minting one. Used right before `queue:join` so
+ * that, across tabs, the last writer wins (QM-009).
+ */
+export function readStoredClientId(): string | undefined {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return isValidClientId(stored) ? stored : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** test-only: forget the in-memory fallback id */
 export function __resetClientIdForTests(): void {
   memoryId = undefined;

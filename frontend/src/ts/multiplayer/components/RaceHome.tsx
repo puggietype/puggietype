@@ -11,6 +11,7 @@ import { Button } from "../../components/common/Button";
 import { PugHead } from "../../components/common/PugHead";
 import { showNoticeNotification } from "../../states/notifications";
 import { cn } from "../../utils/cn";
+import { getClientId } from "../client-id";
 import { isFlagEnabled } from "../feature-flags";
 import { PUBLIC_MATCHES_ENABLED } from "../flags";
 import { normalizeRoomCode } from "../helpers";
@@ -62,6 +63,8 @@ export function RaceHome(props: { code?: string }): JSXElement {
 
   const [findingPace, setFindingPace] = createSignal(false);
   const findMatch = (): void => {
+    // QM-009: mint/store the Quick Match id synchronously on click, before any await
+    getClientId();
     setFindingPace(true);
     void recentClaimedWpm().then((wpm) => {
       setFindingPace(false);
