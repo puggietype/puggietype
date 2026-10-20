@@ -4,8 +4,11 @@ import type { PartialConfig } from "@monkeytype/schemas/configs";
 import {
   CONFIG_VERSION,
   CONFIG_VERSION_KEY,
+  MAX_REMOTE_MIGRATION_ATTEMPTS,
   migrateConfigVersion,
   readConfigVersion,
+  recordUserConfigVersion,
+  remoteConfigAttemptsKey,
   remoteConfigVersionKey,
   runConfigVersionMigration,
   runRemoteConfigVersionMigration,
@@ -89,9 +92,9 @@ describe("config version migration", () => {
   });
 
   describe("server config", () => {
-    const ok = async (): Promise<boolean> => true;
-    const fail = async (): Promise<boolean> => false;
-    const reject = async (): Promise<boolean> => {
+    const ok = async (): Promise<number> => 200;
+    const fail = async (): Promise<number> => 500;
+    const reject = async (): Promise<number> => {
       throw new Error("offline");
     };
 
@@ -105,7 +108,7 @@ describe("config version migration", () => {
         async (p) => {
           saved.push(p);
           expect(s.data.has(remoteConfigVersionKey("u1"))).toBe(false);
-          return true;
+          return 200;
         },
       );
       expect(out.config.monkey).toBe(true);
@@ -152,7 +155,7 @@ describe("config version migration", () => {
         s,
         async () => {
           calls++;
-          return true;
+          return 200;
         },
       );
       expect(out.config.monkey).toBe(false);
@@ -207,6 +210,108 @@ describe("config version migration", () => {
       expect(out.config.monkey).toBe(false);
       expect(await out.done).toBe(false);
       expect(s.data.size).toBe(0);
+    });
+
+    const statusSave =
+      (status: number, calls: number[]) => async (): Promise<number> => {
+        calls.push(status);
+        return status;
+      };
+
+    it("caps retryable failures at MAX attempts across loads, then records done", async () => {
+      expect(MAX_REMOTE_MIGRATION_ATTEMPTS).toBe(3);
+      for (const status of [500, 429, 0, 503]) {
+        const s = memoryStorage();
+        const calls: number[] = [];
+        for (let load = 1; load <= 5; load++) {
+          const out = runRemoteConfigVersionMigration(
+            oldSave,
+            "u1",
+            s,
+            statusSave(status, calls),
+          );
+          expect(out.changed).toBe(load <= 3);
+          expect(await out.done).toBe(load > 3);
+          const recorded = s.data.get(remoteConfigVersionKey("u1"));
+          expect(recorded).toBe(load >= 3 ? "1" : undefined);
+        }
+        expect(calls).toHaveLength(MAX_REMOTE_MIGRATION_ATTEMPTS);
+      }
+    });
+
+    it("thrown save errors count toward the cap too", async () => {
+      const s = memoryStorage();
+      for (let load = 0; load < 4; load++) {
+        await runRemoteConfigVersionMigration(oldSave, "u1", s, reject).done;
+      }
+      expect(s.data.get(remoteConfigAttemptsKey("u1"))).toBe("3");
+      expect(s.data.get(remoteConfigVersionKey("u1"))).toBe("1");
+    });
+
+    it("429 / 5xx / 0 retry: a later success inside the cap records done", async () => {
+      const s = memoryStorage();
+      await runRemoteConfigVersionMigration(oldSave, "u1", s, async () => 429)
+        .done;
+      await runRemoteConfigVersionMigration(oldSave, "u1", s, async () => 0)
+        .done;
+      expect(s.data.has(remoteConfigVersionKey("u1"))).toBe(false);
+      const third = runRemoteConfigVersionMigration(oldSave, "u1", s, ok);
+      expect(third.changed).toBe(true);
+      expect(await third.done).toBe(true);
+      expect(s.data.get(remoteConfigVersionKey("u1"))).toBe("1");
+    });
+
+    it("4xx other than 429 is final: recorded after one attempt", async () => {
+      for (const status of [400, 401, 403, 404, 422]) {
+        const s = memoryStorage();
+        const calls: number[] = [];
+        const first = runRemoteConfigVersionMigration(
+          oldSave,
+          "u1",
+          s,
+          statusSave(status, calls),
+        );
+        expect(first.config.monkey).toBe(true);
+        expect(await first.done).toBe(false);
+        expect(s.data.get(remoteConfigVersionKey("u1"))).toBe("1");
+        const next = runRemoteConfigVersionMigration(
+          oldSave,
+          "u1",
+          s,
+          statusSave(status, calls),
+        );
+        expect(next.changed).toBe(false);
+        expect(next.config.monkey).toBe(false);
+        expect(calls).toEqual([status]);
+      }
+    });
+
+    it("attempts are counted per uid", async () => {
+      const s = memoryStorage();
+      for (let load = 0; load < 3; load++) {
+        await runRemoteConfigVersionMigration(oldSave, "u1", s, fail).done;
+      }
+      expect(s.data.get(remoteConfigVersionKey("u1"))).toBe("1");
+      expect(
+        runRemoteConfigVersionMigration(oldSave, "u2", s, ok).changed,
+      ).toBe(true);
+    });
+
+    it("user choice during a failing migration window is never overridden", async () => {
+      const s = memoryStorage({ [CONFIG_VERSION_KEY]: "1" });
+      await runRemoteConfigVersionMigration(oldSave, "u1", s, fail).done;
+      recordUserConfigVersion("u1", s);
+      const next = runRemoteConfigVersionMigration(oldSave, "u1", s, ok);
+      expect(next.changed).toBe(false);
+      expect(next.config.monkey).toBe(false);
+    });
+
+    it("recordUserConfigVersion: signed out only writes the local version", () => {
+      const s = memoryStorage();
+      recordUserConfigVersion(null, s);
+      expect([...s.data.keys()]).toEqual([CONFIG_VERSION_KEY]);
+      recordUserConfigVersion("u9", s);
+      expect(s.data.get(remoteConfigVersionKey("u9"))).toBe("1");
     });
   });
 });

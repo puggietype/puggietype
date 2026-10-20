@@ -6,7 +6,7 @@ import { JSXElement } from "solid-js";
 import * as CustomThemes from "../collections/custom-themes";
 import { getDefaultConfig } from "../constants/default-config";
 import { isBootSettled } from "../states/boot";
-import { isAuthenticated } from "../states/core";
+import { getUserId, isAuthenticated } from "../states/core";
 import { showNoticeNotification } from "../states/notifications";
 import { FaObject } from "../types/font-awesome";
 import { isDevEnvironment } from "../utils/env";
@@ -14,6 +14,7 @@ import { reloadAfter } from "../utils/misc";
 import { capitalizeFirstLetter } from "../utils/strings";
 import { getOptions } from "../utils/zod";
 import { canSetFunboxWithConfig } from "./funbox-validation";
+import { recordUserConfigVersion } from "./version";
 // type SetBlock = {
 //   [K in keyof ConfigSchemas.Config]?: ConfigSchemas.Config[K][];
 // };
@@ -1288,6 +1289,10 @@ export const configMetadata: ConfigMetadataObject = {
         };
       }
       return {};
+    },
+    // an explicit choice ends any pending one-time migration (see version.ts)
+    afterSet: ({ nosave }) => {
+      if (!nosave) recordUserConfigVersion(getUserId(), localStorage);
     },
   },
   monkeyPowerLevel: {

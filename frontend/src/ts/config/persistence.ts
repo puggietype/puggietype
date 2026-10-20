@@ -1,5 +1,6 @@
 import { Config as ConfigSchema } from "@monkeytype/schemas/configs";
 import { saveConfig } from "../ape/config";
+import { getUserId } from "../states/core";
 import { setAccountButtonSpinner } from "../states/header";
 import { Config } from "./store";
 import * as ConfigSchemas from "@monkeytype/schemas/configs";
@@ -8,6 +9,7 @@ import { migrateConfig } from "./utils";
 import { LocalStorageWithSchema } from "../utils/local-storage-with-schema";
 import { isObject } from "../utils/misc";
 import { debounce } from "throttle-debounce";
+import { recordUserConfigVersion } from "./version";
 
 let configToSend: Partial<ConfigSchemas.Config> = {};
 
@@ -42,6 +44,8 @@ export function saveFullConfigToLocalStorage(noDbCheck = false): void {
   console.log("saving full config to localStorage");
   configLS.set(Config);
   if (!noDbCheck) {
+    // user pushed a whole config (import, preset): its pug value is their choice
+    recordUserConfigVersion(getUserId(), localStorage);
     setAccountButtonSpinner(true);
     void saveConfig(Config).finally(() => {
       setAccountButtonSpinner(false);
