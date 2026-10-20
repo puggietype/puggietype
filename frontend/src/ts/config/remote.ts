@@ -7,9 +7,16 @@ import Ape from "../ape";
 import { SnapshotInitError } from "../utils/snapshot-init-error";
 import { getDefaultConfig } from "../constants/default-config";
 import { Config } from "./store";
+import { runRemoteConfigVersionMigration } from "./version";
+import { getAuthenticatedUser } from "../firebase";
+import { saveConfig } from "../ape/config";
 
 export async function updateFromServer(): Promise<void> {
-  const remoteConfig = await getRemoteConfig();
+  const { config: remoteConfig, changed } = runRemoteConfigVersionMigration(
+    await getRemoteConfig(),
+    getAuthenticatedUser()?.uid,
+    localStorage,
+  );
 
   const areConfigsEqual =
     JSON.stringify(Config) === JSON.stringify(remoteConfig);
@@ -21,6 +28,8 @@ export async function updateFromServer(): Promise<void> {
     await applyConfig(remoteConfig);
     saveFullConfigToLocalStorage(true);
   }
+  // one-time pug-on migration: store it on the account too
+  if (changed) void saveConfig({ monkey: remoteConfig.monkey });
 }
 
 async function getRemoteConfig(): Promise<ConfigSchemas.Config> {

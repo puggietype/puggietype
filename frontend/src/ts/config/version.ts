@@ -60,3 +60,31 @@ export function runConfigVersionMigration<T extends Partial<Config>>(
   if (fromVersion < CONFIG_VERSION) writeConfigVersion(storage);
   return migrated;
 }
+
+export function remoteConfigVersionKey(uid: string): string {
+  return `${CONFIG_VERSION_KEY}:remote:${uid}`;
+}
+
+/**
+ * Same one-time migration for a signed-in account's server config. Tracked
+ * per account (the local key is already written by the time the server
+ * config arrives). Returns the config to apply and whether it changed, so
+ * the caller can save the change back to the server. Without a uid nothing
+ * runs and nothing is recorded.
+ */
+export function runRemoteConfigVersionMigration<T extends Partial<Config>>(
+  config: T,
+  uid: string | undefined,
+  storage: VersionStorage,
+): { config: T; changed: boolean } {
+  if (uid === undefined || uid === "") return { config, changed: false };
+  const key = remoteConfigVersionKey(uid);
+  const raw = storage.getItem(key);
+  const parsed = raw === null ? 0 : Number.parseInt(raw, 10);
+  const fromVersion = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  const migrated = migrateConfigVersion(config, fromVersion);
+  if (fromVersion < CONFIG_VERSION) {
+    storage.setItem(key, String(CONFIG_VERSION));
+  }
+  return { config: migrated, changed: migrated !== config };
+}

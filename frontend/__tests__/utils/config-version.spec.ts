@@ -6,7 +6,9 @@ import {
   CONFIG_VERSION_KEY,
   migrateConfigVersion,
   readConfigVersion,
+  remoteConfigVersionKey,
   runConfigVersionMigration,
+  runRemoteConfigVersionMigration,
 } from "../../src/ts/config/version";
 
 type MemoryStorage = {
@@ -84,5 +86,73 @@ describe("config version migration", () => {
     expect(
       readConfigVersion(memoryStorage({ [CONFIG_VERSION_KEY]: "-3" })),
     ).toBe(0);
+  });
+
+  describe("server config", () => {
+    it("missing version: turns the pug on, flags a save, records version 1", () => {
+      const s = memoryStorage();
+      const out = runRemoteConfigVersionMigration(oldSave, "u1", s);
+      expect(out.config.monkey).toBe(true);
+      expect(out.changed).toBe(true);
+      expect(s.data.get(remoteConfigVersionKey("u1"))).toBe("1");
+    });
+
+    it("older version: migrates", () => {
+      const s = memoryStorage({ [remoteConfigVersionKey("u1")]: "0" });
+      expect(runRemoteConfigVersionMigration(oldSave, "u1", s).changed).toBe(
+        true,
+      );
+    });
+
+    it("current version: an off on the account stays off", () => {
+      const s = memoryStorage({ [remoteConfigVersionKey("u1")]: "1" });
+      const out = runRemoteConfigVersionMigration(oldSave, "u1", s);
+      expect(out.config.monkey).toBe(false);
+      expect(out.changed).toBe(false);
+    });
+
+    it("runs once per account", () => {
+      const s = memoryStorage();
+      runRemoteConfigVersionMigration(oldSave, "u1", s);
+      expect(runRemoteConfigVersionMigration(oldSave, "u1", s).changed).toBe(
+        false,
+      );
+      expect(runRemoteConfigVersionMigration(oldSave, "u2", s).changed).toBe(
+        true,
+      );
+    });
+
+    it("is independent of the local version written earlier on load", () => {
+      const s = memoryStorage({ [CONFIG_VERSION_KEY]: "1" });
+      expect(runRemoteConfigVersionMigration(oldSave, "u1", s).changed).toBe(
+        true,
+      );
+    });
+
+    it("keeps the text-style exception", () => {
+      const s = memoryStorage();
+      const out = runRemoteConfigVersionMigration(
+        { ...oldSave, liveSpeedStyle: "text" },
+        "u1",
+        s,
+      );
+      expect(out.config.monkey).toBe(false);
+      expect(out.changed).toBe(false);
+      expect(s.data.get(remoteConfigVersionKey("u1"))).toBe("1");
+    });
+
+    it("server config already on: nothing to save", () => {
+      const s = memoryStorage();
+      const out = runRemoteConfigVersionMigration({ monkey: true }, "u1", s);
+      expect(out.changed).toBe(false);
+    });
+
+    it("no uid: does nothing and records nothing", () => {
+      const s = memoryStorage();
+      const out = runRemoteConfigVersionMigration(oldSave, undefined, s);
+      expect(out.changed).toBe(false);
+      expect(out.config.monkey).toBe(false);
+      expect(s.data.size).toBe(0);
+    });
   });
 });
