@@ -13,6 +13,16 @@ export async function saveConfig(config: Partial<Config>): Promise<boolean> {
   }
   return true;
 }
+
+/** background save with no toast; resolves to the HTTP status (0 = not sent) */
+export async function saveConfigSilently(
+  config: Partial<Config>,
+): Promise<number> {
+  if (!isAuthenticated()) return 0;
+  const response = await Ape.configs.save({ body: config });
+  return response.status;
+}
+
 export async function deleteConfig(): Promise<void> {
   if (isAuthenticated()) {
     const response = await Ape.configs.delete();

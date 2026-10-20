@@ -65,42 +65,84 @@ export function remoteConfigVersionKey(uid: string): string {
   return `${CONFIG_VERSION_KEY}:remote:${uid}`;
 }
 
+export function remoteConfigAttemptsKey(uid: string): string {
+  return `${remoteConfigVersionKey(uid)}:attempts`;
+}
+
+/** account migration saves tried (across loads) before giving up */
+export const MAX_REMOTE_MIGRATION_ATTEMPTS = 3;
+
+/**
+ * Called when the user sets the pug explicitly: records the current version
+ * locally and for the signed-in account, so a pending (failed) migration can
+ * never override that choice on a later load.
+ */
+export function recordUserConfigVersion(
+  uid: string | null | undefined,
+  storage: VersionStorage,
+): void {
+  writeConfigVersion(storage);
+  if (uid !== null && uid !== undefined && uid !== "") {
+    storage.setItem(remoteConfigVersionKey(uid), String(CONFIG_VERSION));
+  }
+}
+
+function readCount(storage: VersionStorage, key: string): number {
+  const parsed = Number.parseInt(storage.getItem(key) ?? "", 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+/** a 4xx other than 429 won't succeed on retry */
+function isFinalSaveStatus(status: number): boolean {
+  return status >= 400 && status < 500 && status !== 429;
+}
+
 /**
  * Same one-time migration for a signed-in account's server config. Tracked
  * per account (the local key is already written by the time the server
  * config arrives). Returns the config to apply right away; when it changed,
- * the change is saved to the account and the per-account version is only
- * recorded once that save succeeds, so a failed save retries next load.
- * Without a uid nothing runs and nothing is recorded.
+ * the change is saved to the account (silently) and the per-account version
+ * is recorded once that save succeeds. A failed save retries on the next
+ * load, unless it was a final rejection (4xx other than 429) or
+ * MAX_REMOTE_MIGRATION_ATTEMPTS saves have been tried; then it is recorded
+ * as done anyway. Without a uid nothing runs and nothing is recorded.
+ * `save` resolves to the HTTP status (0 when nothing was sent).
  */
 export function runRemoteConfigVersionMigration<T extends Partial<Config>>(
   config: T,
   uid: string | undefined,
   storage: VersionStorage,
-  save: (patch: Partial<Config>) => Promise<boolean>,
+  save: (patch: Partial<Config>) => Promise<number>,
 ): { config: T; changed: boolean; done: Promise<boolean> } {
   if (uid === undefined || uid === "") {
     return { config, changed: false, done: Promise.resolve(false) };
   }
   const key = remoteConfigVersionKey(uid);
-  const raw = storage.getItem(key);
-  const parsed = raw === null ? 0 : Number.parseInt(raw, 10);
-  const fromVersion = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-  const migrated = migrateConfigVersion(config, fromVersion);
+  const attemptsKey = remoteConfigAttemptsKey(uid);
+  const fromVersion = readCount(storage, key);
   const record = (): void => {
     if (fromVersion < CONFIG_VERSION) {
       storage.setItem(key, String(CONFIG_VERSION));
     }
   };
+  const attempts = readCount(storage, attemptsKey) + 1;
+  const migrated =
+    attempts > MAX_REMOTE_MIGRATION_ATTEMPTS
+      ? config
+      : migrateConfigVersion(config, fromVersion);
   if (migrated === config) {
     record();
     return { config, changed: false, done: Promise.resolve(true) };
   }
+  // counted before the save, so a load closed mid-request still counts
+  storage.setItem(attemptsKey, String(attempts));
+  const giveUp = attempts >= MAX_REMOTE_MIGRATION_ATTEMPTS;
   const done = save({ monkey: migrated.monkey })
-    .then((ok) => {
-      if (ok) record();
+    .catch(() => 0)
+    .then((status) => {
+      const ok = status === 200;
+      if (ok || giveUp || isFinalSaveStatus(status)) record();
       return ok;
-    })
-    .catch(() => false);
+    });
   return { config: migrated, changed: true, done };
 }
