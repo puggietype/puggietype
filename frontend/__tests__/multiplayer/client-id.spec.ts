@@ -134,7 +134,10 @@ function fakeIndexedDB(backing = new Map<string, unknown>()): {
   factory: IDBFactory;
   backing: Map<string, unknown>;
   maxActive: () => number;
+  log: string[];
 } {
+  const log: string[] = [];
+  let txCount = 0;
   let tail: Promise<void> = Promise.resolve();
   let active = 0;
   let max = 0;
@@ -143,6 +146,7 @@ function fakeIndexedDB(backing = new Map<string, unknown>()): {
   };
   const db = {
     transaction: () => {
+      const txId = ++txCount;
       const tx: Record<string, unknown> & {
         oncomplete?: () => void;
         objectStore: () => unknown;
@@ -152,13 +156,24 @@ function fakeIndexedDB(backing = new Map<string, unknown>()): {
           get: (key: string) => {
             const req: { result?: unknown; onsuccess?: () => void } = {};
             ops.push(() => {
+              log.push(`tx${txId}:get`);
               req.result = structuredClone(backing.get(key));
               req.onsuccess?.();
             });
             return req;
           },
           put: (value: unknown, key: string) => {
-            ops.push(() => backing.set(key, structuredClone(value)));
+            ops.push(() => {
+              log.push(`tx${txId}:put`);
+              backing.set(key, structuredClone(value));
+            });
+            return {};
+          },
+          delete: (key: string) => {
+            ops.push(() => {
+              log.push(`tx${txId}:delete`);
+              backing.delete(key);
+            });
             return {};
           },
         }),
@@ -195,7 +210,7 @@ function fakeIndexedDB(backing = new Map<string, unknown>()): {
       return req;
     },
   } as unknown as IDBFactory;
-  return { factory, backing, maxActive: () => max };
+  return { factory, backing, maxActive: () => max, log };
 }
 
 /**
@@ -303,6 +318,40 @@ describe("acquireClientId (QM-009)", () => {
     expect(id).toMatch(UUID_V4);
     expect(id).not.toBe(old);
     expect(idb.backing.get("current")).toMatchObject({ id });
+  });
+
+  it("deletes and replaces a stale record inside the same transaction", async () => {
+    const old = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const idb = fakeIndexedDB(
+      new Map([["current", { id: old, at: Date.now() - 60_000 }]]),
+    );
+    vi.stubGlobal("indexedDB", idb.factory);
+    const id = await acquireClientId();
+    expect(id).not.toBe(old);
+    expect(idb.log).toEqual(["tx1:get", "tx1:delete", "tx1:put"]);
+    expect(idb.backing.size).toBe(1);
+    const rec = idb.backing.get("current") as { id: string; at: number };
+    expect(rec.id).toBe(id);
+    expect(Date.now() - rec.at).toBeLessThan(60_000);
+  });
+
+  it("deletes and replaces a malformed record inside the same transaction", async () => {
+    const idb = fakeIndexedDB(new Map([["current", { id: "nope", at: 0 }]]));
+    vi.stubGlobal("indexedDB", idb.factory);
+    const id = await acquireClientId();
+    expect(id).toMatch(UUID_V4);
+    expect(idb.log).toEqual(["tx1:get", "tx1:delete", "tx1:put"]);
+    expect(idb.backing.get("current")).toMatchObject({ id });
+  });
+
+  it("adopts a fresh record without deleting or rewriting it", async () => {
+    const cur = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    const idb = fakeIndexedDB(
+      new Map([["current", { id: cur, at: Date.now() - 1_000 }]]),
+    );
+    vi.stubGlobal("indexedDB", idb.factory);
+    expect(await acquireClientId()).toBe(cur);
+    expect(idb.log).toEqual(["tx1:get"]);
   });
 
   it("falls back to localStorage without IndexedDB", async () => {

@@ -100,6 +100,9 @@ async function getOrCreateInDb(): Promise<string> {
           id = record.id;
           return;
         }
+        // stale or malformed: remove it in this same transaction, then write
+        // the fresh record, so no expired copy is left behind
+        if (record !== undefined) store.delete(DB_RECORD);
         id = readStoredClientId() ?? randomUuidV4();
         store.put({ id, at: now } satisfies IdRecord, DB_RECORD);
       };
@@ -140,6 +143,10 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
+ * Call ONLY from the find-match click path (RaceHome findMatch → joinQueue),
+ * never at app start, in connect() or onMount (Legal condition, QM-009;
+ * enforced by client-id-callers.spec.ts).
+ *
  * This browser's Quick Match client id, agreed across tabs: when several
  * fresh tabs click find match together they all resolve to the same id
  * (QM-009). Resolves at once when an id is already stored. Without IndexedDB
