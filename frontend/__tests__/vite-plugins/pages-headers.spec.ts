@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  AD_ORIGINS,
   inlineScriptHashes,
   renderHeaders,
   wsOrigin,
@@ -69,5 +70,81 @@ describe("renderHeaders", () => {
     expect(out).toMatch(
       /\/js\/\*\n {2}Cache-Control: public, max-age=31536000, immutable/,
     );
+  });
+});
+
+describe("renderHeaders for ads", () => {
+  const template = readFileSync(
+    path.resolve(__dirname, "../../static/_headers"),
+    "utf8",
+  );
+  const values = {
+    scriptHashes: [sha("a()")],
+    wsOrigin: "wss://ws.puggietype.com",
+  };
+  const off = renderHeaders(template, values);
+  const on = renderHeaders(template, { ...values, adsEnabled: true });
+  const csp = (headers: string): Map<string, string[]> =>
+    new Map(
+      (/Content-Security-Policy: (.*)/.exec(headers)?.[1] ?? "")
+        .split(";")
+        .map((d) => d.trim().split(/\s+/))
+        .map(([name = "", ...sources]) => [name, sources]),
+    );
+
+  it("leaves the default CSP without any Google origin", () => {
+    expect(renderHeaders(template, { ...values, adsEnabled: false })).toBe(off);
+    expect(off).not.toMatch(/google|doubleclick|gstatic|adtrafficquality/);
+    expect(csp(off).get("frame-src")).toEqual(["'none'"]);
+  });
+
+  it("adds exactly the Google ad and consent origins in ads builds", () => {
+    const policy = csp(on);
+    for (const directive of ["script-src", "connect-src", "frame-src"]) {
+      expect(policy.get(directive)).toEqual(expect.arrayContaining(AD_ORIGINS));
+    }
+    expect(policy.get("frame-src")).toEqual(AD_ORIGINS);
+    expect(policy.get("script-src")?.slice(0, 2)).toEqual([
+      "'self'",
+      sha("a()"),
+    ]);
+    expect(AD_ORIGINS).toEqual([
+      "https://*.googlesyndication.com",
+      "https://*.doubleclick.net",
+      "https://fundingchoicesmessages.google.com",
+      "https://*.google.com",
+      "https://*.gstatic.com",
+      "https://*.adtrafficquality.google",
+    ]);
+  });
+
+  it("changes nothing else", () => {
+    const policyOff = csp(off);
+    for (const [name, sources] of csp(on)) {
+      if (["script-src", "connect-src", "frame-src"].includes(name)) continue;
+      expect(sources).toEqual(policyOff.get(name));
+    }
+    const otherLines = (h: string): string[] =>
+      h.split("\n").filter((l) => !l.includes("Content-Security-Policy"));
+    expect(otherLines(on)).toEqual(otherLines(off));
+  });
+});
+
+describe("static ad files", () => {
+  const read = (name: string): string =>
+    readFileSync(path.resolve(__dirname, "../../static", name), "utf8");
+
+  it("ads.txt is exactly the one AdSense line", () => {
+    expect(read("ads.txt")).toBe(
+      "google.com, pub-8233445679738428, DIRECT, f08c47fec0942fa0\n",
+    );
+  });
+  it("ads.txt is served as text/plain", () => {
+    expect(read("_headers")).toMatch(
+      /\/ads\.txt\n {2}Content-Type: text\/plain; charset=utf-8/,
+    );
+  });
+  it("the committed server switch is off", () => {
+    expect(JSON.parse(read("config.json"))).toEqual({ ads: false });
   });
 });

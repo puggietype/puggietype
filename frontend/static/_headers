@@ -23,5 +23,8 @@
 /version.json
   Cache-Control: no-cache
 
+/config.json
+  Cache-Control: no-cache
+
 /sw.js
   Cache-Control: no-cache

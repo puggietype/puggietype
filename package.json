@@ -54,6 +54,7 @@
     "lint-styles-fix": "stylelint \"**/*.{scss,css}\" --fix",
     "lint-json-assets": "turbo lint-json --filter @monkeytype/frontend",
     "check-assets": "turbo check-assets --filter @monkeytype/frontend",
+    "check-ad-bundle": "node scripts/check-ad-bundle.mjs",
     "check-assets-quotes": "turbo check-assets --filter @monkeytype/frontend  -- quotes",
     "check-assets-languages": "turbo check-assets --filter @monkeytype/frontend  -- languages",
     "check-assets-others": "turbo check-assets --filter @monkeytype/frontend  -- others",

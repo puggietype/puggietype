@@ -205,7 +205,10 @@ function getPlugins({
     }),
     injectPreload(),
     minifyJson(),
-    pagesHeaders({ wsUrl: env["VITE_WS_URL"] }),
+    pagesHeaders({
+      wsUrl: env["VITE_WS_URL"],
+      adsEnabled: env["VITE_ADS_ENABLED"] === "true",
+    }),
   ];
 
   return [...plugins, ...(isDevelopment ? devPlugins : prodPlugins)].filter(

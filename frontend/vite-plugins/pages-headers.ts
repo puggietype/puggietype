@@ -28,20 +28,60 @@ export function wsOrigin(configured: string | undefined): string {
   return `${url.protocol}//${url.host}`;
 }
 
+/**
+ * Google AdSense and its consent message (Privacy & messaging), the only
+ * third-party origins ads may add (legal/ads-changeset.md §4).
+ */
+export const AD_ORIGINS = [
+  "https://*.googlesyndication.com",
+  "https://*.doubleclick.net",
+  "https://fundingchoicesmessages.google.com",
+  "https://*.google.com",
+  "https://*.gstatic.com",
+  "https://*.adtrafficquality.google",
+];
+
+// img-src already allows https:
+const AD_DIRECTIVES = ["script-src", "connect-src", "frame-src"];
+
+/** adds AD_ORIGINS to the directives ad code needs (frame-src 'none' is replaced) */
+export function widenCspForAds(headers: string): string {
+  return headers.replace(
+    /^(\s*Content-Security-Policy:\s*)(.*)$/m,
+    (_, prefix: string, policy: string) => {
+      const directives = policy.split(";").map((d) => d.trim());
+      const widened = directives.map((directive) => {
+        const [name = "", ...sources] = directive.split(/\s+/);
+        if (!AD_DIRECTIVES.includes(name)) return directive;
+        const kept = sources.filter((s) => s !== "'none'");
+        const added = AD_ORIGINS.filter((o) => !kept.includes(o));
+        return [name, ...kept, ...added].join(" ");
+      });
+      return `${prefix}${widened.join("; ")}`;
+    },
+  );
+}
+
 export function renderHeaders(
   template: string,
-  values: { scriptHashes: string[]; wsOrigin: string },
+  values: { scriptHashes: string[]; wsOrigin: string; adsEnabled?: boolean },
 ): string {
-  return template
+  const rendered = template
     .replaceAll("__SCRIPT_HASHES__", values.scriptHashes.join(" "))
     .replaceAll("__WS_ORIGIN__", values.wsOrigin);
+  return values.adsEnabled === true ? widenCspForAds(rendered) : rendered;
 }
 
 /**
  * Fills the CSP placeholders of the Cloudflare Pages `_headers` file copied
  * from static/: hashes of the final (minified) inline scripts and the WS origin.
+ * Ads-enabled builds also get the Google ad origins; others stay unchanged.
  */
-export function pagesHeaders(options: { wsUrl: string | undefined }): Plugin {
+export function pagesHeaders(options: {
+  wsUrl: string | undefined;
+  /** VITE_ADS_ENABLED=true builds: allow the Google ad origins */
+  adsEnabled?: boolean;
+}): Plugin {
   let outDir = path.resolve("./dist");
   return {
     name: "pages-headers",
@@ -59,6 +99,7 @@ export function pagesHeaders(options: { wsUrl: string | undefined }): Plugin {
       const rendered = renderHeaders(readFileSync(headersPath, "utf8"), {
         scriptHashes: inlineScriptHashes(htmls),
         wsOrigin: wsOrigin(options.wsUrl),
+        adsEnabled: options.adsEnabled,
       });
       writeFileSync(headersPath, rendered);
     },

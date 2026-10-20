@@ -59,7 +59,13 @@
         "CF_PAGES_COMMIT_SHA",
         "VITE_WS_URL",
         "VITE_MULTIPLAYER",
-        "VITE_PUBLIC_MATCHES"
+        "VITE_PUBLIC_MATCHES",
+        "VITE_ADS_ENABLED",
+        "VITE_ADS_PROVIDER",
+        "VITE_ADS_SLOT_RESULT",
+        "VITE_ADS_SLOT_RAIL",
+        "VITE_ADS_SLOT_LOBBY",
+        "VITE_ADS_SLOT_INFO"
       ],
       "outputs": ["dist/**"]
     },
