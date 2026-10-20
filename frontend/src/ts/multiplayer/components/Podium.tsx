@@ -84,7 +84,10 @@ export function Podium(props: {
         <Show when={winner()}>
           {(w) => (
             <h2
-              class="min-w-0 text-4xl leading-tight [overflow-wrap:anywhere] sm:text-5xl"
+              // QM-008: very long names would push rematch/leave below the fold at 1280x800,
+              // so the heading is capped (3 lines on small screens, 2 from 1280) with the full text in title
+              class="line-clamp-3 min-w-0 text-4xl leading-tight [overflow-wrap:anywhere] sm:text-5xl min-[1280px]:line-clamp-2"
+              title={`${displayName(w())} wins!`}
               data-testid="mp-winner"
             >
               <span class={PLAYER_TEXT[colorOf(w().playerId)]}>

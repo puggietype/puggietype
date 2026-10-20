@@ -171,4 +171,15 @@ describe("Podium results name cell", () => {
     );
     expect(podium.className).not.toMatch(/(^|\s)(xl|lg|md):grid-cols/);
   });
+
+  it("caps a long winner heading with the full text in title (QM-008)", () => {
+    const LONG = "ExtraordinarilyMagnificentSnuffleWaggleTheThirdOfPugshire99";
+    const results = [result("them", LONG, false, 1), ...RESULTS.slice(0, 1)];
+    const { getByTestId } = render(() => (
+      <Podium room={ROOM} results={results} />
+    ));
+    const heading = getByTestId("mp-winner");
+    expect(heading).toHaveClass("line-clamp-3", "min-[1280px]:line-clamp-2");
+    expect(heading).toHaveAttribute("title", `${LONG} wins!`);
+  });
 });
