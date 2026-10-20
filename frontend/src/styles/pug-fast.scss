@@ -10,17 +10,37 @@
   --pug-heat-s: var(--pug-heat, 0);
   // eased like Monkeytype's 1s opacity fade; registered so it interpolates
   transition: --pug-heat-s 0.9s ease-in-out;
-  --pug-fast-red: #e8553f;
+  --pug-fast-red: #e03a28;
   // face and blush warm up; outline, eyes and mask stay put
+  // paws, keyboard and sticker rim warm only a little
   --pug-fill: color-mix(
     in oklab,
-    var(--pug-fast-red) calc(var(--pug-heat-s) * 22%),
+    var(--pug-fast-red) calc(var(--pug-heat-s) * 20%),
     var(--pug-fill-base, #f0d9b5)
   );
   --pug-blush: color-mix(
     in oklab,
-    #e2412f calc(var(--pug-heat-s) * 70%),
+    #c81e14 calc(var(--pug-heat-s) * 100%),
     var(--pug-blush-base, #f4a6a6)
+  );
+}
+
+// the head/body group of every dog svg goes clearly red at full heat
+.pug-fast svg > g > g[fill="var(--c2)"] {
+  --c2: color-mix(
+    in oklab,
+    var(--pug-fast-red) calc(var(--pug-heat-s) * 60%),
+    var(--pug-fill-base, #f0d9b5)
+  );
+}
+
+// paws are the masked groups: keep them lightly warmed so the face leads
+.pug-fast g[mask],
+.pug-fast g[mask] g[fill="var(--c2)"] {
+  --c2: color-mix(
+    in oklab,
+    var(--pug-fast-red) calc(var(--pug-heat-s) * 20%),
+    var(--pug-fill-base, #f0d9b5)
   );
 }
 
