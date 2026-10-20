@@ -1,4 +1,11 @@
-import { createSignal, For, JSXElement, onCleanup, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  JSXElement,
+  onCleanup,
+  Show,
+} from "solid-js";
 
 import type { ReportReason, RoomState } from "../protocol";
 
@@ -29,7 +36,10 @@ export function ReportButton(props: {
   align?: "left" | "right";
 }): JSXElement {
   const [open, setOpen] = createSignal(false);
+  /** px the menu is nudged sideways so it never crosses the viewport edge */
+  const [shift, setShift] = createSignal(0);
   let wrapper: HTMLSpanElement | undefined;
+  let menu: HTMLDivElement | undefined;
 
   const visible = (): boolean =>
     reportOn() &&
@@ -46,6 +56,20 @@ export function ReportButton(props: {
   };
   document.addEventListener("click", onDocClick);
   onCleanup(() => document.removeEventListener("click", onDocClick));
+
+  // the menu hangs off the flag, which can sit mid-row: measure once open and pull it back on screen
+  createEffect(() => {
+    if (!open() || menu === undefined) {
+      setShift(0);
+      return;
+    }
+    const margin = 16;
+    const rect = menu.getBoundingClientRect();
+    if (rect.width === 0) return; // not laid out (hidden / no layout engine)
+    const overRight = rect.right - (window.innerWidth - margin);
+    const overLeft = margin - rect.left;
+    setShift(overRight > 0 ? -overRight : overLeft > 0 ? overLeft : 0);
+  });
 
   const pick = (reason: ReportReason): void => {
     setOpen(false);
@@ -99,15 +123,25 @@ export function ReportButton(props: {
           />
           <Show when={open()}>
             <div
+              ref={(el) => (menu = el)}
               class={cn(
-                "absolute top-full z-10 grid min-w-max gap-1 rounded bg-bg p-2 text-left shadow-lg",
+                // w-max up to the cap: long names wrap in the header instead of widening the menu
+                "absolute top-full z-10 grid w-max max-w-[min(16rem,calc(100vw-2rem))] gap-1 rounded bg-bg p-2 text-left shadow-lg",
                 alignLeft() ? "left-0" : "right-0",
               )}
+              style={
+                shift() === 0
+                  ? undefined
+                  : { transform: `translateX(${shift()}px)` }
+              }
               role="menu"
               aria-label={`report ${props.player.name} for`}
               data-testid="mp-report-menu"
             >
-              <div class="px-2 text-xs text-sub">
+              <div
+                class="min-w-0 px-2 text-xs [overflow-wrap:anywhere] text-sub"
+                data-testid="mp-report-menu-header"
+              >
                 report {props.player.name} for
               </div>
               <For each={REPORT_REASONS}>
