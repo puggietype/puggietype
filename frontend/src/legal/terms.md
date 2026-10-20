@@ -38,7 +38,7 @@ We respect intellectual property rights. If you believe content on PuggieType (f
 We will review valid notices and remove or replace infringing material.
 
 ## 6a. Advertising
-PuggieType is free and supported by ads from Google AdSense, shown only on the results screen and in the sidebars, never during a test or race. Ads are provided by Google and other advertisers, not by us; we don't endorse the products advertised. Don't click ads on purpose to generate revenue, and don't use tools to click them for you. Our [Privacy Policy](/privacy) explains how ads use data and how to opt out.
+PuggieType is free and supported by ads from Google AdSense, shown on the results screen, in the sidebars of the typing test page on wide screens, below the multiplayer lobby and the Quick Match search screen, and on the Settings and About pages, never during a test or race. Ads are provided by Google and other advertisers, not by us; we don't endorse the products advertised. Don't click ads on purpose to generate revenue, and don't use tools to click them for you. Our [Privacy Policy](/privacy) explains how ads use data and how to opt out.
 
 ## 7. No warranty
 PuggieType is provided "as is", without warranty of any kind, to the extent permitted by law.
