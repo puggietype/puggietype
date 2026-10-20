@@ -62,7 +62,7 @@ describe("Config", () => {
 
       isConfigValueValidMock.mockReturnValue(true);
       canSetConfigWithCurrentFunboxesMock.mockReturnValue(true);
-      dbSaveConfigMock.mockResolvedValue();
+      dbSaveConfigMock.mockResolvedValue(true);
       stateIsTestActiveMock.mockReturnValue(true);
 
       replaceConfig({});
@@ -108,6 +108,15 @@ describe("Config", () => {
 
       //WHEN / THEN
       expect(Config.setConfig("showAllLines", true)).toBe(false);
+    });
+
+    it("pug is on by default and the toggle turns it off and on", () => {
+      replaceConfig({});
+      expect(getConfig().monkey).toBe(true);
+      expect(Config.setConfig("monkey", false)).toBe(true);
+      expect(getConfig().monkey).toBe(false);
+      expect(Config.setConfig("monkey", true)).toBe(true);
+      expect(getConfig().monkey).toBe(true);
     });
 
     it("disables live text stats when enabling monkey", () => {

@@ -7,9 +7,17 @@ import Ape from "../ape";
 import { SnapshotInitError } from "../utils/snapshot-init-error";
 import { getDefaultConfig } from "../constants/default-config";
 import { Config } from "./store";
+import { runRemoteConfigVersionMigration } from "./version";
+import { getAuthenticatedUser } from "../firebase";
+import { saveConfig } from "../ape/config";
 
 export async function updateFromServer(): Promise<void> {
-  const remoteConfig = await getRemoteConfig();
+  const { config: remoteConfig } = runRemoteConfigVersionMigration(
+    await getRemoteConfig(),
+    getAuthenticatedUser()?.uid,
+    localStorage,
+    saveConfig,
+  );
 
   const areConfigsEqual =
     JSON.stringify(Config) === JSON.stringify(remoteConfig);

@@ -17,6 +17,7 @@ import { promiseWithResolvers } from "../utils/misc";
 import { setConfig } from "./setters";
 import { deleteConfig } from "../ape/config";
 import { typedKeys } from "@monkeytype/util/objects";
+import { runConfigVersionMigration } from "./version";
 
 export async function applyConfigFromJson(json: string): Promise<void> {
   try {
@@ -43,7 +44,7 @@ export async function applyConfigFromJson(json: string): Promise<void> {
 
 export async function loadFromLocalStorage(): Promise<void> {
   console.log("loading localStorage config");
-  const newConfig = configLS.get();
+  const newConfig = runConfigVersionMigration(configLS.get(), localStorage);
   if (newConfig === undefined) {
     await resetConfig();
   } else {

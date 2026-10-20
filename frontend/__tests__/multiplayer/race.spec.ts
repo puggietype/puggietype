@@ -122,7 +122,8 @@ const AgeGate = await import("../../src/ts/multiplayer/age-gate");
 const Race = await import("../../src/ts/multiplayer/race");
 const Hooks = await import("../../src/ts/multiplayer/engine-hooks");
 const Store = await import("../../src/ts/multiplayer/store");
-const { getClientId } = await import("../../src/ts/multiplayer/client-id");
+const { getClientId, __resetClientIdForTests } =
+  await import("../../src/ts/multiplayer/client-id");
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -879,6 +880,82 @@ describe("quick match", () => {
     Race.leaveQueue();
     Race.joinQueue();
     expect(queueSent().at(-1)).toEqual({ type: "queue:join", clientId });
+  });
+
+  it("QM-009: two first-use tabs clicking together send the same clientId", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    localStorage.clear();
+    __resetClientIdForTests();
+    // nothing is stored before a click
+    expect(localStorage.getItem("puggie-mp-client-id")).toBeNull();
+
+    // tab 1 clicks: findMatch mints synchronously, before awaiting the pace
+    const tab1 = getClientId();
+    // tab 2 clicked at the same moment, also saw no id, and wrote last
+    const tab2 = "bbbbbbbb-bbbb-4bbb-9bbb-bbbbbbbbbbbb";
+    expect(tab1).not.toBe(tab2);
+    localStorage.setItem("puggie-mp-client-id", tab2);
+
+    // tab 1's pace resolves: joinQueue re-reads storage and adopts the last writer
+    Race.joinQueue(60);
+    expect(queueSent().at(-1)).toEqual({
+      type: "queue:join",
+      claimedWpm: 60,
+      clientId: tab2,
+    });
+    Race.leaveQueue();
+    // tab 2 joins with the same id
+    Race.joinQueue(70);
+    expect(queueSent().at(-1)).toEqual({
+      type: "queue:join",
+      claimedWpm: 70,
+      clientId: tab2,
+    });
+    localStorage.clear();
+  });
+
+  it("QM-009: joinQueue sends the agreed id", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    const locked = "cccccccc-cccc-4ccc-accc-cccccccccccc";
+    localStorage.setItem(
+      "puggie-mp-client-id",
+      "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    );
+    Race.joinQueue(55, locked);
+    expect(queueSent().at(-1)).toEqual({
+      type: "queue:join",
+      claimedWpm: 55,
+      clientId: locked,
+    });
+    localStorage.clear();
+  });
+
+  it("QM-009: an invalid agreed id falls back to the stored id", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    const stored = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    localStorage.setItem("puggie-mp-client-id", stored);
+    Race.joinQueue(undefined, "nope");
+    expect(queueSent().at(-1)).toEqual({
+      type: "queue:join",
+      clientId: stored,
+    });
+    localStorage.clear();
+  });
+
+  it("QM-009: a malformed stored id is not adopted at join", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    localStorage.clear();
+    __resetClientIdForTests();
+    localStorage.setItem("puggie-mp-client-id", "not-a-uuid");
+    Race.joinQueue();
+    const sent = queueSent().at(-1) as { clientId?: string };
+    expect(sent.clientId).toMatch(UUID_V4);
+    expect(localStorage.getItem("puggie-mp-client-id")).toBe(sent.clientId);
+    localStorage.clear();
   });
 
   it("tracks queue:status, cancels with queue:leave", () => {
