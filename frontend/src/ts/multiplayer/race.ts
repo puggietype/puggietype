@@ -23,7 +23,7 @@ import { focusWords, isMounted as isTestUIMounted } from "../test/test-ui";
 import { words as testWords } from "../test/test-words";
 import { isAgeConfirmed } from "./age-gate";
 import { MultiplayerClient } from "./client";
-import { getClientId, readStoredClientId } from "./client-id";
+import { getClientId, isValidClientId, readStoredClientId } from "./client-id";
 import {
   discardPendingRaceFinish,
   isRaceActive,
@@ -214,13 +214,14 @@ export function setRoomOpen(open: boolean): void {
  * Quick Match: queue up (13+ only). `claimedWpm` is our recent pace, if we
  * have one. Needs both flags; a queue:matched later drops us into a room.
  */
-export function joinQueue(claimedWpm?: number): void {
+export function joinQueue(claimedWpm?: number, agreedClientId?: string): void {
   if (!quickMatchOn() || !isAgeConfirmed() || queue() !== undefined) return;
   setQueue(startQueue(Date.now()));
   client.connect();
-  // re-read right before sending: if another tab stored its id after this one
-  // minted, adopt the stored value so both tabs send the same id (QM-009)
-  const clientId = readStoredClientId() ?? getClientId();
+  // QM-009: prefer the id agreed across tabs by acquireClientId()
+  const clientId = isValidClientId(agreedClientId)
+    ? agreedClientId
+    : (readStoredClientId() ?? getClientId());
   send(
     claimedWpm === undefined
       ? { type: "queue:join", clientId }

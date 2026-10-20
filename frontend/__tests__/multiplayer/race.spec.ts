@@ -915,6 +915,36 @@ describe("quick match", () => {
     localStorage.clear();
   });
 
+  it("QM-009: joinQueue sends the agreed id", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    const locked = "cccccccc-cccc-4ccc-accc-cccccccccccc";
+    localStorage.setItem(
+      "puggie-mp-client-id",
+      "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    );
+    Race.joinQueue(55, locked);
+    expect(queueSent().at(-1)).toEqual({
+      type: "queue:join",
+      claimedWpm: 55,
+      clientId: locked,
+    });
+    localStorage.clear();
+  });
+
+  it("QM-009: an invalid agreed id falls back to the stored id", () => {
+    clientFlags.add("quickMatch");
+    receive(welcome(true));
+    const stored = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    localStorage.setItem("puggie-mp-client-id", stored);
+    Race.joinQueue(undefined, "nope");
+    expect(queueSent().at(-1)).toEqual({
+      type: "queue:join",
+      clientId: stored,
+    });
+    localStorage.clear();
+  });
+
   it("QM-009: a malformed stored id is not adopted at join", () => {
     clientFlags.add("quickMatch");
     receive(welcome(true));

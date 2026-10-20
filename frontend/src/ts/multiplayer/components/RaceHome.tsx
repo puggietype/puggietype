@@ -11,7 +11,7 @@ import { Button } from "../../components/common/Button";
 import { PugHead } from "../../components/common/PugHead";
 import { showNoticeNotification } from "../../states/notifications";
 import { cn } from "../../utils/cn";
-import { getClientId } from "../client-id";
+import { acquireClientId } from "../client-id";
 import { isFlagEnabled } from "../feature-flags";
 import { PUBLIC_MATCHES_ENABLED } from "../flags";
 import { normalizeRoomCode } from "../helpers";
@@ -63,12 +63,13 @@ export function RaceHome(props: { code?: string }): JSXElement {
 
   const [findingPace, setFindingPace] = createSignal(false);
   const findMatch = (): void => {
-    // QM-009: mint/store the Quick Match id synchronously on click, before any await
-    getClientId();
+    // QM-009: get-or-create the Quick Match id on click, atomically across
+    // tabs (IndexedDB transaction; instant when an id is already stored)
+    const clientId = acquireClientId();
     setFindingPace(true);
-    void recentClaimedWpm().then((wpm) => {
+    void Promise.all([clientId, recentClaimedWpm()]).then(([id, wpm]) => {
       setFindingPace(false);
-      joinQueue(wpm);
+      joinQueue(wpm, id);
     });
   };
   onCleanup(unwatchOpenRooms);

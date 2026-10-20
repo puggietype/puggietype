@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   __resetClientIdForTests,
+  acquireClientId,
   getClientId,
   readStoredClientId,
 } from "../../src/ts/multiplayer/client-id";
@@ -122,5 +123,221 @@ describe("readStoredClientId", () => {
       },
     });
     expect(readStoredClientId()).toBeUndefined();
+  });
+});
+
+/**
+ * Minimal IndexedDB fake: one shared backing map ("same origin"), readwrite
+ * transactions run one at a time in request order like real IndexedDB.
+ */
+function fakeIndexedDB(backing = new Map<string, unknown>()): {
+  factory: IDBFactory;
+  backing: Map<string, unknown>;
+  maxActive: () => number;
+} {
+  let tail: Promise<void> = Promise.resolve();
+  let active = 0;
+  let max = 0;
+  const later = (fn: () => void): void => {
+    setTimeout(fn, 0);
+  };
+  const db = {
+    transaction: () => {
+      const tx: Record<string, unknown> & {
+        oncomplete?: () => void;
+        objectStore: () => unknown;
+      } = {
+        error: null,
+        objectStore: () => ({
+          get: (key: string) => {
+            const req: { result?: unknown; onsuccess?: () => void } = {};
+            ops.push(() => {
+              req.result = structuredClone(backing.get(key));
+              req.onsuccess?.();
+            });
+            return req;
+          },
+          put: (value: unknown, key: string) => {
+            ops.push(() => backing.set(key, structuredClone(value)));
+            return {};
+          },
+        }),
+      };
+      const ops: (() => void)[] = [];
+      tail = tail.then(
+        async () =>
+          new Promise<void>((done) => {
+            later(() => {
+              active++;
+              max = Math.max(max, active);
+              while (ops.length > 0) ops.shift()?.();
+              active--;
+              done();
+              tx.oncomplete?.();
+            });
+          }),
+      );
+      return tx;
+    },
+    close: () => undefined,
+  };
+  const factory = {
+    open: () => {
+      const req: {
+        result?: unknown;
+        onupgradeneeded?: () => void;
+        onsuccess?: () => void;
+      } = {};
+      later(() => {
+        req.result = { ...db, createObjectStore: () => undefined };
+        req.onsuccess?.();
+      });
+      return req;
+    },
+  } as unknown as IDBFactory;
+  return { factory, backing, maxActive: () => max };
+}
+
+/**
+ * localStorage shared by tabs whose writes become visible only later, like
+ * cross-process localStorage in real browsers (the QM-009 bug)
+ */
+function laggyStorage(lagMs = 50): Storage {
+  const m = new Map<string, string>();
+  return {
+    getItem: (k: string) => m.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      setTimeout(() => m.set(k, v), lagMs);
+    },
+    removeItem: (k: string) => void m.delete(k),
+    clear: () => m.clear(),
+    key: () => null,
+    get length() {
+      return m.size;
+    },
+  };
+}
+
+type ClientIdModule = typeof import("../../src/ts/multiplayer/client-id");
+
+/** a fresh module instance, like a new tab */
+async function openTab(): Promise<ClientIdModule> {
+  vi.resetModules();
+  return import("../../src/ts/multiplayer/client-id");
+}
+
+describe("acquireClientId (QM-009)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetClientIdForTests();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  it("returns a stored id at once without touching IndexedDB", async () => {
+    const stored = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    localStorage.setItem(KEY, stored);
+    const open = vi.fn();
+    vi.stubGlobal("indexedDB", { open });
+    expect(await acquireClientId()).toBe(stored);
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it("mints, stores in localStorage and IndexedDB on first use", async () => {
+    const idb = fakeIndexedDB();
+    vi.stubGlobal("indexedDB", idb.factory);
+    const id = await acquireClientId();
+    expect(id).toMatch(UUID_V4);
+    expect(localStorage.getItem(KEY)).toBe(id);
+    expect(idb.backing.get("current")).toMatchObject({ id });
+  });
+
+  it("two fresh tabs clicking together agree on one id despite localStorage lag", async () => {
+    const idb = fakeIndexedDB();
+    vi.stubGlobal("indexedDB", idb.factory);
+    vi.stubGlobal("localStorage", laggyStorage());
+    const [tab1, tab2] = [await openTab(), await openTab()];
+    const [a, b] = await Promise.all([
+      tab1.acquireClientId(),
+      tab2.acquireClientId(),
+    ]);
+    expect(a).toMatch(UUID_V4);
+    expect(b).toBe(a);
+    expect(idb.maxActive()).toBe(1);
+  });
+
+  it("localStorage alone diverges under that lag (control)", async () => {
+    vi.stubGlobal("indexedDB", undefined);
+    vi.stubGlobal("localStorage", laggyStorage());
+    const [tab1, tab2] = [await openTab(), await openTab()];
+    const [a, b] = await Promise.all([
+      tab1.acquireClientId(),
+      tab2.acquireClientId(),
+    ]);
+    expect(b).not.toBe(a);
+  });
+
+  it("a staggered second tab adopts the first tab's id", async () => {
+    vi.stubGlobal("indexedDB", fakeIndexedDB().factory);
+    vi.stubGlobal("localStorage", laggyStorage(10_000));
+    const a = await (await openTab()).acquireClientId();
+    const b = await (await openTab()).acquireClientId();
+    expect(b).toBe(a);
+  });
+
+  it("concurrent calls in one tab share one result", async () => {
+    vi.stubGlobal("indexedDB", fakeIndexedDB().factory);
+    const [a, b] = await Promise.all([acquireClientId(), acquireClientId()]);
+    expect(b).toBe(a);
+  });
+
+  it("ignores a stale IndexedDB record and mints a new id", async () => {
+    const old = "bbbbbbbb-bbbb-4bbb-9bbb-bbbbbbbbbbbb";
+    const idb = fakeIndexedDB(
+      new Map([["current", { id: old, at: Date.now() - 61_000 }]]),
+    );
+    vi.stubGlobal("indexedDB", idb.factory);
+    const id = await acquireClientId();
+    expect(id).toMatch(UUID_V4);
+    expect(id).not.toBe(old);
+    expect(idb.backing.get("current")).toMatchObject({ id });
+  });
+
+  it("falls back to localStorage without IndexedDB", async () => {
+    vi.stubGlobal("indexedDB", undefined);
+    const id = await acquireClientId();
+    expect(id).toMatch(UUID_V4);
+    expect(localStorage.getItem(KEY)).toBe(id);
+  });
+
+  it("falls back to localStorage when IndexedDB fails to open", async () => {
+    vi.stubGlobal("indexedDB", {
+      open: () => {
+        const req: { error: Error; onerror?: () => void } = {
+          error: new Error("InvalidStateError"),
+        };
+        setTimeout(() => req.onerror?.(), 0);
+        return req;
+      },
+    });
+    const id = await acquireClientId();
+    expect(id).toMatch(UUID_V4);
+    expect(localStorage.getItem(KEY)).toBe(id);
+  });
+
+  it("falls back after a timeout when IndexedDB hangs", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("indexedDB", { open: () => ({}) });
+      const p = acquireClientId();
+      await vi.advanceTimersByTimeAsync(1_000);
+      const id = await p;
+      expect(id).toMatch(UUID_V4);
+      expect(localStorage.getItem(KEY)).toBe(id);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
