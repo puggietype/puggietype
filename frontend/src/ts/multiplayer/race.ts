@@ -546,6 +546,8 @@ async function beginRace(info: RaceInfo): Promise<void> {
   finishSent = false;
   lastProgress = undefined;
   resumeFloor = undefined;
+  // no user restarts from the countdown on (config-change restarts too)
+  setRaceRestartLocked(true);
   batch(() => {
     setRace(info);
     setRaceFinished(false);
@@ -560,7 +562,6 @@ async function beginRace(info: RaceInfo): Promise<void> {
   }
   setRaceWords(info.words);
   setRaceInputLocked(true);
-  setRaceRestartLocked(false);
   onRaceFinish(sendFinish);
 
   if (getActivePage() !== "test") goTo("/");
@@ -569,8 +570,12 @@ async function beginRace(info: RaceInfo): Promise<void> {
     (await waitFor(() => !isTestRestarting()));
   if (token !== raceToken) return;
   if (ready) {
-    // regenerate the test from the race words with the room settings
-    await restart({ noAnim: true });
+    // regenerate the test from the race words with the room settings.
+    // The lock only lifts for restart()'s synchronous guard check.
+    setRaceRestartLocked(false);
+    const regenerated = restart({ noAnim: true });
+    setRaceRestartLocked(true);
+    await regenerated;
     await waitFor(() => !isTestRestarting());
     if (token !== raceToken) return;
   }
@@ -578,7 +583,6 @@ async function beginRace(info: RaceInfo): Promise<void> {
     abortRace("Couldn't load the race words.");
     return;
   }
-  setRaceRestartLocked(true);
 
   countdownTimer = setInterval(updateCountdown, 100);
   updateCountdown();

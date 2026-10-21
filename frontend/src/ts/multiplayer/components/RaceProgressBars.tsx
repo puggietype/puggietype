@@ -17,7 +17,11 @@ import { PLAYER_BG, PLAYER_TEXT } from "./ui";
 /** extra words of headroom in time mode, where the end isn't known */
 const TIME_MODE_HEADROOM = 10;
 
-/** compact per-player progress bars, fed by race:progress */
+/**
+ * compact per-player progress bars, fed by race:progress. Always shown during
+ * a race (focus mode and "carets off" included): the rows carry the names and
+ * bot labels that the colour-only carets don't.
+ */
 export function RaceProgressBars(props: { class?: string }): JSXElement {
   const progressById = createMemo(
     () => new Map(opponentProgress().map((p) => [p.id, p])),
@@ -89,6 +93,17 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
                   class="hidden h-7 w-8 shrink-0 max-[601px]:block"
                 />
               </Show>
+              {/* the colour of this player's caret, so each caret traces to a named row */}
+              <span
+                class={cn(
+                  "size-2.5 shrink-0 rounded-full",
+                  PLAYER_BG[player.color],
+                )}
+                aria-hidden="true"
+                data-testid="mp-progress-swatch"
+                data-player-id={player.id}
+                data-color={player.color}
+              ></span>
               <span class="flex min-w-0 items-baseline leading-tight">
                 <PlayerName player={player} truncate />
                 <Show when={player.id === myId()}>

@@ -259,8 +259,11 @@ export async function restart(options = {} as RestartOptions): Promise<void> {
   // not on the test page - TestPage restarts on mount
   if (!TestUI.isMounted()) return;
 
-  // multiplayer hook: no restarts mid-race
-  if (isRaceRestartLocked()) return;
+  // multiplayer hook: no restarts mid-race, and no notices about them
+  if (isRaceRestartLocked()) {
+    options.event?.preventDefault();
+    return;
+  }
 
   const noQuit = isFunboxActive("no_quit");
   if (isTestActive() && noQuit) {
