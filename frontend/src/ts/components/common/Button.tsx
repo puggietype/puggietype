@@ -22,6 +22,8 @@ type BaseProps = {
   id?: string;
   /** accessible name, needed when the button only shows an icon */
   ariaLabel?: string;
+  /** hide from assistive tech, e.g. while the button is visually hidden */
+  ariaHidden?: boolean;
 };
 
 export type ButtonProps = BaseProps & {
@@ -107,6 +109,7 @@ export function Button(props: ButtonProps | AnchorProps): JSXElement {
           data-ui-variant={variant()}
           data-ui-element="button"
           tabIndex={props.tabIndex ?? undefined}
+          aria-hidden={props.ariaHidden ? "true" : undefined}
           {...props.dataset}
         >
           {content}

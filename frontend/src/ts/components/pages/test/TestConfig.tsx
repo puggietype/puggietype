@@ -51,7 +51,12 @@ export function TestConfig(): JSXElement {
       <Button
         class={cn(
           "mx-auto flex place-self-center px-4 py-2 text-sub md:hidden",
+          "transition-opacity duration-125",
+          getResultVisible() ? "pointer-events-none opacity-0" : "",
         )}
+        tabIndex={getResultVisible() ? -1 : undefined}
+        ariaHidden={getResultVisible()}
+        dataset={{ "data-testid": "mobile-test-settings" }}
         variant="button"
         onClick={() => {
           showModal("MobileTestConfig");
