@@ -33,6 +33,7 @@ describe("TestConfig mobile test settings pill", () => {
     expect(el.classList.contains("opacity-0")).toBe(false);
     expect(el.classList.contains("pointer-events-none")).toBe(false);
     expect(el.getAttribute("tabindex")).toBeNull();
+    expect(el.getAttribute("aria-hidden")).toBeNull();
   });
 
   it("hides like the desktop bar while the result is showing", () => {
@@ -41,6 +42,7 @@ describe("TestConfig mobile test settings pill", () => {
     expect(el.classList.contains("opacity-0")).toBe(true);
     expect(el.classList.contains("pointer-events-none")).toBe(true);
     expect(el.getAttribute("tabindex")).toBe("-1");
+    expect(el.getAttribute("aria-hidden")).toBe("true");
     setResultVisible(false);
     expect(el.classList.contains("opacity-0")).toBe(false);
   });
