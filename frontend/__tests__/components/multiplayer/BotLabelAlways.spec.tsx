@@ -140,6 +140,25 @@ describe("BotLabel on every isBot player", () => {
     );
   });
 
+  it("a well-formed bot's progress row names it in full via title and aria-label", () => {
+    const FULL = "Pug Bot · ~53 wpm";
+    Store.setRoom({
+      ...RACE_ROOM,
+      players: [
+        player("me", "ZippyPug42", false, "opp1"),
+        player("pug", FULL, true, "opp2"),
+      ],
+    });
+    const { container } = render(() => <RaceProgressBars />);
+    const row = forPlayer(container, "mp-progress-row", "pug");
+    expect(within(row).getByTestId("mp-bot-label")).toBeInTheDocument();
+    const name = within(row).getByTestId("mp-player-name");
+    expect(name).toHaveAttribute("title", FULL);
+    expect(name).toHaveAttribute("aria-label", FULL);
+    // the name is announced once, not once per chunk
+    expect(within(row).getAllByRole("img", { name: FULL })).toHaveLength(1);
+  });
+
   it("OpponentDogs captions (non-dense)", () => {
     const { container } = render(() => <OpponentDogs />);
     expectLabels(
