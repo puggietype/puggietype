@@ -2,7 +2,7 @@ import { JSXElement, Show } from "solid-js";
 
 import { getConfig } from "../../../config/store";
 import { isRaceRestartLocked } from "../../../multiplayer/engine-hooks";
-import { inRace } from "../../../multiplayer/store";
+import { inRace, onRaceResults } from "../../../multiplayer/store";
 import { getFocus } from "../../../states/test";
 import { cn } from "../../../utils/cn";
 import { CommandlineHotkey } from "../../hotkeys/CommandlineHotkey";
@@ -17,7 +17,7 @@ export function Keytips(): JSXElement {
         })}
       >
         {/* multiplayer hook: no restart tip mid-race or on race results */}
-        <Show when={!isRaceRestartLocked() && !inRace()}>
+        <Show when={!isRaceRestartLocked() && !inRace() && !onRaceResults()}>
           <div class="flex items-center gap-2" data-testid="keytip-restart">
             <QuickRestartHotkey />
             <span>- restart test</span>

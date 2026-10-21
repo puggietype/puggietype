@@ -28,6 +28,8 @@ describe("restart controls", () => {
     cleanup();
     Hooks.setRaceRestartLocked(false);
     Store.setRace(undefined);
+    Store.setRoom(undefined);
+    Store.setResults(undefined);
     vi.mocked(onRestartButtonClick).mockClear();
   });
 
@@ -69,6 +71,18 @@ describe("restart controls", () => {
     expect(screen.queryByTestId("keytip-restart")).toBeNull();
     expect(screen.getByText("- command line")).toBeInTheDocument();
     Store.setRace(undefined);
+    expect(screen.getByTestId("keytip-restart")).toBeInTheDocument();
+  });
+
+  it("multiplayer podium: no restart tip once the race is torn down", () => {
+    // endRace() clears race() but the room's results stay on screen
+    Store.setRoom({} as NonNullable<ReturnType<typeof Store.room>>);
+    Store.setResults([]);
+    render(() => <Keytips />);
+    expect(screen.queryByTestId("keytip-restart")).toBeNull();
+    expect(screen.getByText("- command line")).toBeInTheDocument();
+    // leaving the room returns to solo: the tip comes back
+    Store.setRoom(undefined);
     expect(screen.getByTestId("keytip-restart")).toBeInTheDocument();
   });
 

@@ -118,3 +118,8 @@ export function isHost(): boolean {
 export function inRace(): boolean {
   return race() !== undefined;
 }
+
+/** the race page shows a room's podium (race over, still in the room) */
+export function onRaceResults(): boolean {
+  return room() !== undefined && results() !== undefined;
+}
