@@ -265,6 +265,31 @@ describe("race lifecycle", () => {
     expect(engine.restart).toHaveBeenCalledTimes(1);
   });
 
+  it("locks restarts from the countdown on; only the race's own regenerate gets through", async () => {
+    const lockSeen: boolean[] = [];
+    engine.restart.mockImplementationOnce(async () => {
+      lockSeen.push(Hooks.isRaceRestartLocked());
+    });
+    receive({
+      type: "welcome",
+      playerId: "me",
+      sessionToken: "t",
+      name: "ZippyPug42",
+      protocol: 1,
+    });
+    receive(roomState({ phase: "countdown" }));
+    receive(countdown(Date.now() + 3000));
+    // locked synchronously, before the async setup runs
+    expect(Hooks.isRaceRestartLocked()).toBe(true);
+    await flush();
+    expect(lockSeen).toEqual([false]);
+    expect(Hooks.isRaceRestartLocked()).toBe(true);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(Hooks.isRaceRestartLocked()).toBe(true);
+    Race.leaveRoom();
+    expect(Hooks.isRaceRestartLocked()).toBe(false);
+  });
+
   it("unlocks input and starts the test at startAt", async () => {
     await startCountdown(Date.now() + 3000);
     expect(engine.startTest).not.toHaveBeenCalled();

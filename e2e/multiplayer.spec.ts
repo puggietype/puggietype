@@ -190,7 +190,7 @@ test("two players race, see each other, get a podium and rematch", async ({
     typeRace(b, SLOW_DELAY_MS),
   ]);
 
-  // mid-race: each side sees the other's caret and name tag
+  // mid-race: each side sees the other's caret, colour only (no name tag)
   const caretOnA = a.locator(
     '[data-testid="mp-opponent-caret"][data-visible="true"]',
   );
@@ -199,12 +199,8 @@ test("two players race, see each other, get a podium and rematch", async ({
   );
   await expect(caretOnA).toBeVisible();
   await expect(caretOnB).toBeVisible();
-  await expect(caretOnA.locator('[data-testid="mp-opponent-tag"]')).toHaveText(
-    bob,
-  );
-  await expect(caretOnB.locator('[data-testid="mp-opponent-tag"]')).toHaveText(
-    alice,
-  );
+  await expect(caretOnA).toHaveText("");
+  await expect(caretOnB).toHaveText("");
   // let both get going so the screenshot shows real progress
   await expect(caretOnB).toHaveAttribute("data-word-index", /^[3-9]$/);
   await expect(caretOnA).toHaveAttribute("data-word-index", /^[1-9]$/);

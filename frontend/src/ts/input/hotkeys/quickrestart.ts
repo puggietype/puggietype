@@ -7,9 +7,16 @@ import { hotkeys, quickRestartHotkeyMap } from "../../states/hotkeys";
 import { createHotkey } from "./utils";
 import { getConfig } from "../../config/store";
 import { isLongTest, wordsHaveNewline, wordsHaveTab } from "../../states/test";
+import { isRaceRestartLocked } from "../../multiplayer/engine-hooks";
 
 function quickRestart(e: KeyboardEvent): void {
   if (isAnyPopupVisible()) {
+    return;
+  }
+
+  // multiplayer hook: the restart key does nothing mid-race
+  if (isRaceRestartLocked()) {
+    e.preventDefault();
     return;
   }
 
@@ -44,3 +51,14 @@ createHotkey(
       !(wordsHaveNewline() && getConfig.quickRestart === "enter"),
   }),
 );
+
+/**
+ * multiplayer hook: mid-race Tab must not move focus either, or Tab > Enter
+ * would reach a restart or leave control (logo, nav). Popups keep Tab.
+ */
+export function blockRaceTab(e: KeyboardEvent): void {
+  if (e.key !== "Tab" || !isRaceRestartLocked() || isAnyPopupVisible()) return;
+  e.preventDefault();
+}
+
+document.addEventListener("keydown", blockRaceTab, { capture: true });
