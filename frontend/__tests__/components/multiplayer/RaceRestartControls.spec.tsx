@@ -11,6 +11,7 @@ vi.mock("../../../src/ts/utils/json-data", async (importOriginal) => ({
 }));
 
 const Hooks = await import("../../../src/ts/multiplayer/engine-hooks");
+const Store = await import("../../../src/ts/multiplayer/store");
 const { onRestartButtonClick } =
   await import("../../../src/ts/test/test-logic");
 const { Keytips } =
@@ -26,6 +27,7 @@ describe("restart controls", () => {
   afterEach(() => {
     cleanup();
     Hooks.setRaceRestartLocked(false);
+    Store.setRace(undefined);
     vi.mocked(onRestartButtonClick).mockClear();
   });
 
@@ -58,6 +60,16 @@ describe("restart controls", () => {
       "restart test",
     );
     expect(screen.getByText("- command line")).toBeInTheDocument();
+  });
+
+  it("multiplayer results: no restart tip after the race unlocks", () => {
+    // race over (restart unlocked) but still on the race results screen
+    Store.setRace({} as NonNullable<ReturnType<typeof Store.race>>);
+    render(() => <Keytips />);
+    expect(screen.queryByTestId("keytip-restart")).toBeNull();
+    expect(screen.getByText("- command line")).toBeInTheDocument();
+    Store.setRace(undefined);
+    expect(screen.getByTestId("keytip-restart")).toBeInTheDocument();
   });
 
   it("multiplayer: keytips drop the restart tip, keep the command line", () => {
