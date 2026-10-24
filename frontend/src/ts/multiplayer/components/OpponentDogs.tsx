@@ -13,13 +13,11 @@ import { createStore } from "solid-js/store";
 import type { PlayerProgress, PlayerState } from "../protocol";
 
 import {
-  characterName,
   loadCharacterSvg,
   type Character,
 } from "../../components/pages/test/character-frames";
 import { cn } from "../../utils/cn";
 import { prefersReducedMotion } from "../../utils/misc";
-import { displayName } from "../bots";
 import {
   advanced,
   nextPaw,
@@ -161,8 +159,9 @@ function places(
 /**
  * Opponents' dogs above the progress bars, driven by race:progress: paws
  * alternate while their position moves (rate from wpm), idle when still,
- * winner-small when finished, dimmed while reconnecting. Decorative; the
- * strip has one text summary. Hidden on phones (heads sit in the bars).
+ * winner-small when finished, dimmed while reconnecting. Decorative and
+ * aria-hidden: the progress bars already announce each name and place, so
+ * screen readers hear every opponent once. Hidden on phones (heads sit in the bars).
  */
 export function OpponentDogs(): JSXElement {
   const opponents = createMemo(() =>
@@ -238,25 +237,16 @@ export function OpponentDogs(): JSXElement {
       reducedMotion: reduced,
     });
 
-  const summary = (): string => {
-    const list = opponents().map((p) => {
-      const place = ordinal(placeById().get(p.id) ?? 1);
-      return `${displayName(p)} as ${characterName(p.character)}, ${place}`;
-    });
-    return `Opponents: ${list.join("; ")}`;
-  };
-
   return (
     <Show when={opponents().length > 0}>
       <div
         class="flex flex-wrap justify-center gap-x-4 gap-y-2 max-[601px]:hidden"
-        role="img"
-        aria-label={summary()}
+        aria-hidden="true"
         data-testid="mp-opponent-dogs"
       >
         <For each={opponents()}>
           {(p) => (
-            <div class="contents" aria-hidden="true">
+            <div class="contents">
               <OpponentDog
                 player={p}
                 progress={progressById().get(p.id)}
