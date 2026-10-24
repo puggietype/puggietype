@@ -1,7 +1,8 @@
-import { createMemo } from "solid-js";
+import { createMemo, Show } from "solid-js";
 
 import { useActiveTagsLiveQuery } from "../../../../collections/tags";
 import { getConfig } from "../../../../config/store";
+import { isRaceRestartLocked } from "../../../../multiplayer/engine-hooks";
 import { showCommandline } from "../../../../states/commandline";
 import { getCustomTextIndicator, getFormatting } from "../../../../states/core";
 import { hotkeys } from "../../../../states/hotkeys";
@@ -86,8 +87,9 @@ function ResultSaving() {
 }
 
 function QuickRestart() {
+  // multiplayer hook: no restart hints mid-race
   return (
-    <>
+    <Show when={!isRaceRestartLocked()}>
       <Notice when={wordsHaveTab() && getConfig.quickRestart === "esc"}>
         <Kbd hotkey={hotkeys.commandline} /> to open commandline
       </Notice>
@@ -108,7 +110,7 @@ function QuickRestart() {
       >
         <Kbd hotkey={hotkeys.quickRestart} /> to restart
       </Notice>
-    </>
+    </Show>
   );
 }
 

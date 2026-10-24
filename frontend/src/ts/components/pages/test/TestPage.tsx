@@ -11,7 +11,6 @@ import { listenForModifierKeys } from "../../../states/modifiers";
 import { listenForMonkeyKeys } from "../../../states/monkey";
 import { getShowResult } from "../../../states/result";
 import {
-  getFocus,
   getLayoutfluidTimerText,
   getResultVisible,
   isErrorBorderDisabled,
@@ -33,14 +32,12 @@ import * as Funbox from "../../../test/funbox/funbox";
 import * as PaceCaret from "../../../test/pace-caret";
 import {
   leaveTestPage,
-  onRestartButtonClick,
   restart,
   restartIfNotStarted,
 } from "../../../test/test-logic";
 import * as TestUI from "../../../test/test-ui";
 import { cn } from "../../../utils/cn";
 import { ElementWithUtils } from "../../../utils/dom";
-import { Button } from "../../common/Button";
 import { LoadingCircle } from "../../common/LoadingCircle";
 import { CapsWarning } from "./CapsWarning";
 import { CompositionDisplay } from "./CompositionDisplay";
@@ -54,6 +51,7 @@ import { TestModesNotice } from "./modes-notice/TestModesNotice";
 import { OutOfFocusWarning } from "./OutOfFocusWarning";
 import { Premid } from "./Premid";
 import { Pug } from "./Pug";
+import { RestartTestButton } from "./RestartTestButton";
 import { TestResult } from "./result/TestResult";
 import { TestConfig } from "./TestConfig";
 import { TestInitFailed } from "./TestInitFailed";
@@ -291,26 +289,7 @@ export function TestPage(): JSXElement {
           <Pug />
         </div>
 
-        <Button
-          variant="text"
-          dataset={{ "data-ui-element": "restartTestButton" }}
-          class={cn(
-            "mx-auto mt-4 w-max px-8 py-4 text-base transition-opacity",
-            "focus:opacity-100 focus:transition-none",
-            getConfig.quickRestart !== "off" && "hidden",
-            "pointer-coarse:block", //always show the button if using a pointer-coarse device
-            getFocus() && "opacity-0", //always hide if we are focused
-          )}
-          balloon={{
-            text: "Restart Test",
-            position: "down",
-          }}
-          fa={{
-            icon: "fa-redo-alt",
-            fixedWidth: true,
-          }}
-          onClick={onRestartButtonClick}
-        />
+        <RestartTestButton />
         <div>
           <LiveStatsTextBottom />
         </div>

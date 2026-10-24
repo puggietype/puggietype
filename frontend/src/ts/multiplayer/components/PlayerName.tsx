@@ -40,7 +40,14 @@ export function PlayerName(props: {
           </span>
         }
       >
-        <span>
+        {/* full name as one accessible name (role=img like BotLabel), so the
+            chunks aren't read piecemeal and the "Bot" badge isn't repeated */}
+        <span
+          role="img"
+          title={props.player.name}
+          aria-label={props.player.name}
+          data-testid="mp-player-name"
+        >
           <For each={nameChunks(props.player.name)}>
             {(chunk, i) => (
               <>

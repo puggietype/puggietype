@@ -368,31 +368,19 @@ test("8 players race in one private room; a 9th is rejected", async ({
     );
     await expect(carets).toHaveCount(7, { timeout: 15_000 });
     await expect(byTestId(a, "mp-progress-row")).toHaveCount(8);
-    // wait for the field to spread out, then check the tags don't pile up
+    // wait for the field to spread out
     await a.waitForTimeout(2500);
-    await a.waitForTimeout(300); // let tag stacking settle a frame or two
-    // measure all tags in one frame (they move every frame), a few times
-    for (let n = 0; n < 5; n++) {
-      const tags = await a.evaluate(() =>
-        Array.from(
-          document.querySelectorAll(
-            '[data-testid="mp-opponent-caret"][data-visible="true"][data-tag="shown"] [data-testid="mp-opponent-tag"]',
-          ),
-        ).map((el) => {
-          const r = el.getBoundingClientRect();
-          return { x: r.x, y: r.y, width: r.width, height: r.height };
-        }),
-      );
-      expect(tags.length).toBeGreaterThanOrEqual(3);
-      expectNoOverlap(tags, "caret tag");
-      await a.waitForTimeout(150);
+    // carets are colour only, one colour each, matching their row swatch
+    await expect(carets.filter({ hasText: /./ })).toHaveCount(0);
+    const caretColors = await carets.evaluateAll((els) =>
+      els.map((el) => el.getAttribute("data-color")),
+    );
+    expect(new Set(caretColors).size).toBe(7);
+    for (const color of caretColors) {
+      await expect(
+        a.locator(`[data-testid="mp-progress-swatch"][data-color="${color}"]`),
+      ).toHaveCount(1);
     }
-    const tagColors = await a
-      .locator('[data-testid="mp-opponent-tag"]')
-      .evaluateAll((els) =>
-        els.map((el) => getComputedStyle(el).backgroundColor),
-      );
-    expect(new Set(tagColors).size).toBe(7);
     expectNoOverlap(
       await boxes(byTestId(a, "mp-progress-row")),
       "progress row",

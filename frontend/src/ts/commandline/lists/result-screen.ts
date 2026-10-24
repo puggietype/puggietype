@@ -10,6 +10,7 @@ import * as PractiseWords from "../../test/practise-words";
 import { Command, CommandsSubgroup } from "../types";
 import { getInputHistory } from "../../test/events/stats";
 import { getLastEventLog, getResultVisible } from "../../states/test";
+import { isRaceRestartLocked } from "../../multiplayer/engine-hooks";
 import { showModal } from "../../states/modals";
 import {
   captureAndCopyToClipboard,
@@ -67,7 +68,7 @@ const commands: Command[] = [
     alias: "restart start begin type test typing",
     icon: "fa-chevron-right",
     available: (): boolean => {
-      return getResultVisible();
+      return getResultVisible() && !isRaceRestartLocked();
     },
     exec: (): void => {
       void TestLogic.restart();
@@ -83,7 +84,7 @@ const commands: Command[] = [
       });
     },
     available: (): boolean => {
-      return getResultVisible();
+      return getResultVisible() && !isRaceRestartLocked();
     },
   },
   {
@@ -92,7 +93,7 @@ const commands: Command[] = [
     icon: "fa-exclamation-triangle",
     subgroup: practiceSubgroup,
     available: (): boolean => {
-      return getResultVisible();
+      return getResultVisible() && !isRaceRestartLocked();
     },
   },
   {

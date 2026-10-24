@@ -1,8 +1,10 @@
 /**
  * Minimal state the typing engine consults during a multiplayer race.
- * Kept dependency free so engine modules can import it without cycles.
+ * Kept free of app imports so engine modules can import it without cycles.
  * Engine call sites are marked `// multiplayer hook`.
  */
+
+import { createSignal } from "solid-js";
 
 export type RaceFinishData = {
   wpm: number;
@@ -16,7 +18,8 @@ export type RaceFinishData = {
 
 let raceWords: readonly string[] | undefined;
 let inputLocked = false;
-let restartLocked = false;
+/** a signal so restart controls (button, keytips) hide while it's set */
+const [restartLocked, setRestartLocked] = createSignal(false);
 let finishHandler: ((data: RaceFinishData) => void) | undefined;
 /** a pending discard expires, so it can't eat a later solo result */
 const DISCARD_WINDOW_MS = 10_000;
@@ -50,13 +53,17 @@ export function isRaceInputLocked(): boolean {
   return inputLocked;
 }
 
-/** blocks user restarts (tab, esc, config changes) while racing */
+/**
+ * blocks user restarts (tab, esc, restart button, commands, config changes)
+ * from the countdown until the race ends for us
+ */
 export function setRaceRestartLocked(locked: boolean): void {
-  restartLocked = locked;
+  setRestartLocked(locked);
 }
 
+/** reactive */
 export function isRaceRestartLocked(): boolean {
-  return restartLocked;
+  return restartLocked();
 }
 
 export function onRaceFinish(

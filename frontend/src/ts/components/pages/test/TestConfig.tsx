@@ -55,6 +55,7 @@ export function TestConfig(): JSXElement {
           getResultVisible() ? "pointer-events-none opacity-0" : "",
         )}
         tabIndex={getResultVisible() ? -1 : undefined}
+        ariaHidden={getResultVisible()}
         dataset={{ "data-testid": "mobile-test-settings" }}
         variant="button"
         onClick={() => {
