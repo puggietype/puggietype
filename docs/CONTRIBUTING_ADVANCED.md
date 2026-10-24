@@ -156,4 +156,4 @@ For guidelines on commit messages, adding themes, languages, or quotes, please r
 
 ## Questions
 
-If you have any questions, comments, concerns, or problems let me know on [GitHub](https://github.com/Miodec), [Discord](https://discord.gg/monkeytype) in the `#development` channel, or ask a question on Monkeytype's [GitHub discussions](https://github.com/monkeytypegame/monkeytype/discussions) and a contributor will be happy to assist you.
+If you have any questions, comments, concerns, or problems, let us know at [support@puggietype.com](mailto:support@puggietype.com) and we'll be happy to help.

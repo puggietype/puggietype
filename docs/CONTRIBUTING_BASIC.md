@@ -29,7 +29,7 @@ The steps for basic contributions are showcased splendidly in [this YouTube vide
 
 ### Forking Monkeytype
 
-First, you will have to obtain your own copy of the Monkeytype repository, also known as "forking". Click [here](https://github.com/monkeytypegame/monkeytype/fork) to open the fork wizard or go to the top right of your screen and then click the `fork` button.
+First, you will have to obtain your own copy of the PuggieType repository, also known as "forking". Click [here](https://github.com/puggietype/puggietype/fork) to open the fork wizard or go to the top right of your screen and then click the `fork` button.
 
 <img width="1552" alt="Screenshot showing location of the fork button on GitHub." src="https://user-images.githubusercontent.com/83455454/149194972-23343642-7a1f-4c0c-b5f2-36f4b39a2639.png">
 
@@ -77,7 +77,7 @@ Once up to date, you can click the `Contribute` button to open a PR.
 Create a pull request:
 <img width="1552" alt="Screenshot showing how to create a pull request to the main Monkeytype repository" src="https://user-images.githubusercontent.com/83455454/149186637-66dae488-05ae-45c4-9217-65bc36c4927b.png">
 
-Be sure to add a good description to the PR and that the source and destination branches at the top look correct. The `base repository` and `base branch` should be listed as `monkeytypegame/monkeytype` and `master` respectively, and on the right of that should be your forked repository and the branch you have your changes on.
+Be sure to add a good description to the PR and that the source and destination branches at the top look correct. The `base repository` and `base branch` should be listed as `puggietype/puggietype` and `main` respectively, and on the right of that should be your forked repository and the branch you have your changes on.
 
 Once done, click on `Create pull request` to officially publish your PR.
 

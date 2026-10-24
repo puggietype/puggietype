@@ -83,8 +83,4 @@ To report a security vulnerability, please refer to [SECURITY.md](./docs/SECURIT
 
 Everyone who provided valuable feedback on the [original Reddit post](https://www.reddit.com/r/MechanicalKeyboards/comments/gc6wx3/experimenting_with_a_completely_new_type_of/) for the prototype of this website.
 
-All of the [contributors](https://github.com/monkeytypegame/monkeytype/graphs/contributors) have helped implement various features, add themes, fix bugs, and more.
-
-# Support
-
-If you wish to support further development and feel extra awesome, you can [donate](https://ko-fi.com/monkeytype), [become a Patron](https://www.patreon.com/monkeytype), or [buy a t-shirt](https://www.monkeytype.store/).
+All of the [contributors](https://github.com/puggietype/puggietype/graphs/contributors) have helped implement various features, add themes, fix bugs, and more.

@@ -7,13 +7,13 @@
 
 ### Forking Monkeytype
 
-First you will have to copy the Monkeytype repository also known as forking. Go to the [Monkeytype Repo](https://github.com/monkeytypegame/monkeytype/) and then click the "fork" button.
+First you will have to copy the PuggieType repository also known as forking. Go to the [PuggieType repo](https://github.com/puggietype/puggietype/) and then click the "fork" button.
 
 <img width="1552" alt="Screen Shot 2022-01-12 at 11 51 49 AM" src="https://user-images.githubusercontent.com/83455454/149194972-23343642-7a1f-4c0c-b5f2-36f4b39a2639.png">
 
 ## Creating Quotes
 
-After you forked the Monkeytype repository you can now add your quotes. (If you haven't already forked the repository, refer to this [section](#forking-monkeytype).) (Before continuing to the next step make sure the quote's language exists in Monkeytype) Add this code in at the end of the quotes `./frontend/static/quotes/[language].json`:
+After you forked the PuggieType repository you can now add your quotes. (If you haven't already forked the repository, refer to this [section](#forking-monkeytype).) (Before continuing to the next step make sure the quote's language exists in Monkeytype) Add this code in at the end of the quotes `./frontend/static/quotes/[language].json`:
 
 ```json
 {
