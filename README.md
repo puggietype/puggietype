@@ -67,7 +67,7 @@ On the [Monkeytype Discord server](https://www.discord.gg/monkeytype), we added 
 
 # Bug report or Feature request
 
-If you encounter a bug or have a feature request, [send us an email](mailto:contact@monkeytype.com), [create an issue](https://github.com/monkeytypegame/monkeytype/issues), [create a discussion thread](https://github.com/monkeytypegame/monkeytype/discussions), or [join the Discord server](https://www.discord.gg/monkeytype).
+If you encounter a bug or have a feature request, email [support@puggietype.com](mailto:support@puggietype.com).
 
 # Want to Contribute?
 
