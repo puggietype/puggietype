@@ -72,7 +72,7 @@
     "conventional-changelog": "6.0.0",
     "husky": "8.0.1",
     "knip": "2.19.2",
-    "lint-staged": "13.2.3",
+    "lint-staged": "17.6.0",
     "only-allow": "1.2.1",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
