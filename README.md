@@ -61,10 +61,6 @@ Monkeytype is a minimalistic and customizable typing test. It features many test
 - Challenges and just-for-fun test modifiers
 - And much more
 
-# Discord bot
-
-On the [Monkeytype Discord server](https://www.discord.gg/monkeytype), we added a Discord bot to auto-assign optional roles based on typing performance and challenge completion. You can find its code over at https://github.com/monkeytypegame/monkeytype-bot.
-
 # Bug report or Feature request
 
 If you encounter a bug or have a feature request, email [support@puggietype.com](mailto:support@puggietype.com).
