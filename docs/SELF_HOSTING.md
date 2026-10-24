@@ -31,11 +31,13 @@
 
 ## Quickstart
 
-- create a new directory (e.g. `puggietype`) and navigate into it.
-- download the [docker-compose.yml](https://github.com/puggietype/puggietype/blob/main/docker/docker-compose.yml) file.
-- create an `.env` file, you can copy the content from the [example.env](https://github.com/puggietype/puggietype/blob/main/docker/example.env).
-- download the [backend-configuration.json](https://github.com/puggietype/puggietype/blob/main/docker/backend-configuration.json)
-- run `docker compose up -d`
+PuggieType doesn't publish Docker images, so the frontend and backend images are built locally from the source.
+
+- clone the repo: `git clone https://github.com/puggietype/puggietype.git` and go into `puggietype/docker`.
+- create an `.env` file there, you can copy the content from [example.env](https://github.com/puggietype/puggietype/blob/main/docker/example.env) (`cp example.env .env`).
+- check [backend-configuration.json](https://github.com/puggietype/puggietype/blob/main/docker/backend-configuration.json) (already in that folder).
+- run `docker compose up -d --build`. The first build takes a few minutes. Compose builds `puggietype-frontend:local` and `puggietype-backend:local` from `docker/frontend/Dockerfile` and `docker/backend/Dockerfile` (see [BUILD.md](../docker/BUILD.md)); nothing is pulled from the upstream Monkeytype images.
+- to update later, `git pull` and run `docker compose up -d --build` again.
 - after the command exits successfully you can access [http://localhost](http://localhost)
 
 ### Hosting over the network (HTTPS)
