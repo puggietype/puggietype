@@ -61,13 +61,9 @@ Monkeytype is a minimalistic and customizable typing test. It features many test
 - Challenges and just-for-fun test modifiers
 - And much more
 
-# Discord bot
-
-On the [Monkeytype Discord server](https://www.discord.gg/monkeytype), we added a Discord bot to auto-assign optional roles based on typing performance and challenge completion. You can find its code over at https://github.com/monkeytypegame/monkeytype-bot.
-
 # Bug report or Feature request
 
-If you encounter a bug or have a feature request, [send us an email](mailto:contact@monkeytype.com), [create an issue](https://github.com/monkeytypegame/monkeytype/issues), [create a discussion thread](https://github.com/monkeytypegame/monkeytype/discussions), or [join the Discord server](https://www.discord.gg/monkeytype).
+If you encounter a bug or have a feature request, email [support@puggietype.com](mailto:support@puggietype.com).
 
 # Want to Contribute?
 
@@ -87,8 +83,4 @@ To report a security vulnerability, please refer to [SECURITY.md](./docs/SECURIT
 
 Everyone who provided valuable feedback on the [original Reddit post](https://www.reddit.com/r/MechanicalKeyboards/comments/gc6wx3/experimenting_with_a_completely_new_type_of/) for the prototype of this website.
 
-All of the [contributors](https://github.com/monkeytypegame/monkeytype/graphs/contributors) have helped implement various features, add themes, fix bugs, and more.
-
-# Support
-
-If you wish to support further development and feel extra awesome, you can [donate](https://ko-fi.com/monkeytype), [become a Patron](https://www.patreon.com/monkeytype), or [buy a t-shirt](https://www.monkeytype.store/).
+All of the [contributors](https://github.com/puggietype/puggietype/graphs/contributors) have helped implement various features, add themes, fix bugs, and more.
