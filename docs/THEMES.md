@@ -1,11 +1,11 @@
 ### **Table of Contents**
 
-- [Forking Monkeytype](#forking-monkeytype)
+- [Forking PuggieType](#forking-puggietype)
 - [Creating Themes](#creating-themes)
 - [Committing Themes](#committing-themes)
 - [Theme Guidelines](#theme-guidelines)
 
-### Forking Monkeytype
+### Forking PuggieType
 
 First you will have to make a personal copy of the PuggieType repository, also known as "forking". Go to the [PuggieType repo](https://github.com/puggietype/puggietype/) and then click the "fork" button.
 
@@ -78,15 +78,15 @@ export const themes: Record<ThemeName, Theme>  = {
 
 ### Committing Themes
 
-Once you have created your theme(s), you now need to create a pull request to the main Monkeytype repository. Go to the branch where you created your new theme on GitHub. Then make sure your branch is up to date. Once it is up to date, click "contribute".
+Once you have created your theme(s), you now need to create a pull request to the main PuggieType repository. Go to the branch where you created your new theme on GitHub. Then make sure your branch is up to date. Once it is up to date, click "contribute".
 
 Update branch:
-<img width="1552" alt="Screenshot showing how to update the fork to match the main Monkeytype repository" src="https://user-images.githubusercontent.com/83455454/149186547-5b9fe4fd-b944-4eed-a959-db43f96198bf.png">
+<img width="1552" alt="Screenshot showing how to update the fork to match the main PuggieType repository" src="https://user-images.githubusercontent.com/83455454/149186547-5b9fe4fd-b944-4eed-a959-db43f96198bf.png">
 
 Create a pull request:
-<img width="1552" alt="Screenshot showing how to create a pull request to the main Monkeytype repository" src="https://user-images.githubusercontent.com/83455454/149186637-66dae488-05ae-45c4-9217-65bc36c4927b.png">
+<img width="1552" alt="Screenshot showing how to create a pull request to the main PuggieType repository" src="https://user-images.githubusercontent.com/83455454/149186637-66dae488-05ae-45c4-9217-65bc36c4927b.png">
 
-Add some screenshots of your theme to the pull request. Click "create pull request" and if it gets approved then your new theme is available on Monkeytype for everyone to enjoy.
+Add some screenshots of your theme to the pull request. Click "create pull request" and if it gets approved then your new theme is available on PuggieType for everyone to enjoy.
 
 ## Theme Guidelines
 

@@ -1,11 +1,11 @@
 ### **Table of Contents**
 
-- [Forking Monkeytype](#forking-monkeytype)
+- [Forking PuggieType](#forking-puggietype)
 - [Adding fonts](#adding-fonts)
 - [Committing Languages](#committing-languages)
 - [Language Guidelines](#language-guidelines)
 
-### Forking Monkeytype
+### Forking PuggieType
 
 First, you will have to make a personal copy of the PuggieType repository, also known as "forking". Go to the [PuggieType repo](https://github.com/puggietype/puggietype/) and then click the "fork" button.
 
@@ -43,13 +43,13 @@ export const Fonts: Record<KnownFontName, FontConfig> = {
 
 ### Committing Languages
 
-Once you have created your language, you now need to create a pull request to the main Monkeytype repository. Go to the branch where you created your languages on GitHub. Then make sure your branch is up to date. Once it is up to date, click "contribute".
+Once you have created your language, you now need to create a pull request to the main PuggieType repository. Go to the branch where you created your languages on GitHub. Then make sure your branch is up to date. Once it is up to date, click "contribute".
 
 Update branch:
-<img width="1552" alt="Screenshot showing how to update the fork to match the main Monkeytype repository" src="https://user-images.githubusercontent.com/83455454/149186547-5b9fe4fd-b944-4eed-a959-db43f96198bf.png">
+<img width="1552" alt="Screenshot showing how to update the fork to match the main PuggieType repository" src="https://user-images.githubusercontent.com/83455454/149186547-5b9fe4fd-b944-4eed-a959-db43f96198bf.png">
 
 Create a pull request:
-<img width="1552" alt="Screenshot showing how to create a pull request to the main Monkeytype repository" src="https://user-images.githubusercontent.com/83455454/149186637-66dae488-05ae-45c4-9217-65bc36c4927b.png">
+<img width="1552" alt="Screenshot showing how to create a pull request to the main PuggieType repository" src="https://user-images.githubusercontent.com/83455454/149186637-66dae488-05ae-45c4-9217-65bc36c4927b.png">
 
 ## Language Guidelines
 

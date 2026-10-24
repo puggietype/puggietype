@@ -7,7 +7,7 @@ body:
       value: |
         # Welcome
         ```
-        Thanks for taking the time to fill out this bug! If you need real-time help, join us on Discord: discord.gg/monkeytype
+        Thanks for taking the time to fill out this bug!
         ```
 
   - type: checkboxes
@@ -65,9 +65,9 @@ body:
   - type: textarea
     attributes:
       label: Account name
-      description: Your Monkeytype account name.
+      description: Your PuggieType account name (if any).
       placeholder: |
-        Miodec
+        your-account-name
     validations:
       required: false
 
