@@ -42,6 +42,15 @@ const FRAMES: readonly OpponentFrame[] = [
 const DENSE_AT = 5;
 const MAX_OPPONENTS = 7;
 
+/**
+ * shake duration in 0.05 s steps: the raw value changed on every progress tick
+ * at 130+ wpm, and each new animation-duration restarts the animation
+ */
+function quantizedShake(wpm: number): number {
+  const d = shakeDuration(wpm);
+  return d === 0 ? 0 : Math.max(0.05, Math.round(d * 20) / 20);
+}
+
 async function loadFrames(
   character: Character,
 ): Promise<Partial<Record<OpponentFrame, string>>> {
@@ -76,7 +85,7 @@ function OpponentDog(props: {
         <div
           class="animate-shake absolute inset-0"
           style={{
-            "animation-duration": `${prefersReducedMotion() ? 0 : shakeDuration(wpm())}s`,
+            "animation-duration": `${prefersReducedMotion() ? 0 : quantizedShake(wpm())}s`,
           }}
         >
           <div class="absolute inset-0 text-(--pug-ink)">

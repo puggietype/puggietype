@@ -111,13 +111,18 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
                 </Show>
               </span>
             </span>
-            <div class="h-1.5 rounded-full bg-bg">
+            <div class="h-1.5 overflow-hidden rounded-full bg-bg">
+              {/* scaleX, not width: a width transition re-ran layout on
+                  every frame of the race (a new tick lands every 100 ms) */}
               <div
                 class={cn(
-                  "h-full rounded-full transition-[width] duration-200 ease-linear",
+                  "h-full origin-left rounded-full transition-transform duration-200 ease-linear will-change-transform",
                   PLAYER_BG[player.color],
                 )}
-                style={{ width: `${(fraction(player.id) * 100).toFixed(1)}%` }}
+                data-testid="mp-progress-fill"
+                style={{
+                  transform: `scaleX(${fraction(player.id).toFixed(3)})`,
+                }}
               ></div>
             </div>
             <span
