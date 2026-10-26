@@ -10,7 +10,7 @@ import { Portal } from "solid-js/web";
 
 import { getActiveWordIndex } from "../../states/test";
 import { cn } from "../../utils/cn";
-import { caretTarget, type Point } from "../caret-position";
+import { caretTarget, shouldRemeasure, type Point } from "../caret-position";
 import {
   myId,
   opponentProgress,
@@ -22,8 +22,6 @@ import { PLAYER_BG } from "./ui";
 
 /** glide between measured positions (one progress tick is 100 ms) */
 const GLIDE_MS = 120;
-/** re-measure caret targets at least this often (line wraps, font loads) */
-const MEASURE_MS = 100;
 
 type Measured = { x: number; y: number; height: number; visible: boolean };
 
@@ -85,8 +83,8 @@ export function OpponentCarets(): JSXElement {
   // layout reads are the expensive part (each one forces a style + layout
   // pass on top of the engine's own), so targets are measured only when an
   // opponent moved, our own word changed (line jumps), the page scrolled or
-  // resized, or at MEASURE_MS at the latest. Frames in between only smooth
-  // toward the cached targets and write transforms.
+  // resized, or every CARET_MEASURE_MS at the latest (shouldRemeasure).
+  // Between measures the browser glides carets with a CSS transition.
   const targets = new Map<string, Measured | undefined>();
   let measuredFor: unknown;
   let measuredWord = -1;
@@ -126,10 +124,12 @@ export function OpponentCarets(): JSXElement {
     const progress = opponentProgress();
     const ownWord = getActiveWordIndex();
     if (
-      dirty ||
-      progress !== measuredFor ||
-      ownWord !== measuredWord ||
-      now - measuredAt >= MEASURE_MS
+      shouldRemeasure({
+        dirty,
+        progressChanged: progress !== measuredFor,
+        ownWordChanged: ownWord !== measuredWord,
+        msSinceLast: now - measuredAt,
+      })
     ) {
       remeasure(
         info.words,

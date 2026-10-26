@@ -2,6 +2,7 @@ import { createMemo, For, JSXElement, Show } from "solid-js";
 
 import { Fa } from "../../components/common/Fa";
 import { cn } from "../../utils/cn";
+import { progressFillTransform } from "../caret-position";
 import { isFlagEnabled } from "../feature-flags";
 import {
   myId,
@@ -112,16 +113,17 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
               </span>
             </span>
             <div class="h-1.5 overflow-hidden rounded-full bg-bg">
-              {/* scaleX, not width: a width transition re-ran layout on
-                  every frame of the race (a new tick lands every 100 ms) */}
+              {/* a full-width rounded fill slid by translateX inside the
+                  clipped track: no layout per frame (unlike width) and the
+                  right end stays round (unlike scaleX) */}
               <div
                 class={cn(
-                  "h-full origin-left rounded-full transition-transform duration-200 ease-linear will-change-transform",
+                  "h-full w-full rounded-full transition-transform duration-200 ease-linear will-change-transform",
                   PLAYER_BG[player.color],
                 )}
                 data-testid="mp-progress-fill"
                 style={{
-                  transform: `scaleX(${fraction(player.id).toFixed(3)})`,
+                  transform: progressFillTransform(fraction(player.id)),
                 }}
               ></div>
             </div>
