@@ -18,6 +18,18 @@ import { PLAYER_BG, PLAYER_TEXT } from "./ui";
 const TIME_MODE_HEADROOM = 10;
 
 /**
+ * slide a full-width fill left by the unfinished share instead of scaling it:
+ * scaleX squashed the rounded end into a square cap. Compositor-only either way.
+ */
+export function fillTransform(fraction: number): string {
+  const f = Math.min(1, Math.max(0, fraction));
+  const hidden = (1 - f) * 100;
+  return hidden < 0.05
+    ? "translateX(0%)"
+    : `translateX(-${hidden.toFixed(1)}%)`;
+}
+
+/**
  * compact per-player progress bars, fed by race:progress. Always shown during
  * a race (focus mode and "carets off" included): the rows carry the names and
  * bot labels that the colour-only carets don't.
@@ -112,16 +124,16 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
               </span>
             </span>
             <div class="h-1.5 overflow-hidden rounded-full bg-bg">
-              {/* scaleX, not width: a width transition re-ran layout on
+              {/* transform, not width: a width transition re-ran layout on
                   every frame of the race (a new tick lands every 100 ms) */}
               <div
                 class={cn(
-                  "h-full origin-left rounded-full transition-transform duration-200 ease-linear will-change-transform",
+                  "h-full w-full rounded-full transition-transform duration-200 ease-linear will-change-transform",
                   PLAYER_BG[player.color],
                 )}
                 data-testid="mp-progress-fill"
                 style={{
-                  transform: `scaleX(${fraction(player.id).toFixed(3)})`,
+                  transform: fillTransform(fraction(player.id)),
                 }}
               ></div>
             </div>
