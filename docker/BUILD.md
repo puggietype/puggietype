@@ -2,9 +2,14 @@
 
 PuggieType doesn't publish Docker images. Build them from this repo instead.
 
-From the `docker/` directory (uses the `build:` settings in `docker-compose.yml`):
+You need Docker Compose v2 (the `docker compose` plugin). The old
+`docker-compose` v1 binary isn't supported.
+
+From the `docker/` directory (uses the `build:` settings in `docker-compose.yml`),
+create `.env` first. Compose reads `docker/.env` and fails without it:
 
 ```
+  cp example.env .env
   docker compose build
 ```
 
