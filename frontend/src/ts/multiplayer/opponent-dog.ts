@@ -80,3 +80,37 @@ export function steppedShakeDuration(wpm: number): number {
   const d = shakeDuration(wpm);
   return d === 0 ? 0 : Math.max(0.05, Math.round(d * 20) / 20);
 }
+
+/** smoothing time constant (ms of the opponent's race time) for the shake wpm */
+export const SHAKE_WPM_TAU_MS = 500;
+/** the smoothed wpm must clear the current step by this much to switch */
+export const SHAKE_HYSTERESIS_WPM = 4;
+
+export type ShakeState = { wpm: number; testMs: number; duration: number };
+
+/**
+ * Per-opponent shake step from race:progress. Their wpm is correct chars over
+ * race time, so a hesitation or correction dips it for a tick or two (most
+ * early on) and the raw step flickered (0.05 -> 0.1 -> 0.15 s for a steady
+ * 250 wpm bot). EMA over their testMs (immune to arrival jitter), then only
+ * switch steps once the smoothed wpm is clearly out of the current one.
+ */
+export function nextShake(
+  prev: ShakeState | undefined,
+  wpm: number,
+  testMs: number,
+): ShakeState {
+  if (prev === undefined || testMs < prev.testMs) {
+    return { wpm, testMs, duration: steppedShakeDuration(wpm) };
+  }
+  const k = 1 - Math.exp(-(testMs - prev.testMs) / SHAKE_WPM_TAU_MS);
+  const smooth = prev.wpm + (wpm - prev.wpm) * k;
+  const outside =
+    steppedShakeDuration(smooth - SHAKE_HYSTERESIS_WPM) !== prev.duration &&
+    steppedShakeDuration(smooth + SHAKE_HYSTERESIS_WPM) !== prev.duration;
+  return {
+    wpm: smooth,
+    testMs,
+    duration: outside ? steppedShakeDuration(smooth) : prev.duration,
+  };
+}

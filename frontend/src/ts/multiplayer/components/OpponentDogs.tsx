@@ -21,12 +21,13 @@ import { prefersReducedMotion } from "../../utils/misc";
 import {
   advanced,
   nextPaw,
+  nextShake,
   opponentFrame,
   pawIntervalMs,
-  steppedShakeDuration,
   TYPING_HOLD_MS,
   type OpponentFrame,
   type OpponentPaw,
+  type ShakeState,
 } from "../opponent-dog";
 import { myId, opponentProgress, room } from "../store";
 import { PlayerName } from "./PlayerName";
@@ -61,6 +62,14 @@ function OpponentDog(props: {
   const [frames] = createResource(() => props.player.character, loadFrames);
   const wpm = () => Math.round(props.progress?.wpm ?? 0);
   const finished = () => props.progress?.finished ?? props.player.finished;
+  // smoothed per tick (not per frame); a number memo so an unchanged step
+  // doesn't rewrite animation-duration
+  const shake = createMemo<ShakeState | undefined>((prev) =>
+    props.progress === undefined
+      ? prev
+      : nextShake(prev, props.progress.wpm, props.progress.testMs),
+  );
+  const shakeDuration = createMemo(() => shake()?.duration ?? 0);
 
   return (
     <div
@@ -76,7 +85,7 @@ function OpponentDog(props: {
         <div
           class="animate-shake absolute inset-0"
           style={{
-            "animation-duration": `${prefersReducedMotion() ? 0 : steppedShakeDuration(wpm())}s`,
+            "animation-duration": `${prefersReducedMotion() ? 0 : shakeDuration()}s`,
           }}
         >
           <div class="absolute inset-0 text-(--pug-ink)">
