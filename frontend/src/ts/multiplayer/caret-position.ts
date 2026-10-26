@@ -47,3 +47,43 @@ export function smoothToward(
   if (Math.abs(target.x - x) < 0.5) return { ...target };
   return { x, y: target.y };
 }
+
+/** inputs for the opponent-caret re-measure decision (see OpponentCarets) */
+export type RemeasureState = {
+  /** a scroll or resize happened since the last measure */
+  dirty: boolean;
+  /** opponent progress (a new race:progress list) since the last measure */
+  progressChanged: boolean;
+  /** our own active word changed (our line may have jumped) */
+  ownWordChanged: boolean;
+  msSinceLast: number;
+};
+
+/** re-measure caret targets at least this often (line wraps, font loads) */
+export const CARET_MEASURE_MS = 100;
+
+/**
+ * Layout reads force a style + layout pass, so caret targets are measured
+ * only when something could have moved them, or every CARET_MEASURE_MS.
+ */
+export function shouldRemeasure(
+  state: RemeasureState,
+  intervalMs = CARET_MEASURE_MS,
+): boolean {
+  return (
+    state.dirty ||
+    state.progressChanged ||
+    state.ownWordChanged ||
+    state.msSinceLast >= intervalMs
+  );
+}
+
+/**
+ * transform for a progress fill: a full-width rounded bar slid left inside a
+ * clipped, rounded track, so the right end stays round at any fraction
+ */
+export function progressFillTransform(fraction: number): string {
+  const f = Math.min(1, Math.max(0, Number.isFinite(fraction) ? fraction : 0));
+  if (f === 1) return "translateX(0%)";
+  return `translateX(-${((1 - f) * 100).toFixed(2)}%)`;
+}

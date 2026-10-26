@@ -23,7 +23,7 @@ import {
   nextPaw,
   opponentFrame,
   pawIntervalMs,
-  shakeDuration,
+  steppedShakeDuration,
   TYPING_HOLD_MS,
   type OpponentFrame,
   type OpponentPaw,
@@ -76,7 +76,7 @@ function OpponentDog(props: {
         <div
           class="animate-shake absolute inset-0"
           style={{
-            "animation-duration": `${prefersReducedMotion() ? 0 : shakeDuration(wpm())}s`,
+            "animation-duration": `${prefersReducedMotion() ? 0 : steppedShakeDuration(wpm())}s`,
           }}
         >
           <div class="absolute inset-0 text-(--pug-ink)">

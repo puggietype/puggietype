@@ -70,3 +70,13 @@ export function shakeDuration(wpm: number): number {
   const t = Math.min(1, (wpm - min) / (max - min));
   return 0.25 + (0.01 - 0.25) * t;
 }
+
+/**
+ * shakeDuration in 0.05 s steps (min 0.05 s): the raw value changed on every
+ * progress tick at 130+ wpm, and each new animation-duration restarts the
+ * shake animation
+ */
+export function steppedShakeDuration(wpm: number): number {
+  const d = shakeDuration(wpm);
+  return d === 0 ? 0 : Math.max(0.05, Math.round(d * 20) / 20);
+}
