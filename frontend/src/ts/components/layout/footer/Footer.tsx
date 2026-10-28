@@ -70,6 +70,25 @@ export function Footer(): JSXElement {
               </a>
             </span>
           </div>
+          {/* plain links: the static pages need a full page load */}
+          <nav
+            class="flex items-center gap-2 p-2"
+            aria-label="guides"
+            data-testid="guide-links"
+          >
+            <a class={linkClass} href="/guide/about">
+              about
+            </a>
+            <a class={linkClass} href="/faq">
+              faq
+            </a>
+            <a class={linkClass} href="/guide/typing-tips">
+              guides
+            </a>
+            <a class={linkClass} href="/contact">
+              contact
+            </a>
+          </nav>
         </div>
         <div class="flex flex-col items-end text-right lg:flex-row">
           <ThemeIndicator />

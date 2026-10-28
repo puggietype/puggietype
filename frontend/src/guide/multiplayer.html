@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="google-adsense-account" content="ca-pub-8233445679738428" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Multiplayer typing races: Quick Match and private rooms | PuggieType
+    </title>
+    <link rel="stylesheet" href="/styles/static-page.scss" />
+    <link rel="icon" href="/images/favicon/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/images/favicon/favicon.svg" type="image/svg+xml" />
+    <meta
+      name="description"
+      content="How PuggieType races work: private rooms with invite links, Open Rooms, Quick Match by speed, Pug Bots, the race flow and fair play checks."
+    />
+    <link rel="canonical" href="https://puggietype.com/guide/multiplayer" />
+    <meta property="og:site_name" content="puggietype" />
+    <meta
+      property="og:title"
+      content="Multiplayer typing races: Quick Match and private rooms | PuggieType"
+    />
+    <meta
+      property="og:description"
+      content="How PuggieType races work: private rooms with invite links, Open Rooms, Quick Match by speed, Pug Bots, the race flow and fair play checks."
+    />
+    <meta
+      property="og:url"
+      content="https://puggietype.com/guide/multiplayer"
+    />
+    <meta property="og:type" content="article" />
+    <meta
+      property="og:image"
+      content="https://puggietype.com/images/og-image.png"
+    />
+    <meta name="theme-color" content="#161514" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Multiplayer typing races: Quick Match and private rooms | PuggieType"
+    />
+    <meta
+      name="twitter:description"
+      content="How PuggieType races work: private rooms with invite links, Open Rooms, Quick Match by speed, Pug Bots, the race flow and fair play checks."
+    />
+    <meta
+      name="twitter:image"
+      content="https://puggietype.com/images/og-image.png"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "Multiplayer guide: Quick Match, private rooms and fair play",
+        "description": "How PuggieType races work: private rooms with invite links, Open Rooms, Quick Match by speed, Pug Bots, the race flow and fair play checks.",
+        "url": "https://puggietype.com/guide/multiplayer",
+        "mainEntityOfPage": "https://puggietype.com/guide/multiplayer",
+        "image": "https://puggietype.com/images/og-image.png",
+        "author": {
+          "@type": "Organization",
+          "name": "PuggieType",
+          "url": "https://puggietype.com/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "PuggieType",
+          "url": "https://puggietype.com/",
+          "logo": "https://puggietype.com/images/favicon/icon-512.png",
+          "email": "support@puggietype.com",
+          "sameAs": ["https://github.com/puggietype/puggietype"]
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="app" class="content-grid">
+      <load src="html/static-page/header.html" />
+      <!-- prose: oxfmt's htmlWhitespaceSensitivity "ignore" would split "</a>." -->
+      <!-- prettier-ignore -->
+      <main>
+        <h1>Multiplayer guide: Quick Match, private rooms and fair play</h1>
+        <p class="lede">
+          Racing is where PuggieType differs most from a plain typing test. This
+          guide covers the three ways to race, what happens during a race, and the
+          rules that keep results fair.
+        </p>
+
+        <h2>Before you start</h2>
+        <p>
+          Multiplayer lives on the <a href="/race">race page</a>. You don't need an
+          account. The first time you open it, you are asked to confirm that you are
+          13 or older; multiplayer is not available to younger players. Your browser
+          then connects to our game server and you are given a random nickname such
+          as "ZippyPug42". You can't type your own name, which keeps rooms free of
+          offensive names, but you can reroll it if you don't like the one you got.
+          There is no chat and no way to message other players.
+        </p>
+
+        <h2>Three ways to race</h2>
+        <h3>Private rooms</h3>
+        <p>
+          Create a room and you become its host. The room gets an 8-character code
+          made of letters and digits that are hard to confuse (no 0, O, 1, I or L),
+          and an invite link of the form <code>puggietype.com/r/CODE</code>. Use the
+          "copy invite" button and send the link to the people you want to race;
+          opening it takes them straight into your lobby. Anyone with the link or
+          code can join while the room is open, so share it only with people you
+          want in the race. Private rooms are a good fit for a group of friends, a
+          class warm-up or a quick contest at work.
+        </p>
+        <p>The host chooses the race settings:</p>
+        <ul>
+          <li>a timed race of 15, 30, 60 or 120 seconds, or a race of 10, 25, 50 or 100 words;</li>
+          <li>punctuation and numbers, each on or off;</li>
+          <li>the word language.</li>
+        </ul>
+        <p>
+          The default is a 30-second English race without punctuation or numbers.
+          For more on what these options change, see
+          <a href="/guide/modes-settings">modes and settings</a>.
+        </p>
+        <h3>Open Rooms</h3>
+        <p>
+          A host can list their room publicly in Open Rooms. The Open Rooms list shows
+          each listed room's code, its settings, how many seats are taken out of the
+          maximum, and roughly how long ago it was opened. It never shows nicknames.
+          Anyone can join a listed room, so it is a simple way to find a game when
+          you don't have people of your own to invite.
+        </p>
+        <h3>Quick Match</h3>
+        <p>
+          Quick Match puts you in a race with strangers near your speed, with no
+          setup. Quick Match races always use the same settings, 30 seconds of
+          English words without punctuation or numbers, so every result is
+          comparable.
+        </p>
+        <p>
+          To find you a fair opponent, your browser sends the average speed of your
+          last 10 valid solo tests with those same settings. If you have none yet, it
+          assumes 50 wpm. As you race, the server also builds its own estimate of
+          your speed from your races and leans on that, so the matching gets more
+          accurate the more you play. Matching starts with players in your own speed
+          band and widens over the first 15 seconds. A race begins as soon as enough
+          similar players are waiting. If nobody suitable turns up within about 15
+          seconds, the race is filled with Pug Bots so you are never left waiting.
+        </p>
+        <p>
+          A good habit before your first Quick Match: take a few solo 30-second
+          English tests on the <a href="/">home page</a>. That gives matchmaking a
+          real number instead of the 50 wpm guess.
+        </p>
+
+        <h2>Pug Bots</h2>
+        <p>
+          Pug Bots are computer-controlled racers. They are always named "Pug Bot ·
+          ~NN wpm", where the number is the pace they aim for, and they always carry
+          a visible "Bot" label. Their typing is generated by the server, with small
+          speed variations and the occasional mistake, and is not based on any
+          recorded player. Bots never count as people in player counts and can't be
+          reported.
+        </p>
+
+        <h2>How a race runs</h2>
+        <ol>
+          <li>
+            <strong>Lobby.</strong> Players join and press ready. The lobby shows
+            who is in, who is ready and who is host. The host can start once there
+            are at least two players and everyone else is ready.
+          </li>
+          <li>
+            <strong>Countdown.</strong> A synchronized 3-2-1 countdown runs on every
+            screen. Your keyboard is locked until it reaches zero, so nobody gets a
+            head start.
+          </li>
+          <li>
+            <strong>Race.</strong> Everyone types the same words, chosen by the
+            server. You see each opponent's caret moving through the text with their
+            name, progress bars for everyone, and each player's dog trotting faster
+            as they speed up. The progress bars stay visible even while the rest of
+            the page fades out to keep you focused.
+          </li>
+          <li>
+            <strong>Podium.</strong> When the race ends, a podium shows each
+            player's place, speed, raw speed and accuracy. In timed races, places are
+            decided by speed; in word races, by who finished first. The host can
+            start a rematch with the same room, or anyone can leave.
+          </li>
+        </ol>
+        <p>
+          If your connection drops, you have 20 seconds to reconnect before your seat
+          is given up. Leaving a race with the browser's back button asks for
+          confirmation first, because you can't rejoin a race in progress.
+        </p>
+
+        <h2>Fair play</h2>
+        <p>
+          Racing is only fun if results are real, so several protections run in the
+          background:
+        </p>
+        <ul>
+          <li>
+            <strong>The server checks every result.</strong> It receives what each
+            player typed and recomputes their speed against the shared word list. It
+            flags results whose claimed speed doesn't match, speeds above 300 wpm,
+            progress that jumps faster than a human can type, and finishes before the
+            start.
+          </li>
+          <li>
+            <strong>Paste is blocked.</strong> You can't paste, copy or select text in
+            the typing area.
+          </li>
+          <li>
+            <strong>Same rules for everyone.</strong> Settings that change the
+            difficulty or end a test early, such as funboxes, stop on error and
+            minimum speed, are switched off during a race.
+          </li>
+          <li>
+            <strong>Reporting.</strong> You can report a player in your room for
+            cheating, being away from the keyboard, an offensive name or something
+            else. You choose a reason from a list; there is no free text.
+          </li>
+          <li>
+            <strong>Hosts can remove players.</strong> A host can kick a player from
+            the lobby or the results screen. That player can't rejoin the same room
+            for 10 minutes.
+          </li>
+        </ul>
+        <p>
+          Players who are reported for cheating by several different people, or who
+          are repeatedly flagged by the server's checks, are matched only with Pug
+          Bots in Quick Match for the rest of their session. Rooms close when
+          everyone has left or after an hour without activity.
+        </p>
+
+        <h2>What is stored</h2>
+        <p>
+          Race results are not saved to any account or leaderboard. Nicknames, room
+          codes and race data are held in the game server's memory only while your
+          session or room exists. Player reports are kept for 7 days and then deleted. A report never includes who sent it: no nickname, player ID or IP address of the reporter. The <a href="/privacy">privacy policy</a> has the full list, and
+          the <a href="/terms">terms</a> describe what isn't allowed.
+        </p>
+
+        <h2>Common problems</h2>
+        <ul>
+          <li>
+            <strong>Can't join a room.</strong> The room may have closed, be full
+            (eight players), or already be racing; wait for the race to end and try
+            again. If you typed the code by hand, check it: codes never contain 0,
+            O, 1, I or L.
+          </li>
+          <li>
+            <strong>Can't start.</strong> Everyone except the host needs to be ready,
+            and the room needs at least two players.
+          </li>
+          <li>
+            <strong>Matched with bots only.</strong> Few players at your speed were
+            online during the 15-second window. Try again in a few minutes.
+          </li>
+        </ul>
+        <p>
+          Something else not working? The <a href="/faq">FAQ</a> covers more cases,
+          and the <a href="/contact">contact page</a> explains what to send us.
+        </p>
+      </main>
+      <load src="html/static-page/footer.html" />
+    </div>
+  </body>
+</html>

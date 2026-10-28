@@ -1,0 +1,69 @@
+<!--
+  crawlable intro and guide links, readable without js. SiteIntro.tsx moves it
+  below #app (under the footer), so it never sits near or shifts the test.
+  Until then it is parked below the fold.
+-->
+<style>
+  #siteIntro {
+    max-width: 48rem;
+    padding-block: 2rem 3rem;
+    font-family: var(--ui-font, Lexend, sans-serif);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--sub-color);
+  }
+  #siteIntro.preload {
+    position: absolute;
+    top: 100vh;
+    left: 2rem;
+    right: 2rem;
+  }
+  #siteIntro h2 {
+    margin: 0 0 0.5rem;
+    font-size: 0.875rem;
+    font-weight: normal;
+    color: var(--sub-color);
+  }
+  #siteIntro p {
+    margin: 0 0 0.75rem;
+  }
+  #siteIntro a {
+    color: var(--sub-color);
+    text-decoration: underline;
+  }
+  #siteIntro a:hover {
+    color: var(--text-color);
+  }
+  #siteIntro nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+  }
+</style>
+<section id="siteIntro" class="preload" aria-labelledby="siteIntroTitle">
+  <h2 id="siteIntroTitle">About this typing test</h2>
+  <p>
+    PuggieType is a free, minimalist typing test. Start typing and the timer
+    begins; when it ends you see your speed in words per minute, raw speed,
+    accuracy and consistency. The default test is 30 seconds of common English
+    words, and you can switch to word counts, real quotes, an untimed zen mode
+    or your own custom text, in hundreds of languages. A small pug types along
+    with you and heats up when you go fast.
+  </p>
+  <p>
+    You can also race other people: create a private room and share the link
+    with friends, or join Quick Match to race players near your speed. There is
+    no account to create, and solo results stay in your browser (Quick Match
+    only sends your average speed). PuggieType is open source under the GPL-3.0
+    license.
+  </p>
+  <nav aria-label="guides">
+    <a href="/guide/about">About PuggieType</a>
+    <a href="/faq">FAQ</a>
+    <a href="/guide/wpm-accuracy">How WPM and accuracy work</a>
+    <a href="/guide/typing-tips">How to type faster</a>
+    <a href="/guide/multiplayer">Multiplayer races</a>
+    <a href="/guide/modes-settings">Modes and settings</a>
+    <a href="/contact">Contact</a>
+  </nav>
+</section>

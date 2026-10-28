@@ -234,6 +234,26 @@ function getBuildOptions({
           : { email: path.resolve(__dirname, "src/email-handler.html") }),
         privacy: path.resolve(__dirname, "src/privacy.html"),
         terms: path.resolve(__dirname, "src/terms.html"),
+        // static content pages, served by pages at their clean url (/faq, /guide/about)
+        faq: path.resolve(__dirname, "src/faq.html"),
+        contact: path.resolve(__dirname, "src/contact.html"),
+        "guide/about": path.resolve(__dirname, "src/guide/about.html"),
+        "guide/wpm-accuracy": path.resolve(
+          __dirname,
+          "src/guide/wpm-accuracy.html",
+        ),
+        "guide/typing-tips": path.resolve(
+          __dirname,
+          "src/guide/typing-tips.html",
+        ),
+        "guide/multiplayer": path.resolve(
+          __dirname,
+          "src/guide/multiplayer.html",
+        ),
+        "guide/modes-settings": path.resolve(
+          __dirname,
+          "src/guide/modes-settings.html",
+        ),
         // no 404.html: its absence turns on cloudflare pages' spa fallback
       },
       output: {

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="google-adsense-account" content="ca-pub-8233445679738428" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      How WPM, raw, accuracy and consistency are calculated | PuggieType
+    </title>
+    <link rel="stylesheet" href="/styles/static-page.scss" />
+    <link rel="icon" href="/images/favicon/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/images/favicon/favicon.svg" type="image/svg+xml" />
+    <meta
+      name="description"
+      content="The exact formulas PuggieType uses for WPM, raw speed, accuracy and consistency, with worked examples you can check yourself."
+    />
+    <link rel="canonical" href="https://puggietype.com/guide/wpm-accuracy" />
+    <meta property="og:site_name" content="puggietype" />
+    <meta
+      property="og:title"
+      content="How WPM, raw, accuracy and consistency are calculated | PuggieType"
+    />
+    <meta
+      property="og:description"
+      content="The exact formulas PuggieType uses for WPM, raw speed, accuracy and consistency, with worked examples you can check yourself."
+    />
+    <meta
+      property="og:url"
+      content="https://puggietype.com/guide/wpm-accuracy"
+    />
+    <meta property="og:type" content="article" />
+    <meta
+      property="og:image"
+      content="https://puggietype.com/images/og-image.png"
+    />
+    <meta name="theme-color" content="#161514" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="How WPM, raw, accuracy and consistency are calculated | PuggieType"
+    />
+    <meta
+      name="twitter:description"
+      content="The exact formulas PuggieType uses for WPM, raw speed, accuracy and consistency, with worked examples you can check yourself."
+    />
+    <meta
+      name="twitter:image"
+      content="https://puggietype.com/images/og-image.png"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "How WPM, raw, accuracy and consistency are calculated",
+        "description": "The exact formulas PuggieType uses for WPM, raw speed, accuracy and consistency, with worked examples you can check yourself.",
+        "url": "https://puggietype.com/guide/wpm-accuracy",
+        "mainEntityOfPage": "https://puggietype.com/guide/wpm-accuracy",
+        "image": "https://puggietype.com/images/og-image.png",
+        "author": {
+          "@type": "Organization",
+          "name": "PuggieType",
+          "url": "https://puggietype.com/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "PuggieType",
+          "url": "https://puggietype.com/",
+          "logo": "https://puggietype.com/images/favicon/icon-512.png",
+          "email": "support@puggietype.com",
+          "sameAs": ["https://github.com/puggietype/puggietype"]
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="app" class="content-grid">
+      <load src="html/static-page/header.html" />
+      <!-- prose: oxfmt's htmlWhitespaceSensitivity "ignore" would split "</a>." -->
+      <!-- prettier-ignore -->
+      <main>
+        <h1>How WPM, raw, accuracy and consistency are calculated</h1>
+        <p class="lede">
+          The result screen shows four main numbers. Here is exactly what each one
+          measures, how PuggieType computes it, and a worked example you can check
+          with a calculator.
+        </p>
+
+        <h2>The basic unit: five characters</h2>
+        <p>
+          Words in English have very different lengths, so counting real words would
+          make a test full of "a" and "the" look faster than one full of "keyboard".
+          Typing tests avoid this by treating every five characters as one word,
+          spaces included. All speeds on PuggieType come from one formula:
+        </p>
+        <pre class="formula">speed (wpm) = (characters / 5) / (seconds / 60)</pre>
+        <p>
+          The four results differ only in which characters they count, or, for
+          accuracy and consistency, in what they compare.
+        </p>
+
+        <h2>How each typed character is classified</h2>
+        <p>
+          When the test ends, every word you typed is compared with the word you were
+          shown, letter by letter, including the space that ends it. Each character
+          falls into one of four groups:
+        </p>
+        <ul>
+          <li><strong>correct</strong>: the character matches the target;</li>
+          <li>
+            <strong>incorrect</strong>: you typed a different character in that
+            position;
+          </li>
+          <li>
+            <strong>extra</strong>: you typed past the end of the word, for example
+            "pugss" instead of "pugs";
+          </li>
+          <li>
+            <strong>missed</strong>: the target had a character you never typed, for
+            example "pug" instead of "pugs".
+          </li>
+        </ul>
+        <p>
+          These four counts appear on the result screen as "characters", in that
+          order.
+        </p>
+
+        <h2>WPM: correctly typed words only</h2>
+        <p>
+          WPM, the big number, counts only the characters of words you typed
+          <em>completely</em> correctly, plus the space after each of them. If a word
+          has even one wrong letter when you move on, none of its characters count
+          toward WPM. The last word of a timed test is the exception: if the timer
+          runs out halfway through a word and what you have typed so far is right,
+          those letters still count.
+        </p>
+        <h3>Worked example</h3>
+        <p>
+          You take a 30-second test. The correctly typed words add up to 150
+          characters, spaces included.
+        </p>
+        <pre class="formula">150 / 5 = 30 words
+30 seconds = 0.5 minutes
+30 / 0.5 = 60 wpm</pre>
+
+        <h2>Raw: everything you typed</h2>
+        <p>
+          Raw speed ignores whether words were right. It counts every correct,
+          incorrect and extra character, whether or not the word around it was
+          correct. Missed characters are not counted, because you never typed them.
+          Raw tells you how fast your fingers were moving; WPM tells you how much of
+          that motion produced correct text.
+        </p>
+        <h3>Worked example</h3>
+        <p>
+          In the same 30-second test you also typed 10 correct letters inside words
+          that had a mistake somewhere, 8 incorrect characters and 2 extra
+          characters.
+        </p>
+        <pre class="formula">150 + 10 + 8 + 2 = 170 characters
+170 / 5 = 34 words
+34 / 0.5 = 68 raw</pre>
+        <p>
+          A gap between WPM and raw is normal. A large gap, say 60 WPM against 80
+          raw, usually means you are rushing and losing whole words to small slips.
+        </p>
+
+        <h2>Accuracy: every keypress counts</h2>
+        <p>
+          Accuracy is not worked out from the final text. Instead, PuggieType records
+          each character key you press as it happens, marks it correct or incorrect
+          at that moment, and divides:
+        </p>
+        <pre class="formula">accuracy = correct keypresses / (correct + incorrect keypresses) x 100</pre>
+        <p>
+          Spaces count as keypresses. A space pressed in the wrong place is a
+          mistake. Backspace is not counted either way, so fixing a typo does
+          <em>not</em> undo it: the wrong key you pressed is still in the count. That
+          is why you can finish with perfect text and still see 95% accuracy.
+        </p>
+        <h3>Worked example</h3>
+        <p>
+          You pressed 180 character keys. 171 were correct and 9 were wrong, and you
+          went back and fixed all 9.
+        </p>
+        <pre class="formula">171 / 180 x 100 = 95% accuracy</pre>
+
+        <h2>Consistency: how steady your pace was</h2>
+        <p>
+          Consistency measures how much your speed jumped around during the test.
+          PuggieType splits the test into one-second slices, counts the keys you
+          pressed in each slice, and turns each count into a speed with the same
+          formula as above. One key in one second is 12 wpm, so five keys is 60. Then
+          it measures the spread of those per-second speeds relative to their
+          average (the standard deviation divided by the mean, also called the
+          coefficient of variation) and maps it onto a 0 to 100% scale with a smooth
+          curve. A perfectly even pace scores 100%; very bursty typing drifts toward
+          0%.
+        </p>
+        <p>The curve used is:</p>
+        <pre class="formula">consistency = 100 x (1 - tanh(c + c³/3 + c⁵/5))
+where c = standard deviation / mean of the per-second speeds</pre>
+        <h3>Worked example</h3>
+        <p>
+          Over six seconds you press 5, 6, 6, 4, 7 and 5 keys. That gives per-second
+          speeds of 60, 72, 72, 48, 84 and 60 wpm.
+        </p>
+        <pre class="formula">mean = 66
+standard deviation ≈ 11.49
+c = 11.49 / 66 ≈ 0.174
+consistency = 100 x (1 - tanh(0.174 + 0.0018 + 0.00003)) ≈ 82.6%</pre>
+        <p>
+          Now imagine the same typist stops to think for a second in the middle:
+          60, 0, 84, 36, 96 and 48. The average barely changes, but the spread does,
+          and consistency falls to about 42%.
+        </p>
+
+        <h2>Other things worth knowing</h2>
+        <h3>When the clock starts and stops</h3>
+        <p>
+          The timer starts with your first keypress, not when the page loads, so
+          reading the first word before you start costs you nothing. In word-count
+          and quote tests, the time is measured until you finish the last word. In
+          zen mode, or if you end a long test early, a pause of up to seven seconds
+          after your final keypress is not counted.
+        </p>
+        <h3>Invalid results</h3>
+        <p>
+          The result screen warns you when a test cannot be taken seriously: if it
+          was too short (timed tests under 15 seconds, word tests under 10 words), if
+          you stopped typing for the last five seconds, if accuracy was below 75%, or
+          if the speed was implausibly high. On PuggieType these results are still
+          shown to you, but they do not feed the speed estimate used to place you in
+          <a href="/guide/multiplayer">Quick Match</a>.
+        </p>
+        <h3>Races use the same rules</h3>
+        <p>
+          In multiplayer, your browser calculates your result with the same code as a
+          solo test. Our server also receives what each player typed, recomputes the
+          speed against the shared word list with the same formula, and flags results
+          that do not match. In timed races, players are ranked by the server's
+          number.
+        </p>
+
+        <h2>What to do with these numbers</h2>
+        <p>
+          Watch accuracy first. Above about 96%, raw and WPM stay close together and
+          speed becomes the thing to train. Below that, slowing down by a few words
+          per minute will often raise your WPM because fewer words are thrown away.
+          The <a href="/guide/typing-tips">typing tips</a> page turns this into a
+          practice routine, and <a href="/guide/modes-settings">modes and
+          settings</a> shows which options make the numbers stricter or more
+          forgiving.
+        </p>
+      </main>
+      <load src="html/static-page/footer.html" />
+    </div>
+  </body>
+</html>

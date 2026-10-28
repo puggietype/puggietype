@@ -6,6 +6,7 @@ import { getGlobalOffsetTop } from "../../states/core";
 import { convertRemToPixels } from "../../utils/numbers";
 import { DevTools } from "../dev/DevTools";
 import { Footer } from "../layout/footer/Footer";
+import { SiteIntro } from "../layout/footer/SiteIntro";
 import { Header } from "../layout/header/Header";
 import { Overlays } from "../layout/overlays/Overlays";
 import { Modals } from "../modals/Modals";
@@ -37,6 +38,7 @@ export function App(): JSXElement {
         </main>
         <Footer />
       </div>
+      <SiteIntro />
       <DevTools />
     </QueryClientProvider>
   );

@@ -20,6 +20,17 @@ describe("static routing", () => {
     .filter(([, to, code]) => to === "/" && code === "200")
     .map(([from]) => from);
 
+  // plain html pages (src/<path>.html), served by pages at the clean url
+  const staticPages = [
+    "/guide/about",
+    "/faq",
+    "/guide/wpm-accuracy",
+    "/guide/typing-tips",
+    "/guide/multiplayer",
+    "/guide/modes-settings",
+    "/contact",
+  ];
+
   const sitemapPaths = [
     ...readFileSync(path.join(staticDir, "sitemap.xml"), "utf-8").matchAll(
       /<loc>https:\/\/puggietype\.com(\/[^<]*)<\/loc>/g,
@@ -31,10 +42,26 @@ describe("static routing", () => {
       "/",
       "/race",
       "/about",
-      "/settings",
+      ...staticPages,
       "/terms",
       "/privacy",
     ]);
+  });
+
+  it("builds each static content page and never shadows it with a rule", () => {
+    const viteConfig = readFileSync(
+      path.resolve(__dirname, "../vite.config.ts"),
+      "utf-8",
+    );
+    const rules = redirectsFile
+      .split("\n")
+      .map((line) => line.trim().split(/\s+/)[0])
+      .filter((from) => from?.startsWith("/") === true);
+    for (const p of staticPages) {
+      expect(existsSync(path.join(srcDir, `${p.slice(1)}.html`)), p).toBe(true);
+      expect(viteConfig, p).toContain(`"src${p}.html"`);
+      expect(rules, p).not.toContain(p);
+    }
   });
 
   it("serves every sitemap path from an html file or a spa rewrite", () => {
