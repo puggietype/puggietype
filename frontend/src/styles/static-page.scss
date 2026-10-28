@@ -112,6 +112,7 @@ code,
 kbd,
 .formula {
   font-family: var(--font);
+  color: var(--text-color);
   background: var(--sub-alt-color);
   border-radius: 0.25rem;
   padding: 0.05rem 0.3rem;
@@ -155,4 +156,9 @@ td {
   header #logo .text {
     display: none;
   }
+}
+
+kbd {
+  border: 1px solid var(--sub-color);
+  font-size: 0.85em;
 }
