@@ -52,4 +52,21 @@ describe("Footer", () => {
     expect(hrefs).toContain("/privacy");
     expect(hrefs.some((h) => h?.includes("security-policy"))).toBe(false);
   });
+
+  it("links the static guide pages without router-link or a new tab", () => {
+    const { getByTestId } = render(() => <Footer />);
+    const anchors = [...getByTestId("guide-links").querySelectorAll("a")];
+    expect(anchors.map((a) => [a.textContent, a.getAttribute("href")])).toEqual(
+      [
+        ["about", "/guide/about"],
+        ["faq", "/faq"],
+        ["guides", "/guide/typing-tips"],
+        ["contact", "/contact"],
+      ],
+    );
+    for (const a of anchors) {
+      expect(a.hasAttribute("router-link")).toBe(false);
+      expect(a.getAttribute("target")).toBeNull();
+    }
+  });
 });
