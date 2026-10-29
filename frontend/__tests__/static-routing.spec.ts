@@ -38,14 +38,7 @@ describe("static routing", () => {
   ].map((m) => m[1] ?? "");
 
   it("lists the launch pages in the sitemap", () => {
-    expect(sitemapPaths).toEqual([
-      "/",
-      "/race",
-      "/about",
-      ...staticPages,
-      "/terms",
-      "/privacy",
-    ]);
+    expect(sitemapPaths).toEqual(["/", ...staticPages, "/terms", "/privacy"]);
   });
 
   it("builds each static content page and never shadows it with a rule", () => {
