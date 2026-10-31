@@ -9,14 +9,14 @@ import { getDefaultConfig } from "../constants/default-config";
 import { Config } from "./store";
 import { runRemoteConfigVersionMigration } from "./version";
 import { getAuthenticatedUser } from "../firebase";
-import { saveConfig } from "../ape/config";
+import { saveConfigSilently } from "../ape/config";
 
 export async function updateFromServer(): Promise<void> {
   const { config: remoteConfig } = runRemoteConfigVersionMigration(
     await getRemoteConfig(),
     getAuthenticatedUser()?.uid,
     localStorage,
-    saveConfig,
+    saveConfigSilently,
   );
 
   const areConfigsEqual =
