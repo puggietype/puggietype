@@ -59,7 +59,7 @@ Depending on where you live (for example under the EU or UK GDPR, or California'
 | Data | How long we keep it |
 |---|---|
 | Solo settings and results, the Quick Match speed list ("puggie-mp-recent-pace", last 10 entries) and the random Quick Match ID ("puggie-mp-client-id"; on our server only in memory while you're queued) | in your browser only (localStorage/IndexedDB), until you clear them |
-| Nickname, lobby code, race data, IP address, speed for matching, and reporter counts (one-way hashes) (game server) | in memory until your session or room ends, plus a 20-second reconnect window; not written to disk or logs |
+| Nickname, lobby code, race data, IP address, speed for matching, and reporter counts (one-way hashes, on the game server) | in memory until your session or room ends, plus a 20-second reconnect window; not written to disk or logs |
 | Player reports (report ID, room code, reason, time, hashed IP address) | 7 days, then deleted automatically |
 | Game server logs | startup and error messages, 5-minute overall counts and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |
 | Cloudflare and Fly.io operational data, and Cloudflare's aggregate traffic statistics (totals only) | as described in each provider's own privacy policy |
