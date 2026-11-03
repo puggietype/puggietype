@@ -2,19 +2,9 @@
 // before the app is fetched and evaluated, which takes seconds on slow phones.
 // The import fetches all of the app's chunks in parallel (no waterfall).
 
-const RELOAD_KEY = "bootReloadAt";
+import { installChunkReload, reloadedRecently } from "./utils/chunk-reload";
 
-function reloadedRecently(): boolean {
-  try {
-    const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0);
-    if (Date.now() - last < 60_000) return true;
-    sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
-    return false;
-  } catch {
-    // storage blocked: never auto-reload, so this can't loop
-    return true;
-  }
-}
+installChunkReload();
 
 function showBootError(): void {
   const shell = document.querySelector("#appShell");

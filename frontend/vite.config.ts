@@ -21,6 +21,7 @@ import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
 import { inlineStaticPageCss } from "./vite-plugins/inline-static-css";
+import { notFoundPage } from "./vite-plugins/not-found-page";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
 import {
   getCommitHash,
@@ -206,6 +207,7 @@ function getPlugins({
     }),
     injectPreload(),
     inlineStaticPageCss(),
+    notFoundPage(),
     minifyJson(),
     pagesHeaders({ wsUrl: env["VITE_WS_URL"] }),
   ];

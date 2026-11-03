@@ -6,6 +6,7 @@
     "/css/*",
     "/images/*",
     "/webfonts/*",
+    "/assets/*",
     "/webfonts-preview/*",
     "/sounds/*",
     "/languages/*",
@@ -14,7 +15,6 @@
     "/funbox/*",
     "/challenges/*",
     "/layouts/*",
-    "/assets/*",
     "/fonts/*",
     "/0ee4e9e83d311fae5b2a9062e73dcb43.txt"
   ]
