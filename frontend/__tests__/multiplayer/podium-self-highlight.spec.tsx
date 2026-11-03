@@ -25,6 +25,8 @@ vi.mock(
 );
 
 const Store = await import("../../src/ts/multiplayer/store");
+const ThemeState = await import("../../src/ts/states/theme");
+const { themes } = await import("../../src/ts/constants/themes");
 const { Podium } = await import("../../src/ts/multiplayer/components/Podium");
 
 const seat = (
@@ -204,5 +206,60 @@ describe("Podium own-row highlight", () => {
     const podium = getByTestId("mp-podium");
     expect(podium.style.getPropertyValue("--self-tint")).toMatch(/^\d+%$/);
     expect(podium.style.getPropertyValue("--self-pill-text")).not.toBe("");
+  });
+
+  describe("SH-01: colors on your row fall back to text where they'd miss AA", () => {
+    const original = ThemeState.getTheme();
+    afterEach(() => ThemeState.setTheme(original));
+    const flagged = (): RaceResult[] =>
+      resultsWithMeAt(2).map((r) => ({
+        ...r,
+        flagged: true,
+        reasons: ["wpm_mismatch"],
+      }));
+    const cells = (
+      row: HTMLElement,
+    ): { rank: HTMLElement; raw: HTMLElement; flag: HTMLElement } => {
+      const td = [...row.querySelectorAll("td")];
+      return {
+        rank: td[0] as HTMLElement,
+        raw: td[3] as HTMLElement,
+        flag: within(row).getByTestId("mp-result-flagged"),
+      };
+    };
+
+    it("puggie_dark: raw and flag use text on your row only, rank keeps opp1", () => {
+      ThemeState.setTheme({ ...themes.puggie_dark, name: "puggie_dark" });
+      const { container } = render(() => (
+        <Podium room={ROOM} results={flagged()} />
+      ));
+      for (const row of rows(container)) {
+        const c = cells(row);
+        if (row.getAttribute("data-self") === "true") {
+          expect(c.raw).toHaveClass("text-text");
+          expect(c.raw).not.toHaveClass("text-sub");
+          expect(c.flag).toHaveClass("text-text");
+          expect(c.rank).toHaveClass("text-opp1");
+        } else {
+          expect(c.raw).toHaveClass("text-sub");
+          expect(c.flag).toHaveClass("text-error");
+        }
+      }
+    });
+
+    it("puggie_light: your rank (opp1) falls back to text, others keep their color", () => {
+      ThemeState.setTheme({ ...themes.puggie_light, name: "puggie_light" });
+      const { container } = render(() => (
+        <Podium room={ROOM} results={flagged()} />
+      ));
+      const [a, me, b] = rows(container) as [
+        HTMLElement,
+        HTMLElement,
+        HTMLElement,
+      ];
+      expect(cells(me).rank).toHaveClass("text-text");
+      expect(cells(a).rank).toHaveClass("text-opp2");
+      expect(cells(b).rank).toHaveClass("text-opp3");
+    });
   });
 });

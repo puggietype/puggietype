@@ -12,6 +12,8 @@ import { cn } from "../../utils/cn";
 export function ReadyBadge(props: {
   player: Pick<PlayerState, "ready" | "inLobby">;
   racing?: boolean;
+  /** text color for the non-ready states (default text-sub); your own results row passes text-text where sub misses AA */
+  idleText?: string;
 }): JSXElement {
   const state = (): "ready" | "lobby" | "waiting" | "racing" => {
     if (props.racing === true && !props.player.inLobby) return "racing";
@@ -28,7 +30,9 @@ export function ReadyBadge(props: {
     <span
       class={cn(
         "flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-(--font) whitespace-nowrap",
-        state() === "ready" ? "bg-opp2 text-bg" : "bg-sub-alt text-sub",
+        state() === "ready"
+          ? "bg-opp2 text-bg"
+          : cn("bg-sub-alt", props.idleText ?? "text-sub"),
       )}
       data-testid="mp-ready-badge"
       data-state={state()}

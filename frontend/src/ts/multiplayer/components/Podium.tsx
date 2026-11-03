@@ -279,7 +279,12 @@ export function Podium(props: {
                             seat(r.playerId)
                           }
                         >
-                          {(p) => <ReadyBadge player={p()} />}
+                          {(p) => (
+                            <ReadyBadge
+                              player={p()}
+                              idleText={subCls(r.playerId)}
+                            />
+                          )}
                         </Show>
                         <Show when={r.flagged}>
                           <span
