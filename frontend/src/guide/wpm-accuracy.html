@@ -93,7 +93,7 @@
           Typing tests avoid this by treating every five characters as one word,
           spaces included. All speeds on PuggieType come from one formula:
         </p>
-        <pre class="formula">speed (wpm) = (characters / 5) / (seconds / 60)</pre>
+        <pre class="formula" tabindex="0" role="region" aria-label="formula">speed (wpm) = (characters / 5) / (seconds / 60)</pre>
         <p>
           The four results differ only in which characters they count, or, for
           accuracy and consistency, in what they compare.
@@ -139,7 +139,7 @@
           You take a 30-second test. The correctly typed words add up to 150
           characters, spaces included.
         </p>
-        <pre class="formula">150 / 5 = 30 words
+        <pre class="formula" tabindex="0" role="region" aria-label="formula">150 / 5 = 30 words
 30 seconds = 0.5 minutes
 30 / 0.5 = 60 wpm</pre>
 
@@ -157,7 +157,7 @@
           that had a mistake somewhere, 8 incorrect characters and 2 extra
           characters.
         </p>
-        <pre class="formula">150 + 10 + 8 + 2 = 170 characters
+        <pre class="formula" tabindex="0" role="region" aria-label="formula">150 + 10 + 8 + 2 = 170 characters
 170 / 5 = 34 words
 34 / 0.5 = 68 raw</pre>
         <p>
@@ -171,7 +171,7 @@
           each character key you press as it happens, marks it correct or incorrect
           at that moment, and divides:
         </p>
-        <pre class="formula">accuracy = correct keypresses / (correct + incorrect keypresses) x 100</pre>
+        <pre class="formula" tabindex="0" role="region" aria-label="formula">accuracy = correct keypresses / (correct + incorrect keypresses) x 100</pre>
         <p>
           Spaces count as keypresses. A space pressed in the wrong place is a
           mistake. Backspace is not counted either way, so fixing a typo does
@@ -183,7 +183,7 @@
           You pressed 180 character keys. 171 were correct and 9 were wrong, and you
           went back and fixed all 9.
         </p>
-        <pre class="formula">171 / 180 x 100 = 95% accuracy</pre>
+        <pre class="formula" tabindex="0" role="region" aria-label="formula">171 / 180 x 100 = 95% accuracy</pre>
 
         <h2>Consistency: how steady your pace was</h2>
         <p>
@@ -198,14 +198,14 @@
           0%.
         </p>
         <p>The curve used is:</p>
-        <pre class="formula">consistency = 100 x (1 - tanh(c + c³/3 + c⁵/5))
+        <pre class="formula" tabindex="0" role="region" aria-label="formula">consistency = 100 x (1 - tanh(c + c³/3 + c⁵/5))
 where c = standard deviation / mean of the per-second speeds</pre>
         <h3>Worked example</h3>
         <p>
           Over six seconds you press 5, 6, 6, 4, 7 and 5 keys. That gives per-second
           speeds of 60, 72, 72, 48, 84 and 60 wpm.
         </p>
-        <pre class="formula">mean = 66
+        <pre class="formula" tabindex="0" role="region" aria-label="formula">mean = 66
 standard deviation ≈ 11.49
 c = 11.49 / 66 ≈ 0.174
 consistency = 100 x (1 - tanh(0.174 + 0.0018 + 0.00003)) ≈ 82.6%</pre>

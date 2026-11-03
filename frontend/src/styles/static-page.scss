@@ -142,6 +142,13 @@ td {
   overflow-x: auto;
 }
 
+// scroll regions are keyboard-focusable (CG-01); show a clear focus ring
+.tableWrap:focus-visible,
+.formula:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+}
+
 @media (width < 600px) {
   .tableWrap table {
     min-width: 34rem;
