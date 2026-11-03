@@ -508,8 +508,14 @@ function withBotDefault<T extends { isBot?: boolean }>(
 function onCountdown(info: RaceInfo): void {
   // a reconnect re-sends the countdown of the race we're already in
   if (race()?.startAt === info.startAt) return;
-  const me = room()?.players.find((p) => p.id === myId());
-  if (me?.finished === true) {
+  // only a snapshot of a running race says we finished this one: a lobby or
+  // results snapshot still carries the last race's flags
+  const r = room();
+  const me = r?.players.find((p) => p.id === myId());
+  if (
+    me?.finished === true &&
+    (r?.phase === "countdown" || r?.phase === "racing")
+  ) {
     // reloaded after finishing: just wait for the results
     batch(() => {
       setRace(info);
