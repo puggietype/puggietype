@@ -29,6 +29,7 @@ import { Button } from "../../../common/Button";
 import { Fa } from "../../../common/Fa";
 import { UserFlags } from "../../../common/UserFlags";
 import { ResultButtons } from "./ResultButtons";
+import { ResultGuidePrompt } from "./ResultGuidePrompt";
 import { ResultMainStats } from "./ResultMainStats";
 import { ResultReplay } from "./ResultReplay";
 import { ResultSecondaryStats } from "./ResultSecondaryStats";
@@ -102,6 +103,7 @@ export function TestResult(): JSXElement {
               <ResultReplay />
               <RetrySavingButton />
               <LoginPrompt />
+              <ResultGuidePrompt acc={test().result.acc} />
             </Show>
             <ResultButtons glarses={getGlarsesMode()} />
 
