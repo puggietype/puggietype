@@ -92,7 +92,7 @@ test("switching mode between races: each race ends its own mode's way", async ({
       if (mode === "time") expect(ms).toBeGreaterThan(10_000);
       else expect(ms).toBeLessThan(20_000);
     }
-    await byTestId(host, "mp-rematch").click();
+    await byTestId(host, "mp-back-to-lobby").click();
     await expect(byTestId(guest, "mp-lobby")).toBeVisible();
   }
   for (const p of pages) await p.context().close();

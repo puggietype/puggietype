@@ -129,7 +129,11 @@ async function race(host, guest, mode, index) {
     });
     return false;
   }
-  await byTestId(host, "mp-rematch").click();
+  // private/open rooms on a resultsReady server: "back to lobby"; older: rematch
+  await byTestId(host, "mp-back-to-lobby")
+    .or(byTestId(host, "mp-rematch"))
+    .first()
+    .click();
   await byTestId(host, "mp-lobby").waitFor();
   await byTestId(guest, "mp-lobby").waitFor();
   return true;
