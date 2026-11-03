@@ -14,7 +14,39 @@
 /css/*
   Cache-Control: public, max-age=31536000, immutable
 
+# fonts keep their filename forever (a changed font gets a new name)
+/webfonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# images aren't content-hashed (pug frames are swapped in place): a month
+/images/*
+  Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
+
+# html: always revalidate so a deploy shows up at once. Only the pages, not
+# /*, because cloudflare joins the values of every rule that matches.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/guide/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/faq
+  Cache-Control: public, max-age=0, must-revalidate
+
+/contact
+  Cache-Control: public, max-age=0, must-revalidate
+
+/privacy
+  Cache-Control: public, max-age=0, must-revalidate
+
+/terms
+  Cache-Control: public, max-age=0, must-revalidate
+
 /ads.txt
+  Content-Type: text/plain; charset=utf-8
+
+# indexnow key (scripts/indexnow-ping.mjs)
+/0ee4e9e83d311fae5b2a9062e73dcb43.txt
   Content-Type: text/plain; charset=utf-8
 
 /robots.txt

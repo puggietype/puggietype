@@ -1,12 +1,201 @@
-// static html pages (guides, faq, contact, privacy, terms): readable without js
-@import "standalone.scss";
+// static html pages (guides, faq, contact, privacy, terms): readable without js.
+// Self-contained (no core.scss/standalone.scss): those pull in balloon-css and
+// app-only rules; this file is inlined into every page at build time
+// (vite-plugins/inline-static-css.ts), so keep it small.
 
+// fonts are preloaded by each page; swap so text never waits on them
 @font-face {
   font-family: Lexend;
   font-style: normal;
   font-weight: 400;
   font-display: swap;
   src: url("/webfonts/Lexend-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: Lexend;
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/webfonts/Lexend-SemiBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/webfonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+// base rules shared with the app (core.scss / standalone.scss)
+:root {
+  --roundness: 0.5rem;
+  --font: "JetBrains Mono", monospace;
+  --ui-font: "Lexend", "Vazirharf", sans-serif;
+  --pug-ink: #161514;
+  --pug-fill: #f0d9b5;
+  --pug-mask: #3b2b23;
+  scroll-padding-top: 2rem;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background-color: var(--main-color);
+  color: var(--sub-alt-color);
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sub-color) transparent;
+  overflow-y: scroll;
+  scroll-behavior: smooth;
+  line-height: 1.25;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: var(--ui-font);
+  color: var(--text-color);
+  overflow-x: hidden;
+  background: var(--bg-color);
+}
+
+#app {
+  min-height: 100vh;
+  overflow: hidden;
+  row-gap: 2rem;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  width: 100%;
+}
+
+// from an amazing guide by Kevin Powell https://www.youtube.com/watch?v=c13gpBrnGEw
+.content-grid {
+  --padding-inline: 2rem;
+  --content-max-width: 1536px;
+  --breakout-size: 6rem;
+
+  justify-content: center;
+  display: grid;
+  grid-template-columns:
+    [full-width-start]
+    var(--padding-inline)
+    [full-width-padding-start]
+    minmax(0, 1fr)
+    [breakout-start]
+    minmax(0, var(--breakout-size))
+    [content-start]
+    min(100% - (var(--padding-inline) * 2), var(--content-max-width))
+    [content-end]
+    minmax(0, var(--breakout-size))
+    [breakout-end]
+    minmax(0, 1fr)
+    [full-width-padding-end]
+    var(--padding-inline)
+    [full-width-end];
+}
+
+.content-grid > * {
+  grid-column: content;
+}
+
+main {
+  display: grid; //stupid fix for stupid safari
+}
+
+a {
+  display: inline-block;
+  color: var(--sub-color);
+  transition:
+    color 0.125s,
+    opacity 0.125s,
+    background 0.125s;
+  &:hover {
+    color: var(--text-color);
+  }
+  &:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 0.1rem var(--bg-color),
+      0 0 0 0.2rem var(--text-color);
+    border-radius: calc(var(--roundness) / 2);
+  }
+}
+
+kbd {
+  color: var(--bg-color);
+  background-color: var(--sub-color);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  font-size: 0.75em;
+}
+
+table {
+  z-index: 0;
+}
+
+header {
+  grid-template-areas: "logo menu";
+  line-height: 2.3rem;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: auto 1fr;
+  z-index: 3;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+
+  #logo {
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem;
+    transition: none;
+    text-decoration: none;
+    color: var(--text-color);
+    padding: 0.35rem 0.25rem;
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+    white-space: nowrap;
+    user-select: none;
+
+    .icon {
+      width: 2.5rem;
+      display: grid;
+      align-items: center;
+      background-color: transparent;
+      svg path {
+        transition: 0.25s;
+        fill: var(--main-color);
+      }
+    }
+    .text {
+      .top {
+        position: absolute;
+        left: 0.35em;
+        font-size: 0.325em;
+        line-height: 0.325em;
+        color: var(--sub-color);
+        transition:
+          color 0.125s,
+          opacity 0.125s;
+      }
+      position: relative;
+      font-size: 2rem;
+      line-height: 2rem;
+      font-family: Lexend, sans-serif;
+      transition: color 0.25s;
+      font-weight: unset;
+      margin-block-start: unset;
+      margin-block-end: unset;
+      margin-top: -0.23em;
+    }
+  }
 }
 
 // puggie dark, the app's default theme

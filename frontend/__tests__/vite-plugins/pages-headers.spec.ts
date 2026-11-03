@@ -70,4 +70,17 @@ describe("renderHeaders", () => {
       /\/js\/\*\n {2}Cache-Control: public, max-age=31536000, immutable/,
     );
   });
+  it("caches fonts and images long, revalidates html", () => {
+    expect(out).toMatch(
+      /\/webfonts\/\*\n {2}Cache-Control: public, max-age=31536000, immutable/,
+    );
+    expect(out).toMatch(
+      /\/images\/\*\n {2}Cache-Control: public, max-age=\d{7,}/,
+    );
+    expect(out).toMatch(
+      /\/guide\/\*\n {2}Cache-Control: public, max-age=0, must-revalidate/,
+    );
+    // cloudflare joins values of overlapping rules: never cache-control on /*
+    expect(out).not.toMatch(/^\/\*\n(?: {2}.*\n)* {2}Cache-Control/m);
+  });
 });

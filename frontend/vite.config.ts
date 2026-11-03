@@ -20,6 +20,7 @@ import { pagesHeaders } from "./vite-plugins/pages-headers";
 import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
+import { inlineStaticPageCss } from "./vite-plugins/inline-static-css";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
 import {
   getCommitHash,
@@ -204,6 +205,7 @@ function getPlugins({
       },
     }),
     injectPreload(),
+    inlineStaticPageCss(),
     minifyJson(),
     pagesHeaders({ wsUrl: env["VITE_WS_URL"] }),
   ];
