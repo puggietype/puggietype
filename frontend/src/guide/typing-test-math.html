@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="google-adsense-account" content="ca-pub-8233445679738428" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Typing test math: rounding, the chart and consistency explained |
+      PuggieType
+    </title>
+    <link rel="stylesheet" href="/styles/static-page.scss" />
+    <link rel="icon" href="/images/favicon/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/images/favicon/favicon.svg" type="image/svg+xml" />
+    <meta
+      name="description"
+      content="Worked examples of PuggieType's rounding, the cost of a typo, how the result chart is built, and why consistency is close to 100 × (1 − spread)."
+    />
+    <link
+      rel="canonical"
+      href="https://puggietype.com/guide/typing-test-math"
+    />
+    <meta property="og:site_name" content="puggietype" />
+    <meta
+      property="og:title"
+      content="Typing test math: rounding, the chart and consistency explained | PuggieType"
+    />
+    <meta
+      property="og:description"
+      content="Worked examples of PuggieType's rounding, the cost of a typo, how the result chart is built, and why consistency is close to 100 × (1 − spread)."
+    />
+    <meta
+      property="og:url"
+      content="https://puggietype.com/guide/typing-test-math"
+    />
+    <meta property="og:type" content="article" />
+    <meta
+      property="og:image"
+      content="https://puggietype.com/images/og-image.png"
+    />
+    <meta name="theme-color" content="#161514" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Typing test math: rounding, the chart and consistency explained | PuggieType"
+    />
+    <meta
+      name="twitter:description"
+      content="Worked examples of PuggieType's rounding, the cost of a typo, how the result chart is built, and why consistency is close to 100 × (1 − spread)."
+    />
+    <meta
+      name="twitter:image"
+      content="https://puggietype.com/images/og-image.png"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "Typing test math: rounding, the chart and consistency in depth",
+        "description": "Worked examples of PuggieType's rounding, the cost of a typo, how the result chart is built, and why consistency is close to 100 × (1 − spread).",
+        "url": "https://puggietype.com/guide/typing-test-math",
+        "mainEntityOfPage": "https://puggietype.com/guide/typing-test-math",
+        "image": "https://puggietype.com/images/og-image.png",
+        "author": {
+          "@type": "Organization",
+          "name": "PuggieType",
+          "url": "https://puggietype.com/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "PuggieType",
+          "url": "https://puggietype.com/",
+          "logo": "https://puggietype.com/images/favicon/icon-512.png",
+          "email": "support@puggietype.com",
+          "sameAs": ["https://github.com/puggietype/puggietype"]
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="app" class="content-grid">
+      <load src="html/static-page/header.html" />
+      <!-- prose: oxfmt's htmlWhitespaceSensitivity "ignore" would split "</a>." -->
+      <!-- prettier-ignore -->
+      <main>
+        <h1>Typing test math: rounding, the chart and consistency in depth</h1>
+        <p class="lede">
+          This page picks up where <a href="/guide/wpm-accuracy">how WPM and
+          accuracy are calculated</a> leaves off. That guide defines each number;
+          this one works through the details behind them: how results are rounded,
+          what one typo really costs, how the chart is built, and why the
+          consistency curve behaves the way it does.
+        </p>
+
+        <h2>Precision: what is stored and what is shown</h2>
+        <p>
+          PuggieType measures time with millisecond precision, but the numbers you
+          see go through a few rounding steps on the way to the screen. Knowing
+          them explains most "why does it say 96 when I calculated 97?" moments.
+        </p>
+        <h3>Test duration</h3>
+        <p>
+          The test length used in every speed formula is rounded to the nearest
+          hundredth of a second. Custom-mode tests are the exception and keep the
+          full measured time. For a timed test the duration is simply the length
+          you picked; for a word or quote test it is the moment you finished the
+          last word.
+        </p>
+        <pre class="formula">25-word test, last word finished at 23.4567 s
+duration used = 23.46 s
+140 correct-word characters
+(140 / 5) / (23.46 / 60) = 28 / 0.391 ≈ 71.61 wpm</pre>
+        <h3>Saved results (in your browser)</h3>
+        <p>
+          WPM, raw, accuracy and both consistency figures are saved in your browser
+          to two decimal places. So the result above is held as 71.61, not as a long fraction.
+        </p>
+        <h3>Displayed results</h3>
+        <p>
+          By default the big numbers are shown as whole numbers, and two
+          different rounding rules apply:
+        </p>
+        <ul>
+          <li>
+            <strong>speed</strong> (WPM and raw) is rounded to the nearest whole
+            number, so 71.61 shows as 72 and 71.49 as 71;
+          </li>
+          <li>
+            <strong>accuracy</strong> is rounded <em>down</em>, so 96.97% shows as
+            96% and 99.6% as 99%. Only a test with no wrong keypresses at all
+            shows 100%.
+          </li>
+        </ul>
+        <p>
+          Rounding accuracy down is deliberate: it never shows you a better
+          result than you actually got. Hover over a number on the result screen
+          to see it with two decimals, and over accuracy to see the raw counts of
+          correct and incorrect keypresses. If you prefer decimals everywhere,
+          turn on <strong>always show decimal places</strong> in the settings.
+        </p>
+        <h3>Other speed units</h3>
+        <p>
+          Every speed is calculated in WPM first. If you pick a different unit in
+          the settings, only the display changes, using these factors:
+        </p>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr><th>Unit</th><th>Conversion</th><th>72 wpm becomes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>cpm (characters per minute)</td><td>wpm × 5</td><td>360</td></tr>
+              <tr><td>wps (words per second)</td><td>wpm ÷ 60</td><td>1.2</td></tr>
+              <tr><td>cps (characters per second)</td><td>wpm × 5 ÷ 60</td><td>6</td></tr>
+              <tr><td>wph (words per hour)</td><td>wpm × 60</td><td>4,320</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Because the conversion happens after the calculation, switching units
+          never changes how two results compare with each other.
+        </p>
+
+        <h2>What a single typo costs</h2>
+        <h3>In WPM</h3>
+        <p>
+          WPM only counts words that end up completely correct, plus the space
+          after each. Leave one wrong letter in a six-letter word and you lose all
+          seven characters, which in a 30-second test is:
+        </p>
+        <pre class="formula">7 / 5 = 1.4 words
+1.4 / 0.5 minutes = 2.8 wpm</pre>
+        <p>
+          In a 60-second test the same mistake costs 1.4 wpm, because the loss is
+          spread over twice the time. That is one reason short tests swing so much:
+          a couple of uncorrected slips in a 15-second test can move WPM by more
+          than ten.
+        </p>
+        <p>
+          If you fix the typo before moving on, the word counts in full and WPM
+          only pays for the time the wrong key, the backspace and the right key
+          took. Raw is calculated from the text you end up with, so the deleted
+          character does not appear there either.
+        </p>
+        <h3>In accuracy</h3>
+        <p>
+          Accuracy counts every key as you press it, so each mistake is worth a
+          fixed slice of the total. With N keypresses, one error costs 100 ÷ N
+          percentage points. Turned around, the number of errors you can afford
+          for a target accuracy is:
+        </p>
+        <pre class="formula">allowed errors = keypresses × (1 - target / 100)</pre>
+        <p>
+          For a test with 200 keypresses, roughly what a 30-second test at about
+          80 wpm produces, that gives:
+        </p>
+        <table>
+          <thead>
+            <tr><th>Target accuracy</th><th>Errors allowed out of 200</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>94%</td><td>12</td></tr>
+            <tr><td>96%</td><td>8</td></tr>
+            <tr><td>98%</td><td>4</td></tr>
+            <tr><td>99%</td><td>2</td></tr>
+          </tbody>
+        </table>
+        <p>
+          Going from 94% to 97% on that test means halving your mistakes, from 12
+          to 6. And because the display rounds down, 199 correct out of 200 is
+          99.5% but still reads 99%.
+        </p>
+
+        <h2>How the result chart is built</h2>
+        <p>
+          The chart below the result splits the test into one-second slices and
+          plots up to four series: wpm, raw, burst and errors. You can switch the
+          last three on and off in the legend. They look similar but are
+          calculated quite differently.
+        </p>
+        <h3>The wpm and raw lines are cumulative</h3>
+        <p>
+          At each second, the wpm line shows your WPM <em>so far</em>: the
+          correct-word characters typed from the start up to that point, divided
+          by the time elapsed. It is a running total, which is why it starts
+          jumpy and settles down as the test goes on.
+        </p>
+        <pre class="formula">second   correct-word chars so far   wpm so far
+  1                6                 6 / 5 / (1/60) = 72
+  2               13                 13 × 12 / 2   = 78
+  3               19                 19 × 12 / 3   = 76
+  4               27                 27 × 12 / 4   = 81
+  5               33                 33 × 12 / 5   = 79.2 → 79</pre>
+        <p>
+          (Multiplying characters by 12 and dividing by seconds is the same as
+          dividing by 5 and by minutes.) A mistake shows up as a flat spot or dip,
+          because the word containing it stops contributing. The dashed raw line
+          is built the same way, but counts all typed characters instead of only
+          correct words, so it ends at your final raw speed.
+        </p>
+        <h3>The burst line is per second</h3>
+        <p>
+          The burst line does not accumulate. For each one-second slice it counts
+          every character you typed in that slice, right or wrong, and converts
+          it to a speed, rounded to a whole number. Seven characters in one
+          second is 84; six is 72.
+        </p>
+        <p>
+          Two details make burst differ from raw. It counts characters at the
+          moment you type them, including ones you later delete, while raw is
+          calculated from the text you end up with. And it treats each second on
+          its own, so it shows the peaks and pauses that the cumulative lines
+          smooth away. The chart may draw burst slightly smoothed; the
+          calculations below always use the unsmoothed values.
+        </p>
+        <h3>Errors per second</h3>
+        <p>
+          The last series is the number of wrong characters you typed in each
+          slice. Lining it up with dips in burst usually tells you whether you
+          slowed down because of a mistake or made a mistake because you sped up.
+        </p>
+        <h3>The last, partial second</h3>
+        <p>
+          A timed test splits evenly into whole seconds. A word or quote test
+          rarely does. If the leftover time after the last whole second is at
+          least half a second, it becomes its own, shorter slice, and its speed is
+          calculated over its real length. If it is shorter, it is left out of the
+          per-second data.
+        </p>
+        <pre class="formula">test ends at 12.62 s → 12 slices + a 0.62 s slice
+5 characters in the last slice: (5 / 5) / (0.62 / 60) ≈ 97
+
+test ends at 12.38 s → 12 slices only
+the last 0.38 s is not in the chart or in consistency</pre>
+        <p>
+          This only affects the per-second data. WPM, raw and accuracy always use
+          everything you typed and the full duration.
+        </p>
+        <h3>AFK seconds</h3>
+        <p>
+          A slice in which you pressed no key at all counts as an AFK (away from
+          keyboard) second. Hover over the test time on the result screen to see
+          the total, for example "30s (3s afk 10%)" for three idle seconds in a
+          30-second test.
+        </p>
+
+        <h2>Consistency, more closely</h2>
+        <p>
+          Consistency is calculated from the burst values above. PuggieType
+          takes the per-second burst speeds, works out their mean and standard
+          deviation, and divides one by the other to get the coefficient of
+          variation, c. The standard deviation is the population version: the
+          squared differences from the mean are divided by the number of slices,
+          not by one less. Then c goes through this curve:
+        </p>
+        <pre class="formula">consistency = 100 × (1 - tanh(c + c³/3 + c⁵/5))</pre>
+        <h3>Why the curve is nearly a straight line</h3>
+        <p>
+          The expression inside the brackets looks arbitrary, but it is the start
+          of a well-known series: c + c³/3 + c⁵/5 + … is the inverse hyperbolic
+          tangent of c. Applying tanh to it almost undoes it, so for small and
+          moderate spreads the formula comes out very close to:
+        </p>
+        <pre class="formula">consistency ≈ 100 × (1 - c)</pre>
+        <p>
+          In plain terms: if your per-second speed typically strays about 10%
+          from your average, your consistency is about 90%. The approximation
+          holds well for small values of c and drifts as c grows:
+        </p>
+        <table>
+          <thead>
+            <tr><th>c (spread ÷ mean)</th><th>Consistency</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0.05</td><td>95.0%</td></tr>
+            <tr><td>0.10</td><td>90.0%</td></tr>
+            <tr><td>0.20</td><td>80.0%</td></tr>
+            <tr><td>0.30</td><td>70.0%</td></tr>
+            <tr><td>0.50</td><td>50.1%</td></tr>
+            <tr><td>0.75</td><td>26.6%</td></tr>
+            <tr><td>1.00</td><td>8.9%</td></tr>
+          </tbody>
+        </table>
+        <p>
+          Past about c = 0.5 the score falls faster than the straight line, and
+          it never goes below zero. Very bursty typing, with seconds of nothing
+          between flurries, lands in that steep part.
+        </p>
+        <h3>Worked example</h3>
+        <p>
+          Five slices with burst values of 84, 72, 84, 96 and 72:
+        </p>
+        <pre class="formula">mean = 408 / 5 = 81.6
+differences from mean: 2.4, -9.6, 2.4, 14.4, -9.6
+population variance = (5.76 + 92.16 + 5.76 + 207.36 + 92.16) / 5 = 80.64
+standard deviation = √80.64 ≈ 8.98
+c = 8.98 / 81.6 ≈ 0.110
+consistency ≈ 89.00%     (shortcut: 100 × (1 - 0.110) = 89.0)</pre>
+        <p>
+          Had the sample version been used (dividing by 4 instead of 5), the
+          standard deviation would be about 10.04 and the score about 87.7%. The
+          difference shrinks as tests get longer, but it matters if you check a
+          short test by hand.
+        </p>
+        <p>
+          Note that because consistency is relative to your own average, it does
+          not reward speed or punish slowness. A steady 40 wpm and a steady 120
+          wpm can earn the same score.
+        </p>
+        <h3>Key consistency</h3>
+        <p>
+          Hover over consistency on the result screen and you will see a second
+          figure marked "key". It uses the same curve, but on a different input:
+          the time between one key going down and the next, in milliseconds. The
+          gap before the final keypress is dropped. Where the main score looks at
+          output per second, key consistency looks at the rhythm of individual
+          keystrokes.
+        </p>
+        <pre class="formula">gaps between keypresses: 180, 200, 160, 220, 190, 240 ms
+drop the last gap: 180, 200, 160, 220, 190
+mean = 190 ms, standard deviation = 20 ms
+c = 20 / 190 ≈ 0.105
+key consistency ≈ 89.47%</pre>
+        <p>
+          Key consistency is often lower than the main score. Even smooth
+          typists are quick on familiar letter pairs and slower across awkward
+          reaches, and that unevenness averages out within a second but not
+          between single keys.
+        </p>
+
+        <h2>Using the numbers well</h2>
+        <p>
+          The arithmetic points to a few practical habits. Compare results from
+          tests of the same length, since short tests magnify both luck and
+          mistakes. Read accuracy alongside the raw counts in its tooltip rather
+          than the rounded figure. Use the chart's error series to see where your
+          mistakes cluster, and treat consistency as a measure of rhythm, not of
+          skill.
+        </p>
+
+        <h2>Related guides</h2>
+        <ul>
+          <li><a href="/guide/wpm-accuracy">How WPM and accuracy are calculated</a></li>
+          <li><a href="/guide/improve-accuracy">How to improve typing accuracy</a></li>
+          <li><a href="/guide/type-faster">How to type faster</a></li>
+        </ul>
+      </main>
+      <load src="html/static-page/footer.html" />
+    </div>
+  </body>
+</html>

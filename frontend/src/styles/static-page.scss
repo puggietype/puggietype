@@ -137,6 +137,17 @@ td {
   vertical-align: top;
 }
 
+// wide tables scroll inside their wrapper on narrow screens
+.tableWrap {
+  overflow-x: auto;
+}
+
+@media (width < 600px) {
+  .tableWrap table {
+    min-width: 34rem;
+  }
+}
+
 .siteFooter {
   color: var(--sub-color);
   font-size: 0.85rem;

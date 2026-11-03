@@ -254,6 +254,38 @@ function getBuildOptions({
           __dirname,
           "src/guide/modes-settings.html",
         ),
+        "guide/touch-typing-beginners": path.resolve(
+          __dirname,
+          "src/guide/touch-typing-beginners.html",
+        ),
+        "guide/home-row-finger-placement": path.resolve(
+          __dirname,
+          "src/guide/home-row-finger-placement.html",
+        ),
+        "guide/type-faster": path.resolve(
+          __dirname,
+          "src/guide/type-faster.html",
+        ),
+        "guide/keyboard-layouts": path.resolve(
+          __dirname,
+          "src/guide/keyboard-layouts.html",
+        ),
+        "guide/typing-ergonomics": path.resolve(
+          __dirname,
+          "src/guide/typing-ergonomics.html",
+        ),
+        "guide/typing-test-math": path.resolve(
+          __dirname,
+          "src/guide/typing-test-math.html",
+        ),
+        "guide/improve-accuracy": path.resolve(
+          __dirname,
+          "src/guide/improve-accuracy.html",
+        ),
+        "guide/typing-for-kids": path.resolve(
+          __dirname,
+          "src/guide/typing-for-kids.html",
+        ),
         // no 404.html: its absence turns on cloudflare pages' spa fallback
       },
       output: {
