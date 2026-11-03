@@ -110,10 +110,10 @@
 duration used = 23.46 s
 140 correct-word characters
 (140 / 5) / (23.46 / 60) = 28 / 0.391 ≈ 71.61 wpm</pre>
-        <h3>Stored results</h3>
+        <h3>Saved results (in your browser)</h3>
         <p>
-          WPM, raw, accuracy and both consistency figures are kept to two decimal
-          places. So the result above is held as 71.61, not as a long fraction.
+          WPM, raw, accuracy and both consistency figures are saved in your browser
+          to two decimal places. So the result above is held as 71.61, not as a long fraction.
         </p>
         <h3>Displayed results</h3>
         <p>
@@ -143,17 +143,19 @@ duration used = 23.46 s
           Every speed is calculated in WPM first. If you pick a different unit in
           the settings, only the display changes, using these factors:
         </p>
-        <table>
-          <thead>
-            <tr><th>Unit</th><th>Conversion</th><th>72 wpm becomes</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>cpm (characters per minute)</td><td>wpm × 5</td><td>360</td></tr>
-            <tr><td>wps (words per second)</td><td>wpm ÷ 60</td><td>1.2</td></tr>
-            <tr><td>cps (characters per second)</td><td>wpm × 5 ÷ 60</td><td>6</td></tr>
-            <tr><td>wph (words per hour)</td><td>wpm × 60</td><td>4,320</td></tr>
-          </tbody>
-        </table>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr><th>Unit</th><th>Conversion</th><th>72 wpm becomes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>cpm (characters per minute)</td><td>wpm × 5</td><td>360</td></tr>
+              <tr><td>wps (words per second)</td><td>wpm ÷ 60</td><td>1.2</td></tr>
+              <tr><td>cps (characters per second)</td><td>wpm × 5 ÷ 60</td><td>6</td></tr>
+              <tr><td>wph (words per hour)</td><td>wpm × 60</td><td>4,320</td></tr>
+            </tbody>
+          </table>
+        </div>
         <p>
           Because the conversion happens after the calculation, switching units
           never changes how two results compare with each other.
@@ -189,8 +191,8 @@ duration used = 23.46 s
         </p>
         <pre class="formula">allowed errors = keypresses × (1 - target / 100)</pre>
         <p>
-          For a test with 200 keypresses, roughly what a 30-second test at
-          moderate speed produces, that gives:
+          For a test with 200 keypresses, roughly what a 30-second test at about
+          80 wpm produces, that gives:
         </p>
         <table>
           <thead>
@@ -284,12 +286,12 @@ the last 0.38 s is not in the chart or in consistency</pre>
 
         <h2>Consistency, more closely</h2>
         <p>
-          Consistency is calculated from the burst values above. PuggieType takes
-          the per-second burst speeds, works out their mean and standard deviation, and
-          divides one by the other to get the coefficient of variation, c. The
-          standard deviation is the population version: the squared differences
-          from the mean are divided by the number of slices, not by one less.
-          Then c goes through this curve:
+          Consistency is calculated from the burst values above. PuggieType
+          takes the per-second burst speeds, works out their mean and standard
+          deviation, and divides one by the other to get the coefficient of
+          variation, c. The standard deviation is the population version: the
+          squared differences from the mean are divided by the number of slices,
+          not by one less. Then c goes through this curve:
         </p>
         <pre class="formula">consistency = 100 × (1 - tanh(c + c³/3 + c⁵/5))</pre>
         <h3>Why the curve is nearly a straight line</h3>
@@ -301,9 +303,9 @@ the last 0.38 s is not in the chart or in consistency</pre>
         </p>
         <pre class="formula">consistency ≈ 100 × (1 - c)</pre>
         <p>
-          In plain terms: if your per-second speed typically strays about 10% from
-          your average, your consistency is about 90%. The approximation holds well
-          until the series is cut short enough to matter:
+          In plain terms: if your per-second speed typically strays about 10%
+          from your average, your consistency is about 90%. The approximation
+          holds well for small values of c and drifts as c grows:
         </p>
         <table>
           <thead>
@@ -373,12 +375,15 @@ key consistency ≈ 89.47%</pre>
           mistakes. Read accuracy alongside the raw counts in its tooltip rather
           than the rounded figure. Use the chart's error series to see where your
           mistakes cluster, and treat consistency as a measure of rhythm, not of
-          skill. For the basics of each number, see the
-          <a href="/guide/wpm-accuracy">WPM and accuracy guide</a>; for
-          turning them into practice, see
-          <a href="/guide/improve-accuracy">improving accuracy</a> and
-          <a href="/guide/type-faster">a practice plan for typing faster</a>.
+          skill.
         </p>
+
+        <h2>Related guides</h2>
+        <ul>
+          <li><a href="/guide/wpm-accuracy">How WPM and accuracy are calculated</a></li>
+          <li><a href="/guide/improve-accuracy">How to improve typing accuracy</a></li>
+          <li><a href="/guide/type-faster">How to type faster</a></li>
+        </ul>
       </main>
       <load src="html/static-page/footer.html" />
     </div>
