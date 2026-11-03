@@ -114,6 +114,12 @@ async function race(host, guest, mode, index) {
     );
     if (!r.ok) ok = false;
   }
+  const shots = process.env["SHOTS_DIR"];
+  if (shots) {
+    const tag = `${String(index + 1).padStart(2, "0")}-${label.replace(/[^a-z0-9]+/gi, "-")}`;
+    await host.screenshot({ path: `${shots}/${tag}-host.png` });
+    await guest.screenshot({ path: `${shots}/${tag}-guest.png` });
+  }
   if (!ok) {
     await host.screenshot({
       path: `/tmp/mp-mode-switch-${index + 1}-host.png`,
