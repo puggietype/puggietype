@@ -1,18 +1,29 @@
-import { JSXElement, Show } from "solid-js";
+import { JSXElement } from "solid-js";
 
 import type { PlayerState } from "../protocol";
 
 import { Fa } from "../../components/common/Fa";
 import { cn } from "../../utils/cn";
 
-/** "ready" / "waiting" pill; `in lobby` for a player sitting the race out */
+/**
+ * "ready" / "waiting" pill; "in lobby" for a player sitting the race out,
+ * "racing" for the others while a race runs (`racing`)
+ */
 export function ReadyBadge(props: {
   player: Pick<PlayerState, "ready" | "inLobby">;
+  racing?: boolean;
 }): JSXElement {
-  const state = (): "ready" | "lobby" | "waiting" => {
+  const state = (): "ready" | "lobby" | "waiting" | "racing" => {
+    if (props.racing === true && !props.player.inLobby) return "racing";
     if (props.player.ready) return "ready";
     return props.player.inLobby ? "lobby" : "waiting";
   };
+  const LABEL = {
+    ready: { text: "ready", icon: "fa-check" },
+    lobby: { text: "in lobby", icon: "fa-door-open" },
+    waiting: { text: "waiting", icon: "fa-hourglass-half" },
+    racing: { text: "racing", icon: "fa-flag-checkered" },
+  } as const;
   return (
     <span
       class={cn(
@@ -22,21 +33,8 @@ export function ReadyBadge(props: {
       data-testid="mp-ready-badge"
       data-state={state()}
     >
-      <Show
-        when={state() === "ready"}
-        fallback={
-          <Fa
-            icon={state() === "lobby" ? "fa-door-open" : "fa-hourglass-half"}
-          />
-        }
-      >
-        <Fa icon="fa-check" />
-      </Show>
-      {state() === "ready"
-        ? "ready"
-        : state() === "lobby"
-          ? "in lobby"
-          : "waiting"}
+      <Fa icon={LABEL[state()].icon} />
+      {LABEL[state()].text}
     </span>
   );
 }

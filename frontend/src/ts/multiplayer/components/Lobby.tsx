@@ -132,7 +132,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
   };
 
   const startHint = (): string => {
-    if (racing()) return "a race is running · you'll be in the next one";
+    if (racing()) return "a race is running · ready up once it ends";
     if (away()) return "the others are on the results screen";
     if (props.room.players.length < 2) return "waiting for someone to join";
     if (!canStartRace(props.room, myId() ?? "")) {
@@ -305,7 +305,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
           >
             <Fa icon={racing() ? "fa-flag-checkered" : "fa-trophy"} />{" "}
             {racing()
-              ? "a race is running without you. you'll be in the next one."
+              ? "a race is running without you. ready up once it ends to join the next one."
               : "the others are on the results screen. ready up to join the next race."}
           </div>
         </Show>
@@ -420,7 +420,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     when={p.id !== props.room.hostId}
                     fallback={<span class="text-sm text-sub">host</span>}
                   >
-                    <ReadyBadge player={p} />
+                    <ReadyBadge player={p} racing={racing()} />
                   </Show>
                   <ReportButton room={props.room} player={p} />
                   <KickButton

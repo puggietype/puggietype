@@ -174,6 +174,14 @@ describe("Lobby ready flow", () => {
     );
     expect(racing.getByTestId("mp-ready")).toBeDisabled();
     expect(racing.getByTestId("mp-reroll")).toBeDisabled();
+    expect(badge(racing.container, "a")).toHaveAttribute(
+      "data-state",
+      "racing",
+    );
+    expect(badge(racing.container, "me")).toHaveAttribute(
+      "data-state",
+      "lobby",
+    );
     cleanup();
 
     const results = show(room(players, { phase: "results" }), "me");
