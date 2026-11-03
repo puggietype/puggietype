@@ -123,9 +123,11 @@ export function Pug(): JSXElement {
           <div class="pug-fast-glow" aria-hidden="true"></div>
           <For each={frameNames}>
             {(name) => (
+              // hidden frames keep their layout (content-visibility), so a
+              // keystroke's frame swap doesn't rebuild a whole svg's layout
               <div
                 class={cn("absolute inset-0 [&>svg]:h-full [&>svg]:w-full", {
-                  hidden: frame() !== name,
+                  "[content-visibility:hidden]": frame() !== name,
                 })}
                 // oxlint-disable-next-line solid/no-innerhtml -- same-origin static svg, sanitised by normalizePugSvg
                 innerHTML={frames.latest?.[name] ?? ""}
