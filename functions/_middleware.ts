@@ -1,6 +1,7 @@
 // Pages middleware: www -> apex 301, HSTS on everything, and a real 404 for
 // missing hashed assets.
 //
+// _routes.json must NOT exclude these prefixes, or this never runs.
 // Why the 404: dist has no 404.html, so Pages answers ANY unknown path with
 // index.html (200). For /js/* and /css/* that fallback also picked up the
 // "immutable, 1 year" Cache-Control from _headers, so if the edge was asked

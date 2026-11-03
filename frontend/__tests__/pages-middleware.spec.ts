@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { onRequest, isAssetPath } from "../../functions/_middleware";
+import {
+  onRequest,
+  isAssetPath,
+  ASSET_PREFIXES,
+} from "../../functions/_middleware";
+import routes from "../static/_routes.json";
 
 const html = (): Response =>
   new Response("<!doctype html><html></html>", {
@@ -77,5 +82,11 @@ describe("pages middleware", () => {
     expect(isAssetPath("/js/a.js")).toBe(true);
     expect(isAssetPath("/jsx")).toBe(false);
     expect(isAssetPath("/race")).toBe(false);
+  });
+
+  it("_routes.json lets the middleware see every guarded asset prefix", () => {
+    for (const p of ASSET_PREFIXES) {
+      expect(routes.exclude).not.toContain(`${p}*`);
+    }
   });
 });
