@@ -28,6 +28,7 @@ import {
   type OpponentFrame,
   type OpponentPaw,
 } from "../opponent-dog";
+import { createPlayerIds, createSeat } from "../seats";
 import { myId, opponentProgress, room } from "../store";
 import { PlayerName } from "./PlayerName";
 import { ordinal, PLAYER_TEXT } from "./ui";
@@ -82,9 +83,12 @@ function OpponentDog(props: {
           <div class="absolute inset-0 text-(--pug-ink)">
             <For each={FRAMES}>
               {(name) => (
+                // hidden frames skip rendering but keep their layout
+                // (content-visibility), so a paw press is cheap; a display
+                // toggle rebuilt a whole svg's layout per press, for every dog
                 <div
                   class={cn("absolute inset-0 [&>svg]:h-full [&>svg]:w-full", {
-                    hidden: props.frame !== name,
+                    "[content-visibility:hidden]": props.frame !== name,
                   })}
                   // oxlint-disable-next-line solid/no-innerhtml -- same-origin static svg, sanitised by normalizePugSvg
                   innerHTML={frames.latest?.[name] ?? ""}
@@ -169,6 +173,9 @@ export function OpponentDogs(): JSXElement {
       .filter((p) => p.id !== myId())
       .slice(0, MAX_OPPONENTS),
   );
+  // rows keyed by id: room:state (one lands as the race starts) replaces
+  // every player object, and rebuilding a dog re-parses its svg frames
+  const opponentIds = createPlayerIds(() => opponents());
   const progressById = createMemo(
     () => new Map(opponentProgress().map((p) => [p.id, p])),
   );
@@ -244,18 +251,25 @@ export function OpponentDogs(): JSXElement {
         aria-hidden="true"
         data-testid="mp-opponent-dogs"
       >
-        <For each={opponents()}>
-          {(p) => (
-            <div class="contents">
-              <OpponentDog
-                player={p}
-                progress={progressById().get(p.id)}
-                frame={frameOf(p)}
-                place={placeById().get(p.id) ?? 1}
-                dense={opponents().length >= DENSE_AT}
-              />
-            </div>
-          )}
+        <For each={opponentIds()}>
+          {(id) => {
+            const seat = createSeat(id, opponents);
+            return (
+              <Show when={seat()}>
+                {(p) => (
+                  <div class="contents">
+                    <OpponentDog
+                      player={p()}
+                      progress={progressById().get(id)}
+                      frame={frameOf(p())}
+                      place={placeById().get(id) ?? 1}
+                      dense={opponentIds().length >= DENSE_AT}
+                    />
+                  </div>
+                )}
+              </Show>
+            );
+          }}
         </For>
       </div>
     </Show>

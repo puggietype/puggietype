@@ -176,6 +176,7 @@ function roomState(overrides: Partial<RoomState> = {}): ServerMessage {
         isBot: false,
         color: "opp1",
         ready: true,
+        inLobby: false,
         connected: true,
         character: "puggie",
         progress: { wordIndex: 0, charIndex: 0, testMs: 0, wpm: 0 },
@@ -638,6 +639,190 @@ describe("race lifecycle", () => {
   });
 });
 
+describe("mode switch between races", () => {
+  type RaceSettings = Extract<
+    ServerMessage,
+    { type: "race:countdown" }
+  >["settings"];
+  const TIME_15: RaceSettings = {
+    mode: "time",
+    mode2: 15,
+    punctuation: false,
+    numbers: false,
+    language: "english",
+  };
+  const WORDS_10: RaceSettings = { ...TIME_15, mode: "words", mode2: 10 };
+  const TIME_30: RaceSettings = { ...TIME_15, mode2: 30 };
+  const WORDS_25: RaceSettings = { ...TIME_15, mode: "words", mode2: 25 };
+  const OPP = "opp";
+  let startAt = 0;
+
+  /** room:state for us (host) and one opponent */
+  function state(
+    phase: RoomState["phase"],
+    settings: RaceSettings,
+    finished = false,
+  ): ServerMessage {
+    const base = roomState({ phase, settings });
+    const first = base.type === "room:state" ? base.players[0] : undefined;
+    if (base.type !== "room:state" || first === undefined) return base;
+    const me = { ...first, finished };
+    const opp = { ...me, id: OPP, name: "opp", color: "opp2" as const };
+    return { ...base, players: [me, opp] };
+  }
+
+  /** one race on `settings`, ended its mode's way. `stale`: the countdown
+   * lands while we still hold the last race's results snapshot (the order
+   * an older server used, and a start straight from results) */
+  async function race(settings: RaceSettings, stale = false): Promise<void> {
+    startAt = Date.now() + 1000;
+    if (!stale) receive(state("countdown", settings));
+    receive({
+      type: "race:countdown",
+      startAt,
+      words: WORDS,
+      settings,
+    });
+    if (stale) receive(state("countdown", settings));
+    await flush();
+    // this race's mode, not the last one's
+    expect(Store.race()?.settings).toEqual(settings);
+    expect(Store.raceFinished()).toBe(false);
+    expect(engine.config["mode"]).toBe(settings.mode);
+    expect(engine.config[settings.mode]).toBe(settings.mode2);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(engine.startTest).toHaveBeenCalledTimes(1);
+    expect(Hooks.isRaceActive()).toBe(true);
+    engine.testActive = true;
+
+    if (settings.mode === "words") {
+      // words: typing the last word ends the race for us at once, the
+      // others still racing. Our result goes out and we wait on the race page.
+      const sent = fakeClient.sent.length;
+      expect(Hooks.handleRaceFinish(finishData())).toBe(true);
+      expect(fakeClient.sent.slice(sent).map((m) => m.type)).toContain(
+        "race:finish",
+      );
+      expect(Store.raceFinished()).toBe(true);
+      expect(Store.race()?.settings.mode).toBe("words");
+      expect(Store.results()).toBeUndefined();
+      expect(engine.navigate).toHaveBeenLastCalledWith({
+        url: "/r/ABC234",
+        options: { force: true },
+      });
+    } else {
+      // time: the clock runs out for everyone; no early finish while it runs
+      await vi.advanceTimersByTimeAsync(settings.mode2 * 1000 - 1);
+      expect(Store.raceFinished()).toBe(false);
+      expect(Hooks.isRaceActive()).toBe(true);
+      expect(engine.config["mode"]).toBe("time");
+      expect(Hooks.handleRaceFinish(finishData())).toBe(true);
+      expect(Store.raceFinished()).toBe(true);
+    }
+    engine.testActive = false;
+    receive({ type: "race:results", results: [] });
+    receive(state("results", settings, true));
+    // our own config is back between races
+    expect(engine.config).toMatchObject(USER_CONFIG);
+    expect(Hooks.isRaceActive()).toBe(false);
+  }
+
+  function finishData(): Parameters<typeof Hooks.handleRaceFinish>[0] {
+    return {
+      wpm: 60,
+      raw: 60,
+      acc: 100,
+      testMs: 3000,
+      input: [...WORDS],
+      keyCount: 13,
+    };
+  }
+
+  /** host back in the lobby with new settings */
+  function switchTo(settings: RaceSettings): void {
+    receive(state("lobby", settings));
+    expect(Store.results()).toBeUndefined();
+    expect(Store.race()).toBeUndefined();
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // past any discard window an earlier test left armed
+    vi.setSystemTime(Date.now() + 60_000);
+    sessionStorage.clear();
+    AgeGate.confirmAge();
+    Object.assign(engine.config, structuredClone(USER_CONFIG));
+    engine.testActive = false;
+    engine.resultCalculating = false;
+    engine.firstWord = WORDS[0];
+    engine.page = "test";
+    engine.restart.mockClear();
+    engine.startTest.mockReset();
+    engine.startTest.mockImplementation(() => true);
+    engine.navigate.mockClear();
+    fakeClient.sent = [];
+    receive({
+      type: "welcome",
+      playerId: "me",
+      sessionToken: "t",
+      name: "ZippyPug42",
+      protocol: 1,
+    });
+    receive(state("lobby", TIME_15));
+  });
+  afterEach(() => {
+    Race.leaveRoom();
+    vi.useRealTimers();
+  });
+
+  it("timed -> words: the words race ends the words way", async () => {
+    await race(TIME_15);
+    switchTo(WORDS_10);
+    engine.startTest.mockClear();
+    await race(WORDS_10);
+  });
+
+  it("words -> timed: the timed race ends the timed way", async () => {
+    switchTo(WORDS_10);
+    await race(WORDS_10);
+    switchTo(TIME_15);
+    engine.startTest.mockClear();
+    await race(TIME_15);
+  });
+
+  it("repeated switches in one room: every race uses its own mode", async () => {
+    for (const settings of [TIME_15, WORDS_10, TIME_30, WORDS_25, WORDS_10]) {
+      switchTo(settings);
+      engine.startTest.mockClear();
+      await race(settings);
+    }
+  });
+
+  it("a countdown arriving before the new race's room:state still races (no stale 'finished')", async () => {
+    await race(TIME_15);
+    // straight from results: we still hold the last race's snapshot, where
+    // we finished. That must not read as "reloaded after finishing".
+    engine.startTest.mockClear();
+    await race(WORDS_10, true);
+    engine.startTest.mockClear();
+    await race(TIME_30, true);
+  });
+
+  it("a reload after finishing this race still just waits", async () => {
+    switchTo(WORDS_10);
+    receive(state("racing", WORDS_10, true));
+    receive({
+      type: "race:countdown",
+      startAt: Date.now() - 1000,
+      words: WORDS,
+      settings: WORDS_10,
+    });
+    await flush();
+    expect(engine.restart).not.toHaveBeenCalled();
+    expect(Store.raceFinished()).toBe(true);
+  });
+});
+
 describe("open rooms", () => {
   const welcome = (openRooms: boolean): ServerMessage => ({
     type: "welcome",
@@ -1073,6 +1258,7 @@ describe("player reports", () => {
     isBot,
     color: "opp2",
     ready: false,
+    inLobby: false,
     connected: true,
     character: "puggie",
     progress: { wordIndex: 0, charIndex: 0, testMs: 0, wpm: 0 },

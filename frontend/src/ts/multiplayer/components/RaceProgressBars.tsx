@@ -1,9 +1,12 @@
 import { createMemo, For, JSXElement, Show } from "solid-js";
 
+import type { PlayerState } from "../protocol";
+
 import { Fa } from "../../components/common/Fa";
 import { cn } from "../../utils/cn";
 import { progressFillTransform } from "../caret-position";
 import { isFlagEnabled } from "../feature-flags";
+import { createPlayerIds, createSeat } from "../seats";
 import {
   myId,
   opponentProgress,
@@ -24,6 +27,10 @@ const TIME_MODE_HEADROOM = 10;
  * bot labels that the colour-only carets don't.
  */
 export function RaceProgressBars(props: { class?: string }): JSXElement {
+  const players = (): PlayerState[] => room()?.players ?? [];
+  // rows keyed by id, so a room:state (one lands as the race starts) doesn't
+  // rebuild every row
+  const playerIds = createPlayerIds(players);
   const progressById = createMemo(
     () => new Map(opponentProgress().map((p) => [p.id, p])),
   );
@@ -70,76 +77,85 @@ export function RaceProgressBars(props: { class?: string }): JSXElement {
       )}
       data-testid="mp-progress"
     >
-      <For each={room()?.players ?? []}>
-        {(player) => (
-          <div
-            class="grid min-w-0 grid-cols-[minmax(7.5rem,16rem)_1fr_2.5rem] items-center gap-3 text-sm font-(--font) max-[601px]:grid-cols-[minmax(0,12rem)_1fr_2rem] max-[601px]:gap-2"
-            data-testid="mp-progress-row"
-            data-player-id={player.id}
-          >
-            <span
-              class={cn(
-                "flex min-w-0 items-center gap-1.5",
-                PLAYER_TEXT[player.color],
-                { "opacity-50": !player.connected },
+      <For each={playerIds()}>
+        {(id) => {
+          const seat = createSeat(id, players);
+          return (
+            <Show when={seat()}>
+              {(player) => (
+                <div
+                  class="grid min-w-0 grid-cols-[minmax(7.5rem,16rem)_1fr_2.5rem] items-center gap-3 text-sm font-(--font) max-[601px]:grid-cols-[minmax(0,12rem)_1fr_2rem] max-[601px]:gap-2"
+                  data-testid="mp-progress-row"
+                  data-player-id={id}
+                >
+                  <span
+                    class={cn(
+                      "flex min-w-0 items-center gap-1.5",
+                      PLAYER_TEXT[player().color],
+                      { "opacity-50": !player().connected },
+                    )}
+                  >
+                    {/* phones: the dog strip collapses to a head per row */}
+                    <Show
+                      when={
+                        isFlagEnabled("opponentDogs") && showOpponentCarets()
+                      }
+                    >
+                      <CharacterImage
+                        character={player().character}
+                        frame="head"
+                        class="hidden h-7 w-8 shrink-0 max-[601px]:block"
+                      />
+                    </Show>
+                    {/* the colour of this player's caret, so each caret traces to a named row */}
+                    <span
+                      class={cn(
+                        "size-2.5 shrink-0 rounded-full",
+                        PLAYER_BG[player().color],
+                      )}
+                      aria-hidden="true"
+                      data-testid="mp-progress-swatch"
+                      data-player-id={id}
+                      data-color={player().color}
+                    ></span>
+                    <span class="flex min-w-0 items-baseline leading-tight">
+                      <PlayerName player={player()} truncate />
+                      <Show when={id === myId()}>
+                        <span class="shrink-0 whitespace-pre"> (you)</span>
+                      </Show>
+                    </span>
+                  </span>
+                  <div class="h-1.5 overflow-hidden rounded-full bg-bg">
+                    {/* a full-width rounded fill slid by translateX inside the
+                        clipped track: no layout per frame (unlike width) and the
+                        right end stays round (unlike scaleX) */}
+                    <div
+                      class={cn(
+                        "h-full w-full rounded-full transition-transform duration-200 ease-linear will-change-transform",
+                        PLAYER_BG[player().color],
+                      )}
+                      data-testid="mp-progress-fill"
+                      style={{
+                        transform: progressFillTransform(fraction(id)),
+                      }}
+                    ></div>
+                  </div>
+                  <span
+                    class={cn("text-right", PLAYER_TEXT[player().color])}
+                    title={finished(id) ? "finished" : "wpm"}
+                  >
+                    <Show
+                      when={finished(id)}
+                      fallback={Math.round(progressById().get(id)?.wpm ?? 0)}
+                    >
+                      <Fa icon="fa-check" />
+                    </Show>
+                  </span>
+                </div>
               )}
-            >
-              {/* phones: the dog strip collapses to a head per row */}
-              <Show
-                when={isFlagEnabled("opponentDogs") && showOpponentCarets()}
-              >
-                <CharacterImage
-                  character={player.character}
-                  frame="head"
-                  class="hidden h-7 w-8 shrink-0 max-[601px]:block"
-                />
-              </Show>
-              {/* the colour of this player's caret, so each caret traces to a named row */}
-              <span
-                class={cn(
-                  "size-2.5 shrink-0 rounded-full",
-                  PLAYER_BG[player.color],
-                )}
-                aria-hidden="true"
-                data-testid="mp-progress-swatch"
-                data-player-id={player.id}
-                data-color={player.color}
-              ></span>
-              <span class="flex min-w-0 items-baseline leading-tight">
-                <PlayerName player={player} truncate />
-                <Show when={player.id === myId()}>
-                  <span class="shrink-0 whitespace-pre"> (you)</span>
-                </Show>
-              </span>
-            </span>
-            <div class="h-1.5 overflow-hidden rounded-full bg-bg">
-              {/* a full-width rounded fill slid by translateX inside the
-                  clipped track: no layout per frame (unlike width) and the
-                  right end stays round (unlike scaleX) */}
-              <div
-                class={cn(
-                  "h-full w-full rounded-full transition-transform duration-200 ease-linear will-change-transform",
-                  PLAYER_BG[player.color],
-                )}
-                data-testid="mp-progress-fill"
-                style={{
-                  transform: progressFillTransform(fraction(player.id)),
-                }}
-              ></div>
-            </div>
-            <span
-              class={cn("text-right", PLAYER_TEXT[player.color])}
-              title={finished(player.id) ? "finished" : "wpm"}
-            >
-              <Show
-                when={finished(player.id)}
-                fallback={Math.round(progressById().get(player.id)?.wpm ?? 0)}
-              >
-                <Fa icon="fa-check" />
-              </Show>
-            </span>
-          </div>
-        )}
+            </Show>
+          );
+        }}
       </For>
     </div>
   );

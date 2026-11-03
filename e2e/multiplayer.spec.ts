@@ -220,16 +220,19 @@ test("two players race, see each other, get a podium and rematch", async ({
   await expect(byTestId(a, "mp-result-flagged")).toHaveCount(0);
   await expect(byTestId(a, "mp-results-table")).not.toContainText("dnf");
   await expect(byTestId(a, "mp-pug-winner").locator("svg")).toBeVisible();
-  await expect(byTestId(b, "mp-waiting-host")).toBeVisible();
+  // private room: the guest readies on results, the host can start from there
+  await expect(byTestId(b, "mp-ready")).toContainText("Ready for next race");
+  await expect(byTestId(a, "mp-start-next")).toBeDisabled();
+  await expect(byTestId(a, "mp-ready-count")).toHaveText("0/1 ready");
   await a.screenshot({ path: `${SCREENS}/results.png` });
   // the room's settings were only borrowed for the race
   expect(await configOf(a, "mode")).toBe(modeBefore);
 
-  // rematch: everyone back in the lobby, un-readied
-  await byTestId(a, "mp-rematch").click();
+  // the host's back to lobby: everyone back in the lobby, un-readied
+  await byTestId(a, "mp-back-to-lobby").click();
   await expect(byTestId(a, "mp-lobby")).toBeVisible();
   await expect(byTestId(b, "mp-lobby")).toBeVisible();
-  await expect(byTestId(b, "mp-ready")).toContainText("ready up");
+  await expect(byTestId(b, "mp-ready")).toHaveText("Ready");
 
   expect(pageErrors).toEqual([]);
   await ctxA.close();

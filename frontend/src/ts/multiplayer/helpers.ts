@@ -47,14 +47,40 @@ export function envFlag(value: string | undefined, fallback: boolean): boolean {
   return !["false", "0", "off", "no"].includes(value.toLowerCase());
 }
 
-/** mirrors the server's race:start rules */
-export function canStartRace(room: RoomState, myId: string): boolean {
-  return (
-    room.phase === "lobby" &&
-    room.hostId === myId &&
-    room.players.length >= 2 &&
-    room.players.every((p) => p.id === room.hostId || p.ready)
+/**
+ * Non-hosts the host waits on: everyone in the lobby; on the results screen
+ * (`fromResults`) whoever is connected and still there, plus anyone ready.
+ * Players back in the lobby without readying sit the next race out.
+ */
+export function readyCount(
+  room: RoomState,
+  fromResults = false,
+): { ready: number; total: number } {
+  const others = room.players.filter(
+    (p) =>
+      p.id !== room.hostId &&
+      (!fromResults || p.ready || p.isBot || (p.connected && !p.inLobby)),
   );
+  return {
+    ready: others.filter((p) => p.ready || p.isBot).length,
+    total: others.length,
+  };
+}
+
+/**
+ * mirrors the server's race:start rules; `fromResults`: the results-screen
+ * start of private and open rooms
+ */
+export function canStartRace(
+  room: RoomState,
+  myId: string,
+  fromResults = false,
+): boolean {
+  if (room.hostId !== myId) return false;
+  if (room.phase !== (fromResults ? "results" : "lobby")) return false;
+  const { ready, total } = readyCount(room, fromResults);
+  const racers = fromResults ? ready + 1 : room.players.length;
+  return racers >= 2 && ready === total;
 }
 
 /** room kind for headers: "quick match", "open" or "private" */

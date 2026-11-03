@@ -21,7 +21,7 @@ import {
 import { cn } from "../../utils/cn";
 import { botMixText, displayName, isBot } from "../bots";
 import { isFlagEnabled } from "../feature-flags";
-import { canStartRace, inviteLink } from "../helpers";
+import { canStartRace, inviteLink, readyCount } from "../helpers";
 import {
   MAX_PLAYERS,
   TIME_MODE2,
@@ -48,6 +48,9 @@ import { CharacterImage } from "./CharacterImage";
 import { CharacterPicker } from "./CharacterPicker";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
+import { ReadyBadge } from "./ReadyBadge";
+import { ReadyButton } from "./ReadyButton";
+import { ReadyCount } from "./ReadyCount";
 import { ReportButton } from "./ReportButton";
 import { LANGUAGES, PLAYER_BG, settingsSummary, PRIMARY_BUTTON } from "./ui";
 
@@ -84,7 +87,11 @@ function OptionButton(props: {
 export function Lobby(props: { room: RoomState }): JSXElement {
   const me = () => props.room.players.find((p) => p.id === myId());
   const link = () => inviteLink(window.location.origin, props.room.code);
-  const readOnly = () => !isHost();
+  /** a race or results is on without us: we sit it out here */
+  const away = () => props.room.phase !== "lobby";
+  const racing = () =>
+    props.room.phase === "countdown" || props.room.phase === "racing";
+  const readOnly = () => !isHost() || away();
   const s = () => props.room.settings;
   const lengths = (): readonly number[] =>
     s().mode === "time" ? TIME_MODE2 : WORDS_MODE2;
@@ -125,6 +132,8 @@ export function Lobby(props: { room: RoomState }): JSXElement {
   };
 
   const startHint = (): string => {
+    if (racing()) return "a race is running · ready up once it ends";
+    if (away()) return "the others are on the results screen";
     if (props.room.players.length < 2) return "waiting for someone to join";
     if (!canStartRace(props.room, myId() ?? "")) {
       return isHost() ? "waiting for everyone to ready up" : "";
@@ -210,7 +219,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
         <Show when={characterSelectOn()}>
           <CharacterPicker
             selected={me()?.character ?? DEFAULT_CHARACTER}
-            locked={me()?.ready === true}
+            locked={me()?.ready === true || racing()}
           />
         </Show>
 
@@ -289,6 +298,17 @@ export function Lobby(props: { room: RoomState }): JSXElement {
       </div>
 
       <section class={CARD}>
+        <Show when={away()}>
+          <div
+            class="rounded bg-bg px-4 py-3 text-sub"
+            data-testid="mp-sitting-out"
+          >
+            <Fa icon={racing() ? "fa-flag-checkered" : "fa-trophy"} />{" "}
+            {racing()
+              ? "a race is running without you. ready up once it ends to join the next one."
+              : "the others are on the results screen. ready up to join the next race."}
+          </div>
+        </Show>
         <Show when={me()}>
           {(p) => (
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -305,7 +325,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                 text="new name"
                 fa={{ icon: "fa-dice" }}
                 class="py-1 text-sm"
-                disabled={rerollCooling()}
+                disabled={rerollCooling() || away()}
                 dataset={{ "data-testid": "mp-reroll" }}
                 onClick={reroll}
               />
@@ -400,14 +420,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                     when={p.id !== props.room.hostId}
                     fallback={<span class="text-sm text-sub">host</span>}
                   >
-                    <span
-                      class={cn(
-                        "rounded-full px-3 py-0.5 text-xs font-(--font) whitespace-nowrap",
-                        p.ready ? "bg-opp2 text-bg" : "bg-sub-alt text-sub",
-                      )}
-                    >
-                      {p.ready ? "ready" : "not ready"}
-                    </span>
+                    <ReadyBadge player={p} racing={racing()} />
                   </Show>
                   <ReportButton room={props.room} player={p} />
                   <KickButton
@@ -420,11 +433,20 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             )}
           </For>
         </ul>
+        <Show when={!isHost()}>
+          <ReadyButton
+            ready={me()?.ready === true}
+            text="Ready"
+            class="w-full"
+            disabled={racing()}
+            onToggle={setReady}
+          />
+        </Show>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="text-sm text-sub" data-testid="mp-start-hint">
             {startHint()}
           </div>
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <Button
               text="leave"
               fa={{ icon: "fa-sign-out-alt" }}
@@ -432,19 +454,8 @@ export function Lobby(props: { room: RoomState }): JSXElement {
               dataset={{ "data-testid": "mp-leave" }}
               onClick={() => leaveRoom()}
             />
-            <Show
-              when={isHost()}
-              fallback={
-                <Button
-                  text={me()?.ready === true ? "ready!" : "ready up"}
-                  fa={{ icon: me()?.ready === true ? "fa-check" : "fa-circle" }}
-                  active={me()?.ready === true}
-                  class="px-5"
-                  dataset={{ "data-testid": "mp-ready" }}
-                  onClick={() => setReady(me()?.ready !== true)}
-                />
-              }
-            >
+            <Show when={isHost()}>
+              <ReadyCount {...readyCount(props.room)} />
               <Button
                 text="start race"
                 fa={{ icon: "fa-flag-checkered" }}

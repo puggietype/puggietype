@@ -19,16 +19,24 @@ Solo typing must keep working unchanged. Pug mode works during races.
   coming soon" stub. `/r/CODE` auto-joins.
 - Host kick (two clicks) per player in lobby and results; the kicked player gets a notice and
   lands on `/race`. The race page URL follows the room (`/r/CODE` in one, else `/race`).
-- Lobby: code + copy invite link, players (colour dot, name, host crown, ready), Ready toggle,
-  host settings (time 15/30/60/120 | words 10/25/50/100, punctuation, numbers, language),
-  read-only for non-hosts, Start (host) enabled when ≥2 players and every non-host is ready.
+- Lobby: code + copy invite link, players (colour dot, name, host crown, ready / waiting badge),
+  a large Ready button under the player list (green "Ready ✓" when ready), host settings
+  (time 15/30/60/120 | words 10/25/50/100, punctuation, numbers, language), read-only for
+  non-hosts, Start (host) with "N/M ready", enabled when ≥2 players and every non-host is ready.
+- Next race from results (private and open rooms, server `features.resultsReady`; Quick Match
+  keeps the host rematch): "Ready for next race" (guests) / "Start next race" + "N/M ready"
+  (host) and "Back to lobby". The host can start once everyone still on the results screen is
+  ready; guests who went back to the lobby (`player:toLobby`) without readying sit the race out
+  on the lobby screen (`inLobby`), never dragged in. The host's "Back to lobby" is a rematch.
+- No restart in a race (restart button, tab/enter, commandline entries hidden); opponent carets
+  are colour-only, no name labels.
 - Race: `race:countdown` → apply room settings over local config (restored afterwards), feed the
   server words into the engine in order, synced 3-2-1 (clock offset = median-RTT sample of 5
   pings), input locked until `startAt`. `race:progress` at 10 Hz when changed. Opponent carets
   (colour `var(--oppN)`, name tag), toggle (UI, commandline, persisted config). Progress bars.
 - Finish: `race:finish`, then on `race:results` a podium replaces the result screen: winner with
-  the pug-winner frame, table (place, name, wpm, raw, acc, flagged), Rematch (host) / waiting,
-  Leave. Results are never saved to the backend.
+  the pug-winner frame, table (place, name, wpm, raw, acc, flagged, ready badge), next-race
+  controls (above) or Rematch (host) / waiting, Leave. Results are never saved to the backend.
 - Reconnect with the persisted `playerId` + `sessionToken` (sessionStorage).
 
 ## Structure

@@ -61,3 +61,7 @@ export function settingsSummary(s: {
 /** main-colour call to action that keeps Button's hover/focus behaviour */
 export const PRIMARY_BUTTON =
   "[--themable-button-bg:var(--main-color)] [--themable-button-text:var(--bg-color)]";
+
+/** green "ready" state of the big ready buttons */
+export const READY_BUTTON =
+  "[--themable-button-bg:var(--opp2)] [--themable-button-text:var(--bg-color)]";

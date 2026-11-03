@@ -25,6 +25,7 @@ import {
   queue,
   race,
   raceFinished,
+  meInLobby,
   results,
   room,
   setInviteCode,
@@ -86,6 +87,9 @@ export function RacePage(): JSXElement {
           >
             {(r) => (
               <Switch fallback={<Lobby room={r()} />}>
+                <Match when={meInLobby()}>
+                  <Lobby room={r()} />
+                </Match>
                 <Match when={results()}>
                   {(res) => <Podium room={r()} results={res()} />}
                 </Match>

@@ -10,12 +10,15 @@ import {
 } from "../../components/pages/test/character-frames";
 import { cn } from "../../utils/cn";
 import { displayName, isBot } from "../bots";
-import { roomKindLabel } from "../helpers";
-import { leaveRoom, rematch } from "../race";
-import { characterSelectOn, isHost, myId } from "../store";
+import { canStartRace, readyCount, roomKindLabel } from "../helpers";
+import { backToLobby, leaveRoom, rematch, setReady, startRace } from "../race";
+import { characterSelectOn, isHost, myId, resultsReadyOn } from "../store";
 import { CharacterImage } from "./CharacterImage";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
+import { ReadyBadge } from "./ReadyBadge";
+import { ReadyButton } from "./ReadyButton";
+import { ReadyCount } from "./ReadyCount";
 import { ReportButton } from "./ReportButton";
 import {
   ordinal,
@@ -34,7 +37,7 @@ const REASON_TEXT: Record<RaceResult["reasons"][number], string> = {
   progress_missing: "no progress sent",
 };
 
-/** race results: winner pug, table, rematch / leave */
+/** race results: winner pug, table, ready / start next race (or rematch) / leave */
 export function Podium(props: {
   room: RoomState;
   results: RaceResult[];
@@ -56,6 +59,8 @@ export function Podium(props: {
   };
   const dense = () => props.results.length > 4;
   const mine = () => props.results.find((r) => r.playerId === myId());
+  const seat = (id: string) => props.room.players.find((p) => p.id === id);
+  const meReady = () => seat(myId() ?? "")?.ready === true;
 
   return (
     <div
@@ -205,6 +210,16 @@ export function Podium(props: {
                             <span class="shrink-0 text-sm text-sub">dnf</span>
                           </Show>
                         </span>
+                        <Show
+                          when={
+                            resultsReadyOn() &&
+                            r.playerId !== props.room.hostId &&
+                            !r.isBot &&
+                            seat(r.playerId)
+                          }
+                        >
+                          {(p) => <ReadyBadge player={p()} />}
+                        </Show>
                         <Show when={r.flagged}>
                           <span
                             class="shrink-0 text-sm text-error sm:hidden"
@@ -283,32 +298,82 @@ export function Podium(props: {
             </tbody>
           </table>
         </div>
-        <div class="flex flex-wrap items-center gap-3">
-          <Show
-            when={isHost()}
-            fallback={
-              <span class="text-sub" data-testid="mp-waiting-host">
-                <Fa icon="fa-hourglass-half" /> waiting for the host to start a
-                rematch
-              </span>
-            }
+        <Show when={resultsReadyOn()}>
+          <div
+            class="flex flex-wrap items-center gap-3"
+            data-testid="mp-next-race"
           >
+            <Show
+              when={isHost()}
+              fallback={
+                <ReadyButton
+                  ready={meReady()}
+                  text="Ready for next race"
+                  onToggle={setReady}
+                />
+              }
+            >
+              <Button
+                text="start next race"
+                fa={{ icon: "fa-flag-checkered" }}
+                class={cn(PRIMARY_BUTTON, "px-6 py-3 text-lg")}
+                disabled={!canStartRace(props.room, myId() ?? "", true)}
+                dataset={{ "data-testid": "mp-start-next" }}
+                onClick={() => startRace()}
+              />
+              <ReadyCount {...readyCount(props.room, true)} />
+            </Show>
             <Button
-              text="rematch"
-              fa={{ icon: "fa-redo-alt" }}
-              class={cn(PRIMARY_BUTTON, "px-5 py-3")}
-              dataset={{ "data-testid": "mp-rematch" }}
-              onClick={() => rematch()}
+              text="back to lobby"
+              fa={{ icon: "fa-door-open" }}
+              class="px-5 py-3"
+              dataset={{ "data-testid": "mp-back-to-lobby" }}
+              onClick={() => (isHost() ? rematch() : backToLobby())}
             />
+            <Button
+              text="leave"
+              fa={{ icon: "fa-sign-out-alt" }}
+              variant="text"
+              class="px-3 py-3"
+              dataset={{ "data-testid": "mp-leave" }}
+              onClick={() => leaveRoom()}
+            />
+          </div>
+          <Show when={isHost()}>
+            <div class="text-sm text-sub" data-testid="mp-next-hint">
+              players who go back to the lobby without readying sit the next
+              race out
+            </div>
           </Show>
-          <Button
-            text="leave"
-            fa={{ icon: "fa-sign-out-alt" }}
-            class="px-5 py-3"
-            dataset={{ "data-testid": "mp-leave" }}
-            onClick={() => leaveRoom()}
-          />
-        </div>
+        </Show>
+        <Show when={!resultsReadyOn()}>
+          <div class="flex flex-wrap items-center gap-3">
+            <Show
+              when={isHost()}
+              fallback={
+                <span class="text-sub" data-testid="mp-waiting-host">
+                  <Fa icon="fa-hourglass-half" /> waiting for the host to start
+                  a rematch
+                </span>
+              }
+            >
+              <Button
+                text="rematch"
+                fa={{ icon: "fa-redo-alt" }}
+                class={cn(PRIMARY_BUTTON, "px-5 py-3")}
+                dataset={{ "data-testid": "mp-rematch" }}
+                onClick={() => rematch()}
+              />
+            </Show>
+            <Button
+              text="leave"
+              fa={{ icon: "fa-sign-out-alt" }}
+              class="px-5 py-3"
+              dataset={{ "data-testid": "mp-leave" }}
+              onClick={() => leaveRoom()}
+            />
+          </div>
+        </Show>
       </div>
     </div>
   );
