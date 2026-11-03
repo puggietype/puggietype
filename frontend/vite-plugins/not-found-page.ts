@@ -1,6 +1,6 @@
 import { Plugin } from "vite";
 import path from "node:path";
-import { copyFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 /**
  * Writes dist/404.html (a copy of the final index.html).
@@ -11,6 +11,9 @@ import { copyFileSync, existsSync } from "node:fs";
  * answered, and edge-cached for a year, as HTML. The real SPA routes are
  * rewritten to / in static/_redirects; any other path renders the app's own
  * 404 page (same app, so same UX) with a real 404 status.
+ *
+ * The copy drops <link rel="canonical"> and adds <meta name="robots"
+ * content="noindex"> so a 404 is never indexed as the home page.
  *
  * Must run after the plugins that rewrite index.html and before pages-headers
  * (which hashes inline scripts of every top-level html file).
@@ -27,7 +30,22 @@ export function notFoundPage(): Plugin {
     closeBundle() {
       const index = path.join(outDir, "index.html");
       if (!existsSync(index)) return;
-      copyFileSync(index, path.join(outDir, "404.html"));
+      writeFileSync(
+        path.join(outDir, "404.html"),
+        toNotFoundHtml(readFileSync(index, "utf8")),
+      );
     },
   };
+}
+
+/** index.html -> 404.html: no canonical, plus robots noindex. */
+export function toNotFoundHtml(html: string): string {
+  let out = html.replace(/<link\b[^>]*\brel=["']?canonical["']?[^>]*>/gi, "");
+  if (!/<meta\b[^>]*name=["']?robots["']?/i.test(out)) {
+    const tag = '<meta name="robots" content="noindex">';
+    out = /<head[^>]*>/i.test(out)
+      ? out.replace(/<head[^>]*>/i, (m) => m + tag)
+      : tag + out;
+  }
+  return out;
 }

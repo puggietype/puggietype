@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { notFoundPage } from "../vite-plugins/not-found-page";
+import { notFoundPage, toNotFoundHtml } from "../vite-plugins/not-found-page";
 
 type Hooks = {
   configResolved: (c: unknown) => void;
@@ -17,8 +17,48 @@ describe("not-found-page plugin", () => {
     p.configResolved({ root: dir, build: { outDir: "." } });
     p.closeBundle();
     expect(readFileSync(path.join(dir, "404.html"), "utf8")).toBe(
-      "<!doctype html>app",
+      '<meta name="robots" content="noindex"><!doctype html>app',
     );
+  });
+
+  it("404.html drops the canonical and adds robots noindex", () => {
+    const out = toNotFoundHtml(
+      '<!doctype html><html><head><meta charset="UTF-8"><link rel="canonical" href="https://puggietype.com/"><title>x</title></head><body></body></html>',
+    );
+    expect(out).not.toMatch(/canonical/i);
+    expect(out).toContain(
+      '<head><meta name="robots" content="noindex"><meta charset="UTF-8">',
+    );
+    expect(out.match(/name="robots"/g)).toHaveLength(1);
+    expect(toNotFoundHtml(out)).toBe(out);
+  });
+
+  it("_redirects: 301s come before the rewrites, slashless targets", () => {
+    const lines = readFileSync(
+      path.join(__dirname, "../static/_redirects"),
+      "utf8",
+    )
+      .split("\n")
+      .filter((l) => l.trim() !== "" && !l.startsWith("#"));
+    const firstRewrite = lines.findIndex((l) => l.endsWith(" 200"));
+    const want = [
+      "/guide / 301",
+      "/guide/ / 301",
+      "/leaderboard /leaderboards 301",
+      "/race/ /race 301",
+      "/settings/ /settings 301",
+      "/profile/ /profile 301",
+    ];
+    for (const w of want) {
+      const i = lines.indexOf(w);
+      expect(i, w).toBeGreaterThanOrEqual(0);
+      expect(i, w).toBeLessThan(firstRewrite);
+    }
+    for (const l of lines.filter((x) => x.endsWith(" 200"))) {
+      const from = l.split(" ")[0] as string;
+      if (from.endsWith("/*")) continue;
+      expect(lines, from).toContain(`${from}/ ${from} 301`);
+    }
   });
 
   it("does nothing without index.html", () => {
