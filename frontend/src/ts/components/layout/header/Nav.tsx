@@ -38,22 +38,22 @@ import { AccountMenu } from "./AccountMenu";
 import { AccountXpBar } from "./AccountXpBar";
 
 // icon + visible label; height matches the old icon-only buttons (36px).
-// below sm: icon stacked over a tiny label so every item stays labelled
-// on touch screens; sm+: icon and label side by side
+// below md: icon stacked over a tiny label so every item stays labelled
+// on touch screens and iPad portrait; md+ (849px): icon and label side by side
 const navItemClass =
-  "inline-flex h-9 flex-col items-center justify-center gap-[0.15em] px-[0.3em] py-0 leading-[1.25] whitespace-nowrap sm:h-min sm:flex-row sm:gap-[0.35em] sm:px-[0.5em] sm:py-[0.5em]";
+  "inline-flex h-9 flex-col items-center justify-center gap-[0.15em] px-[0.3em] py-0 leading-[1.25] whitespace-nowrap md:h-min md:flex-row md:gap-[0.35em] md:px-[0.5em] md:py-[0.5em]";
 const labelClass =
-  "text-[0.6em] leading-none lowercase sm:text-em-sm sm:leading-[inherit]";
+  "text-[0.6em] leading-none lowercase md:text-em-sm md:leading-[inherit]";
 
-/** full label from sm up, optional shorter one below */
+/** full label from md (849px) up, optional shorter one below */
 function NavLabel(props: { label: string; short?: string }): JSXElement {
   return (
     <Show
       when={props.short !== undefined && props.short !== props.label}
       fallback={<span class={labelClass}>{props.label}</span>}
     >
-      <span class={cn(labelClass, "sm:hidden")}>{props.short}</span>
-      <span class={cn(labelClass, "hidden sm:inline")}>{props.label}</span>
+      <span class={cn(labelClass, "md:hidden")}>{props.short}</span>
+      <span class={cn(labelClass, "hidden md:inline")}>{props.label}</span>
     </Show>
   );
 }
@@ -68,7 +68,7 @@ function NavLink(props: {
   navItem: string;
   page: PageName;
   testId?: string;
-  /** shorter visible label below sm (aria-label keeps the full one) */
+  /** shorter visible label below md (849px) */
   shortLabel?: string;
   onClick?: () => void;
   onMouseEnter?: () => void;
@@ -80,7 +80,6 @@ function NavLink(props: {
       fa={{ icon: props.icon, fixedWidth: true }}
       router-link
       href={props.href}
-      ariaLabel={props.label}
       ariaCurrent={isActive() ? "page" : undefined}
       class={cn(
         navItemClass,
@@ -173,8 +172,6 @@ export function Nav(): JSXElement {
           <span
             role="link"
             aria-disabled="true"
-            aria-label="leaderboard (coming soon)"
-            title="leaderboard (coming soon)"
             data-nav-item="leaderboards-soon"
             class={cn(
               navItemClass,
@@ -184,7 +181,7 @@ export function Nav(): JSXElement {
           >
             <Fa icon="fa-crown" fixedWidth />
             <NavLabel label="leaderboard" short="ranks" />
-            <span class="hidden rounded bg-sub-alt px-[0.4em] text-[0.6em] leading-[1.6] sm:inline">
+            <span class="hidden rounded bg-sub-alt px-[0.4em] text-[0.6em] leading-[1.6] md:inline">
               soon
             </span>
           </span>

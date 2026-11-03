@@ -58,7 +58,7 @@ describe("Nav", () => {
   const classesOf = (el: Element): string[] =>
     (el.getAttribute("class") ?? "").split(/\s+/);
 
-  /** label text visible below sm / from sm up, read off the label classes */
+  /** label text visible below md / from md up, read off the label classes */
   const visibleLabels = (el: HTMLElement): { small: string; large: string } => {
     const spans = [...el.querySelectorAll(":scope > span")];
     const pick = (hiddenClass: string): string =>
@@ -66,7 +66,7 @@ describe("Nav", () => {
         .filter((s) => !classesOf(s).includes(hiddenClass))
         .map((s) => s.textContent?.trim())
         .join(" ");
-    return { small: pick("hidden"), large: pick("sm:hidden") };
+    return { small: pick("hidden"), large: pick("md:hidden") };
   };
 
   it("shows icon + visible label for each item, without balloons", () => {
@@ -82,14 +82,14 @@ describe("Nav", () => {
       expect(el.tagName).toBe("A");
       expect(el.getAttribute("href")).toBe(href);
       expect(visibleLabels(el).large).toBe(label);
-      expect(el.getAttribute("aria-label")).toBe(label);
+      expect(el.hasAttribute("aria-label")).toBe(false);
       expect(el.hasAttribute("aria-balloon")).toBe(false);
       expect(el.querySelector("i.fa-fw")).not.toBeNull();
     }
     expect(item(container, "race").dataset["testid"]).toBe("nav-race");
   });
 
-  it("never hides a label on small screens; short labels below sm", () => {
+  it("never hides a label on small screens; short labels below md", () => {
     const expected: [string, string, string][] = [
       ["test", "solo", "solo"],
       ["race", "multi", "multiplayer"],
@@ -101,9 +101,9 @@ describe("Nav", () => {
     for (const [navItem, small, large] of expected) {
       const el = item(container, navItem);
       expect(visibleLabels(el)).toEqual({ small, large });
-      // stacked icon over label below sm, side by side from sm up
+      // stacked icon over label below md, side by side from md up
       expect(classesOf(el)).toEqual(
-        expect.arrayContaining(["flex-col", "sm:flex-row"]),
+        expect.arrayContaining(["flex-col", "md:flex-row"]),
       );
     }
   });
@@ -137,8 +137,8 @@ describe("Nav", () => {
     expect(el.hasAttribute("href")).toBe(false);
     expect(el.hasAttribute("tabindex")).toBe(false);
     expect(el.getAttribute("aria-disabled")).toBe("true");
-    expect(el.getAttribute("aria-label")).toBe("leaderboard (coming soon)");
-    expect(el.getAttribute("title")).toBe("leaderboard (coming soon)");
+    expect(el.hasAttribute("aria-label")).toBe(false);
+    expect(el.hasAttribute("title")).toBe(false);
     expect(el.textContent).toContain("leaderboard");
     expect(el.textContent).toContain("soon");
   });
@@ -151,7 +151,7 @@ describe("Nav", () => {
     );
     const el = item(container, "leaderboards");
     expect(el.getAttribute("href")).toBe("/leaderboards");
-    expect(el.getAttribute("aria-label")).toBe("leaderboard");
+    expect(el.hasAttribute("aria-label")).toBe(false);
     expect(visibleLabels(el).large).toBe("leaderboard");
   });
 });
