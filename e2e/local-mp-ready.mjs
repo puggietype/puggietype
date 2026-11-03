@@ -12,7 +12,12 @@
 //   BASE_URL=http://localhost:3401 SHOTS_DIR=/tmp/shots node e2e/local-mp-ready.mjs
 //
 // OPEN=1 runs it in an open lobby joined from the list (default: private, by
-// code). Screenshots go to SHOTS_DIR as ready-*.png. Refuses non-local
+// code). Version-aware: it reads which results flow the server speaks from
+// the podium (mp-next-race = ready from results, mp-rematch /
+// mp-waiting-host = the older rematch flow). On an older server it checks
+// the rematch fallback and skips the ready-from-results checks instead of
+// aborting; SERVER_FLOW=results|rematch pins the expected flow and fails if
+// the server disagrees. Screenshots go to SHOTS_DIR as ready-*.png. Refuses non-local
 // BASE_URLs; exits non-zero on the first failed check.
 import { mkdirSync } from "node:fs";
 
@@ -27,6 +32,14 @@ if (!["localhost", "127.0.0.1"].includes(hostname)) {
 const HEADED = process.env["HEADED"] === "1";
 const OPEN = process.env["OPEN"] === "1";
 const SHOTS = process.env["SHOTS_DIR"];
+const PINNED_FLOW = process.env["SERVER_FLOW"];
+if (
+  PINNED_FLOW !== undefined &&
+  !["results", "rematch"].includes(PINNED_FLOW)
+) {
+  console.error(`SERVER_FLOW must be results or rematch, got ${PINNED_FLOW}`);
+  process.exit(2);
+}
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 
 const byTestId = (page, id) => page.locator(`[data-testid="${id}"]`);
@@ -56,6 +69,34 @@ async function eventually(fn, timeout = 5_000) {
 }
 
 const text = (page, id) => byTestId(page, id).first().innerText();
+const attr = (page, id, name) => byTestId(page, id).first().getAttribute(name);
+
+/** multiplayer has no restart: no "tab + enter - restart test" tip (MS-01) */
+async function checkNoRestartTip(page, where) {
+  check(
+    (await byTestId(page, "keytip-restart").count()) === 0 &&
+      !(await page.locator("footer").innerText()).includes("restart test"),
+    `${where}: no restart test keytip`,
+  );
+}
+
+/**
+ * which results flow the server speaks, read off the podium once it's up:
+ * "results" (ready from the results screen) or "rematch" (older servers)
+ */
+async function detectFlow(host, guest) {
+  let flow;
+  await eventually(async () => {
+    if ((await byTestId(guest, "mp-next-race").count()) > 0) flow = "results";
+    else if (
+      (await byTestId(host, "mp-rematch").count()) > 0 ||
+      (await byTestId(guest, "mp-waiting-host").count()) > 0
+    )
+      flow = "rematch";
+    return flow !== undefined;
+  });
+  return flow;
+}
 
 async function typeAll(page, delay = 70) {
   await byTestId(page, "mp-race").waitFor();
@@ -127,9 +168,22 @@ try {
   );
 
   // ---- lobby
+  await checkNoRestartTip(host, "lobby /race (host)");
+  await checkNoRestartTip(
+    alice,
+    OPEN ? "lobby /race (guest)" : "lobby /r/* (guest)",
+  );
   check(
     (await text(alice, "mp-ready")).trim() === "Ready",
     "lobby: guest sees a big Ready",
+  );
+  check(
+    (await attr(alice, "mp-ready", "aria-pressed")) === "false",
+    "lobby: Ready is a toggle, aria-pressed=false",
+  );
+  check(
+    (await attr(host, "mp-ready-count", "aria-live")) === "polite",
+    "lobby: N/M ready count is aria-live=polite",
   );
   check(
     (await byTestId(alice, "mp-ready-badge").allInnerTexts()).every((t) =>
@@ -144,6 +198,10 @@ try {
       (await text(alice, "mp-ready")).includes("Ready ✓"),
     ),
     "lobby: Ready toggles to Ready ✓",
+  );
+  check(
+    (await attr(alice, "mp-ready", "aria-pressed")) === "true",
+    "lobby: aria-pressed=true once ready",
   );
   await shot(alice, "lobby-ready");
   check(
@@ -175,7 +233,37 @@ try {
     await byTestId(page, "mp-podium").waitFor({ timeout: 30_000 });
   }
 
-  // ---- results
+  // ---- results: which flow does this server speak?
+  await checkNoRestartTip(host, "results (host)");
+  const flow = await detectFlow(host, alice);
+  console.log(`info server results flow: ${flow ?? "unknown"}`);
+  check(flow !== undefined, "results: server flow detected");
+  if (PINNED_FLOW !== undefined) {
+    check(flow === PINNED_FLOW, `results: server flow is ${PINNED_FLOW}`);
+  }
+  if (flow !== "results") {
+    if (flow === "rematch") {
+      check(
+        (await byTestId(host, "mp-rematch").count()) === 1,
+        "rematch flow: host sees rematch",
+      );
+      check(
+        (await text(alice, "mp-waiting-host")).includes(
+          "waiting for the host to start a rematch",
+        ),
+        "rematch flow: guest waits for the host",
+      );
+      check(
+        (await byTestId(alice, "mp-ready").count()) === 0,
+        "rematch flow: no Ready on the results screen",
+      );
+      await shot(host, "results-rematch-flow");
+      console.log("skip ready-from-results checks (older server)");
+    }
+    await browser.close();
+    console.log(failures === 0 ? "all checks passed" : `${failures} failed`);
+    process.exit(failures === 0 ? 0 : 1);
+  }
   check(
     (await text(alice, "mp-ready")).includes("Ready for next race"),
     "results: guest sees Ready for next race",

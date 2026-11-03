@@ -21,6 +21,7 @@ export function ReadyButton(props: {
         props.class,
       )}
       disabled={props.disabled}
+      ariaPressed={props.ready}
       dataset={{
         "data-testid": "mp-ready",
         "data-ready": String(props.ready),

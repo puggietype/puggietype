@@ -26,6 +26,8 @@ type BaseProps = {
   ariaHidden?: boolean;
   /** marks the link for the current page (anchors only) */
   ariaCurrent?: "page";
+  /** toggle state for a toggle button (buttons only) */
+  ariaPressed?: boolean;
 };
 
 export type ButtonProps = BaseProps & {
@@ -112,6 +114,13 @@ export function Button(props: ButtonProps | AnchorProps): JSXElement {
           data-ui-element="button"
           tabIndex={props.tabIndex ?? undefined}
           aria-hidden={props.ariaHidden ? "true" : undefined}
+          aria-pressed={
+            props.ariaPressed === undefined
+              ? undefined
+              : props.ariaPressed
+                ? "true"
+                : "false"
+          }
           {...props.dataset}
         >
           {content}
