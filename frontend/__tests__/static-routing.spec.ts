@@ -28,6 +28,14 @@ describe("static routing", () => {
     "/guide/typing-tips",
     "/guide/multiplayer",
     "/guide/modes-settings",
+    "/guide/touch-typing-beginners",
+    "/guide/home-row-finger-placement",
+    "/guide/type-faster",
+    "/guide/keyboard-layouts",
+    "/guide/typing-ergonomics",
+    "/guide/typing-test-math",
+    "/guide/improve-accuracy",
+    "/guide/typing-for-kids",
     "/contact",
   ];
 
