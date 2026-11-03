@@ -1,19 +1,25 @@
-// Pages middleware: www -> apex 301, HSTS on everything, and a real 404 for
-// missing hashed assets.
+// Pages middleware: www -> apex 301, HSTS on what it serves, and a backstop
+// 404 for missing assets.
 //
-// _routes.json must NOT exclude these prefixes, or this never runs.
-// Why the 404: dist has no 404.html, so Pages answers ANY unknown path with
-// index.html (200). For /js/* and /css/* that fallback also picked up the
-// "immutable, 1 year" Cache-Control from _headers, so if the edge was asked
-// for a new hash before that file was live (deploy race), it cached the HTML
-// under the JS URL for a year. Browsers then loaded HTML as the app's entry
-// module and the site went blank (2026-11-03, puggietype.CR9YH8lL.js).
-// A missing asset must be an uncacheable 404, never the SPA page.
+// Missing hashed assets are handled WITHOUT this function: dist has a
+// top-level 404.html (vite-plugins/not-found-page.ts), which turns off Pages'
+// SPA fallback, so an unknown /js/... gets a 404 instead of index.html with
+// the immutable 1-year Cache-Control (2026-11-03 blank-site incident,
+// puggietype.CR9YH8lL.js). _routes.json excludes the asset prefixes so they
+// never cost a Functions invocation (free plan: 100k/day). The guard below is
+// a backstop only, in case an asset prefix is ever routed here again.
 
-export const ASSET_PREFIXES = ["/js/", "/css/", "/webfonts/", "/assets/"];
+export const ASSET_PREFIXES = [
+  "/js/",
+  "/css/",
+  "/webfonts/",
+  "/assets/",
+  "/images/",
+];
 
 export function isAssetPath(pathname: string): boolean {
-  return ASSET_PREFIXES.some((p) => pathname.startsWith(p));
+  const lower = pathname.toLowerCase();
+  return ASSET_PREFIXES.some((p) => lower.startsWith(p));
 }
 
 function isHtml(res: Response): boolean {

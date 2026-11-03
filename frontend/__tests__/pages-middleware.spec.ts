@@ -84,9 +84,56 @@ describe("pages middleware", () => {
     expect(isAssetPath("/race")).toBe(false);
   });
 
-  it("_routes.json lets the middleware see every guarded asset prefix", () => {
+  it("_routes.json keeps every asset prefix out of Functions", () => {
     for (const p of ASSET_PREFIXES) {
-      expect(routes.exclude).not.toContain(`${p}*`);
+      expect(routes.exclude).toContain(`${p}*`);
     }
+  });
+
+  it("isAssetPath is case-insensitive and covers /images", () => {
+    expect(isAssetPath("/JS/a.js")).toBe(true);
+    expect(isAssetPath("/Css/a.css")).toBe(true);
+    expect(isAssetPath("/images/x.png")).toBe(true);
+    expect(isAssetPath("/imagesx")).toBe(false);
+  });
+
+  const req = async (
+    path: string,
+    init: RequestInit = {},
+    next: () => Response = html,
+  ): Promise<Response> =>
+    onRequest({
+      request: new Request(`https://puggietype.com${path}`, init),
+      next: async () => next(),
+    });
+
+  it.each([
+    ["HEAD", { method: "HEAD" }],
+    ["no Origin", {}],
+    ["Origin", { headers: { Origin: "https://puggietype.com" } }],
+    [
+      "cors",
+      { headers: { Origin: "https://x.example", "Sec-Fetch-Mode": "cors" } },
+    ],
+  ])("missing asset, %s: 404 no-store", async (_n, init) => {
+    const r = await req("/js/puggietype.Zz9.js", init);
+    expect(r.status).toBe(404);
+    expect(r.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("missing asset with a query string: 404 no-store", async () => {
+    const r = await req("/css/a.X1.css?v=2");
+    expect(r.status).toBe(404);
+    expect(r.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("real asset with a query string and Origin passes through", async () => {
+    const r = await req(
+      "/js/a.js?x=1",
+      { headers: { Origin: "https://puggietype.com" } },
+      js,
+    );
+    expect(r.status).toBe(200);
+    expect(r.headers.get("Cache-Control")).toContain("immutable");
   });
 });

@@ -1,5 +1,6 @@
-# Cloudflare Pages. Real files win over the spa fallback (no 404.html in dist),
-# rules here win over real files: never add a /* splat. Rewrite to / (not
+# Cloudflare Pages. dist HAS a 404.html (vite-plugins/not-found-page.ts), so the
+# built-in spa fallback is OFF: every router path must be rewritten here
+# (__tests__/not-found-page.spec.ts checks it). Rules here win over real files: never add a /* splat. Rewrite to / (not
 # /index.html, which pages flags as an infinite loop and ignores).
 /terms-of-service.html /terms 301
 /terms-of-service /terms 301

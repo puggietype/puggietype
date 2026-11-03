@@ -35,9 +35,14 @@ The WS server's Origin allowlist must include every host serving the frontend
 
 - `_redirects`: legacy 301s and SPA rewrites to `/`. On Pages, rules win over real
   files, so there is **no `/*` splat**; a rewrite to `/index.html` is dropped as an
-  "infinite loop" (so it must be `/`). Unknown paths fall through to Pages' built-in
-  SPA fallback, which is on because the build has **no top-level `404.html`** (the app
-  renders its own 404 page). Real static files are served as-is.
+  "infinite loop" (so it must be `/`). The build writes a top-level `404.html` (a copy of
+  `index.html`), which turns Pages' SPA fallback **off**: unknown paths get the app's
+  404 page with status 404, and a missing hashed `/js` or `/css` file is a 404, never
+  `index.html` cached as JS for a year. Every router path must be listed here (a unit
+  test checks it).
+- `_routes.json`: asset prefixes (`/js`, `/css`, `/webfonts`, `/assets`, `/images`, ...)
+  are excluded so they never invoke the Pages Function (free plan quota). The
+  middleware only does www -> apex and HSTS for pages. Real static files are served as-is.
 - `_headers`: CSP (self, inline-script hashes, WS origin, poetrydb/wikipedia for those
   funboxes, `frame-ancestors 'none'`), `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`, `Permissions-Policy`; one-year immutable cache for hashed

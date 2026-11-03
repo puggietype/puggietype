@@ -2,7 +2,11 @@
   "version": 1,
   "include": ["/*"],
   "exclude": [
+    "/js/*",
+    "/css/*",
     "/images/*",
+    "/webfonts/*",
+    "/assets/*",
     "/webfonts-preview/*",
     "/sounds/*",
     "/languages/*",
