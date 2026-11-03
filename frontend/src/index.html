@@ -17,6 +17,14 @@
       as="font"
       crossorigin
     />
+    <!-- wordmark weight, in the header on first paint -->
+    <link
+      rel="preload"
+      href="/webfonts/Lexend-SemiBold.woff2"
+      type="font/woff2"
+      as="font"
+      crossorigin
+    />
 
     <script>
       document.addEventListener("keydown", function (e) {
@@ -52,7 +60,10 @@
     <meta name="google-adsense-account" content="ca-pub-8233445679738428" />
     <meta name="theme-color" content="#161514" />
     <meta name="name" content="puggietype | a minimalist typing test" />
-    <meta name="image" content="https://puggietype.com/images/og-image.png" />
+    <meta
+      name="image"
+      content="https://puggietype.com/images/og/puggietype-share.png"
+    />
     <meta
       name="description"
       content="A minimalist, customizable typing test with a little pug. Type fast, stay cute, and race your friends."
@@ -68,7 +79,13 @@
     <meta property="og:type" content="website" />
     <meta
       property="og:image"
-      content="https://puggietype.com/images/og-image.png"
+      content="https://puggietype.com/images/og/puggietype-share.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="PuggieType: the pug mascot typing on a keyboard, with the tagline typing tests and multiplayer races"
     />
     <meta
       property="og:description"
@@ -80,9 +97,36 @@
     />
     <meta
       name="twitter:image"
-      content="https://puggietype.com/images/og-image.png"
+      content="https://puggietype.com/images/og/puggietype-share.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="PuggieType: the pug mascot typing on a keyboard, with the tagline typing tests and multiplayer races"
     />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:description"
+      content="A minimalist, customizable typing test with a little pug. Type fast, stay cute, and race your friends."
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "PuggieType",
+        "alternateName": "puggietype",
+        "url": "https://puggietype.com/",
+        "description": "A minimalist, customizable typing test with a little pug. Type fast, stay cute, and race your friends.",
+        "image": "https://puggietype.com/images/og/puggietype-share.png",
+        "publisher": {
+          "@type": "Organization",
+          "name": "PuggieType",
+          "url": "https://puggietype.com/",
+          "logo": "https://puggietype.com/images/favicon/icon-512.png",
+          "email": "support@puggietype.com",
+          "sameAs": ["https://github.com/puggietype/puggietype"]
+        }
+      }
+    </script>
     <meta name="darkreader-lock" />
     <meta http-equiv="Cache-Control" content="no-store" />
     <style>
