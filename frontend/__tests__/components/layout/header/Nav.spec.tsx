@@ -58,7 +58,7 @@ describe("Nav", () => {
   const classesOf = (el: Element): string[] =>
     (el.getAttribute("class") ?? "").split(/\s+/);
 
-  /** label text visible below md / from md up, read off the label classes */
+  /** label text visible below 849px (md) / from 849px up, read off the label classes */
   const visibleLabels = (el: HTMLElement): { small: string; large: string } => {
     const spans = [...el.querySelectorAll(":scope > span")];
     const pick = (hiddenClass: string): string =>
@@ -89,7 +89,7 @@ describe("Nav", () => {
     expect(item(container, "race").dataset["testid"]).toBe("nav-race");
   });
 
-  it("never hides a label on small screens; short labels below md", () => {
+  it("never hides a label on small screens; short labels below 849px", () => {
     const expected: [string, string, string][] = [
       ["test", "solo", "solo"],
       ["race", "multi", "multiplayer"],
@@ -101,7 +101,7 @@ describe("Nav", () => {
     for (const [navItem, small, large] of expected) {
       const el = item(container, navItem);
       expect(visibleLabels(el)).toEqual({ small, large });
-      // stacked icon over label below md, side by side from md up
+      // stacked icon over short label below 849px (md), side by side from 849px up
       expect(classesOf(el)).toEqual(
         expect.arrayContaining(["flex-col", "md:flex-row"]),
       );

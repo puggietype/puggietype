@@ -38,7 +38,7 @@ import { AccountMenu } from "./AccountMenu";
 import { AccountXpBar } from "./AccountXpBar";
 
 // icon + visible label; height matches the old icon-only buttons (36px).
-// below md: icon stacked over a tiny label so every item stays labelled
+// short labels below 849px (md): icon stacked over a tiny label so every item stays labelled
 // on touch screens and iPad portrait; md+ (849px): icon and label side by side
 const navItemClass =
   "inline-flex h-9 flex-col items-center justify-center gap-[0.15em] px-[0.3em] py-0 leading-[1.25] whitespace-nowrap md:h-min md:flex-row md:gap-[0.35em] md:px-[0.5em] md:py-[0.5em]";
