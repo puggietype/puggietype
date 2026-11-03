@@ -48,6 +48,10 @@ test("nav has no account, leaderboard or alerts buttons", async ({ page }) => {
   ]) {
     await expect(nav.locator(`[data-nav-item="${item}"]`)).toHaveCount(0);
   }
+  // inert "coming soon" placeholder instead of a leaderboard link
+  const soon = nav.locator('[data-nav-item="leaderboards-soon"]');
+  await expect(soon).toHaveAttribute("aria-disabled", "true");
+  await expect(soon.locator("a, [href]")).toHaveCount(0);
   await expect(page.locator('[data-ui-element="accountMenu"]')).toHaveCount(0);
 });
 

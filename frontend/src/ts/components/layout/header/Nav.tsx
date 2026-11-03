@@ -12,6 +12,7 @@ import { restartTestEvent } from "../../../events/test";
 import { createEffectOn } from "../../../hooks/effects";
 import { useRefWithUtils } from "../../../hooks/useRefWithUtils";
 import { MULTIPLAYER_ENABLED } from "../../../multiplayer/flags";
+import { PageName } from "../../../pages/page";
 import { prefetchLeaderboardPage } from "../../../queries/prefetch";
 import { getServerConfigurationQueryOptions } from "../../../queries/server-configuration";
 import { getActivePage } from "../../../states/core";
@@ -23,16 +24,80 @@ import {
 import { showModal } from "../../../states/modals";
 import { getSnapshot } from "../../../states/snapshot";
 import { getFocus } from "../../../states/test";
+import { FaSolidIcon } from "../../../types/font-awesome";
 import { cn } from "../../../utils/cn";
 import { isStandalone } from "../../../utils/env";
 import { getLevelFromTotalXp } from "../../../utils/levels";
 import { Anime } from "../../common/anime";
 import { AnimePresence } from "../../common/anime/AnimePresence";
 import { Button } from "../../common/Button";
+import { Fa } from "../../common/Fa";
 import { NotificationBubble } from "../../common/NotificationBubble";
 import { User } from "../../common/User";
 import { AccountMenu } from "./AccountMenu";
 import { AccountXpBar } from "./AccountXpBar";
+
+// icon + visible label; height matches the old icon-only buttons (36px).
+// below sm: icon stacked over a tiny label so every item stays labelled
+// on touch screens; sm+: icon and label side by side
+const navItemClass =
+  "inline-flex h-9 flex-col items-center justify-center gap-[0.15em] px-[0.3em] py-0 leading-[1.25] whitespace-nowrap sm:h-min sm:flex-row sm:gap-[0.35em] sm:px-[0.5em] sm:py-[0.5em]";
+const labelClass =
+  "text-[0.6em] leading-none lowercase sm:text-em-sm sm:leading-[inherit]";
+
+/** full label from sm up, optional shorter one below */
+function NavLabel(props: { label: string; short?: string }): JSXElement {
+  return (
+    <Show
+      when={props.short !== undefined && props.short !== props.label}
+      fallback={<span class={labelClass}>{props.label}</span>}
+    >
+      <span class={cn(labelClass, "sm:hidden")}>{props.short}</span>
+      <span class={cn(labelClass, "hidden sm:inline")}>{props.label}</span>
+    </Show>
+  );
+}
+
+const focusClass = (): string | false =>
+  getFocus() && "opacity-(--nav-focus-opacity)";
+
+function NavLink(props: {
+  href: string;
+  icon: FaSolidIcon;
+  label: string;
+  navItem: string;
+  page: PageName;
+  testId?: string;
+  /** shorter visible label below sm (aria-label keeps the full one) */
+  shortLabel?: string;
+  onClick?: () => void;
+  onMouseEnter?: () => void;
+}): JSXElement {
+  const isActive = (): boolean => getActivePage() === props.page;
+  return (
+    <Button
+      variant="text"
+      fa={{ icon: props.icon, fixedWidth: true }}
+      router-link
+      href={props.href}
+      ariaLabel={props.label}
+      ariaCurrent={isActive() ? "page" : undefined}
+      class={cn(
+        navItemClass,
+        isActive() && "[--themable-button-text:var(--main-color)]",
+        focusClass(),
+      )}
+      dataset={{
+        "data-nav-item": props.navItem,
+        ...(props.testId !== undefined ? { "data-testid": props.testId } : {}),
+      }}
+      onClick={() => props.onClick?.()}
+      onMouseEnter={() => props.onMouseEnter?.()}
+    >
+      <NavLabel label={props.label} short={props.shortLabel} />
+    </Button>
+  );
+}
 
 export function Nav(): JSXElement {
   const [getAccountMenuOpen, setAccountMenuOpen] = createSignal(false);
@@ -80,86 +145,76 @@ export function Nav(): JSXElement {
 
   return (
     <nav class={cn("z-5 flex w-full items-center gap-1 md:gap-2")}>
-      <Button
-        variant="text"
-        fa={{
-          icon: "fa-keyboard",
-          fixedWidth: true,
-        }}
-        router-link
+      <NavLink
         href="/"
-        class={buttonClass()}
-        balloon={{ text: "test", position: "down" }}
-        dataset={{
-          "data-nav-item": "test",
-        }}
+        icon="fa-keyboard"
+        label="solo"
+        navItem="test"
+        page="test"
         onClick={() => {
           if (getActivePage() === "test") restartTestEvent.dispatch();
         }}
       />
       <Show when={MULTIPLAYER_ENABLED}>
-        <Button
-          variant="text"
-          fa={{
-            icon: "fa-flag-checkered",
-            fixedWidth: true,
-          }}
-          router-link
+        <NavLink
           href="/race"
-          class={buttonClass()}
-          balloon={{ text: "multiplayer", position: "down" }}
-          dataset={{
-            "data-nav-item": "race",
-            "data-testid": "nav-race",
-          }}
+          icon="fa-flag-checkered"
+          label="multiplayer"
+          shortLabel="multi"
+          navItem="race"
+          page="race"
+          testId="nav-race"
         />
       </Show>
-      <Show when={!isStandalone()}>
-        <Button
-          variant="text"
-          fa={{
-            icon: "fa-crown",
-            fixedWidth: true,
-          }}
-          router-link
-          balloon={{ text: "leaderboards", position: "down" }}
-          dataset={{
-            "data-nav-item": "leaderboards",
-          }}
-          class={buttonClass()}
+      <Show
+        when={!isStandalone()}
+        fallback={
+          // no leaderboards without a backend: a visible, inert placeholder
+          <span
+            role="link"
+            aria-disabled="true"
+            aria-label="leaderboard (coming soon)"
+            title="leaderboard (coming soon)"
+            data-nav-item="leaderboards-soon"
+            class={cn(
+              navItemClass,
+              "cursor-default text-sub opacity-60 transition-opacity duration-125 select-none",
+              focusClass(),
+            )}
+          >
+            <Fa icon="fa-crown" fixedWidth />
+            <NavLabel label="leaderboard" short="ranks" />
+            <span class="hidden rounded bg-sub-alt px-[0.4em] text-[0.6em] leading-[1.6] sm:inline">
+              soon
+            </span>
+          </span>
+        }
+      >
+        <NavLink
           href="/leaderboards"
+          icon="fa-crown"
+          label="leaderboard"
+          navItem="leaderboards"
+          page="leaderboards"
+          shortLabel="ranks"
           onMouseEnter={() => {
             prefetchLeaderboardPage();
           }}
         />
       </Show>
-      <Button
-        variant="text"
-        fa={{
-          icon: "fa-info",
-          fixedWidth: true,
-        }}
-        class={buttonClass()}
-        balloon={{ text: "about", position: "down" }}
-        dataset={{
-          "data-nav-item": "about",
-        }}
+      <NavLink
         href="/about"
-        router-link
+        icon="fa-info"
+        label="guides"
+        navItem="about"
+        page="about"
       />
-      <Button
-        variant="text"
-        fa={{
-          icon: "fa-cog",
-          fixedWidth: true,
-        }}
-        class={buttonClass()}
+      <NavLink
         href="/settings"
-        balloon={{ text: "settings", position: "down" }}
-        dataset={{
-          "data-nav-item": "settings",
-        }}
-        router-link
+        icon="fa-cog"
+        label="settings"
+        navItem="settings"
+        page="settings"
       />
       <div class="grow"></div>
       {/* alerts, login and the account menu need a backend */}

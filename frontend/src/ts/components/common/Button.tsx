@@ -24,6 +24,8 @@ type BaseProps = {
   ariaLabel?: string;
   /** hide from assistive tech, e.g. while the button is visually hidden */
   ariaHidden?: boolean;
+  /** marks the link for the current page (anchors only) */
+  ariaCurrent?: "page";
 };
 
 export type ButtonProps = BaseProps & {
@@ -134,6 +136,7 @@ export function Button(props: ButtonProps | AnchorProps): JSXElement {
         {...(props.ariaLabel !== undefined
           ? { "aria-label": props.ariaLabel }
           : {})}
+        aria-current={props.ariaCurrent}
         {...(props["router-link"] ? { "router-link": "" } : {})}
         onClick={(e) => props.onClick?.(e)}
         onMouseEnter={(e) => props.onMouseEnter?.(e)}
