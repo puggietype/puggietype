@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   canStartRace,
+  readyCount,
   finishInput,
   inviteLink,
   normalizeRoomCode,
@@ -109,6 +110,7 @@ function room(players: Partial<RoomState["players"][number]>[]): RoomState {
       isBot: false,
       color: "opp1",
       ready: false,
+      inLobby: false,
       connected: true,
       character: "puggie",
       progress: { wordIndex: 0, charIndex: 0, testMs: 0, wpm: 0 },
@@ -132,6 +134,45 @@ describe("canStartRace", () => {
     const r = { ...room([{ id: "h" }, { id: "b", ready: true }]) };
     r.phase = "results";
     expect(canStartRace(r, "h")).toBe(false);
+  });
+});
+
+describe("results-screen start (fromResults)", () => {
+  const results = (players: Parameters<typeof room>[0]): RoomState => ({
+    ...room(players),
+    phase: "results",
+  });
+  it("waits on everyone still on the results screen", () => {
+    const r = results([{ id: "h" }, { id: "b", ready: true }, { id: "c" }]);
+    expect(readyCount(r, true)).toEqual({ ready: 1, total: 2 });
+    expect(canStartRace(r, "h", true)).toBe(false);
+  });
+  it("leaves out players back in the lobby or gone without readying", () => {
+    const r = results([
+      { id: "h" },
+      { id: "b", ready: true },
+      { id: "c", inLobby: true },
+      { id: "d", connected: false },
+    ]);
+    expect(readyCount(r, true)).toEqual({ ready: 1, total: 1 });
+    expect(canStartRace(r, "h", true)).toBe(true);
+    expect(canStartRace(r, "b", true)).toBe(false);
+    // the lobby rules still count everyone
+    expect(readyCount(r)).toEqual({ ready: 1, total: 3 });
+    expect(canStartRace(r, "h")).toBe(false);
+  });
+  it("counts a sitter who readied from the lobby", () => {
+    const r = results([{ id: "h" }, { id: "c", inLobby: true, ready: true }]);
+    expect(readyCount(r, true)).toEqual({ ready: 1, total: 1 });
+    expect(canStartRace(r, "h", true)).toBe(true);
+  });
+  it("needs another racer", () => {
+    const r = results([{ id: "h" }, { id: "c", inLobby: true }]);
+    expect(canStartRace(r, "h", true)).toBe(false);
+  });
+  it("only from results", () => {
+    const r = room([{ id: "h" }, { id: "b", ready: true }]);
+    expect(canStartRace(r, "h", true)).toBe(false);
   });
 });
 

@@ -7,6 +7,7 @@ vi.mock("../../../src/ts/multiplayer/feature-flags", () => ({
   isFlagEnabled: () => false,
 }));
 vi.mock("../../../src/ts/multiplayer/race", () => ({
+  backToLobby: vi.fn(),
   kickPlayer: vi.fn(),
   leaveRoom: vi.fn(),
   rematch: vi.fn(),
@@ -63,6 +64,7 @@ const player = (
   isBot,
   color,
   ready: false,
+  inLobby: false,
   connected: true,
   character: "puggie",
   progress: { wordIndex: 0, charIndex: 0, testMs: 0, wpm: 0 },

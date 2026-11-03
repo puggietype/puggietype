@@ -109,6 +109,18 @@ export function myCharacter(): Character {
   return seat?.character ?? savedCharacter();
 }
 
+/** ready-up and the next start happen on the results screen (not Quick Match) */
+export function resultsReadyOn(): boolean {
+  return (
+    serverFeatures()?.resultsReady === true && room()?.quickMatch === false
+  );
+}
+
+/** we're on the room's lobby screen while it races or shows results without us */
+export function meInLobby(): boolean {
+  return room()?.players.find((p) => p.id === myId())?.inLobby === true;
+}
+
 export function isHost(): boolean {
   const r = room();
   return r !== undefined && r.hostId === myId();

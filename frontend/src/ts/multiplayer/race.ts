@@ -205,6 +205,11 @@ export function rematch(): void {
   send({ type: "race:rematch" });
 }
 
+/** results: back to the room's lobby (sits out the next race unless we ready) */
+export function backToLobby(): void {
+  send({ type: "player:toLobby" });
+}
+
 /** host only: list (or unlist) our lobby in open rooms */
 export function setRoomOpen(open: boolean): void {
   if (openRoomsOn()) send({ type: "room:setOpen", open });
@@ -482,7 +487,10 @@ function handleMessage(msg: ServerMessage): void {
 type LegacyRoomState = Omit<RoomState, "open" | "quickMatch" | "players"> & {
   open?: boolean;
   quickMatch?: boolean;
-  players: (Omit<PlayerState, "isBot"> & { isBot?: boolean })[];
+  players: (Omit<PlayerState, "isBot" | "inLobby"> & {
+    isBot?: boolean;
+    inLobby?: boolean;
+  })[];
 };
 
 /** older servers omit the open rooms fields: private room, all humans */
@@ -495,7 +503,10 @@ function withRoomDefaults(msg: LegacyRoomState): RoomState {
     settingsVersion: msg.settingsVersion,
     open: msg.open === true,
     quickMatch: msg.quickMatch === true,
-    players: msg.players.map(withBotDefault),
+    players: msg.players.map((p) => ({
+      ...withBotDefault(p),
+      inLobby: p.inLobby === true,
+    })),
   };
 }
 

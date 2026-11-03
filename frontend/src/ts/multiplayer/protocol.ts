@@ -145,7 +145,10 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     playerId: z.string().min(1).max(64),
   }),
   z.object({ type: z.literal("room:settings"), settings: SettingsPatchSchema }),
+  /** Lobby, or results outside Quick Match: ready for the next race. */
   z.object({ type: z.literal("player:ready"), ready: z.boolean() }),
+  /** Results outside Quick Match: go to the lobby and sit out the next race unless you ready. */
+  z.object({ type: z.literal("player:toLobby") }),
   /** In lobby: ask the server for a different nickname (still unique within the room). */
   z.object({ type: z.literal("player:reroll") }),
   /** Choose a dog; allowed in lobby/results as long as you aren't marked ready. */
@@ -222,6 +225,8 @@ export interface PlayerState {
   isBot: boolean;
   color: PlayerColor;
   ready: boolean;
+  /** Outside the lobby phase: on the lobby screen, sitting the race out. Always false in the lobby. */
+  inLobby: boolean;
   connected: boolean;
   character: Character;
   progress: Progress;
@@ -324,6 +329,8 @@ export interface Features {
   quickMatch: boolean;
   /** Disabled: `report:player` returns FEATURE_DISABLED and the report control is hidden. */
   report: boolean;
+  /** Ready / start from the results screen (`player:toLobby`); absent on older servers. */
+  resultsReady?: boolean;
 }
 
 export type ServerMessage =

@@ -26,6 +26,7 @@ const player = (id: string, isBot = false): RoomState["players"][number] => ({
   isBot,
   color: "opp1",
   ready: false,
+  inLobby: false,
   connected: true,
   character: "puggie",
   progress: { wordIndex: 0, charIndex: 0, testMs: 0, wpm: 0 },
