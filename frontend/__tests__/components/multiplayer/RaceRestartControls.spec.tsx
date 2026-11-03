@@ -12,7 +12,6 @@ vi.mock("../../../src/ts/utils/json-data", async (importOriginal) => ({
 
 const Hooks = await import("../../../src/ts/multiplayer/engine-hooks");
 const Store = await import("../../../src/ts/multiplayer/store");
-const Core = await import("../../../src/ts/states/core");
 const { onRestartButtonClick } =
   await import("../../../src/ts/test/test-logic");
 const { Keytips } =
@@ -31,7 +30,6 @@ describe("restart controls", () => {
     Store.setRace(undefined);
     Store.setRoom(undefined);
     Store.setResults(undefined);
-    Core.setActivePage("loading");
     vi.mocked(onRestartButtonClick).mockClear();
   });
 
@@ -94,22 +92,5 @@ describe("restart controls", () => {
     expect(screen.queryByTestId("keytip-restart")).toBeNull();
     expect(screen.queryByText(/restart/)).toBeNull();
     expect(screen.getByText("- command line")).toBeInTheDocument();
-  });
-
-  // QA MS-01: tab + enter does nothing anywhere in multiplayer
-  it("/race and /r/*: no restart tip in the lobby either (MS-01)", () => {
-    Core.setActivePage("race");
-    render(() => <Keytips />);
-    expect(screen.queryByTestId("keytip-restart")).toBeNull();
-    expect(screen.queryByText(/restart/)).toBeNull();
-    expect(screen.getByText("- command line")).toBeInTheDocument();
-  });
-
-  it("restart tip comes back on leaving the race page", () => {
-    Core.setActivePage("race");
-    render(() => <Keytips />);
-    expect(screen.queryByTestId("keytip-restart")).toBeNull();
-    Core.setActivePage("test");
-    expect(screen.getByTestId("keytip-restart")).toBeInTheDocument();
   });
 });

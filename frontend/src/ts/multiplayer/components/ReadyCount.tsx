@@ -16,8 +16,6 @@ export function ReadyCount(props: {
           : "text-sub",
       )}
       data-testid="mp-ready-count"
-      aria-live="polite"
-      aria-atomic="true"
     >
       {props.ready}/{props.total} ready
     </span>
