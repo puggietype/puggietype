@@ -8,10 +8,12 @@ import {
   characterName,
   DEFAULT_CHARACTER,
 } from "../../components/pages/test/character-frames";
+import { getTheme } from "../../states/theme";
 import { cn } from "../../utils/cn";
 import { displayName, isBot } from "../bots";
 import { canStartRace, readyCount, roomKindLabel } from "../helpers";
 import { backToLobby, leaveRoom, rematch, setReady, startRace } from "../race";
+import { selfPillText, selfTintPercent } from "../self-highlight";
 import { characterSelectOn, isHost, myId, resultsReadyOn } from "../store";
 import { CharacterImage } from "./CharacterImage";
 import { KickButton } from "./KickButton";
@@ -37,6 +39,24 @@ const REASON_TEXT: Record<RaceResult["reasons"][number], string> = {
   progress_missing: "no progress sent",
 };
 
+/** your own row / placed line: main-color tint and a 4px inset bar (no layout shift) */
+const SELF_TINT =
+  "bg-[color-mix(in_srgb,var(--main-color)_var(--self-tint),transparent)]";
+const SELF_BAR = "shadow-[inset_4px_0_0_var(--main-color)]";
+
+/** main-color "You" pill; text color picked per theme for contrast. visual only, sr text says "(you)" */
+function YouPill(props: { testId: string }): JSXElement {
+  return (
+    <span
+      class="shrink-0 rounded bg-main px-1.5 text-xs leading-4 font-bold text-(--self-pill-text)"
+      aria-hidden="true"
+      data-testid={props.testId}
+    >
+      You
+    </span>
+  );
+}
+
 /** race results: winner pug, table, ready / start next race (or rematch) / leave */
 export function Podium(props: {
   room: RoomState;
@@ -61,6 +81,7 @@ export function Podium(props: {
   const mine = () => props.results.find((r) => r.playerId === myId());
   const seat = (id: string) => props.room.players.find((p) => p.id === id);
   const meReady = () => seat(myId() ?? "")?.ready === true;
+  const isMe = (id: string) => id === myId();
 
   return (
     <div
@@ -68,6 +89,10 @@ export function Podium(props: {
       // arbitrary min-[1280px]: our xl is 1361px (tailwind.css @theme), not Tailwind's default 1280
       class="mx-auto grid w-full max-w-3xl grid-cols-[minmax(0,1fr)] items-center gap-8 min-[1280px]:max-w-none min-[1280px]:grid-cols-[2fr_3fr]"
       data-testid="mp-podium"
+      style={{
+        "--self-tint": `${selfTintPercent(getTheme())}%`,
+        "--self-pill-text": selfPillText(getTheme()),
+      }}
     >
       <CharacterImage
         character={winnerDog()}
@@ -93,15 +118,19 @@ export function Podium(props: {
               // a slightly smaller name from 1280 keeps rematch/leave above the fold at 1280x800
               class="grid min-w-0 gap-1 leading-tight"
               title={`${displayName(w())} wins!`}
-              aria-label={`${displayName(w())} wins!`}
+              aria-label={`${displayName(w())}${isMe(w().playerId) ? " (you)" : ""} wins!`}
               data-testid="mp-winner"
+              data-self={isMe(w().playerId) ? "true" : undefined}
             >
               <span
-                class="text-sm font-(--font) text-sub"
+                class="flex items-center gap-2 text-sm font-(--font) text-sub"
                 aria-hidden="true"
                 data-testid="mp-winner-label"
               >
                 winner
+                <Show when={isMe(w().playerId)}>
+                  <YouPill testId="mp-winner-you" />
+                </Show>
               </span>
               <span
                 class={cn(
@@ -118,9 +147,19 @@ export function Podium(props: {
         </Show>
         <Show when={mine()}>
           {(m) => (
-            <div class="text-sub">
+            <div
+              class={cn(
+                "justify-self-start rounded py-1 pr-3 pl-4 text-text",
+                SELF_TINT,
+                SELF_BAR,
+              )}
+              data-testid="mp-my-placed"
+            >
               you placed{" "}
-              <span class="text-main" data-testid="mp-my-place">
+              <span
+                class="rounded bg-main px-1.5 font-bold text-(--self-pill-text)"
+                data-testid="mp-my-place"
+              >
                 {ordinal(m().place)}
               </span>
               {m().finished ? "" : " · didn't finish"}
@@ -148,16 +187,22 @@ export function Podium(props: {
               <For each={props.results}>
                 {(r) => (
                   <tr
-                    class="border-t border-bg"
+                    class={cn(
+                      "border-t border-bg",
+                      isMe(r.playerId) && SELF_TINT,
+                    )}
                     data-testid="mp-result-row"
                     data-player-id={r.playerId}
                     data-place={r.place}
+                    data-self={isMe(r.playerId) ? "true" : undefined}
+                    aria-current={isMe(r.playerId) ? "true" : undefined}
                   >
                     <td
                       class={cn(
                         "px-2 text-lg sm:px-3",
                         dense() ? "py-1.5 min-[1280px]:py-1" : "py-3",
                         PLAYER_TEXT[colorOf(r.playerId)],
+                        isMe(r.playerId) && SELF_BAR,
                       )}
                     >
                       {r.place}
@@ -168,7 +213,7 @@ export function Podium(props: {
                         dense() ? "py-1.5 min-[1280px]:py-1" : "py-3",
                       )}
                     >
-                      {/* wraps: only flag/report/kick drop below; name + (you)/dnf stay on one line */}
+                      {/* wraps: only flag/report/kick drop below; name + You/dnf stay on one line */}
                       <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                         <span
                           class={cn(
@@ -194,6 +239,7 @@ export function Podium(props: {
                           <span
                             class={cn(
                               "leading-tight text-text",
+                              isMe(r.playerId) && "font-bold",
                               // bot halves may wrap between them, never inside
                               isBot(r) ? "min-w-min" : "min-w-0 truncate",
                             )}
@@ -203,8 +249,9 @@ export function Podium(props: {
                           >
                             <PlayerName player={r} />
                           </span>
-                          <Show when={r.playerId === myId()}>
-                            <span class="shrink-0 text-sm text-sub">(you)</span>
+                          <Show when={isMe(r.playerId)}>
+                            <YouPill testId="mp-result-you" />
+                            <span class="sr-only">(you)</span>
                           </Show>
                           <Show when={!r.finished}>
                             <span class="shrink-0 text-sm text-sub">dnf</span>
