@@ -4,6 +4,7 @@ import type { SteamSettings } from "./settings-store";
 
 import { Button } from "../components/common/Button";
 import { updateSteamSettings } from "./game-settings";
+import "./steam-settings.css";
 
 type Option<T> = { value: T; text: string };
 
@@ -12,11 +13,14 @@ export function Choice<T>(props: {
   options: readonly Option<T>[];
   selected: T;
   onSelect: (value: T) => void;
+  /** wider columns for long labels (e.g. 2560×1440) */
+  wide?: boolean;
 }): JSXElement {
   return (
     <div
       data-testid={props.id}
-      class="grid grid-cols-[repeat(auto-fit,minmax(4.5rem,1fr))] gap-2"
+      data-steam-choice={props.wide === true ? "wide" : ""}
+      class="grid gap-2"
     >
       <For each={props.options}>
         {(o) => (

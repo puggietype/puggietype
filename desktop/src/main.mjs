@@ -460,12 +460,41 @@ async function runSettingsSmoke(win) {
     await js(`document.getElementById("settings-tab-gameplay").click()`);
     await js(`window.scrollTo(0, 0)`);
     out.shots.push(await shot("gameplay.png"));
+    // no option label wraps (QA PR30-VISUAL)
+    await js(`document.getElementById("settings-tab-graphics").click()`);
+    await waitFor('[data-testid="steam-graphics"]');
+    out.wrapped =
+      await js(`[...document.querySelectorAll("[data-steam-choice] > button")].filter((b) => {
+      const r = document.createRange(); r.selectNodeContents(b);
+      const lines = new Set([...r.getClientRects()].map((x) => Math.round(x.top)));
+      return lines.size > 1 || b.scrollWidth > b.clientWidth;
+    }).map((b) => b.textContent)`);
+    out.percent = await js(
+      `[...document.querySelectorAll('[data-testid="steam-sound"] [data-steam-slider] > div > div:first-child')].map((d) => d.textContent)`,
+    );
+    // D-pad walk with real layout on /settings and /
+    out.padSettings = await padWalk(win);
+    const home = new Promise((res) =>
+      win.webContents.once("did-finish-load", res),
+    );
+    void win.loadURL(`${APP_ORIGIN}/`);
+    await home;
+    await new Promise((res) => setTimeout(res, 1500));
+    out.padHome = await padWalk(win, 15);
     out.ok =
       out.graphics === true &&
       out.sound === true &&
       out.graphicsInView === true &&
       out.soundInView === true &&
       out.musicDefault === "on" &&
+      out.wrapped.length === 0 &&
+      out.percent.length === 3 &&
+      out.percent.every((t) => /^\d+%$/.test(t)) &&
+      out.padSettings.stuck === 0 &&
+      out.padSettings.hidden === 0 &&
+      out.padSettings.distinct >= 20 &&
+      out.padHome.stuck === 0 &&
+      out.padHome.hidden === 0 &&
       String(out.musicFile).startsWith("200 audio/");
     return out;
   } catch (e) {
@@ -707,4 +736,35 @@ async function runSteamUiSmoke(win) {
   } catch (e) {
     return { ...out, reason: String(e) };
   }
+}
+
+// Smoke only (QA PR30-PAD-STUCK): a fake standard gamepad presses D-pad down
+// `n` times on the current page; focus must move every time and only onto
+// rendered controls.
+async function padWalk(win, n = 30) {
+  return win.webContents.executeJavaScript(`new Promise((res) => {
+    let down = false;
+    const pad = {
+      connected: true,
+      buttons: Array.from({ length: 16 }, (_, i) => ({ get pressed() { return i === 13 && down; }, value: 0 })),
+      axes: [0, 0, 0, 0],
+    };
+    Object.defineProperty(navigator, "getGamepads", { configurable: true, value: () => [pad] });
+    window.dispatchEvent(new Event("gamepadconnected"));
+    const frames = (k) => new Promise((r) => { const f = () => (--k <= 0 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    const steps = [];
+    (async () => {
+      let prev = document.activeElement;
+      let stuck = 0, hidden = 0;
+      for (let i = 0; i < ${n}; i++) {
+        down = true; await frames(3); down = false; await frames(3);
+        const a = document.activeElement;
+        if (a === prev || a === document.body) stuck++;
+        if (a && a !== document.body && typeof a.checkVisibility === "function" && !a.checkVisibility({ visibilityProperty: true })) hidden++;
+        steps.push((a?.id || a?.getAttribute?.("aria-label") || a?.textContent || "").trim().slice(0, 24));
+        prev = a;
+      }
+      res({ steps, stuck, hidden, distinct: new Set(steps).size });
+    })();
+  })`);
 }

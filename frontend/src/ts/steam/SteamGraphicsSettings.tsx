@@ -55,6 +55,7 @@ export function SteamGraphicsSettings(): JSXElement {
         inputs={
           <Choice
             id="steam-resolution"
+            wide
             options={RESOLUTIONS.map((r) => ({
               value: r,
               text: r === "native" ? "native" : r.replace("x", "×"),
@@ -135,7 +136,7 @@ export function SteamGraphicsSettings(): JSXElement {
         description="Make PuggieType brighter or darker."
         fa={{ icon: "fa-sun" }}
         inputs={
-          <div data-testid="steam-brightness">
+          <div data-testid="steam-brightness" data-steam-slider>
             <Slider
               label="brightness"
               min={BRIGHTNESS_MIN}
