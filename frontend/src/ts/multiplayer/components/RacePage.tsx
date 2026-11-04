@@ -12,6 +12,7 @@ import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
 import { ageConfirmed } from "../age-gate";
 import { MULTIPLAYER_ENABLED } from "../flags";
+import { leaderboardSubmitBlocked } from "../leaderboards";
 import {
   connect,
   joinRoom,
@@ -96,7 +97,14 @@ export function RacePage(): JSXElement {
                   {(data) => (
                     <LeaderboardConsent
                       wpm={data().wpm}
-                      onSubmit={(show) => submitPendingFinish(show)}
+                      onSubmit={(show) => {
+                        const kids = leaderboardSubmitBlocked(
+                          window.location.pathname,
+                          document.referrer,
+                          sessionStorage,
+                        );
+                        submitPendingFinish(kids ? false : show);
+                      }}
                     />
                   )}
                 </Show>

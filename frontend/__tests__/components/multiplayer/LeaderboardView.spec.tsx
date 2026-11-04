@@ -118,14 +118,25 @@ describe("LeaderboardView", () => {
       <LeaderboardView variant="page" load={load} />
     ));
     await findByTestId("lb-table");
-    expect(getByTestId("lb-tab-monthly")).toHaveAttribute("role", "tab");
-    expect(getByTestId("lb-tab-daily")).toHaveAttribute(
-      "aria-selected",
+    expect(getByTestId("lb-tab-monthly")).toHaveAttribute("role", "radio");
+    expect(getByTestId("lb-tab-daily")).toHaveAttribute("aria-checked", "true");
+    expect(getByTestId("lb-tab-daily")).toHaveAttribute("tabindex", "0");
+    expect(getByTestId("lb-tab-weekly")).toHaveAttribute("tabindex", "-1");
+    fireEvent.keyDown(getByTestId("lb-tab-daily"), { key: "ArrowRight" });
+    expect(getByTestId("lb-tab-weekly")).toHaveAttribute(
+      "aria-checked",
       "true",
     );
+    expect(document.activeElement).toBe(getByTestId("lb-tab-weekly"));
+    fireEvent.keyDown(getByTestId("lb-mode-time"), { key: "ArrowRight" });
+    expect(getByTestId("lb-mode-words")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(document.activeElement).toBe(getByTestId("lb-mode-words"));
     fireEvent.click(getByTestId("lb-tab-monthly"));
     expect(getByTestId("lb-tab-monthly")).toHaveAttribute(
-      "aria-selected",
+      "aria-checked",
       "true",
     );
     fireEvent.click(getByTestId("lb-mode-words"));

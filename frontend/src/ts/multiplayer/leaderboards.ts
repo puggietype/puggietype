@@ -122,17 +122,20 @@ export function requestSoloSubmit(action: SoloSubmitAction): void {
   soloSubmitListener?.(action);
 }
 
-/** fields added to race:finish. kidsGuide is how the server rejects a kids score. */
+/**
+ * Fields added to race:finish and hello. Omitted entirely unless this server
+ * said welcome.features.leaderboards, so an older server is not sent unknown keys.
+ * kidsGuide tells that server to refuse the score.
+ */
 export function finishLeaderboardFields(options: {
   show: boolean;
   kids: boolean;
   leaderboards: boolean;
 }): { showOnLeaderboard?: boolean; kidsGuide?: true } {
+  if (!options.leaderboards) return {};
   return {
     ...(options.kids ? { kidsGuide: true as const } : {}),
-    ...(options.leaderboards
-      ? { showOnLeaderboard: options.kids ? false : options.show }
-      : {}),
+    showOnLeaderboard: options.kids ? false : options.show,
   };
 }
 

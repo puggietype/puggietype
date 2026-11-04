@@ -25,7 +25,8 @@ function submitBlocked(): boolean {
 /**
  * Solo results. A score is posted only from Next, Retry, or Submit score,
  * and only after this toggle has been visible for 2 seconds. Leaving the
- * page, or clicking sooner, drops the score.
+ * page drops the score. Submit stays disabled for the first 2 seconds, and
+ * an early Next or Retry does not use up the later submit.
  */
 export function SoloLeaderboardSubmit(props: {
   score: SoloScore;
@@ -44,11 +45,7 @@ export function SoloLeaderboardSubmit(props: {
       finished = true;
       return;
     }
-    if (!scoreConsentElapsed(shownAt, clock())) {
-      finished = true;
-      setMessage("Score not submitted.");
-      return;
-    }
+    if (!scoreConsentElapsed(shownAt, clock())) return;
     finished = true;
     setSent(true);
     const token = readStoredSession()?.sessionToken;

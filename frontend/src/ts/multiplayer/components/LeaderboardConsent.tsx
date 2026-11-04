@@ -1,8 +1,9 @@
-import { JSXElement, Show } from "solid-js";
+import { createSignal, JSXElement, onCleanup, onMount, Show } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { cn } from "../../utils/cn";
 import { setShowOnLeaderboard, showOnLeaderboard } from "../leaderboard-pref";
+import { SCORE_CONSENT_MS } from "../leaderboards";
 import { PRIMARY_BUTTON } from "./ui";
 
 /** results-screen choice, shown before a score is submitted */
@@ -12,6 +13,12 @@ export function LeaderboardConsent(props: {
   message?: string;
   onSubmit: (show: boolean) => void;
 }): JSXElement {
+  const [unlocked, setUnlocked] = createSignal(false);
+  onMount(() => {
+    const timer = setTimeout(() => setUnlocked(true), SCORE_CONSENT_MS);
+    onCleanup(() => clearTimeout(timer));
+  });
+  const locked = (): boolean => props.disabled === true || !unlocked();
   return (
     <form
       class="grid gap-3 rounded-lg bg-sub-alt p-4"
@@ -19,7 +26,7 @@ export function LeaderboardConsent(props: {
       aria-label="Submit your score"
       onSubmit={(e) => {
         e.preventDefault();
-        if (props.disabled) return;
+        if (locked()) return;
         props.onSubmit(showOnLeaderboard());
       }}
     >
@@ -50,7 +57,7 @@ export function LeaderboardConsent(props: {
           text={props.disabled ? "Submitting…" : "Submit score"}
           fa={{ icon: "fa-crown" }}
           class={cn(PRIMARY_BUTTON, "px-5 py-3")}
-          disabled={props.disabled}
+          disabled={locked()}
           dataset={{ "data-testid": "lb-submit" }}
         />
         <Show when={props.message}>

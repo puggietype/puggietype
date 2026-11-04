@@ -64,12 +64,21 @@ function rangeText(startsAt: number, endsAt: number | null): string {
   return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")}`;
 }
 
-function moveTab(index: number, key: string): number | undefined {
-  const last = LEADERBOARD_PERIODS.length - 1;
-  if (key === "ArrowRight") return (index + 1) % LEADERBOARD_PERIODS.length;
-  if (key === "ArrowLeft") return (index + last) % LEADERBOARD_PERIODS.length;
+/** roving tabindex: arrows move the checked radio and focus, Home/End jump */
+function moveRadio(
+  index: number,
+  key: string,
+  count: number,
+): number | undefined {
+  if (count <= 0) return undefined;
+  if (key === "ArrowRight" || key === "ArrowDown") {
+    return (index + 1) % count;
+  }
+  if (key === "ArrowLeft" || key === "ArrowUp") {
+    return (index + count - 1) % count;
+  }
   if (key === "Home") return 0;
-  if (key === "End") return last;
+  if (key === "End") return count - 1;
   return undefined;
 }
 
@@ -141,9 +150,8 @@ export function LeaderboardView(props: {
   const hl = () => selfHighlight(getTheme(), getTheme().name);
   const compact = () => props.variant === "compact";
 
-  const focusTab = (next: LeaderboardPeriod): void => {
-    setPeriod(next);
-    document.getElementById(`lb-tab-${next}`)?.focus();
+  const focusId = (id: string): void => {
+    document.getElementById(id)?.focus();
   };
 
   return (
@@ -165,7 +173,7 @@ export function LeaderboardView(props: {
           leaderboard
         </h2>
         <div
-          role="tablist"
+          role="radiogroup"
           aria-label="Leaderboard period"
           class="flex flex-wrap gap-1"
         >
@@ -173,11 +181,10 @@ export function LeaderboardView(props: {
             {(item, index) => (
               <button
                 type="button"
-                role="tab"
+                role="radio"
                 id={`lb-tab-${item}`}
                 data-testid={`lb-tab-${item}`}
-                aria-selected={period() === item}
-                aria-controls="lb-panel"
+                aria-checked={period() === item}
                 tabIndex={period() === item ? 0 : -1}
                 class={cn(
                   "rounded px-3 py-1.5 text-sm font-(--font)",
@@ -187,11 +194,17 @@ export function LeaderboardView(props: {
                 )}
                 onClick={() => setPeriod(item)}
                 onKeyDown={(e) => {
-                  const next = moveTab(index(), e.key);
+                  const next = moveRadio(
+                    index(),
+                    e.key,
+                    LEADERBOARD_PERIODS.length,
+                  );
                   if (next === undefined) return;
                   e.preventDefault();
                   const periodNext = LEADERBOARD_PERIODS[next];
-                  if (periodNext !== undefined) focusTab(periodNext);
+                  if (periodNext === undefined) return;
+                  setPeriod(periodNext);
+                  focusId(`lb-tab-${periodNext}`);
                 }}
               >
                 {PERIOD_LABEL[item]}
@@ -202,11 +215,13 @@ export function LeaderboardView(props: {
         <div class="flex flex-wrap items-end gap-4">
           <div role="radiogroup" aria-label="Mode" class="flex gap-1">
             <For each={["time", "words"] as const}>
-              {(item) => (
+              {(item, index) => (
                 <button
                   type="button"
                   role="radio"
+                  id={`lb-mode-${item}`}
                   aria-checked={mode() === item}
+                  tabIndex={mode() === item ? 0 : -1}
                   data-testid={`lb-mode-${item}`}
                   class={cn(
                     "rounded px-3 py-1.5 text-sm",
@@ -215,6 +230,14 @@ export function LeaderboardView(props: {
                       : "bg-sub-alt text-sub hover:text-text",
                   )}
                   onClick={() => selectMode(item)}
+                  onKeyDown={(e) => {
+                    const next = moveRadio(index(), e.key, 2);
+                    if (next === undefined) return;
+                    e.preventDefault();
+                    const modeNext = next === 0 ? "time" : "words";
+                    selectMode(modeNext);
+                    focusId(`lb-mode-${modeNext}`);
+                  }}
                 >
                   {item}
                 </button>
@@ -223,11 +246,13 @@ export function LeaderboardView(props: {
           </div>
           <div role="radiogroup" aria-label="Length" class="flex gap-1">
             <For each={lengths()}>
-              {(n) => (
+              {(n, index) => (
                 <button
                   type="button"
                   role="radio"
+                  id={`lb-mode2-${n}`}
                   aria-checked={mode2() === n}
+                  tabIndex={mode2() === n ? 0 : -1}
                   data-testid={`lb-mode2-${n}`}
                   class={cn(
                     "rounded px-3 py-1.5 text-sm",
@@ -236,6 +261,16 @@ export function LeaderboardView(props: {
                       : "bg-sub-alt text-sub hover:text-text",
                   )}
                   onClick={() => setMode2(n)}
+                  onKeyDown={(e) => {
+                    const options = lengths();
+                    const next = moveRadio(index(), e.key, options.length);
+                    if (next === undefined) return;
+                    e.preventDefault();
+                    const lengthNext = options[next];
+                    if (lengthNext === undefined) return;
+                    setMode2(lengthNext);
+                    focusId(`lb-mode2-${lengthNext}`);
+                  }}
                 >
                   {mode() === "time" ? `${n}s` : `${n}`}
                 </button>
@@ -285,8 +320,6 @@ export function LeaderboardView(props: {
         </div>
         <div
           id="lb-panel"
-          role="tabpanel"
-          aria-labelledby={`lb-tab-${period()}`}
           aria-busy={state().kind === "loading"}
           class="min-w-0"
         >

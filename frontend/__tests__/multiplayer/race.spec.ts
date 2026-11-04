@@ -443,6 +443,81 @@ describe("race lifecycle", () => {
     expect(Store.raceFinished()).toBe(true);
   });
 
+  it("withholds a pending score until Submit, and never publishes on leave", async () => {
+    receive({
+      type: "welcome",
+      playerId: "me",
+      sessionToken: "t",
+      name: "ZippyPug42",
+      protocol: 1,
+      features: {
+        characterSelect: false,
+        openRooms: false,
+        quickMatch: false,
+        report: false,
+        leaderboards: true,
+      },
+    });
+    receive(roomState({ phase: "countdown" }));
+    receive(countdown(Date.now()));
+    await flush();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(
+      Hooks.handleRaceFinish({
+        wpm: 80,
+        raw: 82,
+        acc: 98,
+        testMs: 4000,
+        input: ["the"],
+        keyCount: 3,
+      }),
+    ).toBe(true);
+    expect(fakeClient.sent.some((m) => m.type === "race:finish")).toBe(false);
+    Race.submitPendingFinish(true);
+    expect(fakeClient.sent.some((m) => m.type === "race:finish")).toBe(false);
+    vi.advanceTimersByTime(2000);
+    Race.submitPendingFinish(true);
+    expect(fakeClient.sent.at(-1)).toMatchObject({
+      type: "race:finish",
+      showOnLeaderboard: true,
+    });
+  });
+
+  it("publishes showOnLeaderboard false when the room ends without Submit", async () => {
+    receive({
+      type: "welcome",
+      playerId: "me",
+      sessionToken: "t",
+      name: "ZippyPug42",
+      protocol: 1,
+      features: {
+        characterSelect: false,
+        openRooms: false,
+        quickMatch: false,
+        report: false,
+        leaderboards: true,
+      },
+    });
+    receive(roomState({ phase: "countdown" }));
+    receive(countdown(Date.now()));
+    await flush();
+    await vi.advanceTimersByTimeAsync(0);
+    Hooks.handleRaceFinish({
+      wpm: 80,
+      raw: 82,
+      acc: 98,
+      testMs: 4000,
+      input: ["the"],
+      keyCount: 3,
+    });
+    Race.leaveRoom();
+    expect(fakeClient.sent.find((m) => m.type === "race:finish")).toMatchObject(
+      {
+        showOnLeaderboard: false,
+      },
+    );
+  });
+
   it("stops a running test when results arrive first, so nothing is saved", async () => {
     await startCountdown(Date.now());
     engine.testActive = true;

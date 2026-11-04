@@ -38,6 +38,7 @@ import { showOnLeaderboard } from "./leaderboard-pref";
 import {
   finishLeaderboardFields,
   leaderboardSubmitBlocked,
+  scoreConsentElapsed,
 } from "./leaderboards";
 import { MULTIPLAYER_ENABLED } from "./flags";
 import {
@@ -174,10 +175,8 @@ export function joinRoom(code: string): void {
 }
 
 export function leaveRoom(): void {
-  // they can see the toggle on the way out; publish with that choice
-  if (pendingLeaderboardFinish() !== undefined) {
-    submitPendingFinish(showOnLeaderboard());
-  }
+  // leaving is not Submit: a pending score stays off the board
+  dropPendingScore();
   send({ type: "room:leave" });
   dropRoom();
 }
@@ -348,10 +347,7 @@ function syncRaceUrl(code: string | undefined): void {
 /** forget the room locally (left, kicked out or session taken over) */
 function dropRoom(): void {
   // kicked or replaced before they confirmed: finish the race, don't publish
-  const pending = pendingLeaderboardFinish();
-  if (pending !== undefined && !finishSent) {
-    dispatchFinish(pending, false, false);
-  }
+  dropPendingScore();
   openOnCreate = false;
   const wasRacing = isRaceActive();
   sessionStorage.removeItem(ROOM_KEY);
@@ -733,6 +729,8 @@ const [pendingLeaderboardFinish, setPendingLeaderboardFinish] = createSignal<
   RaceFinishData | undefined
 >();
 export { pendingLeaderboardFinish };
+/** when the results-screen toggle was shown; unset until then */
+let consentShownAt: number | undefined;
 
 function scoreIsBlocked(): boolean {
   return leaderboardSubmitBlocked(
@@ -758,6 +756,7 @@ function dispatchFinish(
 ): void {
   if (finishSent) return;
   finishSent = true;
+  consentShownAt = undefined;
   setPendingLeaderboardFinish(undefined);
   setRaceFinished(true);
   clearInterval(progressTimer);
@@ -783,16 +782,38 @@ function dispatchFinish(
   goTo(`/r/${room()?.code ?? ""}`);
 }
 
-/** results screen confirmed the toggle; now the finish can go out */
+/**
+ * Explicit Submit. Before the toggle has been visible for 2s this does not
+ * send, so the player can still submit once the button unlocks. Kids-guide
+ * sessions always finish with the score withheld.
+ */
 export function submitPendingFinish(show: boolean): void {
   const data = pendingLeaderboardFinish();
   if (data === undefined) return;
+  if (scoreIsBlocked()) {
+    dispatchFinish(data, false, false);
+    return;
+  }
+  if (
+    consentShownAt === undefined ||
+    !scoreConsentElapsed(consentShownAt, Date.now())
+  ) {
+    return;
+  }
   dispatchFinish(data, show, false);
+}
+
+/** leave, kick, or the room ending: finish the race and do not publish */
+function dropPendingScore(): void {
+  const data = pendingLeaderboardFinish();
+  if (data === undefined || finishSent) return;
+  dispatchFinish(data, false, false);
 }
 
 function sendFinish(data: RaceFinishData): void {
   if (finishSent || pendingLeaderboardFinish() !== undefined) return;
   if (holdFinishForConsent()) {
+    consentShownAt = Date.now();
     setPendingLeaderboardFinish(data);
     setRaceFinished(true);
     clearInterval(progressTimer);
@@ -874,10 +895,8 @@ function releaseEngine(options: { finished?: boolean } = {}): void {
 }
 
 function endRace(): void {
-  const pending = pendingLeaderboardFinish();
-  if (pending !== undefined && !finishSent) {
-    dispatchFinish(pending, showOnLeaderboard(), false);
-  }
+  // the room moved on without Submit
+  dropPendingScore();
   raceToken++;
   finishSent = false;
   setPendingLeaderboardFinish(undefined);

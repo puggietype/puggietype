@@ -265,6 +265,13 @@ describe("score consent and kids finish fields", () => {
     expect(
       finishLeaderboardFields({
         show: true,
+        kids: true,
+        leaderboards: false,
+      }),
+    ).toEqual({});
+    expect(
+      finishLeaderboardFields({
+        show: true,
         kids: false,
         leaderboards: false,
       }),

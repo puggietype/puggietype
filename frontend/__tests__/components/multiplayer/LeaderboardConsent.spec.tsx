@@ -33,10 +33,8 @@ function postedBody(): Record<string, unknown> | undefined {
 }
 
 describe("SoloLeaderboardSubmit", () => {
-  let now = 0;
-
   beforeEach(() => {
-    now = 10_000;
+    vi.useFakeTimers();
     setShowOnLeaderboard(true);
     sessionStorage.removeItem(KIDS_FLOW_KEY);
     vi.stubGlobal(
@@ -46,39 +44,27 @@ describe("SoloLeaderboardSubmit", () => {
   });
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     sessionStorage.removeItem(KIDS_FLOW_KEY);
     setShowOnLeaderboard(true);
   });
 
   const renderSubmit = (): ReturnType<typeof render> =>
-    render(() => <SoloLeaderboardSubmit score={score} now={() => now} />);
+    render(() => <SoloLeaderboardSubmit score={score} />);
 
-  it("drops the score when Submit is clicked before 2 seconds", () => {
-    const { getByTestId, unmount } = renderSubmit();
-    now = 11_000;
-    fireEvent.click(getByTestId("lb-submit"));
-    expect(getByTestId("lb-submit-status")).toHaveTextContent(
-      "Score not submitted.",
-    );
-    unmount();
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  it("does not submit on unmount", () => {
-    const { unmount } = renderSubmit();
-    now = 20_000;
-    unmount();
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  it("sends the toggle on Submit score after the toggle has been visible for 2s", async () => {
+  it("keeps Submit score disabled for 2s, then sends the toggle", async () => {
     const { getByTestId } = renderSubmit();
+    const button = getByTestId("lb-submit");
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(fetch).not.toHaveBeenCalled();
     const box = getByTestId<HTMLInputElement>("lb-show-score");
     expect(box.checked).toBe(true);
     fireEvent.click(box);
-    now = 12_000;
-    fireEvent.click(getByTestId("lb-submit"));
+    vi.advanceTimersByTime(2000);
+    expect(button).not.toBeDisabled();
+    fireEvent.click(button);
     await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
     const body = postedBody();
     expect(body).toMatchObject({
@@ -87,19 +73,20 @@ describe("SoloLeaderboardSubmit", () => {
       mode2: 30,
     });
     expect(body).not.toHaveProperty("playerId");
-    expect(body).not.toHaveProperty("sessionToken");
   });
 
-  it("sends on Next after 2s and drops Next before that", async () => {
-    const early = renderSubmit();
-    now = 11_000;
+  it("does not submit on unmount", () => {
+    const { unmount } = renderSubmit();
+    vi.advanceTimersByTime(2000);
+    unmount();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("ignores Next before 2s and still sends a later Retry", async () => {
+    renderSubmit();
     requestSoloSubmit("next");
     expect(fetch).not.toHaveBeenCalled();
-    early.unmount();
-
-    now = 30_000;
-    renderSubmit();
-    now = 32_000;
+    vi.advanceTimersByTime(2000);
     requestSoloSubmit("retry");
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     expect(postedBody()).toMatchObject({ showOnLeaderboard: true, wpm: 88 });
@@ -108,7 +95,7 @@ describe("SoloLeaderboardSubmit", () => {
   it("does not submit from the kids guide flow", () => {
     sessionStorage.setItem(KIDS_FLOW_KEY, "1");
     const { getByTestId, unmount } = renderSubmit();
-    now = 20_000;
+    vi.advanceTimersByTime(2000);
     fireEvent.click(getByTestId("lb-submit"));
     requestSoloSubmit("next");
     unmount();

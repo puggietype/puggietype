@@ -28,6 +28,8 @@ Multiplayer has three modes: **private lobbies** (join by invite link or code), 
 ## Leaderboards
 When you finish an eligible test or race, we may add your result to a public leaderboard: your rank, your randomly assigned nickname, and your speed (wpm), accuracy and raw speed. We save this in our database, which is hosted for us by Neon on Amazon Web Services servers in Oregon, USA. We don't store your IP address or any other identifier with it. Daily, weekly and monthly boards are cleared when each period ends. All-time boards keep scores for up to 12 months. Each board shows only its top 100 scores, and lower scores are deleted. You can turn off 'Show my score on the leaderboard' before submitting, or email support@puggietype.com with your nickname and the board to have a score removed. We may remove scores that look cheated or that break our rules.
 
+Some pages, like leaderboards and results, connect to our game server to check which features are turned on.
+
 ## Player reports
 You can report a player in your room for cheating, being away (AFK), a problem with a generated name, or another issue, choosing from a fixed list of reasons. You can't type any text. When a report is made, we keep:
 - a report ID;
