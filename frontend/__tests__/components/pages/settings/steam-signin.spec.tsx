@@ -470,3 +470,39 @@ describe("Sign in with Steam: screen reader announcements (SR-ANNOUNCE)", () => 
     expect($(el, "#steam-signin-button")).not.toBeNull();
   });
 });
+
+describe("Sign in with Steam: rendered attributes (SR-ANNOUNCE review)", () => {
+  it("continue has the real aria-describedby attribute, not data-aria-describedby", () => {
+    installBridge({ steam: true });
+    const el = render(() => <SteamSignIn />).container;
+    press(el, "#steam-signin-button");
+    const cont = $(el, "#steam-signin-continue");
+    expect(cont?.getAttributeNames()).toContain("aria-describedby");
+    expect(cont?.getAttributeNames()).not.toContain("data-aria-describedby");
+    expect(cont?.outerHTML).toMatch(
+      / aria-describedby="steam-signin-hint-text"/,
+    );
+    expect(cont?.dataset["ariaDescribedby"]).toBeUndefined();
+  });
+
+  it("the idle live region is :empty, so the steam-only CSS cancels its gap", async () => {
+    installBridge({ steam: true });
+    const el = render(() => <SteamSignIn />).container;
+    const region = $(el, "#steam-signin-status");
+    expect(region?.matches(":empty")).toBe(true);
+    expect(region?.hidden).toBe(false);
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const css = readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../../src/ts/components/pages/settings/custom-setting/steam-signin.css",
+      ),
+      "utf8",
+    );
+    expect(css).toMatch(
+      /#steam-signin-status:empty \{\s*margin-bottom: -0\.5rem;/,
+    );
+    expect(css).not.toMatch(/display:\s*none/);
+  });
+});

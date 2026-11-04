@@ -15,6 +15,7 @@ import {
 } from "../../../../platform/steam-identity";
 import { Button } from "../../../common/Button";
 import { SearchableSetting } from "../SearchableSetting";
+import "./steam-signin.css";
 
 /**
  * Steam M3 sign-in (steam build only, and only when the desktop shell runs
@@ -128,6 +129,8 @@ export function SteamSignIn(props: {
               role="status"
               aria-live="polite"
               aria-atomic="true"
+              // stays displayed when empty (so it is announced reliably);
+              // steam-signin.css cancels the grid gap it adds (empty:-mb-2)
             >
               <Switch>
                 <Match when={state().kind === "pending"}>

@@ -1,0 +1,6 @@
+/* Steam sign-in (lazy, steam build only). The live region stays mounted and
+   displayed while empty; cancel the grid gap it adds, like Tailwind's
+   empty:-mb-2 (a utility class would land in the shared web CSS). */
+#steam-signin-status:empty {
+  margin-bottom: -0.5rem;
+}
