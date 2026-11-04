@@ -106,6 +106,13 @@ if (!__STANDALONE__) {
 void init(onAuthStateChanged);
 
 installBackgroundMusic();
+// steam flavor: UI scale, reduced motion, master volume and its own music
+// player (inline define check: nothing of this is in the web build)
+if (typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") {
+  void import("./steam/game-settings").then((m) => {
+    m.installSteamGameSettings();
+  });
+}
 bindBackgroundMusicHold({
   isTestActive,
   isRaceActive,
