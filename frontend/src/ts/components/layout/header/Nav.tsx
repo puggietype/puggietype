@@ -35,6 +35,7 @@ import { Fa } from "../../common/Fa";
 import { NotificationBubble } from "../../common/NotificationBubble";
 import { User } from "../../common/User";
 import { AccountMenu } from "./AccountMenu";
+import { AccountsNavButton } from "./AccountsNavButton";
 import { AccountXpBar } from "./AccountXpBar";
 
 // icon + visible label; height matches the old icon-only buttons (36px).
@@ -118,6 +119,13 @@ export function Nav(): JSXElement {
     cn("aspect-square", {
       "opacity-(--nav-focus-opacity)": getFocus(),
     });
+
+  // accounts sign-in (VITE_FEATURE_ACCOUNTS, standalone builds). Not <Show>:
+  // outside JSX the literal-false define lets an off build drop the button
+  const accountsNavButton = (): JSXElement =>
+    __FEATURE_ACCOUNTS__ && isStandalone() ? (
+      <AccountsNavButton class={buttonClass()} />
+    ) : undefined;
 
   createEffectOn(getSnapshot, (snapshot) => {
     if (snapshot === undefined) {
@@ -331,6 +339,7 @@ export function Nav(): JSXElement {
           </Show>
         </AnimePresence>
       </Show>
+      {accountsNavButton()}
     </nav>
   );
 }

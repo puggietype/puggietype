@@ -100,6 +100,10 @@ if (!__STANDALONE__) {
   document.body.appendChild(recaptcha);
 }
 void init(onAuthStateChanged);
+// accounts sign-in (VITE_FEATURE_ACCOUNTS); an off build drops the import
+if (__FEATURE_ACCOUNTS__) {
+  void import("./accounts/boot").then(async (m) => m.initAccounts());
+}
 
 addToGlobal({
   snapshot: DB.getSnapshot,

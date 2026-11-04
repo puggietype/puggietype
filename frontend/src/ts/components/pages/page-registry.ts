@@ -65,7 +65,12 @@ export const pageRegistry: PageRegistry = {
   settings: { component: SettingsPage },
   about: { component: AboutPage, class: "full-width" },
   account: { component: AccountPage, needsAuthentication: true },
-  login: { component: LoginPage },
+  // inline so an off build drops the import (and the chunk) entirely
+  login: {
+    component: __FEATURE_ACCOUNTS__
+      ? lazyPage(async () => import("./login/SignInPage"), "SignInPage")
+      : LoginPage,
+  },
   profile: { component: ProfilePage },
   profileSearch: { component: ProfileSearchPage },
   404: { component: NotFoundPage },
