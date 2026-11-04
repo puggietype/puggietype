@@ -84,6 +84,20 @@ describe("LeaderboardView", () => {
     expect(rows[1]).toHaveTextContent("(you)");
     expect(getByTestId("lb-you")).toBeTruthy();
     expect(rows[0]?.hasAttribute("data-self")).toBe(false);
+    // LB-002: raw uses the text color on your own tinted row, sub elsewhere
+    const raws = getAllByTestId("lb-raw");
+    expect(raws[1]).toHaveClass("text-text");
+    expect(raws[1]).not.toHaveClass("text-sub");
+    expect(raws[0]).toHaveClass("text-sub");
+    // LB-001: a horizontally scrollable table is a labelled, focusable region
+    const scroll = getByTestId("lb-scroll");
+    expect(scroll).toHaveAttribute("role", "region");
+    expect(scroll).toHaveAttribute("tabindex", "0");
+    expect(scroll.getAttribute("aria-label")).toMatch(
+      /^Multiplayer .+ leaderboard$/,
+    );
+    // narrow screens: tighter cells, and long names truncate instead of widening the table
+    expect(getAllByTestId("lb-name")[0]?.closest("td")).toHaveClass("max-w-0");
   });
 
   it("shows an empty board", async () => {

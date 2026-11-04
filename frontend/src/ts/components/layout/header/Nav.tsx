@@ -182,9 +182,6 @@ export function Nav(): JSXElement {
           >
             <Fa icon="fa-crown" fixedWidth />
             <NavLabel label="leaderboard" short="ranks" />
-            <span class="hidden rounded bg-sub-alt px-[0.4em] text-[0.6em] leading-[1.6] md:inline">
-              soon
-            </span>
           </span>
         }
       >
