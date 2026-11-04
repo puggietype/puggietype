@@ -21,6 +21,8 @@ import {
   cspInputsFromHeaders,
   isPermissionAllowed,
   isExternalOpenable,
+  isLegalUrl,
+  legalWindowOptions,
   isFullscreenShortcut,
   isInternalUrl,
   resolveAppPath,
@@ -28,8 +30,13 @@ import {
 } from "./shell.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// packaged (scripts/package.mjs): ../web next to src/; dev: ../../frontend/dist
+const packagedWeb = path.resolve(here, "../web");
 const distDir =
-  process.env["PUGGIE_DIST"] ?? path.resolve(here, "../../frontend/dist");
+  process.env["PUGGIE_DIST"] ??
+  (fs.existsSync(path.join(packagedWeb, "index.html"))
+    ? packagedWeb
+    : path.resolve(here, "../../frontend/dist"));
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -53,8 +60,26 @@ function createWindow() {
     }
   });
   win.webContents.setWindowOpenHandler(({ url }) => {
+    // About -> licenses / source offer: read-only child window, no preload
+    if (isLegalUrl(url)) {
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: legalWindowOptions(),
+      };
+    }
     if (isExternalOpenable(url)) void shell.openExternal(url);
     return { action: "deny" };
+  });
+  win.webContents.on("did-create-window", (child) => {
+    // the license viewer never navigates; links go to the OS browser
+    child.webContents.on("will-navigate", (event, url) => {
+      event.preventDefault();
+      if (isExternalOpenable(url)) void shell.openExternal(url);
+    });
+    child.webContents.setWindowOpenHandler(({ url }) => {
+      if (isExternalOpenable(url)) void shell.openExternal(url);
+      return { action: "deny" };
+    });
   });
   win.webContents.on("will-navigate", (event, url) => {
     if (isInternalUrl(url)) return;
