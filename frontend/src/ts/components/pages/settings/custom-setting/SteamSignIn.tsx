@@ -59,8 +59,24 @@ export function SteamSignIn(props: {
       : null;
   };
 
+  // Focus (QA P2 A11Y): hint -> continue; pending -> the status line; result
+  // -> sign out or the sign-in button; cancel / sign out -> sign-in button.
+  // Solid renders <Switch> branches synchronously, so the target exists.
+  const focus = (id: string): void => document.getElementById(id)?.focus();
+
+  const openHint = (): void => {
+    setState({ kind: "hint" });
+    focus("steam-signin-continue");
+  };
+
+  const backToSignedOut = (): void => {
+    setState({ kind: "signedOut" });
+    focus("steam-signin-button");
+  };
+
   const proceed = async (): Promise<void> => {
     setState({ kind: "pending" });
+    focus("steam-signin-pending");
     const r = await (props.signIn ?? signInWithSteam)({
       bridge: getDesktopBridge(),
       serverBase: leaderboardHttpBase(window.location, CONFIGURED_WS_URL),
@@ -71,6 +87,7 @@ export function SteamSignIn(props: {
         ? { kind: "signedIn", value: r.value }
         : { kind: "error", error: r.error },
     );
+    focus(r.ok ? "steam-signout" : "steam-signin-button");
   };
 
   const toggleHidden = (next: boolean): void => {
@@ -103,9 +120,8 @@ export function SteamSignIn(props: {
             <Switch>
               <Match when={state().kind === "hint"}>
                 <div
-                  role="dialog"
-                  aria-modal="false"
-                  aria-labelledby="steam-signin-hint-text"
+                  role="status"
+                  aria-live="polite"
                   data-testid="steam-signin-hint"
                   class="grid gap-2"
                 >
@@ -118,14 +134,20 @@ export function SteamSignIn(props: {
                     />
                     <Button
                       id="steam-signin-back"
-                      onClick={() => setState({ kind: "signedOut" })}
+                      onClick={backToSignedOut}
                       text="cancel"
                     />
                   </div>
                 </div>
               </Match>
               <Match when={state().kind === "pending"}>
-                <p data-testid="steam-signin-pending">
+                <p
+                  id="steam-signin-pending"
+                  data-testid="steam-signin-pending"
+                  role="status"
+                  aria-live="polite"
+                  tabIndex={-1}
+                >
                   Waiting for Steam in your browser...
                 </p>
               </Match>
@@ -142,7 +164,7 @@ export function SteamSignIn(props: {
                 </p>
                 <Button
                   id="steam-signout"
-                  onClick={() => setState({ kind: "signedOut" })}
+                  onClick={backToSignedOut}
                   text="sign out"
                 />
               </Match>
@@ -156,7 +178,7 @@ export function SteamSignIn(props: {
                 </Show>
                 <Button
                   id="steam-signin-button"
-                  onClick={() => setState({ kind: "hint" })}
+                  onClick={openHint}
                   text="Sign in with Steam"
                 />
               </Match>

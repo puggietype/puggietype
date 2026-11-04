@@ -126,7 +126,8 @@ describe("Sign in with Steam: hint before the browser opens (M3-HINT)", () => {
     const el = render(() => <SteamSignIn />).container;
     press(el, "#steam-signin-button");
     const dialog = $(el, '[data-testid="steam-signin-hint"]');
-    expect(dialog?.getAttribute("role")).toBe("dialog");
+    expect(dialog?.getAttribute("role")).toBe("status");
+    expect(dialog?.getAttribute("aria-live")).toBe("polite");
     expect($(el, "#steam-signin-hint-text")?.textContent).toBe(HINT);
     expect(signIn).not.toHaveBeenCalled();
     press(el, "#steam-signin-continue");
@@ -329,5 +330,52 @@ describe("web build parity", () => {
     const guard =
       'typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam" ? (\n              <Section title="steam account" tab="gameplay">\n                <SteamSignIn />';
     expect(src).toContain(guard);
+  });
+});
+
+describe("Sign in with Steam: focus (QA P2 A11Y)", () => {
+  it("moves focus to continue when the hint opens, back to the button on cancel", () => {
+    installBridge({ steam: true });
+    const el = render(() => <SteamSignIn />, {
+      container: document.body.appendChild(document.createElement("div")),
+    }).container;
+    press(el, "#steam-signin-button");
+    expect(document.activeElement?.id).toBe("steam-signin-continue");
+    press(el, "#steam-signin-back");
+    expect(document.activeElement?.id).toBe("steam-signin-button");
+  });
+
+  it("focuses the waiting status after continue, then sign out; sign out returns to the button", async () => {
+    let finish: (r: SteamBridgeSignInResult) => void = () => undefined;
+    installBridge({ steam: true });
+    signIn.mockImplementationOnce(
+      async () => new Promise<SteamBridgeSignInResult>((res) => (finish = res)),
+    );
+    server(200, {
+      ok: true,
+      steamId: "1",
+      ownsApp: true,
+      personaName: "PugFan",
+    });
+    const el = render(() => <SteamSignIn />, {
+      container: document.body.appendChild(document.createElement("div")),
+    }).container;
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    expect(document.activeElement?.id).toBe("steam-signin-pending");
+    finish({ openid: OPENID });
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("steam-signout"),
+    );
+    press(el, "#steam-signout");
+    expect(document.activeElement?.id).toBe("steam-signin-button");
+  });
+
+  it("an error returns focus to the sign-in button", async () => {
+    const el = await signInVia({ error: "timeout" });
+    expect(el.isConnected).toBe(true);
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("steam-signin-button"),
+    );
   });
 });
