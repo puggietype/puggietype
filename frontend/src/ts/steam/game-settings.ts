@@ -26,6 +26,10 @@ export const getSteamSettings = settings;
 function createAudio(): MusicAudio {
   const audio = new Audio();
   audio.preload = "none";
+  // in the DOM (hidden, no controls) so it shows up with the page's media
+  audio.hidden = true;
+  audio.dataset["steamMusic"] = "";
+  document.body.append(audio);
   return audio;
 }
 

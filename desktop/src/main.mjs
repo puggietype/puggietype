@@ -48,7 +48,13 @@ const distDir =
 protocol.registerSchemesAsPrivileged([
   {
     scheme: APP_SCHEME,
-    privileges: { standard: true, secure: true, supportFetchAPI: true },
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      // media elements (music) need streaming + range support
+      stream: true,
+    },
   },
 ]);
 
@@ -59,6 +65,14 @@ let store;
 // PUGGIE_SMOKE_TEST=1 plus PUGGIE_SMOKE_SETTINGS=<dir>: open settings, check
 // the steam game settings and save a screenshot per tab into <dir>.
 // Never in a packaged app.
+// PUGGIE_SMOKE_TEST=1 plus PUGGIE_SMOKE_MUSIC=1 (use a throwaway profile):
+// turns music on and UI scale to 125% in the store, reloads, then checks
+// the scale at startup, that music plays after a click, and that it pauses
+// while a test runs. Never in a packaged app.
+const smokeMusic =
+  !app.isPackaged &&
+  process.env["PUGGIE_SMOKE_TEST"] === "1" &&
+  process.env["PUGGIE_SMOKE_MUSIC"] === "1";
 const smokeSettingsDir =
   !app.isPackaged && process.env["PUGGIE_SMOKE_TEST"] === "1"
     ? process.env["PUGGIE_SMOKE_SETTINGS"] || undefined
@@ -157,8 +171,11 @@ function runSmokeTest(win) {
         r.fullscreen === true;
       let settings = { ok: true };
       if (smokeSettingsDir) settings = await runSettingsSmoke(win);
-      console.log(JSON.stringify({ ok: ok && settings.ok, ...r, settings }));
-      app.exit(ok && settings.ok ? 0 : 1);
+      let music = { ok: true };
+      if (smokeMusic) music = await runMusicSmoke(win);
+      const all = ok && settings.ok && music.ok;
+      console.log(JSON.stringify({ ok: all, ...r, settings, music }));
+      app.exit(all ? 0 : 1);
     } catch (e) {
       fail(String(e));
     }
@@ -370,6 +387,91 @@ async function runSettingsSmoke(win) {
       out.soundInView === true &&
       out.musicDefault === "off" &&
       String(out.musicFile).startsWith("200 audio/");
+    return out;
+  } catch (e) {
+    return { ...out, reason: String(e) };
+  }
+}
+
+// Smoke only (throwaway profile): music playback and UI scale at startup.
+async function runMusicSmoke(win) {
+  const js = (code) => win.webContents.executeJavaScript(code);
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+  const audioState = () =>
+    js(`(() => {
+      const a = document.querySelector("audio[data-steam-music]");
+      return a ? { paused: a.paused, t: a.currentTime, src: a.getAttribute("src"), rs: a.readyState, err: a.error?.code ?? null } : null;
+    })()`);
+  const out = { ok: false };
+  try {
+    win.setFullScreen(false);
+    win.focus();
+    win.webContents.focus();
+    await js(`window.puggieDesktop.storage.setItem("steamGameSettings", JSON.stringify({
+      uiScale: 1.25, reducedMotion: false, masterVolume: 1,
+      music: { enabled: true, volume: 0.2, track: "sherwood", whileTyping: "pause" },
+    }))`);
+    const loaded = new Promise((res) =>
+      win.webContents.once("did-finish-load", res),
+    );
+    void win.loadURL(`${APP_ORIGIN}/`);
+    await loaded;
+    await sleep(2000);
+    // (d) applied at startup, before any interaction
+    out.zoom = await js(`document.documentElement.style.zoom`);
+    out.uiScale = await js(`document.documentElement.dataset.uiScale ?? null`);
+    out.beforeGesture = await audioState();
+    // (c) a real click is the gesture that allows playback
+    win.webContents.sendInputEvent({
+      type: "mouseDown",
+      x: 10,
+      y: 10,
+      button: "left",
+      clickCount: 1,
+    });
+    win.webContents.sendInputEvent({
+      type: "mouseUp",
+      x: 10,
+      y: 10,
+      button: "left",
+      clickCount: 1,
+    });
+    await sleep(1500);
+    const a1 = await audioState();
+    await sleep(1500);
+    const a2 = await audioState();
+    out.playing = a1 !== null && a2 !== null && !a2.paused;
+    out.src = a2?.src ?? null;
+    out.timeAdvanced = a1 !== null && a2 !== null && a2.t > a1.t;
+    out.t = [a1?.t ?? null, a2?.t ?? null];
+    out.audio = a2;
+    // type a few letters to start a test; music must pause
+    await js(`document.querySelector("#wordsInput")?.focus()`);
+    const word = await js(
+      `(document.querySelector("#words .word")?.textContent ?? "the").trim()`,
+    );
+    for (const ch of String(word || "the").slice(0, 3)) {
+      win.webContents.sendInputEvent({ type: "keyDown", keyCode: ch });
+      win.webContents.sendInputEvent({ type: "char", keyCode: ch });
+      win.webContents.sendInputEvent({ type: "keyUp", keyCode: ch });
+      await sleep(80);
+    }
+    await sleep(500);
+    out.typed = await js(
+      `document.querySelector("#wordsInput")?.value ?? null`,
+    );
+    out.testActive =
+      typeof out.typed === "string" && out.typed.trim().length > 0;
+    out.pausedDuringTest = out.playing && (await audioState())?.paused === true;
+    out.ok =
+      out.zoom === "1.25" &&
+      out.uiScale === "1.25" &&
+      out.beforeGesture === null &&
+      out.playing === true &&
+      out.timeAdvanced === true &&
+      out.src === "/music/sherwood.ogg" &&
+      out.testActive === true &&
+      out.pausedDuringTest === true;
     return out;
   } catch (e) {
     return { ...out, reason: String(e) };

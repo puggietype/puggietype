@@ -236,3 +236,31 @@ describe("smoke-only settings screenshots", () => {
     );
   });
 });
+
+describe("smoke-only music check", () => {
+  it("is gated on !app.isPackaged, PUGGIE_SMOKE_TEST=1 and PUGGIE_SMOKE_MUSIC=1", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(
+      new URL("../src/main.mjs", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      src,
+      /const smokeMusic =\s*!app\.isPackaged &&\s*process\.env\["PUGGIE_SMOKE_TEST"\] === "1" &&\s*process\.env\["PUGGIE_SMOKE_MUSIC"\] === "1"/,
+    );
+  });
+});
+
+describe("app scheme privileges", () => {
+  it("allows streaming so <audio> music can play", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(
+      new URL("../src/main.mjs", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      src,
+      /registerSchemesAsPrivileged\(\[[\s\S]*?stream: true[\s\S]*?\]\)/,
+    );
+  });
+});
