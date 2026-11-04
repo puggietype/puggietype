@@ -23,7 +23,6 @@ import {
   STEAM_SIGNIN_ERROR_TEXT,
   SteamSignIn,
 } from "../../../../src/ts/components/pages/settings/custom-setting/SteamSignIn";
-import { SettingsPage } from "../../../../src/ts/components/pages/settings/SettingsPage";
 import { steamAdapter } from "../../../../src/ts/platform/steam";
 import {
   STEAM_NAME_HIDDEN_KEY,
@@ -102,19 +101,25 @@ describe("Sign in with Steam: visibility", () => {
     expect($(el, '[data-testid="steam-name-hidden"]')).toBeNull();
   });
 
-  it("is absent from the settings page on web, even with a steam bridge", () => {
+  it("is absent from the settings page on web, even with a steam bridge", async () => {
     vi.unstubAllGlobals();
     installBridge({ steam: true });
-    const el = render(() => <SettingsPage />).container;
+    vi.resetModules();
+    const { SettingsPage: Page } =
+      await import("../../../../src/ts/components/pages/settings/SettingsPage");
+    const el = render(() => <Page />).container;
     expect($(el, "#steam-signin-button")).toBeNull();
     expect($(el, '[data-testid="steam-signin"]')).toBeNull();
     expect(el.textContent).not.toContain("steam account");
   });
 
-  it("is in the settings page on steam with the flag on", () => {
+  it("is in the settings page on steam with the flag on", async () => {
     installBridge({ steam: true });
-    const el = render(() => <SettingsPage />).container;
-    expect($(el, "#steam-signin-button")).not.toBeNull();
+    vi.resetModules();
+    const { SettingsPage: Page } =
+      await import("../../../../src/ts/components/pages/settings/SettingsPage");
+    const el = render(() => <Page />).container;
+    await waitFor(() => expect($(el, "#steam-signin-button")).not.toBeNull());
   });
 });
 
@@ -325,11 +330,12 @@ describe("web build parity", () => {
       ),
       "utf8",
     );
-    const uses = src.match(/<SteamSignIn\b/g) ?? [];
-    expect(uses).toHaveLength(1);
-    const guard =
-      'typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam" ? (\n              <Section title="steam account" tab="gameplay">\n                <SteamSignIn />';
-    expect(src).toContain(guard);
+    // no static import; lazily imported only behind the inline steam check
+    expect(src).not.toMatch(/^import .*SteamSignIn/m);
+    expect(src).toMatch(
+      /typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"\s*\?\s*lazy\(async \(\) => \(\{\s*default: \(await import\("\.\/custom-setting\/SteamSignIn"\)\)/,
+    );
+    expect(src.match(/<SteamSignIn\b/g)).toHaveLength(1);
   });
 });
 

@@ -1,4 +1,5 @@
 import {
+  lazy,
   createResource,
   createSignal,
   JSXElement,
@@ -51,7 +52,6 @@ import { MinSpeed } from "./custom-setting/MinSpeed";
 import { PaceCaret } from "./custom-setting/PaceCaret";
 import { Presets } from "./custom-setting/Presets";
 import { SoundVolume } from "./custom-setting/SoundVolume";
-import { SteamSignIn } from "./custom-setting/SteamSignIn";
 import { Tags } from "./custom-setting/Tags";
 import { Theme } from "./custom-setting/Theme";
 import { SearchableAutoSetting } from "./SearchableAutoSetting";
@@ -66,6 +66,16 @@ import {
 } from "./settings-tabs";
 import { SettingsSearch } from "./SettingsSearch";
 import { SettingsTabs } from "./SettingsTabs";
+
+// Steam flavor only. Lazy and behind the inline define so the web build
+// keeps no trace of it (QA P3 WEB-CHUNK: a static import split the
+// leaderboards module into an extra web chunk).
+const SteamSignIn =
+  typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
+    ? lazy(async () => ({
+        default: (await import("./custom-setting/SteamSignIn")).SteamSignIn,
+      }))
+    : undefined;
 
 export function SettingsPage(): JSXElement {
   const [hasLocalBg] = createResource(
@@ -268,7 +278,10 @@ export function SettingsPage(): JSXElement {
             // oxlint-disable-next-line solid/prefer-show -- build-time constant; <Show> would stay in the web bundle
             typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam" ? (
               <Section title="steam account" tab="gameplay">
-                <SteamSignIn />
+                {
+                  // oxlint-disable-next-line solid/prefer-show -- build-time constant
+                  SteamSignIn ? <SteamSignIn /> : null
+                }
               </Section>
             ) : null
           }
