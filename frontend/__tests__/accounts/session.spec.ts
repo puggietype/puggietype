@@ -40,7 +40,11 @@ vi.mock("../../src/ts/accounts/config", async (importOriginal) => {
 });
 
 import { SESSION_HINT_KEY } from "../../src/ts/accounts/flag";
-import { AGE_BLOCK_KEY } from "../../src/ts/accounts/age";
+import {
+  AGE_BLOCK_KEY,
+  blockAge,
+  isAgeBlocked,
+} from "../../src/ts/accounts/age";
 import {
   AGE_BLOCKED,
   cancelAgeCheck,
@@ -264,7 +268,7 @@ describe("accounts sign-up and age check", () => {
   });
 
   it("sign-up on a blocked device never reaches Firebase", async () => {
-    localStorage.setItem(AGE_BLOCK_KEY, "1");
+    blockAge(localStorage);
     expect(await signUp({ kind: "google" }, "t")).toMatchObject({
       status: "error",
       code: AGE_BLOCKED,
@@ -307,7 +311,7 @@ describe("accounts sign-up and age check", () => {
     });
     expect(api.createSession).toHaveBeenCalledTimes(1);
     expect(sdk.deleteFirebaseUser).toHaveBeenCalledWith(fbUser);
-    expect(localStorage.getItem(AGE_BLOCK_KEY)).toBe("1");
+    expect(isAgeBlocked(localStorage)).toBe(true);
     expect(getAccountUser()).toBeNull();
     // nothing left pending
     expect(await completeAgeCheck(true, "t3")).toMatchObject({
@@ -317,7 +321,7 @@ describe("accounts sign-up and age check", () => {
   });
 
   it("age_check_required on a blocked device is refused at once", async () => {
-    localStorage.setItem(AGE_BLOCK_KEY, "1");
+    blockAge(localStorage);
     api.createSession.mockResolvedValueOnce(refusal("age_check_required"));
     expect(await signIn({ kind: "google" }, "t")).toMatchObject({
       status: "error",
@@ -342,7 +346,7 @@ describe("accounts sign-up and age check", () => {
       api.createSession.mockResolvedValueOnce(refusal("age_check_required"));
       await signIn({ kind: "google" }, "t1");
       await completeAgeCheck(false, "t2");
-      expect(localStorage.getItem(AGE_BLOCK_KEY)).toBe("1");
+      expect(isAgeBlocked(localStorage)).toBe(true);
       vi.clearAllMocks();
     });
 
@@ -377,6 +381,70 @@ describe("accounts sign-up and age check", () => {
       expect(Object.keys(localStorage)).toEqual([AGE_BLOCK_KEY]);
       expect(sessionStorage).toHaveLength(0);
     });
+  });
+
+  describe("the block expires after 365 days", () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const blockedDaysAgo = (days: number): void =>
+      blockAge(localStorage, Date.now() - days * DAY);
+
+    it("signUp: refused at 364 days", async () => {
+      blockedDaysAgo(364);
+      expect(await signUp(email, "t")).toMatchObject({ code: AGE_BLOCKED });
+      expect(sdk.createUserEmail).not.toHaveBeenCalled();
+      expect(isAgeBlocked(localStorage)).toBe(true);
+    });
+
+    it("signUp: goes ahead at 366 days, flag cleared", async () => {
+      blockedDaysAgo(366);
+      api.createSession.mockResolvedValue({ ok: true, user, created: true });
+      expect(await signUp(email, "t")).toMatchObject({ status: "signed-in" });
+      expect(sdk.createUserEmail).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
+    });
+
+    it("establish: age_check_required refused at 364 days", async () => {
+      blockedDaysAgo(364);
+      sdk.signInGoogle.mockResolvedValue({ user: fbUser, isNew: true });
+      api.createSession.mockResolvedValueOnce(refusal("age_check_required"));
+      expect(await signIn({ kind: "google" }, "t")).toMatchObject({
+        code: AGE_BLOCKED,
+      });
+      expect(sdk.deleteFirebaseUser).toHaveBeenCalledWith(fbUser);
+    });
+
+    it("establish: asks the age question again at 366 days", async () => {
+      blockedDaysAgo(366);
+      sdk.signInGoogle.mockResolvedValue({ user: fbUser, isNew: true });
+      api.createSession.mockResolvedValueOnce(refusal("age_check_required"));
+      expect(await signIn({ kind: "google" }, "t")).toEqual({
+        status: "needs-age",
+      });
+      expect(sdk.deleteFirebaseUser).not.toHaveBeenCalled();
+      expect(localStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
+      await cancelAgeCheck();
+    });
+
+    it.each(["1", "junk", JSON.stringify({ v: "1", t: "soon" })])(
+      "a malformed flag (%s) is cleared and blocks neither path",
+      async (raw) => {
+        localStorage.setItem(AGE_BLOCK_KEY, raw);
+        api.createSession.mockResolvedValue({ ok: true, user, created: true });
+        expect(await signUp(email, "t")).toMatchObject({
+          status: "signed-in",
+        });
+        expect(localStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
+
+        localStorage.setItem(AGE_BLOCK_KEY, raw);
+        sdk.signInGoogle.mockResolvedValue({ user: fbUser, isNew: true });
+        api.createSession.mockResolvedValueOnce(refusal("age_check_required"));
+        expect(await signIn({ kind: "google" }, "t")).toEqual({
+          status: "needs-age",
+        });
+        expect(localStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
+        await cancelAgeCheck();
+      },
+    );
   });
 
   it("cancel deletes a just-created user, else only signs out", async () => {

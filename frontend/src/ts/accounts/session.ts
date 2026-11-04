@@ -20,7 +20,7 @@ export type AuthResult =
   | { status: "needs-age" }
   | { status: "error"; code: string; message: string };
 
-/** AuthResult code after an under-13 answer (this tab is then blocked) */
+/** AuthResult code after an under-13 answer (the device is then blocked) */
 export const AGE_BLOCKED = "age_blocked";
 
 type Sdk = typeof import("./firebase-sdk");

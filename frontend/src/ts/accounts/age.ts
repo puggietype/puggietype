@@ -2,11 +2,14 @@
 // ever lives in the form: callers keep the boolean result and drop the year.
 
 /**
- * localStorage key set to "1" after an under-13 answer; blocks retries in
- * every tab and after restarts. Never expires (Legal wants 30+ days), and
- * holds nothing else: no year, no date, nothing identifying.
+ * localStorage key set after an under-13 answer; blocks retries in every tab
+ * and after restarts, for AGE_BLOCK_MS. The value is `{"v":"1","t":<ms>}`,
+ * `t` being when the block was set: no year, nothing identifying.
  */
 export const AGE_BLOCK_KEY = "ptAccountsAgeBlock";
+
+/** how long an under-13 answer blocks the device (Legal wants 30+ days) */
+export const AGE_BLOCK_MS = 365 * 24 * 60 * 60 * 1000;
 
 const MIN_AGE = 13;
 // wide enough that the list itself says nothing about the cutoff
@@ -27,10 +30,40 @@ export function isAgeOk(birthYear: number, now: Date): boolean {
   return now.getFullYear() - birthYear - 1 >= MIN_AGE;
 }
 
-export function isAgeBlocked(storage: Pick<Storage, "getItem">): boolean {
-  return storage.getItem(AGE_BLOCK_KEY) === "1";
+/** the block's start time, or undefined unless the value is exactly ours */
+function blockedAt(raw: string): number | undefined {
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  if (typeof value !== "object" || value === null) return undefined;
+  if (Object.keys(value).sort().join() !== "t,v") return undefined;
+  const { v, t } = value as { v: unknown; t: unknown };
+  return v === "1" && Number.isSafeInteger(t) ? (t as number) : undefined;
 }
 
-export function blockAge(storage: Pick<Storage, "setItem">): void {
-  storage.setItem(AGE_BLOCK_KEY, "1");
+/**
+ * Blocked for AGE_BLOCK_MS after blockAge. An expired or malformed value is
+ * removed and doesn't block. A start time ahead of the clock (it was moved
+ * back) still blocks, unless it's a whole block length ahead.
+ */
+export function isAgeBlocked(
+  storage: Pick<Storage, "getItem" | "removeItem">,
+  now = Date.now(),
+): boolean {
+  const raw = storage.getItem(AGE_BLOCK_KEY);
+  if (raw === null) return false;
+  const t = blockedAt(raw);
+  if (t !== undefined && Math.abs(now - t) < AGE_BLOCK_MS) return true;
+  storage.removeItem(AGE_BLOCK_KEY);
+  return false;
+}
+
+export function blockAge(
+  storage: Pick<Storage, "setItem">,
+  now = Date.now(),
+): void {
+  storage.setItem(AGE_BLOCK_KEY, JSON.stringify({ v: "1", t: now }));
 }

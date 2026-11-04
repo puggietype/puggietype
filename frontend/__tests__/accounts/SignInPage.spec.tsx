@@ -23,7 +23,7 @@ const notify = vi.hoisted(() => ({
 }));
 vi.mock("../../src/ts/states/notifications", () => notify);
 
-import { AGE_BLOCK_KEY } from "../../src/ts/accounts/age";
+import { blockAge } from "../../src/ts/accounts/age";
 import { setAccountUser } from "../../src/ts/accounts/state";
 import { accountsCopy } from "../../src/ts/accounts/strings";
 import { SignInPage } from "../../src/ts/accounts/ui/SignInPage";
@@ -66,7 +66,7 @@ describe("SignInPage", () => {
   });
 
   it("a blocked device (any tab) gets no sign-up form", () => {
-    localStorage.setItem(AGE_BLOCK_KEY, "1");
+    blockAge(localStorage);
     const { container, getByText } = render(() => <SignInPage />);
     fireEvent.click(button(container, accountsCopy.tabs.signUp));
     expect(getByText(accountsCopy.age.blocked)).toBeTruthy();

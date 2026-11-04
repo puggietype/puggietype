@@ -15,7 +15,7 @@ vi.mock("../../src/ts/accounts/ui/TurnstileWidget", () => ({
   },
 }));
 
-import { AGE_BLOCK_KEY } from "../../src/ts/accounts/age";
+import { AGE_BLOCK_KEY, isAgeBlocked } from "../../src/ts/accounts/age";
 import { AgeCheckPrompt } from "../../src/ts/accounts/ui/AgeCheckPrompt";
 import { SignUpForm } from "../../src/ts/accounts/ui/SignUpForm";
 
@@ -87,7 +87,7 @@ describe("SignUpForm birth year", () => {
     fireEvent.click(button(container, "sign up with google"));
     expect(session.signUp).not.toHaveBeenCalled();
     expect(onBlocked).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem(AGE_BLOCK_KEY)).toBe("1");
+    expect(isAgeBlocked(localStorage)).toBe(true);
     expect(sessionStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
   });
 });
