@@ -1,4 +1,4 @@
-import { batch } from "solid-js";
+import { batch, createSignal } from "solid-js";
 
 import { setConfig } from "../config/setters";
 import { Config } from "../config/store";
@@ -34,6 +34,8 @@ import {
   type RaceFinishData,
 } from "./engine-hooks";
 import { isFlagEnabled } from "./feature-flags";
+import { showOnLeaderboard } from "./leaderboard-pref";
+import { leaderboardSubmitBlocked } from "./leaderboards";
 import { MULTIPLAYER_ENABLED } from "./flags";
 import {
   finishInput,
@@ -61,6 +63,7 @@ import type {
 import { applyQueueStatus, startQueue } from "./quick-match";
 import {
   characterSelectOn,
+  leaderboardsOn,
   myId,
   openRoomsOn,
   opponentProgress,
@@ -74,6 +77,7 @@ import {
   setCountdown,
   setLastError,
   setMyId,
+  setMyName,
   setOpenRooms,
   setOpponentProgress,
   setQueue,
@@ -167,6 +171,10 @@ export function joinRoom(code: string): void {
 }
 
 export function leaveRoom(): void {
+  // they can see the toggle on the way out; publish with that choice
+  if (pendingLeaderboardFinish() !== undefined) {
+    submitPendingFinish(showOnLeaderboard());
+  }
   send({ type: "room:leave" });
   dropRoom();
 }
@@ -336,6 +344,11 @@ function syncRaceUrl(code: string | undefined): void {
 
 /** forget the room locally (left, kicked out or session taken over) */
 function dropRoom(): void {
+  // kicked or replaced before they confirmed: finish the race, don't publish
+  const pending = pendingLeaderboardFinish();
+  if (pending !== undefined && !finishSent) {
+    dispatchFinish(pending, false, false);
+  }
   openOnCreate = false;
   const wasRacing = isRaceActive();
   sessionStorage.removeItem(ROOM_KEY);
@@ -358,6 +371,7 @@ function handleMessage(msg: ServerMessage): void {
     case "welcome":
       batch(() => {
         setMyId(msg.playerId);
+        setMyName(msg.name);
         setServerFeatures(msg.features);
       });
       // a fresh socket: the old subscription is gone
@@ -405,6 +419,8 @@ function handleMessage(msg: ServerMessage): void {
       }
       setQueue(undefined);
       setRoom(withRoomDefaults(msg));
+      const seat = msg.players.find((p) => p.id === myId());
+      if (seat !== undefined) setMyName(seat.name);
       sessionStorage.setItem(ROOM_KEY, msg.code);
       // the host lands here from /race: make the URL shareable and reloadable
       syncRaceUrl(msg.code);
@@ -710,9 +726,36 @@ function sendProgress(): void {
   client.send({ type: "race:progress", ...next });
 }
 
-function sendFinish(data: RaceFinishData): void {
+const [pendingLeaderboardFinish, setPendingLeaderboardFinish] = createSignal<
+  RaceFinishData | undefined
+>();
+export { pendingLeaderboardFinish };
+
+function scoreIsBlocked(): boolean {
+  return leaderboardSubmitBlocked(
+    window.location.pathname,
+    document.referrer,
+    sessionStorage,
+  );
+}
+
+/**
+ * Hold race:finish until the results screen shows the leaderboard toggle.
+ * Off in tests and when the server has no leaderboards, so the finish still
+ * goes out immediately.
+ */
+function holdFinishForConsent(): boolean {
+  return leaderboardsOn() && !scoreIsBlocked();
+}
+
+function dispatchFinish(
+  data: RaceFinishData,
+  show: boolean,
+  navigate: boolean,
+): void {
   if (finishSent) return;
   finishSent = true;
+  setPendingLeaderboardFinish(undefined);
   setRaceFinished(true);
   clearInterval(progressTimer);
   client.send({
@@ -723,10 +766,35 @@ function sendFinish(data: RaceFinishData): void {
     testMs: data.testMs,
     input: finishInput(data.input),
     keyCount: data.keyCount,
+    // older servers reject unknown keys; only the leaderboard build reads this
+    ...(leaderboardsOn()
+      ? { showOnLeaderboard: scoreIsBlocked() ? false : show }
+      : {}),
   });
+  if (!navigate) return;
   // the test is done for us: unhook the engine and wait on the race page
   releaseEngine({ finished: true });
   goTo(`/r/${room()?.code ?? ""}`);
+}
+
+/** results screen confirmed the toggle; now the finish can go out */
+export function submitPendingFinish(show: boolean): void {
+  const data = pendingLeaderboardFinish();
+  if (data === undefined) return;
+  dispatchFinish(data, show, false);
+}
+
+function sendFinish(data: RaceFinishData): void {
+  if (finishSent || pendingLeaderboardFinish() !== undefined) return;
+  if (holdFinishForConsent()) {
+    setPendingLeaderboardFinish(data);
+    setRaceFinished(true);
+    clearInterval(progressTimer);
+    releaseEngine({ finished: true });
+    goTo(`/r/${room()?.code ?? ""}`);
+    return;
+  }
+  dispatchFinish(data, showOnLeaderboard(), true);
 }
 
 // ---------------------------------------------------------------- config
@@ -800,8 +868,13 @@ function releaseEngine(options: { finished?: boolean } = {}): void {
 }
 
 function endRace(): void {
+  const pending = pendingLeaderboardFinish();
+  if (pending !== undefined && !finishSent) {
+    dispatchFinish(pending, showOnLeaderboard(), false);
+  }
   raceToken++;
   finishSent = false;
+  setPendingLeaderboardFinish(undefined);
   releaseEngine();
   batch(() => {
     setRace(undefined);

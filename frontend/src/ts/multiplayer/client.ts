@@ -44,6 +44,11 @@ function saveSession(session: Session): void {
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
+/** session from the last welcome, used to attach a nickname to a score */
+export function readStoredSession(): Session | undefined {
+  return loadSession();
+}
+
 /**
  * One WebSocket to /ws: clock sync, hello (with the stored session for
  * reconnects), and automatic reconnect with backoff.

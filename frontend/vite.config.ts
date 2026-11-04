@@ -461,6 +461,14 @@ export default defineConfig(({ mode }): UserConfig => {
             "ws://localhost:2567",
           ws: true,
         },
+        // same game server, over http: GET/POST /leaderboards
+        "/leaderboards": {
+          target: (
+            process.env["PUGGIE_WS_PROXY_TARGET"] ??
+            process.env["MP_WS_TARGET"] ??
+            "ws://localhost:2567"
+          ).replace(/^ws/, "http"),
+        },
       },
       watch: {
         //we rebuild the whole contracts package when a file changes

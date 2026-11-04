@@ -64,7 +64,17 @@ export function setSavedCharacter(character: Character): void {
 /** feature flags from the server's welcome (absent: an older server) */
 export const [serverFeatures, setServerFeatures] = createSignal<
   Features | undefined
->();
+>(undefined, { name: "serverFeatures" });
+
+/** nickname from welcome, updated if a room rerolls it */
+export const [myName, setMyName] = createSignal<string | undefined>(undefined, {
+  name: "myName",
+});
+
+/** the server we talked to publishes leaderboards */
+export function leaderboardsOn(): boolean {
+  return serverFeatures()?.leaderboards === true;
+}
 
 /** dog picking is on here (client flag) and on the server we talk to */
 export function characterSelectOn(): boolean {

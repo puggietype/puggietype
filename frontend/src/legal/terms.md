@@ -11,7 +11,7 @@ Multiplayer races take place in rooms of up to 8 players. **Private lobbies:** w
 Quick Match may include computer-controlled Pug Bots. Bots are named "Pug Bot · ~NN wpm" (the number is the bot's approximate target pace, not its result), always carry a visible "Bot" label, and never count toward stats or leaderboards.
 
 ## 3. Nicknames
-In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown only to the other players in your lobby and is not stored after the lobby closes. There is no chat, and players can't send each other messages.
+In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown to the other players in your lobby. If you submit a leaderboard score, that nickname is also shown on the public leaderboard, as described in the privacy policy. There is no chat, and players can't send each other messages.
 
 ## 4. Acceptable use
 When you use PuggieType, you agree not to:

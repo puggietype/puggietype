@@ -28,6 +28,15 @@ export function wsOrigin(configured: string | undefined): string {
   return `${url.protocol}//${url.host}`;
 }
 
+/** websocket origin plus the http(s) origin used for /leaderboards */
+export function connectSrcOrigins(configured: string | undefined): string {
+  const ws = wsOrigin(configured);
+  const http = ws
+    .replace(/^wss:\/\//, "https://")
+    .replace(/^ws:\/\//, "http://");
+  return http === ws ? ws : `${ws} ${http}`;
+}
+
 export function renderHeaders(
   template: string,
   values: { scriptHashes: string[]; wsOrigin: string },
@@ -58,7 +67,7 @@ export function pagesHeaders(options: { wsUrl: string | undefined }): Plugin {
         .map((f) => readFileSync(path.join(outDir, f), "utf8"));
       const rendered = renderHeaders(readFileSync(headersPath, "utf8"), {
         scriptHashes: inlineScriptHashes(htmls),
-        wsOrigin: wsOrigin(options.wsUrl),
+        wsOrigin: connectSrcOrigins(options.wsUrl),
       });
       writeFileSync(headersPath, rendered);
     },

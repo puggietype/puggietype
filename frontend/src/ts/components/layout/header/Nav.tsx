@@ -4,6 +4,7 @@ import {
   createSignal,
   JSXElement,
   onCleanup,
+  onMount,
   Show,
 } from "solid-js";
 
@@ -11,7 +12,9 @@ import { usePendingConnectionsQuery } from "../../../collections/connections";
 import { restartTestEvent } from "../../../events/test";
 import { createEffectOn } from "../../../hooks/effects";
 import { useRefWithUtils } from "../../../hooks/useRefWithUtils";
+import { isAgeConfirmed } from "../../../multiplayer/age-gate";
 import { MULTIPLAYER_ENABLED } from "../../../multiplayer/flags";
+import { leaderboardsOn } from "../../../multiplayer/store";
 import { PageName } from "../../../pages/page";
 import { prefetchLeaderboardPage } from "../../../queries/prefetch";
 import { getServerConfigurationQueryOptions } from "../../../queries/server-configuration";
@@ -138,6 +141,13 @@ export function Nav(): JSXElement {
     return snapshot.inboxUnreadSize > 0;
   });
 
+  onMount(() => {
+    // learn welcome.features without pulling the race module into this chunk's
+    // static graph more than the test page already does
+    if (!isAgeConfirmed() || !MULTIPLAYER_ENABLED) return;
+    void import("../../../multiplayer/race").then(({ connect }) => connect());
+  });
+
   const serverConfig = useQuery(() => getServerConfigurationQueryOptions());
   const showLoginButton = (): boolean =>
     !isStandalone() && (serverConfig.data?.users.signUp ?? true);
@@ -166,7 +176,7 @@ export function Nav(): JSXElement {
         />
       </Show>
       <Show
-        when={!isStandalone()}
+        when={!isStandalone() || leaderboardsOn()}
         fallback={
           // no leaderboards without a backend: a visible, inert placeholder
           <span
@@ -195,7 +205,7 @@ export function Nav(): JSXElement {
           page="leaderboards"
           shortLabel="ranks"
           onMouseEnter={() => {
-            prefetchLeaderboardPage();
+            if (!leaderboardsOn()) prefetchLeaderboardPage();
           }}
         />
       </Show>

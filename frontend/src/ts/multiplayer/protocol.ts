@@ -195,6 +195,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     testMs: nonNeg,
     input: z.array(z.string().max(200)).max(5_000),
     keyCount: z.number().int().min(0),
+    /** Set from the results-screen toggle. False keeps the score off the board. */
+    showOnLeaderboard: z.boolean().optional(),
   }),
   z.object({ type: z.literal("race:rematch") }),
   z.object({ type: z.literal("ping"), t: finite }),
@@ -331,6 +333,8 @@ export interface Features {
   report: boolean;
   /** Ready / start from the results screen (`player:toLobby`); absent on older servers. */
   resultsReady?: boolean;
+  /** Absent or false: leaderboard UI stays hidden and scores are not published. */
+  leaderboards?: boolean;
 }
 
 export type ServerMessage =

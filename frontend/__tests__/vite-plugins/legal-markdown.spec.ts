@@ -20,6 +20,13 @@ describe("legal-markdown", () => {
     });
   }
 
+  it("includes the leaderboards privacy section verbatim", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    expect(md).toContain(
+      "Leaderboards. When you finish an eligible test or race, we may add your result to a public leaderboard: your rank, your randomly assigned nickname, and your speed (wpm), accuracy and raw speed. We save this on our game server's database, not just in memory. We don't store your IP address or any other identifier with it. Daily, weekly and monthly boards are cleared when each period ends. All-time boards keep scores for up to 12 months. You can turn off 'Show my score on the leaderboard' before submitting, or email support@puggietype.com with your nickname and the board to have a score removed. We may remove scores that look cheated or that break our rules.",
+    );
+  });
+
   it("contains no chat clauses", () => {
     for (const name of ["terms", "privacy"]) {
       const md = readFileSync(path.join(legalDir, `${name}.md`), "utf-8");

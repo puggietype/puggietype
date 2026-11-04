@@ -259,8 +259,14 @@
 
         <h2>What is stored</h2>
         <p>
-          Race results are not saved to any account or leaderboard. Nicknames, room
-          codes and race data are held in the game server's memory only while your
+          Race results are not saved to an account. If you leave 'Show my score
+          on the leaderboard' on, an eligible score can be added to the public
+          leaderboard: your random nickname, speed (wpm), accuracy and raw speed.
+          That score is saved on the game server's database, not only in memory.
+          Daily, weekly and monthly boards are cleared when each period ends, and
+          all-time scores are kept for up to 12 months. You can turn the option
+          off on the results screen before submitting. Nicknames, room codes and
+          other race data stay in the game server's memory only while your
           session or room exists. Player reports are kept for 7 days and then deleted. A stored report never includes who sent it: no nickname, player ID or IP address of the reporter. For cheating reports only, so we can count how many different players reported someone, the server keeps a one-way hash of each reporter's connection (or, if no connection address is available, their temporary session ID), in memory only, until the reported player's session ends. The <a href="/privacy">privacy policy</a> has the full list, and
           the <a href="/terms">terms</a> describe what isn't allowed.
         </p>
