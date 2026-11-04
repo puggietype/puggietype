@@ -644,3 +644,77 @@ describe("saved background music", () => {
     expect(AudioSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("web music: platform and autoplay", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("the steam build gets no web tracks (it has its own player, on at 35%)", async () => {
+    vi.resetModules();
+    vi.stubGlobal("__PLATFORM__", "steam");
+    const m = await import("../../src/ts/controllers/background-music");
+    expect(m.BG_MUSIC_TRACKS).toEqual([]);
+    expect(m.BG_MUSIC_SRC).toBeNull();
+    const steam = await import("../../src/ts/steam/settings-store");
+    expect(steam.DEFAULT_STEAM_SETTINGS.music).toMatchObject({
+      enabled: true,
+      volume: 0.35,
+    });
+  });
+
+  it("a blocked play() stays silent: no console error, no throw", async () => {
+    const m = await import("../../src/ts/controllers/background-music");
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    let stored = { enabled: true, volume: 0.5 };
+    const player = new m.BackgroundMusic({
+      store: {
+        get: () => stored,
+        set: (v) => (stored = v),
+        remove: () => undefined,
+      },
+      getPathname: () => "/",
+      createAudio: (src) => ({
+        src,
+        loop: false,
+        volume: 1,
+        paused: true,
+        play: async () => {
+          throw new DOMException("not allowed", "NotAllowedError");
+        },
+        pause: () => undefined,
+      }),
+      src: m.BG_MUSIC_TRACKS[0] ?? null,
+      tracks: m.BG_MUSIC_TRACKS,
+    });
+    expect(() => player.noteUserGesture()).not.toThrow();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it("creates no audio element and fetches nothing before a gesture, even when on", async () => {
+    const m = await import("../../src/ts/controllers/background-music");
+    const createAudio = vi.fn();
+    const player = new m.BackgroundMusic({
+      store: {
+        get: () => ({ enabled: true, volume: 0.5 }),
+        set: () => undefined,
+        remove: () => undefined,
+      },
+      getPathname: () => "/",
+      createAudio,
+      src: m.BG_MUSIC_TRACKS[0] ?? null,
+      tracks: m.BG_MUSIC_TRACKS,
+    });
+    player.setPlaybackSuspended({
+      testActive: false,
+      raceActive: false,
+      documentHidden: false,
+    });
+    expect(createAudio).not.toHaveBeenCalled();
+  });
+});

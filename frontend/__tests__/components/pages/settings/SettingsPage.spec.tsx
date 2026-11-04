@@ -146,6 +146,13 @@ describe("SettingsPage", () => {
   it("shows the background music toggle in Sound, off by default, and persists it", () => {
     expect(BG_MUSIC_SRC).toBe("/music/sherwood.ogg");
     localStorage.removeItem("bgMusic");
+    // jsdom has no media playback
+    const play = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockResolvedValue(undefined);
+    const pause = vi
+      .spyOn(HTMLMediaElement.prototype, "pause")
+      .mockImplementation(() => undefined);
     const { container } = render(() => <SettingsPage />);
     const soundTab = document.getElementById("settings-tab-sound");
     if (soundTab === null) throw new Error("missing sound tab");
@@ -173,6 +180,10 @@ describe("SettingsPage", () => {
     expect(JSON.parse(localStorage.getItem("bgMusic") ?? "{}")).toMatchObject({
       enabled: false,
     });
+    // turning it on is a click (a gesture), so it plays once
+    expect(play).toHaveBeenCalledTimes(1);
+    play.mockRestore();
+    pause.mockRestore();
   });
 
   it("shows one tab panel at a time and switches with the keyboard", () => {

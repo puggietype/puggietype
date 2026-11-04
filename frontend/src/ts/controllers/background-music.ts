@@ -269,8 +269,13 @@ export class BackgroundMusic {
     }
     this.audio.volume = this.settings.volume;
     if (!this.audio.paused) return;
-    void this.audio.play().catch(() => {
-      // The browser blocked playback or the file is missing. Stay silent.
-    });
+    // The browser blocked playback (autoplay rules) or the file is missing:
+    // stay silent, with nothing in the console. Some engines return no
+    // promise or throw synchronously.
+    try {
+      void Promise.resolve(this.audio.play()).catch(() => undefined);
+    } catch {
+      // as above
+    }
   }
 }
