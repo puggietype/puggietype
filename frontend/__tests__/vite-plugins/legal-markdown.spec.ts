@@ -29,10 +29,13 @@ describe("legal-markdown", () => {
   it("includes the leaderboards privacy section verbatim", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     expect(md).toContain(
-      "The 'Show me on leaderboards' setting defaults on, but a score is posted only when you press Submit score to leaderboard.",
+      "The 'Show my score on the leaderboard' setting defaults on, but a score is posted only when you press a Submit score button (Submit score to leaderboard, or Submit score & next test, & repeat or & retry saving).",
     );
     expect(md).toContain(
-      "Neon (Databricks, Inc.), USA, database hosting for leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.",
+      "Solo scores are calculated on your device and only lightly checked by our server, so the Solo board is marked 'unverified'. Race scores are checked by our server. We may remove any score that looks cheated.",
+    );
+    expect(md).toContain(
+      "Neon, LLC (a Databricks company), USA, database hosting for leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.",
     );
     expect(md).not.toContain("account data once accounts launch");
     expect(md).not.toContain("your rank");
