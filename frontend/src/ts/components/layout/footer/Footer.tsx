@@ -88,6 +88,9 @@ export function Footer(): JSXElement {
             <a class={linkClass} href="/contact">
               contact
             </a>
+            <a class={linkClass} href="/creators">
+              creators
+            </a>
           </nav>
         </div>
         <div class="flex flex-col items-end text-right lg:flex-row">

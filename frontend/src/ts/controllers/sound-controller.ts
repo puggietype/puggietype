@@ -45,16 +45,9 @@ let errorSounds: ErrorSounds | null = null;
 
 let timeWarning: Howl | null = null;
 
-let fartReverb: Howl | null = null;
-
 async function initTimeWarning(): Promise<void> {
   if (timeWarning !== null) return;
   timeWarning = await getHowl("../sounds/timeWarning.wav");
-}
-
-async function initFartReverb(): Promise<void> {
-  if (fartReverb !== null) return;
-  fartReverb = await getHowl("../sounds/fart-reverb.wav");
 }
 
 async function initErrorSound(): Promise<void> {
@@ -302,14 +295,6 @@ function playScale(validNotes: ValidNotes[], scaleMeta: ScaleData): void {
 export async function playTimeWarning(): Promise<void> {
   if (timeWarning === null) await initTimeWarning();
   const soundToPlay = timeWarning as Howl;
-  soundToPlay.stop();
-  soundToPlay.seek(0);
-  soundToPlay.play();
-}
-
-export async function playFartReverb(): Promise<void> {
-  if (fartReverb === null) await initFartReverb();
-  const soundToPlay = fartReverb as Howl;
   soundToPlay.stop();
   soundToPlay.seek(0);
   soundToPlay.play();

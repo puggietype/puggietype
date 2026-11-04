@@ -242,6 +242,7 @@ function getBuildOptions({
         // static content pages, served by pages at their clean url (/faq, /guide/about)
         faq: path.resolve(__dirname, "src/faq.html"),
         contact: path.resolve(__dirname, "src/contact.html"),
+        creators: path.resolve(__dirname, "src/creators.html"),
         "guide/about": path.resolve(__dirname, "src/guide/about.html"),
         "guide/wpm-accuracy": path.resolve(
           __dirname,
