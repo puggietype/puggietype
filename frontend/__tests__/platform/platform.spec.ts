@@ -1,4 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const standalone = vi.hoisted(() => ({ value: true }));
+vi.mock("../../src/ts/utils/env", () => ({
+  isStandalone: () => standalone.value,
+  isDevEnvironment: () => true,
+}));
 import {
   getPlatform,
   getPlatformName,
@@ -49,6 +55,14 @@ describe("platform adapter selection", () => {
     for (const name of PLATFORM_NAMES) {
       expect(selectPlatformAdapter(name).name).toBe(name);
     }
+  });
+
+  it("web sign-in is available only with a backend", () => {
+    standalone.value = true;
+    expect(webAdapter.identity.isAvailable()).toBe(false);
+    standalone.value = false;
+    expect(webAdapter.identity.isAvailable()).toBe(true);
+    standalone.value = true;
   });
 
   it("web keeps current behavior: ads allowed, firebase identity", async () => {

@@ -8,6 +8,20 @@
 import { z } from "zod";
 
 export const PROTOCOL_VERSION = 1;
+/** Server protocols this client can talk to (welcome.protocol). */
+export const MIN_SERVER_PROTOCOL = 1;
+export const MAX_SERVER_PROTOCOL = PROTOCOL_VERSION;
+/** Close code: the server (or this client) needs a newer build. */
+export const CLOSE_UPGRADE_REQUIRED = 4003;
+
+export function isServerProtocolSupported(protocol: unknown): boolean {
+  return (
+    typeof protocol === "number" &&
+    Number.isInteger(protocol) &&
+    protocol >= MIN_SERVER_PROTOCOL &&
+    protocol <= MAX_SERVER_PROTOCOL
+  );
+}
 export const MAX_PLAYERS = 8;
 /** Code space is 31^8 (~8.5e11); combined with join throttling, brute-forcing a lobby isn't realistic. */
 export const ROOM_CODE_LENGTH = 8;
@@ -134,6 +148,12 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     character: CharacterSchema.catch(DEFAULT_CHARACTER).optional(),
     /** This browser session started from /guide/typing-for-kids. The server refuses leaderboard scores. */
     kidsGuide: z.literal(true).optional(),
+    /** Client wire protocol (servers treat a missing value as 1). */
+    protocol: z.number().int().min(0).optional(),
+    /** Client build id, informational. */
+    engine: z.string().min(1).max(64).optional(),
+    /** Client flavor: "web" or "steam", informational. */
+    platform: z.string().min(1).max(16).optional(),
   }),
   z.object({
     type: z.literal("room:create"),
@@ -392,7 +412,16 @@ export type ServerMessage =
   | { type: "room:closed"; reason: "idle" }
   /** You were kicked by the host. */
   | { type: "room:kicked" }
-  | { type: "error"; code: ErrorCode; message: string };
+  | { type: "error"; code: ErrorCode; message: string }
+  /** Sent instead of welcome when this client's protocol is out of range; the socket then closes with 4003. */
+  | {
+      type: "upgrade_required";
+      clientProtocol: number;
+      minProtocol: number;
+      maxProtocol: number;
+      reason: "client_too_old" | "client_too_new";
+      message: string;
+    };
 export type ServerMessageType = ServerMessage["type"];
 
 /** Decode and validate one incoming frame, yielding the message or a readable error string. */

@@ -23,6 +23,27 @@ describe("config.ts", () => {
         expect(result).toHaveProperty(key, value);
       }
     });
+    describe("removed click sounds", () => {
+      it.each(["6", "7", "16"])(
+        "falls back to off for saved playSoundOnClick %s",
+        (value) => {
+          const result = migrateConfig({
+            playSoundOnClick: value,
+            playSoundOnError: "2",
+          });
+          expect(result.playSoundOnClick).toBe("off");
+          expect(result.playSoundOnError).toBe("2");
+        },
+      );
+      it("keeps remaining click sounds", () => {
+        expect(migrateConfig({ playSoundOnClick: "5" }).playSoundOnClick).toBe(
+          "5",
+        );
+        expect(migrateConfig({ playSoundOnClick: "17" }).playSoundOnClick).toBe(
+          "17",
+        );
+      });
+    });
     describe("typing pug default", () => {
       it("is on by default", () => {
         expect(getDefaultConfig().monkey).toBe(true);

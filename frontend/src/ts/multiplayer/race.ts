@@ -1,3 +1,4 @@
+import { terminatedMessage } from "./terminated";
 import { batch, createSignal } from "solid-js";
 
 import { setConfig } from "../config/setters";
@@ -144,11 +145,7 @@ const client = new MultiplayerClient({
   onStatus: setConnectionStatus,
   onTerminated: (code) => {
     dropRoom();
-    showNoticeNotification(
-      code === 4000
-        ? "This race continued in another tab."
-        : "The race server is full, try again later.",
-    );
+    showNoticeNotification(terminatedMessage(code));
   },
 });
 

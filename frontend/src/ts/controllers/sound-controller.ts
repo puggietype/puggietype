@@ -18,8 +18,6 @@ import {
   ValidNotes,
 } from "../constants/sounds";
 import { getModifierState } from "../states/modifiers";
-import { getPlatformName } from "../platform";
-import { isFartReverbExcluded } from "../constants/sound-clearance";
 import { isSoundOptionHidden } from "../steam/asset-clearance";
 
 let howlerModulePromise: Promise<typeof import("howler")> | null = null;
@@ -48,16 +46,9 @@ let errorSounds: ErrorSounds | null = null;
 
 let timeWarning: Howl | null = null;
 
-let fartReverb: Howl | null = null;
-
 async function initTimeWarning(): Promise<void> {
   if (timeWarning !== null) return;
   timeWarning = await getHowl("../sounds/timeWarning.wav");
-}
-
-async function initFartReverb(): Promise<void> {
-  if (fartReverb !== null) return;
-  fartReverb = await getHowl("../sounds/fart-reverb.wav");
 }
 
 const errorSoundFiles: Record<Exclude<PlaySoundOnError, "off">, string[]> = {
@@ -315,15 +306,6 @@ export async function playTimeWarning(): Promise<void> {
   if (isSoundOptionHidden("playTimeWarning", "1")) return;
   if (timeWarning === null) await initTimeWarning();
   const soundToPlay = timeWarning as Howl;
-  soundToPlay.stop();
-  soundToPlay.seek(0);
-  soundToPlay.play();
-}
-
-export async function playFartReverb(): Promise<void> {
-  if (isFartReverbExcluded(getPlatformName())) return;
-  if (fartReverb === null) await initFartReverb();
-  const soundToPlay = fartReverb as Howl;
   soundToPlay.stop();
   soundToPlay.seek(0);
   soundToPlay.play();

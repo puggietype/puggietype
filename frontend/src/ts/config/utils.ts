@@ -77,6 +77,11 @@ function replaceLegacyValues(
     configObj.showAverage = "speed";
   }
 
+  // osu (6), hitmarker (7) and fart (16) click sounds were removed
+  if (["6", "7", "16"].includes(configObj.playSoundOnClick as string)) {
+    configObj.playSoundOnClick = "off";
+  }
+
   if (typeof configObj.playSoundOnError === "boolean") {
     configObj.playSoundOnError = configObj.playSoundOnError ? "1" : "off";
   }

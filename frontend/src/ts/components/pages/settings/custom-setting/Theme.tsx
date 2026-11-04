@@ -22,6 +22,7 @@ import {
   convertThemeToCustomColors,
 } from "../../../../controllers/theme-controller";
 import { createEffectOn } from "../../../../hooks/effects";
+import { getPlatformName } from "../../../../platform";
 import { isAuthenticated } from "../../../../states/core";
 import {
   showErrorNotification,
@@ -32,6 +33,7 @@ import { showSimpleModal } from "../../../../states/simple-modal";
 import { getTheme, setTheme, updateThemeColor } from "../../../../states/theme";
 import { cn } from "../../../../utils/cn";
 import { hexToHSL } from "../../../../utils/colors";
+import { shareOrigin } from "../../../../utils/site-url";
 import {
   normalizeName,
   replaceUnderscoresWithSpaces,
@@ -153,7 +155,7 @@ export function Theme(): JSXElement {
                   newTheme.f = getConfig.customBackgroundFilter;
                 }
 
-                const link = `${window.location.origin}?customTheme=${btoa(
+                const link = `${shareOrigin(getPlatformName(), window.location.origin)}?customTheme=${btoa(
                   JSON.stringify(newTheme),
                 )}`;
 

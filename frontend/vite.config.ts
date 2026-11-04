@@ -14,6 +14,7 @@ import { Fonts } from "./src/ts/constants/fonts";
 import { fontawesomeSubset } from "./vite-plugins/fontawesome-subset";
 import { fontPreview } from "./vite-plugins/font-preview";
 import { envConfig } from "./vite-plugins/env-config";
+import { resolvePlatform } from "./vite-plugins/platform";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
@@ -116,7 +117,8 @@ function getPlugins({
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
-    steamAssetClearance({ platform: parsePlatform(env["PLATFORM"]) }),
+    // PLATFORM from the build script shell only, never .env (see 432d097)
+    steamAssetClearance({ platform: resolvePlatform(process.env) }),
     tailwindcss(),
 
     solidPlugin(),
@@ -243,6 +245,7 @@ function getBuildOptions({
         // static content pages, served by pages at their clean url (/faq, /guide/about)
         faq: path.resolve(__dirname, "src/faq.html"),
         contact: path.resolve(__dirname, "src/contact.html"),
+        creators: path.resolve(__dirname, "src/creators.html"),
         "guide/about": path.resolve(__dirname, "src/guide/about.html"),
         "guide/wpm-accuracy": path.resolve(
           __dirname,
@@ -410,11 +413,7 @@ function getCssOptions({
   };
 }
 
-function parsePlatform(value: string | undefined): "web" | "steam" {
-  if (value === undefined || value === "" || value === "web") return "web";
-  if (value === "steam") return "steam";
-  throw new Error(`PLATFORM must be "web" or "steam", got "${value}"`);
-}
+const STEAM_DEFAULT_WS_URL = "wss://ws.puggietype.com/ws";
 
 export default defineConfig(({ mode }): UserConfig => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -432,8 +431,14 @@ export default defineConfig(({ mode }): UserConfig => {
   // no BACKEND_URL => no auth/api: swap the Firebase SDK for a stub and let
   // the minifier drop backend-only code (reCAPTCHA loader) behind __STANDALONE__
   const standalone = (env["BACKEND_URL"] ?? "") === "";
-  // PLATFORM=steam selects the desktop flavor; anything unset means web
-  const platform = parsePlatform(env["PLATFORM"]);
+  // PLATFORM=steam selects the desktop flavor; unset means web. Read from the
+  // build script's shell only (process.env), never from loadEnv/.env files.
+  const platform = resolvePlatform(process.env);
+  // the steam build loads from local files: no same-origin /ws, so it always
+  // bakes in an absolute server URL (the runtime falls back the same way)
+  if (platform === "steam" && (env["VITE_WS_URL"] ?? "") === "") {
+    process.env["VITE_WS_URL"] = STEAM_DEFAULT_WS_URL;
+  }
   const firebaseStub = path.resolve(
     __dirname,
     "src/ts/standalone/firebase-stub.ts",
