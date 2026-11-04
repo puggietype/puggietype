@@ -4,6 +4,7 @@ import { blockAge, isAgeBlocked } from "./age";
 import { AccountUser, createSession, deleteMe, getMe } from "./api";
 import { getAccountsConfig, missingAccountsConfig } from "./config";
 import { SESSION_HINT_KEY } from "./flag";
+import { isPasswordOk, WEAK_PASSWORD, weakPasswordMessage } from "./password";
 import { setAccountUser } from "./state";
 import { accountsCopy } from "./strings";
 
@@ -177,7 +178,7 @@ export async function signIn(
 /**
  * New account, after the sign-up form found the user 13+ (only that boolean
  * goes on, as `ageOk: true`). Refuses without touching Firebase on a
- * device that already answered under 13.
+ * device that already answered under 13, or with a too-short password.
  */
 export async function signUp(
   method: AuthMethod,
@@ -185,6 +186,9 @@ export async function signUp(
 ): Promise<AuthResult> {
   if (isAgeBlocked(localStorage)) {
     return error(AGE_BLOCKED, accountsCopy.age.blocked);
+  }
+  if (method.kind === "email" && !isPasswordOk(method.password)) {
+    return error(WEAK_PASSWORD, weakPasswordMessage());
   }
   return start(method, turnstileToken, true);
 }

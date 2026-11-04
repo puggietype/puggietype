@@ -16,6 +16,8 @@ vi.mock("../../src/ts/accounts/ui/TurnstileWidget", () => ({
 }));
 
 import { AGE_BLOCK_KEY, isAgeBlocked } from "../../src/ts/accounts/age";
+import { WEAK_PASSWORD } from "../../src/ts/accounts/password";
+import { accountsCopy } from "../../src/ts/accounts/strings";
 import { AgeCheckPrompt } from "../../src/ts/accounts/ui/AgeCheckPrompt";
 import { SignUpForm } from "../../src/ts/accounts/ui/SignUpForm";
 
@@ -89,6 +91,53 @@ describe("SignUpForm birth year", () => {
     expect(onBlocked).toHaveBeenCalledTimes(1);
     expect(isAgeBlocked(localStorage)).toBe(true);
     expect(sessionStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
+  });
+});
+
+describe("SignUpForm password", () => {
+  const fillAndSubmit = (container: HTMLElement, password: string): void => {
+    const set = (selector: string, value: string): void => {
+      const input = container.querySelector<HTMLInputElement>(selector);
+      if (input === null) throw new Error(`no ${selector}`);
+      input.value = value;
+      fireEvent.input(input);
+    };
+    set('input[autocomplete="email"]', "a@b.test");
+    set('input[type="password"]', password);
+    fireEvent.submit(container.querySelector("form") as HTMLFormElement);
+  };
+
+  it("under 8 characters: weak-password text, no sign-up, year kept", async () => {
+    const onResult = vi.fn();
+    const { container } = render(() => (
+      <SignUpForm onResult={onResult} onBlocked={vi.fn()} />
+    ));
+    const select = pickYear(container, thisYear - 30);
+    fillAndSubmit(container, "1234567");
+    await vi.waitFor(() => expect(onResult).toHaveBeenCalled());
+    expect(onResult).toHaveBeenCalledWith({
+      status: "error",
+      code: WEAK_PASSWORD,
+      message: accountsCopy.firebase["auth/weak-password"],
+    });
+    expect(session.signUp).not.toHaveBeenCalled();
+    expect(select.value).toBe(String(thisYear - 30));
+    expect(localStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
+  });
+
+  it("8 characters: signs up with that password", async () => {
+    session.signUp.mockResolvedValue({ status: "signed-in", created: true });
+    const onResult = vi.fn();
+    const { container } = render(() => (
+      <SignUpForm onResult={onResult} onBlocked={vi.fn()} />
+    ));
+    pickYear(container, thisYear - 30);
+    fillAndSubmit(container, "12345678");
+    await vi.waitFor(() => expect(onResult).toHaveBeenCalled());
+    expect(session.signUp).toHaveBeenCalledWith(
+      { kind: "email", email: "a@b.test", password: "12345678" },
+      "ts-token",
+    );
   });
 });
 

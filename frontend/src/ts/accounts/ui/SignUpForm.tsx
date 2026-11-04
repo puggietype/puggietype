@@ -9,6 +9,7 @@ import { SubmitButton } from "../../components/ui/form/SubmitButton";
 import { allFieldsMandatory } from "../../components/ui/form/utils";
 import { blockAge, isAgeOk } from "../age";
 import { getAccountsConfig } from "../config";
+import { isPasswordOk, WEAK_PASSWORD, weakPasswordMessage } from "../password";
 import { AuthMethod, AuthResult, signUp } from "../session";
 import { accountsCopy } from "../strings";
 import { BirthYearField } from "./BirthYearField";
@@ -38,6 +39,15 @@ export function SignUpForm(props: {
     const year = birthYear();
     const token = turnstileToken();
     if (year === null || token === null || busy()) return;
+    // before the year and token are used up, so a retry needs neither again
+    if (method.kind === "email" && !isPasswordOk(method.password)) {
+      props.onResult({
+        status: "error",
+        code: WEAK_PASSWORD,
+        message: weakPasswordMessage(),
+      });
+      return;
+    }
     const ageOk = isAgeOk(year, new Date());
     setBirthYear(null);
     if (!ageOk) {

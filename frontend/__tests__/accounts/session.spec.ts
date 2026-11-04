@@ -40,6 +40,7 @@ vi.mock("../../src/ts/accounts/config", async (importOriginal) => {
 });
 
 import { SESSION_HINT_KEY } from "../../src/ts/accounts/flag";
+import { WEAK_PASSWORD } from "../../src/ts/accounts/password";
 import {
   AGE_BLOCK_KEY,
   blockAge,
@@ -230,7 +231,11 @@ const lastSessionCall = (): Record<string, unknown> =>
   api.createSession.mock.calls.at(-1)?.[0] as Record<string, unknown>;
 
 describe("accounts sign-up and age check", () => {
-  const email = { kind: "email", email: "a@b.test", password: "pw" } as const;
+  const email = {
+    kind: "email",
+    email: "a@b.test",
+    password: "longenough",
+  } as const;
 
   it("email sign-up creates the Firebase user and sends ageOk: true", async () => {
     api.createSession.mockResolvedValue({ ok: true, user, created: true });
@@ -241,7 +246,7 @@ describe("accounts sign-up and age check", () => {
     expect(sdk.createUserEmail).toHaveBeenCalledWith(
       expect.objectContaining({ projectId: "x" }),
       "a@b.test",
-      "pw",
+      "longenough",
     );
     expect(sdk.signInEmail).not.toHaveBeenCalled();
     expect(lastSessionCall()).toEqual({
@@ -383,6 +388,49 @@ describe("accounts sign-up and age check", () => {
     });
   });
 
+  describe("password length", () => {
+    const withPassword = (password: string) =>
+      ({ kind: "email", email: "a@b.test", password }) as const;
+    const weakText = accountsCopy.firebase["auth/weak-password"];
+
+    it("7 characters: refused with the weak-password text, before Firebase", async () => {
+      expect(await signUp(withPassword("1234567"), "t")).toEqual({
+        status: "error",
+        code: WEAK_PASSWORD,
+        message: weakText,
+      });
+      expect(sdk.createUserEmail).not.toHaveBeenCalled();
+      expect(api.createSession).not.toHaveBeenCalled();
+    });
+
+    it("8 characters go on to Firebase", async () => {
+      api.createSession.mockResolvedValue({ ok: true, user, created: true });
+      expect(await signUp(withPassword("12345678"), "t")).toMatchObject({
+        status: "signed-in",
+      });
+      expect(sdk.createUserEmail).toHaveBeenCalledWith(
+        expect.anything(),
+        "a@b.test",
+        "12345678",
+      );
+    });
+
+    it("a blocked device still gets the age text, not the password one", async () => {
+      blockAge(localStorage);
+      expect(await signUp(withPassword(""), "t")).toMatchObject({
+        code: AGE_BLOCKED,
+      });
+    });
+
+    it("sign-in is not checked (existing passwords keep working)", async () => {
+      api.createSession.mockResolvedValue({ ok: true, user, created: false });
+      expect(await signIn(withPassword("short"), "t")).toMatchObject({
+        status: "signed-in",
+      });
+      expect(sdk.signInEmail).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("the block expires after 365 days", () => {
     const DAY = 24 * 60 * 60 * 1000;
     const blockedDaysAgo = (days: number): void =>
@@ -468,7 +516,10 @@ describe("accounts email verification and password reset", () => {
   it("a new email account gets the verification link", async () => {
     sdk.createUserEmail.mockResolvedValue(unverified);
     api.createSession.mockResolvedValue({ ok: true, user, created: true });
-    await signUp({ kind: "email", email: "a@b.test", password: "pw" }, "t");
+    await signUp(
+      { kind: "email", email: "a@b.test", password: "longenough" },
+      "t",
+    );
     expect(sdk.sendVerification).toHaveBeenCalledWith(unverified);
   });
 
@@ -480,7 +531,10 @@ describe("accounts email verification and password reset", () => {
       code: "turnstile_failed",
       message: "",
     });
-    await signUp({ kind: "email", email: "a@b.test", password: "pw" }, "t");
+    await signUp(
+      { kind: "email", email: "a@b.test", password: "longenough" },
+      "t",
+    );
     api.createSession.mockResolvedValue({ ok: true, user, created: true });
     await signUp({ kind: "google" }, "t");
     expect(sdk.sendVerification).not.toHaveBeenCalled();
@@ -491,7 +545,10 @@ describe("accounts email verification and password reset", () => {
     sdk.sendVerification.mockRejectedValue({ code: "auth/too-many-requests" });
     api.createSession.mockResolvedValue({ ok: true, user, created: true });
     expect(
-      await signUp({ kind: "email", email: "a@b.test", password: "pw" }, "t"),
+      await signUp(
+        { kind: "email", email: "a@b.test", password: "longenough" },
+        "t",
+      ),
     ).toMatchObject({ status: "signed-in" });
   });
 
