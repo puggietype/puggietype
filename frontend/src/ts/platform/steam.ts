@@ -6,7 +6,8 @@ import { PlatformAdapter } from "./types";
  * Steam flavor. No Steamworks SDK: the Electron shell (desktop/) exposes
  * fullscreen and storage through a contextBridge preload. Without the shell
  * (e.g. the steam build opened in a browser) it falls back to browser APIs.
- * M3 wires Steam OpenID sign-in and server-side ownership checks.
+ * Sign-in is Steam OpenID through the shell (see steam-identity.ts); the
+ * server verifies it and checks ownership (CheckAppOwnership).
  */
 export const steamAdapter: PlatformAdapter = {
   name: "steam",
@@ -30,6 +31,13 @@ export const steamAdapter: PlatformAdapter = {
     },
   },
   input: { hasControllerSupport: () => false },
-  identity: { kind: "steam-openid", isAvailable: () => false },
+  identity: {
+    kind: "steam-openid",
+    // only when the shell exposes Steam sign-in (PUGGIE_STEAM_OPENID=1)
+    isAvailable: () => getDesktopBridge()?.steam !== undefined,
+  },
+  // Entitlements are server-checked only. A client-held ownership flag from
+  // signInWithSteam() is never trusted (Legal P1-2), so until the server
+  // issues an entitlement token this owns nothing.
   entitlements: { getOwned: async () => [] },
 };

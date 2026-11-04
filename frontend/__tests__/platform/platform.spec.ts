@@ -71,7 +71,7 @@ describe("platform adapter selection", () => {
     await expect(webAdapter.entitlements.getOwned()).resolves.toEqual([]);
   });
 
-  it("steam stub: no ads, steam-openid identity not yet available", async () => {
+  it("steam: no ads, steam-openid identity unavailable without the shell bridge", async () => {
     expect(steamAdapter.adsAllowed).toBe(false);
     expect(steamAdapter.identity.kind).toBe("steam-openid");
     expect(steamAdapter.identity.isAvailable()).toBe(false);

@@ -10,7 +10,9 @@ import {
   session,
   shell,
 } from "electron";
+import crypto from "node:crypto";
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -26,6 +28,11 @@ import {
   isFullscreenShortcut,
   isInternalUrl,
   resolveAppPath,
+  STEAM_SIGNIN_TIMEOUT_MS,
+  loopbackReturnTo,
+  parseOpenIdCallback,
+  steamOpenIdLoginUrl,
+  steamSignInEnabled,
   windowOptions,
 } from "./shell.mjs";
 
@@ -195,6 +202,15 @@ app.whenReady().then(() => {
   const fromWindow = (event) => BrowserWindow.fromWebContents(event.sender);
   const trusted = (event) => isInternalUrl(event.senderFrame?.url ?? "");
 
+  const steamEnabled = steamSignInEnabled(process.env);
+  ipcMain.on("steam:enabled", (event) => {
+    event.returnValue = steamEnabled;
+  });
+  if (steamEnabled) {
+    ipcMain.handle("steam:signin", (event) =>
+      isInternalUrl(event.senderFrame?.url ?? "") ? steamSignIn() : null,
+    );
+  }
   ipcMain.on("fullscreen:get", (event) => {
     event.returnValue =
       trusted(event) && fromWindow(event)?.isFullScreen() === true;
@@ -225,3 +241,45 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
+
+// Steam M3: one-shot loopback listener on 127.0.0.1, system browser for the
+// Steam login page. Resolves with the openid.* params, or null on cancel or
+// timeout. The server verifies them; nothing is trusted here.
+let steamSignInRunning = false;
+function steamSignIn() {
+  if (steamSignInRunning) return Promise.resolve(null);
+  steamSignInRunning = true;
+  const state = crypto.randomBytes(16).toString("hex");
+  return new Promise((resolve) => {
+    let timer;
+    const server = http.createServer((req, res) => {
+      const result = parseOpenIdCallback(req.url ?? "", state);
+      if (result === undefined) {
+        res.writeHead(404).end();
+        return;
+      }
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      });
+      res.end(
+        "<!doctype html><meta charset=utf-8><title>PuggieType</title><p>You can close this tab and return to PuggieType.</p>",
+      );
+      finish(result === "cancel" ? null : result);
+    });
+    const finish = (value) => {
+      clearTimeout(timer);
+      server.close();
+      steamSignInRunning = false;
+      resolve(value === null ? null : { openid: value });
+    };
+    timer = setTimeout(() => finish(null), STEAM_SIGNIN_TIMEOUT_MS);
+    server.on("error", () => finish(null));
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address();
+      void shell.openExternal(
+        steamOpenIdLoginUrl(loopbackReturnTo(port, state)),
+      );
+    });
+  });
+}
