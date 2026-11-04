@@ -138,7 +138,10 @@ export class MultiplayerClient {
       ...(isFlagEnabled("characterSelect")
         ? { character: loadCharacter() }
         : {}),
-      // only after welcome.features.leaderboards; a prod server rejects unknown keys
+      // only after welcome.features.leaderboards. Unknown hello keys are safe:
+      // the server (prod at 149852b) parses hello with a plain z.object, which
+      // strips them (puggietype-server src/protocol.ts:105-107), so older
+      // servers ignore kidsGuide and protocol/engine/platform
       ...(leaderboardsOn() &&
       leaderboardSubmitBlocked(
         window.location.pathname,
