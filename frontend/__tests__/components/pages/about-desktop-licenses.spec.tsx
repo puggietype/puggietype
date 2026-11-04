@@ -19,7 +19,12 @@ const LEGAL = [
   "/legal/ELECTRON-LICENSE.txt",
   "/legal/LICENSES.chromium.html",
   "/legal/SOURCE.txt",
+  "/legal/DLC-ASSETS-LICENSE.txt",
 ];
+const VALVE =
+  "PuggieType is not affiliated with, endorsed or sponsored by Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries.";
+const norm = (s: string | null | undefined): string =>
+  (s ?? "").replace(/\s+/g, " ").trim();
 
 async function renderAbout(): Promise<HTMLElement> {
   vi.resetModules();
@@ -43,9 +48,16 @@ describe("About: desktop licenses and source (GPL bundling)", () => {
       a.getAttribute("href"),
     );
     expect(hrefs).toEqual(LEGAL);
-    expect(section?.textContent).toContain(
-      "not affiliated with Valve or Steam",
-    );
+    expect(section?.textContent).toContain("Supporter pack art licence");
+    expect(
+      norm(
+        el.querySelector('[data-testid="valve-non-affiliation"]')?.textContent,
+      ),
+    ).toBe(VALVE);
+    expect(
+      norm(el.querySelector('[data-testid="steam-data-as-is"]')?.textContent),
+    ).toBe("Steam data is provided as is, without warranty from Valve.");
+    expect(el.textContent).not.toMatch(/puggietype is/);
     // credits, Monkeytype non-affiliation and the source link stay
     expect(el.textContent).toContain("not affiliated with");
     expect(
@@ -56,6 +68,11 @@ describe("About: desktop licenses and source (GPL bundling)", () => {
   it("web: unchanged, no desktop licenses section", async () => {
     const el = await renderAbout();
     expect(el.querySelector('[data-testid="desktop-licenses"]')).toBeNull();
+    expect(
+      el.querySelector('[data-testid="valve-non-affiliation"]'),
+    ).toBeNull();
+    expect(el.querySelector('[data-testid="steam-data-as-is"]')).toBeNull();
+    expect(el.textContent).toContain("PuggieType is not affiliated with");
   });
 
   it("the names match the desktop shell's LEGAL_FILES", async () => {

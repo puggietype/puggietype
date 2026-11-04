@@ -4,8 +4,9 @@
 //   out/app/web/legal/  -> served as app://puggietype/legal/ (About links)
 //   out/legal/          -> the same files next to the app, for the depot root
 // GPL-3.0: ships LICENSE, NOTICE, Electron's LICENSE, Chromium's
-// LICENSES.chromium.html and a source offer that names the exact commit.
-// usage: node scripts/package.mjs [--dist ../frontend/dist] [--out out]
+// LICENSES.chromium.html, the supporter pack art licence and a source offer
+// that names the exact (pushed, tagged) commit.
+// usage: node scripts/package.mjs [--dist ../frontend/dist] [--out out] [--dev]
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -17,30 +18,101 @@ const desktopDir = path.resolve(here, "..");
 const repoRoot = path.resolve(desktopDir, "..");
 export const SOURCE_REPO = "https://github.com/puggietype/puggietype";
 
+// Legal review 2026-11-04, Ruling 7: exact text, do not edit without Legal.
 export function sourceOffer({ commit, repo = SOURCE_REPO, electronVersion }) {
   if (!/^[0-9a-f]{40}$/.test(commit))
     throw new Error("commit must be a full sha");
-  return [
-    "PuggieType desktop: source code offer",
-    "",
-    "PuggieType is free software under the GNU General Public License,",
-    "version 3 (see LICENSE.txt). It is based on Monkeytype by Miodec and",
-    "its contributors. PuggieType is not affiliated with Monkeytype, Valve",
-    "or Steam.",
-    "",
-    "The complete corresponding source code for this build is available at:",
-    `  ${repo}/tree/${commit}`,
-    `  ${repo}/archive/${commit}.tar.gz`,
-    "",
-    `This build was made from commit ${commit}.`,
-    `It runs on Electron ${electronVersion} (MIT, see ELECTRON-LICENSE.txt),`,
-    "which includes Chromium and other third-party software under the",
-    "licenses listed in LICENSES.chromium.html.",
-    "",
-    "If you cannot download it, email support@puggietype.com and we will",
-    "send the source to you for no more than the cost of sending it.",
-    "",
-  ].join("\n");
+  if (!/^\d+\.\d+\.\d+/.test(String(electronVersion))) {
+    throw new Error("electronVersion must be x.y.z");
+  }
+  return `PuggieType desktop: source code offer
+
+PuggieType is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License, version 3 only (see
+LICENSE.txt). It comes with NO WARRANTY, to the extent permitted by law.
+It is based on Monkeytype by Miodec and its contributors (see NOTICE.txt).
+
+The complete Corresponding Source for this build, including the scripts
+used to build it, is available at no charge from:
+  ${repo}/tree/${commit}
+  ${repo}/archive/${commit}.tar.gz
+This build was made from commit ${commit}.
+
+This app runs on Electron ${electronVersion} (MIT, see ELECTRON-LICENSE.txt),
+which includes Chromium and other third-party components (some under the
+LGPL, such as FFmpeg) listed in LICENSES.chromium.html. Their source is
+available at https://github.com/electron/electron/tree/v${electronVersion}
+and from the projects listed there.
+
+Written offer: for at least three years after we last distribute this
+build, any third party may email support@puggietype.com to get the
+Corresponding Source on a physical medium or by download, for no more than
+our cost of providing it.
+
+PuggieType is not affiliated with, endorsed or sponsored by Monkeytype,
+Valve Corporation or Steam.
+`;
+}
+
+/** steam-v<version>; one tag per Steam build, never deleted (Ruling 6). */
+export function steamTagName(version) {
+  if (!/^\d+\.\d+\.\d+$/.test(version))
+    throw new Error(`bad version: ${version}`);
+  return `steam-v${version}`;
+}
+
+const git = (cwd, args) =>
+  execFileSync("git", args, { cwd, stdio: ["ignore", "pipe", "pipe"] })
+    .toString()
+    .trim();
+
+/**
+ * Release checks (Legal P2-6): clean tree, HEAD pushed to origin (contained
+ * in origin/main or pointed at by a tag on origin), and a steam-v<version>
+ * tag that is new or already on HEAD. Returns { commit, tag, tagExists }.
+ */
+export function releaseChecks({ cwd, version, remote = "origin" }) {
+  const commit = git(cwd, ["rev-parse", "HEAD"]);
+  if (git(cwd, ["status", "--porcelain", "--untracked-files=no"])) {
+    throw new Error(
+      "uncommitted changes: the source offer would not match this build",
+    );
+  }
+  git(cwd, ["fetch", "--quiet", "--tags", remote]);
+  const onMain = git(cwd, ["branch", "-r", "--contains", commit])
+    .split("\n")
+    .map((s) => s.trim())
+    .includes(`${remote}/main`);
+  const remoteTags = git(cwd, ["ls-remote", "--tags", remote])
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => l.split("\t"));
+  const taggedOnRemote = remoteTags.some(([sha]) => sha === commit);
+  if (!onMain && !taggedOnRemote) {
+    throw new Error(
+      `HEAD ${commit} is not on ${remote}/main or a tag on ${remote}: push it first`,
+    );
+  }
+  const tag = steamTagName(version);
+  const existing = remoteTags.find(
+    ([, ref]) => ref === `refs/tags/${tag}` || ref === `refs/tags/${tag}^{}`,
+  );
+  let tagExists = false;
+  if (existing) {
+    const peeled = git(cwd, ["rev-parse", `${tag}^{commit}`]);
+    if (peeled !== commit)
+      throw new Error(
+        `${tag} already tags ${peeled}: bump the desktop version`,
+      );
+    tagExists = true;
+  }
+  return { commit, tag, tagExists };
+}
+
+/** Create and push the build tag (annotated). Never deletes or moves tags. */
+export function tagSteamBuild({ cwd, tag, commit, remote = "origin" }) {
+  git(cwd, ["tag", "-a", tag, commit, "-m", `Steam build ${tag} (${commit})`]);
+  git(cwd, ["push", remote, `refs/tags/${tag}`]);
 }
 
 function electronDistDir() {
@@ -67,6 +139,7 @@ export function stagePackage({
     "NOTICE.txt": path.join(repoRoot, "NOTICE"),
     "ELECTRON-LICENSE.txt": path.join(electronDist, "LICENSE"),
     "LICENSES.chromium.html": path.join(electronDist, "LICENSES.chromium.html"),
+    "DLC-ASSETS-LICENSE.txt": path.join(repoRoot, "assets", "LICENSE"),
   };
   for (const [name, src] of Object.entries(need)) {
     if (!fs.existsSync(src)) throw new Error(`missing ${name} source: ${src}`);
@@ -124,27 +197,40 @@ if (
     const i = process.argv.indexOf(`--${k}`);
     return i > 0 ? process.argv[i + 1] : d;
   };
-  const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot })
-    .toString()
-    .trim();
-  // the source offer names HEAD, so the tree must match it exactly
-  const dirty = execFileSync(
-    "git",
-    ["status", "--porcelain", "--untracked-files=no"],
-    { cwd: repoRoot },
-  )
-    .toString()
-    .trim();
-  if (dirty && !process.argv.includes("--allow-dirty")) {
-    console.error(
-      "uncommitted changes: the source offer would not match this build (use --allow-dirty for local tests)",
-    );
-    process.exit(1);
+  // Default is a release build for Steam: HEAD must be pushed, and the
+  // build is tagged steam-v<version> on origin. --dev stages a local test
+  // build only (never upload it): no checks, no tag.
+  const dev = process.argv.includes("--dev");
+  const version = JSON.parse(
+    fs.readFileSync(path.join(desktopDir, "package.json"), "utf8"),
+  ).version;
+  let commit;
+  let release;
+  if (dev) {
+    commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot })
+      .toString()
+      .trim();
+  } else {
+    try {
+      release = releaseChecks({ cwd: repoRoot, version });
+    } catch (err) {
+      console.error(String(err instanceof Error ? err.message : err));
+      process.exit(1);
+    }
+    commit = release.commit;
   }
   const r = stagePackage({
     distDir: path.resolve(arg("dist", path.join(repoRoot, "frontend", "dist"))),
     outDir: path.resolve(arg("out", path.join(desktopDir, "out"))),
     commit,
   });
-  console.log(`staged ${r.app} (licenses in ${r.legal}) from ${commit}`);
+  if (release && !release.tagExists) {
+    tagSteamBuild({ cwd: repoRoot, tag: release.tag, commit });
+  }
+  console.log(
+    `staged ${r.app} (licenses in ${r.legal}) from ${commit}` +
+      (release
+        ? ` tagged ${release.tag}`
+        : " (dev build, not for distribution)"),
+  );
 }

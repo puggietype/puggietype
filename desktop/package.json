@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "PuggieType desktop shell (Steam flavor). Plain Electron, no Steamworks SDK, no ads.",
-  "license": "GPL-3.0",
+  "license": "GPL-3.0-only",
   "type": "module",
   "main": "src/main.mjs",
   "scripts": {

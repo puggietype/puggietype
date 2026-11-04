@@ -215,6 +215,7 @@ export const LEGAL_FILES = [
   "ELECTRON-LICENSE.txt",
   "LICENSES.chromium.html",
   "SOURCE.txt",
+  "DLC-ASSETS-LICENSE.txt",
 ];
 
 export function isLegalUrl(target) {
