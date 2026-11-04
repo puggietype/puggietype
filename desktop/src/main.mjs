@@ -56,6 +56,14 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 let store;
 
+// PUGGIE_SMOKE_TEST=1 plus PUGGIE_SMOKE_SETTINGS=<dir>: open settings, check
+// the steam game settings and save a screenshot per tab into <dir>.
+// Never in a packaged app.
+const smokeSettingsDir =
+  !app.isPackaged && process.env["PUGGIE_SMOKE_TEST"] === "1"
+    ? process.env["PUGGIE_SMOKE_SETTINGS"] || undefined
+    : undefined;
+
 function createWindow() {
   const win = new BrowserWindow(windowOptions(path.join(here, "preload.cjs")));
   win.once("ready-to-show", () => win.show());
@@ -147,8 +155,10 @@ function runSmokeTest(win) {
         r.geolocation !== "granted" &&
         r.remoteFetchBlocked === true &&
         r.fullscreen === true;
-      console.log(JSON.stringify({ ok, ...r }));
-      app.exit(ok ? 0 : 1);
+      let settings = { ok: true };
+      if (smokeSettingsDir) settings = await runSettingsSmoke(win);
+      console.log(JSON.stringify({ ok: ok && settings.ok, ...r, settings }));
+      app.exit(ok && settings.ok ? 0 : 1);
     } catch (e) {
       fail(String(e));
     }
@@ -282,4 +292,86 @@ function steamSignIn() {
       );
     });
   });
+}
+
+// Smoke only: settings tabs with the steam Graphics and Sound groups.
+async function runSettingsSmoke(win) {
+  const js = (code) => win.webContents.executeJavaScript(code);
+  const waitFor = (sel) =>
+    js(`new Promise((res) => {
+      const t0 = Date.now();
+      const tick = () => {
+        if (document.querySelector(${JSON.stringify(sel)})) return res(true);
+        if (Date.now() - t0 > 10000) return res(false);
+        setTimeout(tick, 100);
+      };
+      tick();
+    })`);
+  // late-loading content shifts the page: scroll until the target stays put
+  const show = (sel) =>
+    js(`new Promise((res) => {
+      let n = 0;
+      const step = () => {
+        const el = document.querySelector(${JSON.stringify(sel)});
+        if (!el) return res(false);
+        el.scrollIntoView({ block: "start" });
+        setTimeout(() => {
+          const top = el.getBoundingClientRect().top;
+          // last group on the page: it may not reach the top, so accept any
+          // position where its heading is on screen
+          const ok = top >= 0 && top < window.innerHeight - 100;
+          if ((top >= 0 && top < 120) || ++n > 20) return res(ok);
+          step();
+        }, 250);
+      };
+      step();
+    })`);
+  const shot = async (name) => {
+    await new Promise((res) => setTimeout(res, 400));
+    const image = await win.webContents.capturePage();
+    const file = path.join(smokeSettingsDir, name);
+    fs.writeFileSync(file, image.toPNG());
+    return file;
+  };
+  const out = { ok: false, shots: [] };
+  try {
+    fs.mkdirSync(smokeSettingsDir, { recursive: true });
+    win.setFullScreen(false);
+    const loaded = new Promise((res) =>
+      win.webContents.once("did-finish-load", res),
+    );
+    void win.loadURL(`${APP_ORIGIN}/settings`);
+    await loaded;
+    if (!(await waitFor("#settings-tab-graphics"))) {
+      return { ...out, reason: "no settings tabs" };
+    }
+    await js(`document.getElementById("settings-tab-graphics").click()`);
+    out.graphics = await waitFor('[data-testid="steam-graphics"]');
+    out.graphicsInView = await show('[data-testid="steam-graphics"]');
+    out.shots.push(await shot("graphics.png"));
+    await js(`document.getElementById("settings-tab-sound").click()`);
+    out.sound = await waitFor('[data-testid="steam-sound"]');
+    out.soundInView = await show('[data-testid="steam-sound"]');
+    out.musicDefault = await js(
+      `[...document.querySelectorAll('[data-testid="steam-music-enabled"] button')].find((b) => b.getAttribute("aria-pressed") === "true")?.textContent ?? null`,
+    );
+    out.audioElements = await js(`document.querySelectorAll("audio").length`);
+    out.musicFile = await js(
+      `fetch("/music/sherwood.ogg").then((r) => r.status + " " + r.headers.get("content-type"), (e) => String(e))`,
+    );
+    out.shots.push(await shot("sound.png"));
+    await js(`document.getElementById("settings-tab-gameplay").click()`);
+    await js(`window.scrollTo(0, 0)`);
+    out.shots.push(await shot("gameplay.png"));
+    out.ok =
+      out.graphics === true &&
+      out.sound === true &&
+      out.graphicsInView === true &&
+      out.soundInView === true &&
+      out.musicDefault === "off" &&
+      String(out.musicFile).startsWith("200 audio/");
+    return out;
+  } catch (e) {
+    return { ...out, reason: String(e) };
+  }
 }

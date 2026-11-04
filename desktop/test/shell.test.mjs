@@ -222,3 +222,17 @@ describe("Steam OpenID (M3)", async () => {
     );
   });
 });
+
+describe("smoke-only settings screenshots", () => {
+  it("are gated on !app.isPackaged and PUGGIE_SMOKE_TEST=1", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(
+      new URL("../src/main.mjs", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      src,
+      /const smokeSettingsDir =\s*!app\.isPackaged && process\.env\["PUGGIE_SMOKE_TEST"\] === "1"/,
+    );
+  });
+});
