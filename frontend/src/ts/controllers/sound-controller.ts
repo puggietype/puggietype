@@ -302,7 +302,7 @@ function playScale(validNotes: ValidNotes[], scaleMeta: ScaleData): void {
 }
 
 export async function playTimeWarning(): Promise<void> {
-  // steam: file is left out of the build (static/sounds/SOURCES.md)
+  // steam: file is left out of the build (docs/sounds-SOURCES.md)
   if (isSoundOptionHidden("playTimeWarning", "1")) return;
   if (timeWarning === null) await initTimeWarning();
   const soundToPlay = timeWarning as Howl;

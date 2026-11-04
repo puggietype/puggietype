@@ -1,5 +1,5 @@
 /**
- * Steam asset clearance for sound effects (see frontend/static/sounds/SOURCES.md).
+ * Steam asset clearance for sound effects (see docs/sounds-SOURCES.md).
  *
  * Every wav in static/sounds came from the upstream fork. A pack is only
  * "cleared" when its original author and licence could be traced in the

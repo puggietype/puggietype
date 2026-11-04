@@ -43,7 +43,7 @@ export function isRouteHidden(path: string): boolean {
 }
 
 export function isConfigKeyHidden(key: ConfigKey): boolean {
-  // steam: timeWarning.wav is untraced and left out (static/sounds/SOURCES.md)
+  // steam: timeWarning.wav is untraced and left out (docs/sounds-SOURCES.md)
   if (key === "playTimeWarning" && isTimeWarningExcluded(getPlatformName())) {
     return true;
   }

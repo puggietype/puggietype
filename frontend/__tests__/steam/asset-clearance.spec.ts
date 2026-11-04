@@ -24,6 +24,7 @@ import {
 import { stripSteamAssets } from "../../vite-plugins/steam-asset-clearance";
 
 const soundsDir = path.resolve(__dirname, "../../static/sounds");
+const sourcesPath = path.resolve(__dirname, "../../../docs/sounds-SOURCES.md");
 
 describe("sound clearance lists", () => {
   it("covers every file-backed click pack and nothing synthesized", () => {
@@ -52,8 +53,13 @@ describe("sound clearance lists", () => {
     expect(isErrorSoundExcluded("4", "steam")).toBe(true);
   });
 
+  it("keeps SOURCES.md out of static/ so it is never served", () => {
+    expect(existsSync(path.join(soundsDir, "SOURCES.md"))).toBe(false);
+    expect(existsSync(sourcesPath)).toBe(true);
+  });
+
   it("lists paths that exist and agree with SOURCES.md", () => {
-    const sources = readFileSync(path.join(soundsDir, "SOURCES.md"), "utf8");
+    const sources = readFileSync(sourcesPath, "utf8");
     for (const rel of steamExcludedSoundPaths()) {
       expect(existsSync(path.join(soundsDir, rel)), rel).toBe(true);
       expect(sources).toContain(`\`${rel}`);

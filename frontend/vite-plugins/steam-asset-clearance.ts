@@ -13,7 +13,7 @@ import { filterLyricQuotes, QuoteLike } from "../src/ts/constants/lyric-quotes";
 /**
  * steam build only: strips assets Legal has not cleared from the output
  * (static/ is copied verbatim by vite's publicDir):
- * - untraced sound packs (static/sounds/SOURCES.md)
+ * - untraced sound packs (docs/sounds-SOURCES.md)
  * - song-lyric quotes (constants/lyric-quotes.ts)
  */
 export function steamAssetClearance(options: {
