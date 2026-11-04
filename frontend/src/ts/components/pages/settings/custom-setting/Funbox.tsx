@@ -19,7 +19,14 @@ export function Funbox(): JSXElement {
       fa={configMetadata.funbox.fa}
       fullWidthInputs={
         <div class="grid grid-cols-[repeat(auto-fit,minmax(13.5rem,1fr))] gap-2">
-          <For each={getAllFunboxes().filter((f) => isFunboxAvailable(f.name))}>
+          <For
+            each={
+              // define inline so the web build folds to getAllFunboxes()
+              typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
+                ? getAllFunboxes().filter((f) => isFunboxAvailable(f.name))
+                : getAllFunboxes()
+            }
+          >
             {(funbox) => {
               const active = () => getConfig.funbox.includes(funbox.name);
 

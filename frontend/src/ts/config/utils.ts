@@ -33,7 +33,10 @@ function mergeWithDefaultConfig(config: PartialConfig): ConfigSchema {
     mergedConfig[key] = newValue;
   }
   // steam: saved, imported or synced configs quietly lose unavailable funboxes
-  mergedConfig.funbox = dropUnavailableFunboxes(mergedConfig.funbox);
+  // (define compared inline so the web build drops this line)
+  if (typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") {
+    mergedConfig.funbox = dropUnavailableFunboxes(mergedConfig.funbox);
+  }
   return mergedConfig;
 }
 

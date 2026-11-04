@@ -156,7 +156,13 @@ export function setQuoteLengthAll(nosave?: boolean): boolean {
 
 export function toggleFunbox(funbox: FunboxName, nosave?: boolean): boolean {
   // steam: funboxes that need a blocked third-party API cannot be enabled
-  if (!isFunboxAvailable(funbox) && !Config.funbox.includes(funbox)) {
+  // (define compared inline so the web build drops this block)
+  if (
+    typeof __PLATFORM__ !== "undefined" &&
+    __PLATFORM__ === "steam" &&
+    !isFunboxAvailable(funbox) &&
+    !Config.funbox.includes(funbox)
+  ) {
     return false;
   }
   if (isTestActive() && Config.funbox.includes("no_quit")) {
