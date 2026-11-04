@@ -112,6 +112,14 @@ if (__FEATURE_ACCOUNTS__) {
   void import("./accounts/boot").then(async (m) => m.initAccounts());
 }
 
+// steam: silent sign-in with the kept session token (OpenID stays the
+// fallback). The inline check folds away on web, with the chunk.
+if (typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") {
+  void import("./steam/steam-session").then(async (m) =>
+    m.startSilentSteamSignIn(),
+  );
+}
+
 installBackgroundMusic();
 // steam flavor: UI scale, reduced motion, master volume and its own music
 // player (inline define check: nothing of this is in the web build)

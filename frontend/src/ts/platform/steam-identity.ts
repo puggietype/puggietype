@@ -103,7 +103,12 @@ export async function signInWithSteam(deps: {
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ openid: response.openid }),
+        // keep: false when this device can't keep a session token, so the
+        // server issues none (Legal F2)
+        body: JSON.stringify({
+          openid: response.openid,
+          ...(canKeepSession(deps.bridge) ? {} : { keep: false }),
+        }),
       },
     );
     status = res.status;
@@ -125,19 +130,185 @@ export async function signInWithSteam(deps: {
       error: status === 502 ? "steam_unavailable" : "not_verified",
     };
   }
+  await keepSessionToken(deps, body);
   return {
     ok: true,
-    value: {
-      steamId: r.steamId,
-      ownsApp: r.ownsApp === true,
-      displayName: steamDisplayName(
-        typeof r.personaName === "string" ? r.personaName : null,
-        isSteamNameHidden(deps.storage),
-      ),
-      personaName: steamDisplayName(
-        typeof r.personaName === "string" ? r.personaName : null,
-        false,
-      ),
-    },
+    value: signInValue(r as { steamId: string }, deps.storage),
   };
+}
+
+function signInValue(
+  r: { steamId: string; ownsApp?: unknown; personaName?: unknown },
+  storage: PlatformStorage,
+): SteamSignIn {
+  return {
+    steamId: r.steamId,
+    ownsApp: r.ownsApp === true,
+    displayName: steamDisplayName(
+      typeof r.personaName === "string" ? r.personaName : null,
+      isSteamNameHidden(storage),
+    ),
+    personaName: steamDisplayName(
+      typeof r.personaName === "string" ? r.personaName : null,
+      false,
+    ),
+  };
+}
+
+const SESSION_TOKEN_RX = /^[A-Za-z0-9_-]{43}$/;
+
+/** Whether this device can keep a session token (secure storage). */
+export function canKeepSession(bridge: DesktopBridge | undefined): boolean {
+  const session = bridge?.steam?.session;
+  if (!session) return false;
+  try {
+    return session.canKeep?.() ?? true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Remembered (not secret): whether the server issues session tokens, so
+ * the sign-in description can say what is stored (Legal F1). Updated on
+ * every sign-in answer from a device that asked to keep a token.
+ */
+export const STEAM_SESSIONS_ON_KEY = "steamSessionsOn";
+
+export function steamSessionsOn(storage: PlatformStorage): boolean {
+  return storage.getItem(STEAM_SESSIONS_ON_KEY) === "1";
+}
+
+/**
+ * Keeps a server-issued session token in secure storage. If it can't be
+ * kept (no secure storage, an older shell, a failed write), the token is
+ * revoked on the server right away, best effort, so no hash linked to the
+ * Steam ID is left behind (Legal F2).
+ */
+async function keepSessionToken(
+  deps: SessionDeps,
+  body: unknown,
+): Promise<void> {
+  const token = (body as { sessionToken?: unknown } | null)?.sessionToken;
+  const issued = typeof token === "string" && SESSION_TOKEN_RX.test(token);
+  if (canKeepSession(deps.bridge)) {
+    if (issued) deps.storage.setItem(STEAM_SESSIONS_ON_KEY, "1");
+    else deps.storage.removeItem(STEAM_SESSIONS_ON_KEY);
+  }
+  if (!issued) return;
+  let kept = false;
+  try {
+    kept = deps.bridge?.steam?.session?.set(token) === true;
+  } catch {
+    kept = false;
+  }
+  if (!kept) await postToken(deps, "/steam/session/signout", token);
+}
+
+function sessionUrl(serverBase: string, path: string): string {
+  return new URL(path, `${serverBase.replace(/\/$/, "")}/`).href;
+}
+
+type SessionDeps = {
+  bridge: DesktopBridge | undefined;
+  serverBase: string;
+  storage: PlatformStorage;
+  fetch?: FetchLike;
+};
+
+async function postToken(
+  deps: SessionDeps,
+  path: string,
+  token: string,
+): Promise<{ status: number; body: unknown } | undefined> {
+  try {
+    const res = await (deps.fetch ?? fetch)(sessionUrl(deps.serverBase, path), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
+    return { status: res.status, body };
+  } catch {
+    return undefined;
+  }
+}
+
+/** Whether a session token is kept on this device. */
+export function hasSteamSession(bridge: DesktopBridge | undefined): boolean {
+  return typeof bridge?.steam?.session?.get() === "string";
+}
+
+/**
+ * Silent sign-in at launch with the kept session token. The server rotates
+ * the token on every use, so the new one replaces it. A token the server no
+ * longer accepts (expired, revoked, or the feature is off) is deleted and
+ * the player signs in with OpenID again ("none").
+ */
+export async function resumeSteamSession(
+  deps: SessionDeps,
+): Promise<
+  | { ok: true; value: SteamSignIn }
+  | { ok: false; error: "none" | "steam_unavailable" | "network" }
+> {
+  const steam = deps.bridge?.steam;
+  const token = steam?.session?.get();
+  if (!steam || typeof token !== "string") return { ok: false, error: "none" };
+  const r = await postToken(deps, "/steam/session", token);
+  if (r === undefined) return { ok: false, error: "network" };
+  await keepSessionToken(deps, r.body);
+  const b = r.body as { ok?: unknown; steamId?: unknown } | null;
+  if (r.status === 200 && b?.ok === true && typeof b.steamId === "string") {
+    return {
+      ok: true,
+      value: signInValue(b as { steamId: string }, deps.storage),
+    };
+  }
+  if (r.status === 502) return { ok: false, error: "steam_unavailable" };
+  if (r.status >= 500 || r.status === 429) {
+    return { ok: false, error: "network" };
+  }
+  steam.session?.clear();
+  return { ok: false, error: "none" };
+}
+
+/** Sign-out: deletes the kept token, then tells the server (best effort). */
+export async function signOutSteam(deps: SessionDeps): Promise<void> {
+  const session = deps.bridge?.steam?.session;
+  const token = session?.get();
+  session?.clear();
+  if (typeof token === "string") {
+    await postToken(deps, "/steam/session/signout", token);
+  }
+}
+
+export type SteamDeleteError = "expired" | "network";
+
+/**
+ * "Delete my sign-in data": POST /steam/account/delete with the kept token. On
+ * success the token is deleted from secure storage. "expired": the server
+ * no longer accepts the token (it is deleted too); sign in again first.
+ */
+export async function deleteSteamAccount(
+  deps: SessionDeps,
+): Promise<{ ok: true } | { ok: false; error: SteamDeleteError }> {
+  const session = deps.bridge?.steam?.session;
+  const token = session?.get();
+  if (typeof token !== "string") return { ok: false, error: "expired" };
+  const r = await postToken(deps, "/steam/account/delete", token);
+  if (r === undefined) return { ok: false, error: "network" };
+  if (r.status === 200 && (r.body as { ok?: unknown } | null)?.ok === true) {
+    session?.clear();
+    return { ok: true };
+  }
+  if (r.status === 401 || r.status === 404) {
+    session?.clear();
+    return { ok: false, error: "expired" };
+  }
+  return { ok: false, error: "network" };
 }

@@ -17,9 +17,15 @@ vi.mock("../../../../src/ts/utils/file-storage", () => ({
   },
 }));
 
-import type { SteamBridgeSignInResult } from "../../../../src/ts/platform/desktop-bridge";
+import type {
+  DesktopBridge,
+  SteamBridgeSignInResult,
+} from "../../../../src/ts/platform/desktop-bridge";
 
 import {
+  STEAM_DELETE_TEXT,
+  STEAM_RESUMING_TEXT,
+  STEAM_SIGNIN_DESCRIPTION,
   STEAM_SIGNIN_ERROR_TEXT,
   SteamSignIn,
 } from "../../../../src/ts/components/pages/settings/custom-setting/SteamSignIn";
@@ -28,6 +34,7 @@ import {
   STEAM_NAME_HIDDEN_KEY,
   STEAM_SIGNIN_HINT,
 } from "../../../../src/ts/platform/steam-identity";
+import * as SteamSession from "../../../../src/ts/steam/steam-session";
 
 // Legal M3-HINT, exact copy
 const HINT =
@@ -37,9 +44,12 @@ const OPENID = { "openid.mode": "id_res", "openid.sig": "x" };
 let store: Map<string, string>;
 let signIn: ReturnType<typeof vi.fn<() => Promise<SteamBridgeSignInResult>>>;
 
+let secure: string | null = null;
+
 function installBridge(opts: {
   steam: boolean;
   result?: SteamBridgeSignInResult;
+  session?: boolean;
 }): void {
   signIn = vi.fn(async () =>
     "result" in opts
@@ -54,7 +64,25 @@ function installBridge(opts: {
       setItem: (k: string, v: string) => void store.set(k, v),
       removeItem: (k: string) => void store.delete(k),
     },
-    ...(opts.steam ? { steam: { signIn } } : {}),
+    ...(opts.steam
+      ? {
+          steam: {
+            signIn,
+            ...(opts.session
+              ? {
+                  session: {
+                    get: () => secure,
+                    set: (t: string) => {
+                      secure = t;
+                      return true;
+                    },
+                    clear: () => void (secure = null),
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
   });
 }
 
@@ -74,6 +102,7 @@ function press(el: HTMLElement, sel: string): void {
 }
 
 beforeEach(() => {
+  secure = null;
   store = new Map();
   vi.stubGlobal("__PLATFORM__", "steam");
 });
@@ -520,5 +549,255 @@ describe("Sign in with Steam: rendered attributes (SR-ANNOUNCE review)", () => {
     } finally {
       style.remove();
     }
+  });
+});
+
+describe("Delete my sign-in data", () => {
+  const TOKEN = "A".repeat(43);
+  async function signedIn(
+    deleteAccount?: (
+      ...a: unknown[]
+    ) => Promise<{ ok: true } | { ok: false; error: "expired" | "network" }>,
+  ): Promise<HTMLElement> {
+    installBridge({ steam: true, session: true });
+    server(200, {
+      ok: true,
+      steamId: "1",
+      ownsApp: true,
+      personaName: "PugFan",
+      sessionToken: TOKEN,
+    });
+    const el = render(
+      () => <SteamSignIn {...(deleteAccount ? { deleteAccount } : {})} />,
+      { container: document.body.appendChild(document.createElement("div")) },
+    ).container;
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() => expect($(el, "#steam-signout")).not.toBeNull());
+    return el;
+  }
+
+  it("Legal strings (exact)", () => {
+    expect(STEAM_DELETE_TEXT).toEqual({
+      button: "Delete my sign-in data",
+      confirm:
+        "Delete your Steam sign-in data? This removes your sign-in from PuggieType's server on all your devices. Each device will need to sign in with Steam again the next time it starts PuggieType. Your settings and scores on this device are not affected.",
+      confirmButton: "Yes, delete it",
+      cancel: "cancel",
+      pending: "Deleting your sign-in data...",
+      done: "Your sign-in data was deleted. You're signed out.",
+      expired:
+        "Your sign-in has expired. Sign in with Steam again, then delete your sign-in data.",
+      network:
+        "Couldn't delete your sign-in data. Check your connection and try again.",
+    });
+    expect(STEAM_RESUMING_TEXT).toBe("Signing in with Steam...");
+  });
+
+  it("only shows when a session token is kept", async () => {
+    const el = await signedIn();
+    expect(secure).toBe(TOKEN);
+    expect($(el, "#steam-delete-button")?.textContent).toBe(
+      "Delete my sign-in data",
+    );
+    cleanup();
+    installBridge({ steam: true });
+    server(200, { ok: true, steamId: "1", ownsApp: true });
+    const old = render(() => <SteamSignIn />).container;
+    press(old, "#steam-signin-button");
+    press(old, "#steam-signin-continue");
+    await waitFor(() => expect($(old, "#steam-signout")).not.toBeNull());
+    expect($(old, "#steam-delete-button")).toBeNull();
+  });
+
+  it("asks first; focus goes to cancel; cancel and Escape change nothing", async () => {
+    const del = vi.fn(async () => ({ ok: true as const }));
+    const el = await signedIn(del);
+    press(el, "#steam-delete-button");
+    expect($(el, "#steam-delete-confirm-text")?.textContent).toBe(
+      STEAM_DELETE_TEXT.confirm,
+    );
+    expect(document.activeElement?.id).toBe("steam-delete-cancel");
+    expect(
+      $(el, "#steam-delete-confirm")?.getAttribute("aria-describedby"),
+    ).toBe("steam-delete-confirm-text");
+    press(el, "#steam-delete-cancel");
+    expect(document.activeElement?.id).toBe("steam-delete-button");
+    press(el, "#steam-delete-button");
+    fireEvent.keyDown($(el, "#steam-delete-cancel") as HTMLElement, {
+      key: "Escape",
+    });
+    expect($(el, "#steam-delete-confirm")).toBeNull();
+    expect(document.activeElement?.id).toBe("steam-delete-button");
+    expect(del).not.toHaveBeenCalled();
+    expect(secure).toBe(TOKEN);
+  });
+
+  it("confirm deletes, clears secure storage and returns to sign-in", async () => {
+    const el = await signedIn();
+    const f = server(200, { ok: true, deleted: true });
+    press(el, "#steam-delete-button");
+    press(el, "#steam-delete-confirm");
+    expect($(el, '[data-testid="steam-delete-pending"]')?.textContent).toBe(
+      STEAM_DELETE_TEXT.pending,
+    );
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("steam-signin-button"),
+    );
+    expect(String(f.mock.calls[0]?.[0])).toMatch(/\/steam\/account\/delete$/);
+    expect(secure).toBeNull();
+    expect($(el, "#steam-signin-status")?.textContent).toBe(
+      STEAM_DELETE_TEXT.done,
+    );
+  });
+
+  it("leaves settings and scores on this device alone", async () => {
+    store.set(STEAM_NAME_HIDDEN_KEY, "1");
+    store.set("config", '{"theme":"pug"}');
+    localStorage.setItem("results", "[1,2,3]");
+    const el = await signedIn();
+    const before = new Map(store);
+    server(200, { ok: true, deleted: true });
+    press(el, "#steam-delete-button");
+    press(el, "#steam-delete-confirm");
+    await waitFor(() => expect($(el, "#steam-signin-button")).not.toBeNull());
+    expect(new Map(store)).toEqual(before);
+    expect(localStorage.getItem("results")).toBe("[1,2,3]");
+    localStorage.removeItem("results");
+  });
+
+  it("an expired token returns to sign-in with the expired text", async () => {
+    const el = await signedIn(async () => ({ ok: false, error: "expired" }));
+    press(el, "#steam-delete-button");
+    press(el, "#steam-delete-confirm");
+    await waitFor(() =>
+      expect($(el, "#steam-signin-status")?.textContent).toBe(
+        STEAM_DELETE_TEXT.expired,
+      ),
+    );
+    expect($(el, "#steam-signin-button")).not.toBeNull();
+  });
+
+  it("a network error stays signed in, says so and refocuses delete", async () => {
+    const el = await signedIn(async () => ({ ok: false, error: "network" }));
+    press(el, "#steam-delete-button");
+    press(el, "#steam-delete-confirm");
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("steam-delete-button"),
+    );
+    expect($(el, '[data-testid="steam-delete-error"]')?.textContent).toBe(
+      STEAM_DELETE_TEXT.network,
+    );
+    expect($(el, "#steam-signout")).not.toBeNull();
+  });
+
+  it("sign out deletes the kept token", async () => {
+    const el = await signedIn();
+    server(200, { ok: true });
+    press(el, "#steam-signout");
+    expect(secure).toBeNull();
+  });
+});
+
+describe("Silent sign-in at launch", () => {
+  it("shows the launch result in settings", async () => {
+    const mod = SteamSession;
+    installBridge({ steam: true, session: true });
+    secure = "A".repeat(43);
+    let finish: () => void = () => undefined;
+    const p = mod.startSilentSteamSignIn(
+      async () =>
+        new Promise((res) => {
+          finish = () =>
+            res({
+              ok: true,
+              value: {
+                steamId: "1",
+                ownsApp: true,
+                displayName: "PugFan",
+                personaName: "PugFan",
+              },
+            });
+        }),
+    );
+    const el = render(() => <SteamSignIn />).container;
+    expect($(el, "#steam-signin-status")?.textContent).toBe(
+      STEAM_RESUMING_TEXT,
+    );
+    finish();
+    await p;
+    await waitFor(() =>
+      expect($(el, '[data-testid="steam-signin-name"]')?.textContent).toBe(
+        "PugFan",
+      ),
+    );
+    expect($(el, "#steam-delete-button")).not.toBeNull();
+    mod.__resetSteamSessionForTests();
+  });
+});
+
+describe("Sign-in description (Legal F1)", () => {
+  const OLD =
+    "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. We don't store any of these; see our ";
+  const NEW =
+    "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. To keep you signed in, we store your Steam ID with a scrambled sign-in token, never your name or what you own; see our ";
+  const MAYBE =
+    "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. If PuggieType keeps you signed in, we store your Steam ID with a scrambled sign-in token, never your name or what you own; see our ";
+  const text = (el: HTMLElement): string | undefined =>
+    $(el, '[data-testid="steam-signin-description"]')?.textContent ?? undefined;
+
+  it("exact strings", () => {
+    expect(STEAM_SIGNIN_DESCRIPTION).toEqual({
+      noTokens: OLD,
+      maybeTokens: MAYBE,
+      tokens: NEW,
+    });
+  });
+  it("C35-1: a device that can keep a token but hasn't seen one gets the conditional text (first launch, flag off)", async () => {
+    installBridge({ steam: true, session: true });
+    server(200, { ok: true, steamId: "1", ownsApp: true });
+    const el = render(() => <SteamSignIn />).container;
+    expect(text(el)).toBe(`${MAYBE}privacy policy.`);
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() => expect($(el, "#steam-signout")).not.toBeNull());
+    expect(text(el)).toBe(`${MAYBE}privacy policy.`);
+  });
+  it("C35-1: the original text only where keep:false applies (no secure storage, or no session support)", async () => {
+    installBridge({ steam: true, session: true });
+    const b = (globalThis as { puggieDesktop?: DesktopBridge }).puggieDesktop;
+    if (b?.steam?.session) b.steam.session.canKeep = () => false;
+    const f = server(200, { ok: true, steamId: "1", ownsApp: true });
+    const el = render(() => <SteamSignIn />).container;
+    expect(text(el)).toBe(`${OLD}privacy policy.`);
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() => expect($(el, "#steam-signout")).not.toBeNull());
+    expect(JSON.parse(String(f.mock.calls[0]?.[1]?.body))).toMatchObject({
+      keep: false,
+    });
+    expect(text(el)).toBe(`${OLD}privacy policy.`);
+    cleanup();
+    installBridge({ steam: true });
+    expect(text(render(() => <SteamSignIn />).container)).toBe(
+      `${OLD}privacy policy.`,
+    );
+  });
+  it("flag on: the new text once the server issues a token, and on later launches", async () => {
+    installBridge({ steam: true, session: true });
+    server(200, {
+      ok: true,
+      steamId: "1",
+      ownsApp: true,
+      sessionToken: "A".repeat(43),
+    });
+    const el = render(() => <SteamSignIn />).container;
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() => expect(text(el)).toBe(`${NEW}privacy policy.`));
+    cleanup();
+    secure = null; // signed out, but the server still issues tokens
+    const later = render(() => <SteamSignIn />).container;
+    expect(text(later)).toBe(`${NEW}privacy policy.`);
   });
 });

@@ -7,6 +7,7 @@ import {
   ipcMain,
   net,
   protocol,
+  safeStorage,
   screen,
   session,
   shell,
@@ -20,6 +21,7 @@ import {
   APP_ORIGIN,
   APP_SCHEME,
   KeyValueStore,
+  SecureTokenStore,
   buildCsp,
   cspInputsFromHeaders,
   isPermissionAllowed,
@@ -284,6 +286,49 @@ app.whenReady().then(() => {
     event.returnValue = steamEnabled;
   });
   if (steamEnabled) {
+    // session token in OS secure storage only (safeStorage); the smoke run
+    // keeps it in memory so it never touches the real keychain
+    const tokenFile = path.join(app.getPath("userData"), "steam-session.bin");
+    let smokeToken = null;
+    const tokens = smokeSteamUiDir
+      ? new SecureTokenStore(
+          {
+            isEncryptionAvailable: () => true,
+            getSelectedStorageBackend: () => "smoke",
+            encryptString: (s) => Buffer.from(s),
+            decryptString: (b) => b.toString(),
+          },
+          {
+            read: () => {
+              if (smokeToken === null) throw new Error("none");
+              return smokeToken;
+            },
+            write: (b) => {
+              smokeToken = b;
+            },
+            remove: () => {
+              smokeToken = null;
+            },
+          },
+        )
+      : new SecureTokenStore(safeStorage, {
+          read: () => fs.readFileSync(tokenFile),
+          write: (b) => fs.writeFileSync(tokenFile, b, { mode: 0o600 }),
+          remove: () => fs.rmSync(tokenFile, { force: true }),
+        });
+    ipcMain.on("steam:session:get", (event) => {
+      event.returnValue = trusted(event) ? tokens.get() : null;
+    });
+    ipcMain.on("steam:session:set", (event, token) => {
+      event.returnValue = trusted(event) ? tokens.set(token) : false;
+    });
+    ipcMain.on("steam:session:available", (event) => {
+      event.returnValue = trusted(event) && tokens.available();
+    });
+    ipcMain.on("steam:session:clear", (event) => {
+      if (trusted(event)) tokens.clear();
+      event.returnValue = null;
+    });
     ipcMain.handle("steam:signin", (event) =>
       !isInternalUrl(event.senderFrame?.url ?? "")
         ? null
@@ -627,6 +672,7 @@ async function runMusicSmoke(win) {
 
 // Smoke only: answers POST /steam/auth on the game server's https origin with
 // a canned verified response; everything else goes to the network as usual.
+const smokeSessionCalls = [];
 function mockSteamAuthServer() {
   const cors = {
     "access-control-allow-origin": "*",
@@ -635,22 +681,37 @@ function mockSteamAuthServer() {
   };
   protocol.handle("https", (request) => {
     const url = new URL(request.url);
-    if (url.pathname !== "/steam/auth") {
+    const mocked = [
+      "/steam/auth",
+      "/steam/session",
+      "/steam/session/signout",
+      "/steam/account/delete",
+    ];
+    if (!mocked.includes(url.pathname)) {
       return net.fetch(request, { bypassCustomProtocolHandlers: true });
     }
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors });
     }
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        steamId: "76561197960287930",
-        ownsApp: true,
-        ownedDlc: [],
-        personaName: "PugFan",
-      }),
-      { headers: { "content-type": "application/json", ...cors } },
-    );
+    smokeSessionCalls.push(url.pathname);
+    const json = (body) =>
+      new Response(JSON.stringify(body), {
+        headers: { "content-type": "application/json", ...cors },
+      });
+    if (url.pathname === "/steam/session/signout") return json({ ok: true });
+    if (url.pathname === "/steam/account/delete") {
+      return json({ ok: true, deleted: true });
+    }
+    // /steam/auth and /steam/session: a fresh (fake) rotated token each time
+    return json({
+      ok: true,
+      steamId: "76561197960287930",
+      ownsApp: true,
+      ownedDlc: [],
+      personaName: "PugFan",
+      sessionToken: crypto.randomBytes(32).toString("base64url"),
+      sessionExpiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+    });
   });
 }
 
@@ -757,12 +818,55 @@ async function runSteamUiSmoke(win) {
     await click("#steam-name-hidden-on");
     out.hiddenWorks = await waitFor('[data-testid="steam-signin-name"]', false);
     await click("#steam-name-hidden-off");
+
+    // session token: kept in (smoke) secure storage; a reload signs in
+    // silently with it; Delete my sign-in data asks first, then clears it
+    out.tokenKept = await js(
+      `typeof window.puggieDesktop.steam.session?.get() === "string"`,
+    );
+    const reloaded = new Promise((res) =>
+      win.webContents.once("did-finish-load", res),
+    );
+    void win.loadURL(`${APP_ORIGIN}/settings`);
+    await reloaded;
+    await waitFor("#settings-tab-gameplay");
+    await click("#settings-tab-gameplay");
+    out.silent = await waitFor('[data-testid="steam-signin-name"]');
+    out.silentUsedSession = smokeSessionCalls.includes("/steam/session");
+    await showSteamSection();
+    out.deleteButton = await waitFor("#steam-delete-button");
+    await js(
+      `document.getElementById("steam-delete-button").scrollIntoView({ block: "center" })`,
+    );
+    out.shots.push(await shot("delete-button.png"));
+    await click("#steam-delete-button");
+    out.confirmFocus = await js(`document.activeElement?.id ?? null`);
+    out.shots.push(await shot("delete-confirm.png"));
+    await click("#steam-delete-confirm");
+    out.backToSignIn = await waitFor("#steam-signin-button");
+    out.deletedText = await js(
+      `document.getElementById("steam-signin-status")?.textContent ?? null`,
+    );
+    out.tokenCleared = await js(
+      `window.puggieDesktop.steam.session?.get() === null`,
+    );
+    out.deleteCalled = smokeSessionCalls.includes("/steam/account/delete");
+    out.shots.push(await shot("delete-done.png"));
     out.ok =
       out.hint ===
         "Steam will show this sign-in as coming from 127.0.0.1 (your own computer)." &&
       out.signedIn === true &&
       out.name === "PugFan" &&
       out.hiddenWorks === true &&
+      out.tokenKept === true &&
+      out.silent === true &&
+      out.silentUsedSession === true &&
+      out.deleteButton === true &&
+      out.confirmFocus === "steam-delete-cancel" &&
+      out.backToSignIn === true &&
+      out.deletedText === "Your sign-in data was deleted. You're signed out." &&
+      out.tokenCleared === true &&
+      out.deleteCalled === true &&
       out.inView === true &&
       // empty: the rule matches and the button sits where the region is
       out.idleLayout?.empty === true &&

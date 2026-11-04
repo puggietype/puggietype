@@ -298,3 +298,60 @@ export function legalWindowOptions() {
     },
   };
 }
+
+// ---------------------------------------------------------- session token
+// Steam session token (server FEATURE_STEAM_SESSION). Kept only in the OS
+// secure storage through Electron safeStorage (Keychain, DPAPI, libsecret /
+// kwallet): the file on disk holds ciphertext only. With no real secure
+// backend (Linux "basic_text"), nothing is stored and the app signs in with
+// OpenID every time. Never in storage.json, never logged.
+export const SESSION_TOKEN_RX = /^[A-Za-z0-9_-]{43}$/;
+
+export class SecureTokenStore {
+  /**
+   * @param {{ isEncryptionAvailable(): boolean, encryptString(s: string): Buffer,
+   *   decryptString(b: Buffer): string, getSelectedStorageBackend?(): string }} safe
+   * @param {{ read(): Buffer, write(b: Buffer): void, remove(): void }} file
+   */
+  constructor(safe, file) {
+    this.safe = safe;
+    this.file = file;
+  }
+  available() {
+    try {
+      if (!this.safe.isEncryptionAvailable()) return false;
+      const backend = this.safe.getSelectedStorageBackend?.();
+      return backend !== "basic_text" && backend !== "unknown";
+    } catch {
+      return false;
+    }
+  }
+  get() {
+    if (!this.available()) return null;
+    try {
+      const token = this.safe.decryptString(this.file.read());
+      return SESSION_TOKEN_RX.test(token) ? token : null;
+    } catch {
+      return null;
+    }
+  }
+  /** @returns {boolean} stored */
+  set(token) {
+    if (typeof token !== "string" || !SESSION_TOKEN_RX.test(token))
+      return false;
+    if (!this.available()) return false;
+    try {
+      this.file.write(this.safe.encryptString(token));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  clear() {
+    try {
+      this.file.remove();
+    } catch {
+      // already gone
+    }
+  }
+}

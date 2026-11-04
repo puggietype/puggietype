@@ -8,7 +8,25 @@ contextBridge.exposeInMainWorld("puggieDesktop", {
   version: 1,
   // Steam M3: only when the shell runs with PUGGIE_STEAM_OPENID=1
   ...(steamEnabled
-    ? { steam: { signIn: () => ipcRenderer.invoke("steam:signin") } }
+    ? {
+        steam: {
+          signIn: () => ipcRenderer.invoke("steam:signin"),
+          // session token, kept in OS secure storage by the main process
+          session: {
+            get: () => {
+              const v = ipcRenderer.sendSync("steam:session:get");
+              return typeof v === "string" ? v : null;
+            },
+            set: (token) =>
+              ipcRenderer.sendSync("steam:session:set", String(token)) === true,
+            clear: () => {
+              ipcRenderer.sendSync("steam:session:clear");
+            },
+            canKeep: () =>
+              ipcRenderer.sendSync("steam:session:available") === true,
+          },
+        },
+      }
     : {}),
   // Steam Graphics settings: display mode + resolution (VSync at launch)
   display: {

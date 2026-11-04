@@ -100,7 +100,8 @@ describe("signInWithSteam", () => {
     expect(fetch).toHaveBeenCalledWith("https://ws.example/steam/auth", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ openid: OPENID }),
+      // this shell keeps no session token, so it asks for none (Legal F2)
+      body: JSON.stringify({ openid: OPENID, keep: false }),
     });
   });
 
