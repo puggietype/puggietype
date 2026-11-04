@@ -17,12 +17,12 @@ const STEAM_RETENTION_ROW_A =
 const STEAM_VARIANT_A =
   "The PuggieType desktop app on Steam can let you sign in with your Steam account. Sign-in happens on Steam's own website in your browser; we never see your Steam password. When you sign in, Steam tells our game server your public Steam ID, and our server asks Steam whether your account owns PuggieType (and any supporter pack) and what your Steam display name is. We use this only to sign you in, unlock what you own, and show your display name if it passes our name filter and you haven't hidden it. Our server does not store or log your Steam ID or display name; it holds them in memory only while handling the sign-in request. We don't sell or share Steam data, or use it for marketing. Our game server runs on Fly.io; see Service providers. Steam data is provided by Valve 'as is', without warranty. Valve's own handling of your data is described in Valve's Privacy Policy (https://store.steampowered.com/privacy_agreement/).";
 
-// Legal review of PR #28 (accounts milestone A), 2026-11-04, section (d) (exact copy)
+// Legal review of PR #28 (accounts milestone A), 2026-11-04, section (d), with the flag-on review of PR #29 (2026-11-04, section 2) applied (exact copy)
 const ACCOUNTS_SECTION = [
   "## Accounts (ages 13+)",
   "You can use PuggieType without an account. If you create one, we process:",
   "- **Sign-in details:** your email address and password (stored only in hashed form by Google Firebase Authentication), or, if you sign in with Google, your Google account ID, email address and whether it's verified. We don't receive your Google password, contacts or other Google data.",
-  "- **Account record:** a random account ID, a generated pug name, your email address, whether it's verified, when you created the account, and the scores and settings you save.",
+  "- **Account record:** a random account ID, a generated pug name, whether your email address is verified, that you passed the age check and when (never your birth year), whether your scores are listed on leaderboards, the scores, personal bests and settings you save, and when you created the account. Your email address itself is stored only by Google Firebase Authentication, not in our database. If a result looks suspicious, we keep its keystroke timings for up to 7 days for anti-cheat review.",
   "- **Age check:** we ask for your birth year once, only to check that you're old enough. We don't send it to our servers or store it. Only a yes/no result is used. If the answer means you can't have an account, we delete the sign-in that was just made, and we keep only a note in your browser to stop the question being asked again.",
   "- **Security check:** sign-in and sign-up use Cloudflare Turnstile, which checks your browser and device signals (such as your IP address) to tell people from bots. Turnstile doesn't track you across sites for advertising.",
   "",
@@ -30,7 +30,7 @@ const ACCOUNTS_SECTION = [
   "",
   "**Who processes it for us:** Google (Firebase Authentication, and Google Sign-In if you use it), Cloudflare (Turnstile), Neon (our account database, hosted in the US, Oregon), and Fly.io (our server). They act as our processors under their data processing terms.",
   "",
-  "**International transfers:** this data is stored and processed in the United States. For users in the EU, EEA, UK and Switzerland, transfers rely on the EU-U.S. Data Privacy Framework where the provider is certified, and otherwise on the European Commission's Standard Contractual Clauses.",
+  "**International transfers:** this data is stored and processed in the United States. For users in the EU, EEA, UK and Switzerland, transfers to Google LLC, Cloudflare, Inc., Fly.io, Inc. and Neon, LLC (through Databricks, Inc.'s certification) rely on their certifications under the EU-U.S. Data Privacy Framework, its UK Extension and the Swiss-U.S. Data Privacy Framework. Where a certification doesn't apply, transfers rely on the European Commission's Standard Contractual Clauses (and the UK and Swiss equivalents) in their data processing terms.",
   "",
   "**How long we keep it:** for as long as you have an account. When you delete your account, we delete your account record and Firebase sign-in straight away. Database backups are overwritten within about 6 hours, and any leftover sign-in data is removed within 30 days. Cloudflare and Google keep limited security logs as described in their own privacy policies.",
   "",
@@ -44,14 +44,15 @@ const ACCOUNTS_NOT_IN_EFFECT =
   '<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Pre-launch text for the "Accounts (ages 13+)" section, from Legal\'s PR #28 review (2026-11-04, section (d)). Accounts are behind a flag that is off; this section describes no processing that happens today. -->';
 const ACCOUNTS_RETENTION_ROWS = [
   "| Account data | until you delete your account |",
-  "| Firebase sign-in | deleted with the account (within 30 days at most) |",
+  "| Firebase sign-in (email address, password hash or Google account ID) | deleted with the account (within 30 days at most) |",
 ].join("\n");
 
+// Legal flag-on review of PR #29, 2026-11-04, section 2 (exact copy)
 const NEON_PROVIDER =
-  "- Neon, LLC (a Databricks company), USA, database hosting for account data (account ID, generated name, settings, scores) and leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.";
+  "- Neon, LLC (a Databricks company), USA, database hosting for account records (account ID, generated pug name, email-verified status, age-check result, settings, scores and personal bests) and leaderboard scores (AWS us-west-2, Oregon). Our database doesn't store your email address. Covered by Neon's Data Processing Addendum; transfers from the EU/UK/Switzerland rely on the Data Privacy Framework certification of Databricks, Inc., which covers Neon, LLC.";
 const ACCOUNTS_PROVIDERS = [
-  '- **Google LLC**, USA, account sign-in with Google Firebase Authentication, including Google sign-in if you use it. Google acts as our processor under its data processing terms; transfers are covered as described in "Accounts (ages 13+)".',
-  '- **Cloudflare, Inc.** also runs Cloudflare Turnstile, the security check on sign-in and sign-up, which checks browser and device signals (such as your IP address) to tell people from bots. Cloudflare acts as our processor under its data processing terms; transfers are covered as described in "Accounts (ages 13+)".',
+  "- **Google LLC**, USA, account sign-in with Google Firebase Authentication, including Google sign-in if you use it. Google acts as our processor under its data processing terms; transfers from the EU/UK/Switzerland rely on its Data Privacy Framework certification.",
+  "- **Cloudflare, Inc.** also runs Cloudflare Turnstile, the security check on sign-in and sign-up, which checks browser and device signals (such as your IP address) to tell people from bots. Cloudflare acts as our processor under its data processing terms; transfers from the EU/UK/Switzerland rely on its Data Privacy Framework certification.",
 ].join("\n");
 const PROVIDERS_NOT_IN_EFFECT =
   '<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. The Google (Firebase Authentication) and Cloudflare Turnstile entries, and the account data in the Neon entry, are pre-launch text for the "Accounts (ages 13+)" section. Accounts are behind a flag that is off; these entries describe no processing that happens today. -->';
@@ -136,6 +137,14 @@ describe("legal-markdown", () => {
       `## Service providers\n${PROVIDERS_NOT_IN_EFFECT}\n- **Cloudflare, Inc.** hosts`,
     );
     expect(md).toContain(`\n${NEON_PROVIDER}\n${ACCOUNTS_PROVIDERS}\n\n`);
+  });
+
+  it("drops the superseded accounts transfer and email wording", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    expect(md).not.toContain("transfers are covered as described in");
+    expect(md).not.toContain("Neon's Data Privacy Framework certification");
+    expect(md).not.toContain("your email address, whether it's verified");
+    expect(md).not.toContain("| Firebase sign-in |");
   });
 
   it("renders the service providers as one list, note hidden", () => {
