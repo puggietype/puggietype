@@ -5,6 +5,7 @@ import {
   TurnstileApi,
   TurnstileRenderOptions,
 } from "../../../accounts/turnstile";
+import { cn } from "../../../utils/cn";
 
 export type TurnstileControl = { reset: () => void };
 
@@ -61,7 +62,10 @@ export function TurnstileWidget(props: {
 
   return (
     <>
-      <div ref={(el) => (containerRef = el)} class="min-h-16.25"></div>
+      <div
+        ref={(el) => (containerRef = el)}
+        class={cn("min-h-16.25", { hidden: problem() !== null })}
+      ></div>
       <Show when={problem() === "unconfigured"}>
         <p class="text-sm text-sub">Sign-in is not available yet.</p>
       </Show>
