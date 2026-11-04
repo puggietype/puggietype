@@ -13,6 +13,7 @@ import { leaderboardHttpBase } from "../../../../multiplayer/leaderboards";
 import { getPlatform } from "../../../../platform";
 import { getDesktopBridge } from "../../../../platform/desktop-bridge";
 import {
+  canKeepSession,
   deleteSteamAccount,
   hasSteamSession,
   isSteamNameHidden,
@@ -73,6 +74,8 @@ export const STEAM_DELETE_TEXT = {
 export const STEAM_SIGNIN_DESCRIPTION = {
   noTokens:
     "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. We don't store any of these; see our ",
+  maybeTokens:
+    "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. If PuggieType keeps you signed in, we store your Steam ID with a scrambled sign-in token, never your name or what you own; see our ",
   tokens:
     "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. To keep you signed in, we store your Steam ID with a scrambled sign-in token, never your name or what you own; see our ",
 } as const;
@@ -139,6 +142,15 @@ export function SteamSignIn(props: {
     state();
     return canDelete() || steamSessionsOn(storage);
   };
+  // Legal C35-1: "noTokens" only where keep:false applies (nothing can be
+  // kept); a device that could keep a token but hasn't seen one yet gets the
+  // conditional text, so it's true at the moment of collection
+  const description = (): string =>
+    tokensStored()
+      ? STEAM_SIGNIN_DESCRIPTION.tokens
+      : canKeepSession(getDesktopBridge())
+        ? STEAM_SIGNIN_DESCRIPTION.maybeTokens
+        : STEAM_SIGNIN_DESCRIPTION.noTokens;
   const [hidden, setHidden] = createSignal(isSteamNameHidden(storage));
 
   const shownName = (): string | null => {
@@ -229,9 +241,7 @@ export function SteamSignIn(props: {
         title="steam sign-in"
         description={
           <span data-testid="steam-signin-description">
-            {tokensStored()
-              ? STEAM_SIGNIN_DESCRIPTION.tokens
-              : STEAM_SIGNIN_DESCRIPTION.noTokens}
+            {description()}
             <Button
               variant="text"
               href="/privacy"
