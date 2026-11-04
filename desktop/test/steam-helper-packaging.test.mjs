@@ -55,24 +55,32 @@ describe("steam ticket helper is never packaged", () => {
       commit: COMMIT,
     });
     const webDir = path.join(app, "web");
-    assertNoSteamHelper({ appDir: app, webDir });
+    const legalDir = path.join(out, "legal");
+    assertNoSteamHelper({ appDir: app, webDir, legalDir });
     // a later depot step may add the helper next to the app, outside the check
     const depot = path.join(out, "resources", "steam-ticket-helper");
     fs.mkdirSync(depot, { recursive: true });
     fs.writeFileSync(path.join(depot, "steam-ticket-helper"), "x");
     fs.writeFileSync(path.join(out, "steam_api64.dll"), "x");
-    assertNoSteamHelper({ appDir: app, webDir });
+    assertNoSteamHelper({ appDir: app, webDir, legalDir });
     // but never inside the app folder or the web build
     fs.writeFileSync(path.join(app, "src", "steam_api64.dll"), "x");
     assert.throws(
-      () => assertNoSteamHelper({ appDir: app, webDir }),
+      () => assertNoSteamHelper({ appDir: app, webDir, legalDir }),
       /\(app\)/,
     );
     fs.rmSync(path.join(app, "src", "steam_api64.dll"));
     fs.writeFileSync(path.join(webDir, "steam-ticket-helper"), "x");
     assert.throws(
-      () => assertNoSteamHelper({ appDir: app, webDir }),
+      () => assertNoSteamHelper({ appDir: app, webDir, legalDir }),
       /must not be packaged/,
+    );
+    fs.rmSync(path.join(webDir, "steam-ticket-helper"));
+    // nor in out/legal (PKG-HELPER-SCOPE)
+    fs.writeFileSync(path.join(legalDir, "libsteam_api.so"), "x");
+    assert.throws(
+      () => assertNoSteamHelper({ appDir: app, webDir, legalDir }),
+      /\(legal\)/,
     );
     for (const bad of [
       "steam-ticket-helper/steam-ticket-helper",
