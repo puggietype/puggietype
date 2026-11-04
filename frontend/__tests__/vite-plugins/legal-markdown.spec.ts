@@ -38,11 +38,12 @@ describe("legal-markdown", () => {
   it("includes the leaderboards privacy section verbatim", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     expect(md).toContain(
-      "The 'Show my score on the leaderboard' setting defaults on, but a score is posted only when you press a Submit score button (Submit score to leaderboard, or Submit score & next test, & repeat or & retry saving).",
+      "The 'Show my score on the leaderboard' setting defaults on, but a score is posted only when you press a Submit score button (Submit score to leaderboard, or Submit score & next test, & repeat or & retry saving). We then save your randomly assigned nickname and your speed (wpm), accuracy and raw speed. Solo scores are lightly checked by our server for impossible speeds, but they aren't verified like multiplayer scores, so they appear on a separate 'Solo' board. We save these scores in our database, which is hosted for us by Neon on Amazon Web Services servers in Oregon, USA.",
     );
     expect(md).toContain(
-      "Solo scores are lightly checked by our server for impossible speeds, but they aren't verified like multiplayer scores, so they appear on a separate 'Solo' board. We may remove any score that looks cheated.",
+      "We may remove scores that look cheated or that break our rules.",
     );
+    expect(md).not.toContain("We may remove any score that looks cheated.");
     expect(md).toContain(
       "email us your nickname, board, and the approximate date and score, and we'll find and remove it.",
     );
