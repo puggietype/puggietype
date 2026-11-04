@@ -9,6 +9,10 @@ const plugins = [
   solidPlugin({ hot: false }),
 ];
 
+// build-time defines from vite.config.ts; accounts tests flip this with
+// vi.stubGlobal("__FEATURE_ACCOUNTS__", true)
+const define = { __FEATURE_ACCOUNTS__: "globalThis.__FEATURE_ACCOUNTS__" };
+
 const tanstackSolidNoExternal: (string | RegExp)[] = [
   "@solidjs/meta",
   /@tanstack\/solid-.*/,
@@ -32,6 +36,7 @@ export const projects: UserWorkspaceConfig[] = [
         "__tests__/__harness__/mock-static.ts",
       ],
     },
+    define,
     plugins,
   },
   {
@@ -44,6 +49,7 @@ export const projects: UserWorkspaceConfig[] = [
       environment: "jsdom",
       globalSetup: "__tests__/global-setup.ts",
     },
+    define,
     plugins,
   },
   {
@@ -61,6 +67,7 @@ export const projects: UserWorkspaceConfig[] = [
       ],
       globals: true,
     },
+    define,
     plugins,
   },
 ];

@@ -1,0 +1,151 @@
+// The only module that imports the real Firebase SDK in a standalone build
+// (see vite-plugins/firebase-stub.ts). Load it with import() only: Firebase
+// must not load for visitors who never open sign-in.
+import { getApp, getApps, initializeApp } from "firebase/app";
+import {
+  Auth,
+  createUserWithEmailAndPassword,
+  deleteUser,
+  EmailAuthProvider,
+  getAdditionalUserInfo,
+  getAuth,
+  getIdToken,
+  GoogleAuthProvider,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  User,
+} from "firebase/auth";
+
+import { FirebaseWebConfig } from "./config";
+
+// named so it never clashes with the legacy (BACKEND_URL) default app
+const APP_NAME = "puggietype-accounts";
+
+export type AuthUser = Pick<User, "uid" | "emailVerified">;
+
+let auth: Auth | undefined;
+
+function getAccountsAuth(config: FirebaseWebConfig): Auth {
+  if (auth !== undefined) return auth;
+  const app = getApps().some((a) => a.name === APP_NAME)
+    ? getApp(APP_NAME)
+    : initializeApp(config, APP_NAME);
+  auth = getAuth(app);
+  return auth;
+}
+
+export async function signInEmail(
+  config: FirebaseWebConfig,
+  email: string,
+  password: string,
+): Promise<User> {
+  const result = await signInWithEmailAndPassword(
+    getAccountsAuth(config),
+    email,
+    password,
+  );
+  return result.user;
+}
+
+/** `isNew`: this popup just created the Firebase user */
+export async function signInGoogle(
+  config: FirebaseWebConfig,
+): Promise<{ user: User; isNew: boolean }> {
+  const result = await signInWithPopup(
+    getAccountsAuth(config),
+    new GoogleAuthProvider(),
+  );
+  return {
+    user: result.user,
+    isNew: getAdditionalUserInfo(result)?.isNewUser ?? false,
+  };
+}
+
+export async function createUserEmail(
+  config: FirebaseWebConfig,
+  email: string,
+  password: string,
+): Promise<User> {
+  const result = await createUserWithEmailAndPassword(
+    getAccountsAuth(config),
+    email,
+    password,
+  );
+  return result.user;
+}
+
+/** removes the Firebase user; needs a recent sign-in */
+export async function deleteFirebaseUser(user: User): Promise<void> {
+  await deleteUser(user);
+}
+
+/** `refresh` forces a new token (fresh auth_time after a re-auth) */
+export async function getUserIdToken(
+  user: User,
+  refresh = false,
+): Promise<string> {
+  return getIdToken(user, refresh);
+}
+
+/** the persisted user once Firebase has restored it, else null */
+export async function getRestoredUser(
+  config: FirebaseWebConfig,
+): Promise<User | null> {
+  const a = getAccountsAuth(config);
+  await a.authStateReady();
+  return a.currentUser;
+}
+
+export async function signOutFirebase(
+  config: FirebaseWebConfig,
+): Promise<void> {
+  await signOut(getAccountsAuth(config));
+}
+
+export async function sendPasswordReset(
+  config: FirebaseWebConfig,
+  email: string,
+): Promise<void> {
+  await sendPasswordResetEmail(getAccountsAuth(config), email);
+}
+
+export async function sendVerification(user: User): Promise<void> {
+  await sendEmailVerification(user);
+}
+
+/** the signed-in Firebase user, re-read from the server (emailVerified) */
+export async function getFreshUser(
+  config: FirebaseWebConfig,
+): Promise<User | null> {
+  const user = await getRestoredUser(config);
+  await user?.reload();
+  return user;
+}
+
+/** how the user confirms it's them: their password, or a Google popup */
+export function reauthKind(user: User): "password" | "google" {
+  return user.providerData.some((p) => p.providerId === "password")
+    ? "password"
+    : "google";
+}
+
+/** fresh sign-in for sensitive actions (delete); the email stays in Firebase */
+export async function reauthenticate(
+  user: User,
+  password: string | undefined,
+): Promise<void> {
+  if (reauthKind(user) === "password") {
+    const credential = EmailAuthProvider.credential(
+      user.email ?? "",
+      password ?? "",
+    );
+    await reauthenticateWithCredential(user, credential);
+  } else {
+    await reauthenticateWithPopup(user, new GoogleAuthProvider());
+  }
+}
