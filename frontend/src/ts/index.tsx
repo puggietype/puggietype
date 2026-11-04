@@ -1,6 +1,9 @@
 // Import sorting is disabled for this file (.oxfmtrc.json): many imports run
 // side effects on load, so their order matters.
 
+// steam: master gain before any AudioContext can exist (empty on web)
+import "./steam/early-audio";
+
 // register signal tracking hook before any signals are created
 import "./dev/signal-tracker";
 

@@ -6,6 +6,7 @@ import { getPlatform } from "../platform";
 import { getDesktopBridge } from "../platform/desktop-bridge";
 import { isTestActive } from "../states/test";
 import { installGamepadNav } from "./gamepad-nav";
+import { applyMasterVolume, installMasterGain, sfxGain } from "./master-gain";
 import { SteamMusic, type MusicAudio } from "./music";
 import {
   type AnimationQuality,
@@ -188,46 +189,7 @@ export function applyDisplay(s: SteamSettings, initial = false): void {
   setRestartRequired(r?.restartRequired === true);
 }
 
-const masterGains = new Set<GainNode>();
-let masterVolume = 1;
-
-/**
- * Master volume for every Web Audio sound: each AudioContext created after
- * this (Howler's and the synthesized click/error tones) routes its
- * destination through one master GainNode. HTML audio (the music) applies
- * the master volume itself.
- */
-export function installMasterGain(target: {
-  AudioContext?: typeof AudioContext;
-}): void {
-  const Native = target.AudioContext;
-  if (Native === undefined) return;
-  class MasterAudioContext extends Native {
-    readonly #master: GainNode;
-    constructor(options?: AudioContextOptions) {
-      super(options);
-      this.#master = this.createGain();
-      this.#master.gain.value = masterVolume;
-      this.#master.connect(super.destination);
-      masterGains.add(this.#master);
-    }
-    // oxlint-disable-next-line typescript/class-literal-property-style -- forwards to the master gain
-    override get destination(): AudioDestinationNode {
-      return this.#master as unknown as AudioDestinationNode;
-    }
-  }
-  target.AudioContext = MasterAudioContext;
-}
-
-/** Web Audio gain: master × sound effects, 0 while muted */
-export function sfxGain(s: SteamSettings): number {
-  return s.muted ? 0 : s.masterVolume * s.sfxVolume;
-}
-
-export function applyMasterVolume(volume: number): void {
-  masterVolume = volume;
-  for (const g of masterGains) g.gain.value = volume;
-}
+export { applyMasterVolume, installMasterGain, sfxGain } from "./master-gain";
 
 let installed = false;
 

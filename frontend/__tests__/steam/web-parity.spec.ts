@@ -47,8 +47,21 @@ describe("steam game settings stay out of the web build", () => {
     expect(index).toContain(
       `if (${guard}) {\n  void import("./steam/game-settings")`,
     );
-    // nothing else imports the steam modules statically
-    expect(index).not.toMatch(/^import .*steam\//m);
+    // nothing else imports the steam modules statically, except the
+    // early-audio side-effect import, whose body is inside the inline check
+    expect(index.match(/^import .*steam\/.*$/gm)).toEqual([
+      'import "./steam/early-audio";',
+    ]);
+    const early = src("steam/early-audio.ts");
+    expect(early).toMatch(
+      new RegExp(
+        `^if \\(${guard.replace(/[()&|=!"]/g, "\\$&")}\\) \\{\\n  installMasterGain`,
+        "m",
+      ),
+    );
+    // only pure imports: no schema or store module (their top-level code
+    // would stay in the web bundle)
+    expect(early).not.toMatch(/settings-store|zod|game-settings/);
     expect(registry).not.toMatch(/^import .*Steam/m);
   });
 });
