@@ -287,12 +287,17 @@ export function loadTestSettingsFromUrl(getOverride?: string): void {
       nosave: true,
     });
     // steam: list what was actually applied (unavailable funboxes are
-    // dropped by the config override); the web build folds to val.
-    applied["funbox"] = (
-      typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
-        ? dropUnavailableFunboxes(val)
-        : val
-    ).join(", ");
+    // dropped by the config override), and leave the line out when the link
+    // only had unavailable ones (QA PR20-EMPTY-FUNBOX). The web build folds
+    // to the else branch.
+    if (typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") {
+      const kept = dropUnavailableFunboxes(val);
+      if (kept.length > 0 || val.length === 0) {
+        applied["funbox"] = kept.join(", ");
+      }
+    } else {
+      applied["funbox"] = val.join(", ");
+    }
   }
 
   void restartTest({
