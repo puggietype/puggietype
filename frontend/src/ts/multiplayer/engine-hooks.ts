@@ -17,6 +17,8 @@ export type RaceFinishData = {
 };
 
 let raceWords: readonly string[] | undefined;
+/** reactive mirror of `raceWords !== undefined` */
+const [raceWordsActive, setRaceWordsActive] = createSignal(false);
 let inputLocked = false;
 /** a signal so restart controls (button, keytips) hide while it's set */
 const [restartLocked, setRestartLocked] = createSignal(false);
@@ -28,10 +30,11 @@ let discardUntil = 0;
 /** while set, the words generator returns these words in order */
 export function setRaceWords(words: readonly string[] | undefined): void {
   raceWords = words;
+  setRaceWordsActive(words !== undefined);
 }
 
 export function isRaceActive(): boolean {
-  return raceWords !== undefined;
+  return raceWordsActive();
 }
 
 /** length of the race word list, undefined outside a race */
