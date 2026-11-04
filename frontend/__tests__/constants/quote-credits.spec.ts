@@ -11,8 +11,10 @@ describe("quote credits copy", () => {
     );
   });
 
-  it("has a credits line and never uses the upstream name", () => {
-    expect(QUOTE_CREDITS_LINE.length).toBeGreaterThan(0);
+  it("uses Legal's exact credits line and never the upstream name", () => {
+    expect(QUOTE_CREDITS_LINE).toBe(
+      "Quotes are short excerpts credited to their original authors and remain their property. Their authors aren't affiliated with PuggieType and don't endorse it. To report a quote, email support@puggietype.com.",
+    );
     expect(QUOTE_CREDITS_LINE.toLowerCase()).not.toContain("monkeytype");
   });
 });
