@@ -7,7 +7,7 @@ apart from the new About/credits lines.
 
 ## Sounds
 
-Provenance: `frontend/static/sounds/SOURCES.md` (155 files: 2 TRACED, 153 UNTRACED).
+Provenance: `docs/sounds-SOURCES.md` (155 files: 2 TRACED, 153 UNTRACED).
 
 Steam handling of UNTRACED packs (`src/ts/constants/sound-clearance.ts`):
 
@@ -18,7 +18,7 @@ Steam handling of UNTRACED packs (`src/ts/constants/sound-clearance.ts`):
 - **cross-play:** `migrateConfig` resets synced or imported web configs that select an
   excluded sound to `off` (`src/ts/steam/asset-clearance.ts`).
 
-To clear a pack later, add its verified row to SOURCES.md and remove its id from the lists.
+To clear a pack later, add its verified row to `docs/sounds-SOURCES.md` and remove its id from the lists.
 
 ## Song-lyric quotes
 
