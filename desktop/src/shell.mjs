@@ -124,3 +124,82 @@ export class KeyValueStore {
     this.writeFile(JSON.stringify(this.data));
   }
 }
+
+export const DEFAULT_WS_ORIGIN = "wss://ws.puggietype.com";
+
+/**
+ * Pulls what the desktop CSP needs from the steam build's rendered `_headers`
+ * (vite-plugins/pages-headers.ts): inline-script hashes from script-src and
+ * the ws/wss origins from connect-src.
+ */
+export function cspInputsFromHeaders(headersText) {
+  const line = String(headersText ?? "")
+    .split("\n")
+    .find((l) => l.trim().toLowerCase().startsWith("content-security-policy:"));
+  if (line === undefined) return { scriptHashes: [], wsOrigins: [] };
+  const directives = new Map(
+    line
+      .slice(line.indexOf(":") + 1)
+      .split(";")
+      .map((d) => d.trim().split(/\s+/))
+      .filter((p) => p[0])
+      .map(([name, ...values]) => [name.toLowerCase(), values]),
+  );
+  const scriptHashes = (directives.get("script-src") ?? []).filter((v) =>
+    /^'sha(256|384|512)-[A-Za-z0-9+/=]+'$/.test(v),
+  );
+  const wsOrigins = (directives.get("connect-src") ?? []).filter((v) =>
+    /^wss?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(v),
+  );
+  return { scriptHashes, wsOrigins };
+}
+
+/** each ws origin plus the http(s) origin the leaderboards use */
+function withHttpTwins(wsOrigins) {
+  const out = [];
+  for (const ws of wsOrigins) {
+    out.push(ws, ws.replace(/^wss:/, "https:").replace(/^ws:/, "http:"));
+  }
+  return [...new Set(out)];
+}
+
+/**
+ * Strict CSP for every app:// response. 'self' is app://puggietype. Network
+ * access is limited to the multiplayer server (wss) and its https twin
+ * (leaderboards). No eval, no remote scripts, no frames, no plugins.
+ */
+export function buildCsp({ scriptHashes = [], wsOrigins = [] } = {}) {
+  const ws = wsOrigins.length > 0 ? wsOrigins : [DEFAULT_WS_ORIGIN];
+  return [
+    "default-src 'self'",
+    ["script-src 'self'", ...scriptHashes].join(" "),
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    "img-src 'self' data: blob:",
+    ["connect-src 'self'", ...withHttpTwins(ws)].join(" "),
+    "media-src 'self' blob:",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
+/**
+ * Permissions are denied unless listed here, and only for our own origin:
+ * the theme share button copies a link, and the in-app fullscreen command
+ * may use the HTML fullscreen API.
+ */
+export const ALLOWED_PERMISSIONS = new Set([
+  "clipboard-sanitized-write",
+  "fullscreen",
+]);
+
+export function isPermissionAllowed(permission, requestingUrl) {
+  return (
+    ALLOWED_PERMISSIONS.has(permission) && isInternalUrl(requestingUrl ?? "")
+  );
+}

@@ -1,7 +1,15 @@
 // PuggieType desktop shell (Steam flavor). Plain Electron: no Steamworks
 // SDK, no ads. Loads the PLATFORM=steam web build from ../frontend/dist (or
 // PUGGIE_DIST) over a private app:// scheme.
-import { app, BrowserWindow, ipcMain, net, protocol, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  net,
+  protocol,
+  session,
+  shell,
+} from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -9,6 +17,9 @@ import {
   APP_ORIGIN,
   APP_SCHEME,
   KeyValueStore,
+  buildCsp,
+  cspInputsFromHeaders,
+  isPermissionAllowed,
   isExternalOpenable,
   isFullscreenShortcut,
   isInternalUrl,
@@ -82,6 +93,15 @@ function runSmokeTest(win) {
           stored,
         };
       })()`);
+      r.evalBlocked = await win.webContents.executeJavaScript(
+        `(() => { try { eval("1"); return false; } catch { return true; } })()`,
+      );
+      r.geolocation = await win.webContents.executeJavaScript(
+        `navigator.permissions.query({ name: "geolocation" }).then((p) => p.state)`,
+      );
+      r.remoteFetchBlocked = await win.webContents.executeJavaScript(
+        `fetch("https://example.com/").then(() => false, () => true)`,
+      );
       win.setFullScreen(true);
       await new Promise((res) => setTimeout(res, 1500));
       r.fullscreen = win.isFullScreen();
@@ -90,7 +110,11 @@ function runSmokeTest(win) {
         !r.hasRequire &&
         !r.hasProcess &&
         r.bridgeVersion === 1 &&
-        r.stored === "1";
+        r.stored === "1" &&
+        r.evalBlocked === true &&
+        r.geolocation !== "granted" &&
+        r.remoteFetchBlocked === true &&
+        r.fullscreen === true;
       console.log(JSON.stringify({ ok, ...r }));
       app.exit(ok ? 0 : 1);
     } catch (e) {
@@ -106,13 +130,42 @@ app.whenReady().then(() => {
     (data) => fs.writeFileSync(file, data),
   );
 
-  protocol.handle(APP_SCHEME, (request) => {
+  // Strict CSP on every app:// response (Pages _headers do not apply here).
+  let headersText = "";
+  try {
+    headersText = fs.readFileSync(path.join(distDir, "_headers"), "utf8");
+  } catch {
+    // no _headers: default ws origin, no inline-script hashes
+  }
+  const csp = buildCsp(cspInputsFromHeaders(headersText));
+
+  protocol.handle(APP_SCHEME, async (request) => {
     const target = resolveAppPath(distDir, request.url);
     if (target === undefined || !fs.existsSync(target)) {
-      return new Response("not found", { status: 404 });
+      return new Response("not found", {
+        status: 404,
+        headers: { "content-security-policy": csp },
+      });
     }
-    return net.fetch(pathToFileURL(target).toString());
+    const res = await net.fetch(pathToFileURL(target).toString());
+    const headers = new Headers(res.headers);
+    headers.set("content-security-policy", csp);
+    headers.set("x-content-type-options", "nosniff");
+    return new Response(res.body, { status: res.status, headers });
   });
+
+  // Deny every permission by default (camera, mic, geolocation, ...).
+  session.defaultSession.setPermissionRequestHandler(
+    (wc, permission, callback, details) => {
+      callback(
+        isPermissionAllowed(permission, details?.requestingUrl ?? wc?.getURL()),
+      );
+    },
+  );
+  session.defaultSession.setPermissionCheckHandler(
+    (_wc, permission, requestingOrigin) =>
+      isPermissionAllowed(permission, requestingOrigin),
+  );
 
   const fromWindow = (event) => BrowserWindow.fromWebContents(event.sender);
   const trusted = (event) => isInternalUrl(event.senderFrame?.url ?? "");
