@@ -1,7 +1,7 @@
 import * as PageController from "./page-controller";
 import { onDOMReady } from "../utils/dom";
 import { isAuthAvailable } from "../firebase";
-import { isAuthenticated } from "../states/core";
+import { getActivePage, isAuthenticated } from "../states/core";
 import { isFunboxActive } from "../test/funbox/list";
 import { showNoticeNotification } from "../states/notifications";
 import { navigationEvent, type NavigateOptions } from "../events/navigation";
@@ -287,21 +287,31 @@ async function router(options = {} as NavigateOptions): Promise<void> {
 }
 
 window.addEventListener("popstate", () => {
-  // multiplayer hook: browser back/forward gets the navigate() race guard,
-  // but the URL already changed, so ask instead of a notice
-  if (isRaceActive() && location.pathname !== "/") {
-    if (!confirm("Leave the race? You can't rejoin it.")) {
-      // undo the history move; the race page is still showing "/"
-      history.pushState(null, "", "/");
-      return;
+  void onPopState();
+});
+
+/**
+ * Browser back/forward. Mid-race (LR-02) it leaves the race cleanly: the
+ * history move already happened and a confirm() from popstate is unreliable
+ * (browsers may suppress or auto-dismiss it), so we send the leave, put the
+ * URL on home ("/") and show a fresh solo test there. Landing on the race's
+ * /r/CODE entry instead would rejoin the room as a sitter.
+ */
+export async function onPopState(): Promise<void> {
+  if (isRaceActive() && room() !== undefined) {
+    leaveRoom();
+    if (location.pathname !== "/") history.replaceState(null, "", "/");
+    showNoticeNotification("You left the race.");
+    if (getActivePage() === "test") {
+      // the test page is already showing: regenerate a solo test
+      await restartTest();
+    } else {
+      await router({ force: true });
     }
-    // leave once off the test page, so it doesn't regenerate a solo test
-    // under the page transition
-    void router().finally(leaveRoom);
     return;
   }
-  void router();
-});
+  await router();
+}
 
 onDOMReady(() => {
   document.body.addEventListener("click", (e) => {
