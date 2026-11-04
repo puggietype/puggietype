@@ -12,12 +12,16 @@ import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
 import { ageConfirmed } from "../age-gate";
 import { MULTIPLAYER_ENABLED } from "../flags";
+import { leaderboardSubmitBlocked, showRaceLeaderboard } from "../leaderboards";
 import {
   connect,
   joinRoom,
+  leaderboardConsentOpen,
+  leaderboardConsentWpm,
   leaveQueue,
   leaveRoom,
   resumeSession,
+  submitLeaderboardConsent,
 } from "../race";
 import {
   connectionStatus,
@@ -25,12 +29,15 @@ import {
   queue,
   race,
   raceFinished,
+  leaderboardsOn,
   meInLobby,
   results,
   room,
   setInviteCode,
 } from "../store";
 import { AgeGate } from "./AgeGate";
+import { LeaderboardConsent } from "./LeaderboardConsent";
+import { LeaderboardView } from "./LeaderboardView";
 import { Lobby } from "./Lobby";
 import { Podium } from "./Podium";
 import { QuickMatchQueue } from "./QuickMatchQueue";
@@ -86,37 +93,76 @@ export function RacePage(): JSXElement {
             }
           >
             {(r) => (
-              <Switch fallback={<Lobby room={r()} />}>
-                <Match when={meInLobby()}>
-                  <Lobby room={r()} />
-                </Match>
-                <Match when={results()}>
-                  {(res) => <Podium room={r()} results={res()} />}
-                </Match>
-                <Match when={race() && raceFinished()}>
-                  <div class="grid gap-4" data-testid="mp-waiting">
-                    <div class="text-center text-xl text-sub">
-                      you finished! waiting for the others...
+              <div class="grid gap-6">
+                <Show when={leaderboardConsentOpen()}>
+                  <LeaderboardConsent
+                    wpm={leaderboardConsentWpm()}
+                    onSubmit={(show) => {
+                      const kids = leaderboardSubmitBlocked(
+                        window.location.pathname,
+                        document.referrer,
+                        sessionStorage,
+                      );
+                      submitLeaderboardConsent(kids ? false : show);
+                    }}
+                  />
+                </Show>
+                <Switch fallback={<Lobby room={r()} />}>
+                  <Match when={meInLobby()}>
+                    <Lobby room={r()} />
+                  </Match>
+                  <Match when={results()}>
+                    {(res) => <Podium room={r()} results={res()} />}
+                  </Match>
+                  <Match when={race() && raceFinished()}>
+                    <div class="grid gap-4" data-testid="mp-waiting">
+                      <div class="text-center text-xl text-sub">
+                        you finished! waiting for the others...
+                      </div>
+                      <RaceProgressBars />
                     </div>
-                    <RaceProgressBars />
-                  </div>
-                </Match>
-                <Match when={race()}>
-                  <div class="grid gap-4" data-testid="mp-left-race">
-                    <div class="text-center text-xl text-sub">
-                      a race is running without you
+                  </Match>
+                  <Match when={race()}>
+                    <div class="grid gap-4" data-testid="mp-left-race">
+                      <div class="text-center text-xl text-sub">
+                        a race is running without you
+                      </div>
+                      <RaceProgressBars />
+                      <Button
+                        text="leave the room"
+                        fa={{ icon: "fa-sign-out-alt" }}
+                        class="mx-auto px-5 py-3"
+                        dataset={{ "data-testid": "mp-leave" }}
+                        onClick={() => leaveRoom()}
+                      />
                     </div>
-                    <RaceProgressBars />
-                    <Button
-                      text="leave the room"
-                      fa={{ icon: "fa-sign-out-alt" }}
-                      class="mx-auto px-5 py-3"
-                      dataset={{ "data-testid": "mp-leave" }}
-                      onClick={() => leaveRoom()}
-                    />
-                  </div>
-                </Match>
-              </Switch>
+                  </Match>
+                </Switch>
+                <Show
+                  when={showRaceLeaderboard({
+                    leaderboards: leaderboardsOn(),
+                    kids: leaderboardSubmitBlocked(
+                      window.location.pathname,
+                      document.referrer,
+                      sessionStorage,
+                    ),
+                    inRaceOrResults:
+                      results() !== undefined || race() !== undefined,
+                  })}
+                >
+                  <LeaderboardView
+                    variant="compact"
+                    initial={{
+                      period: "daily",
+                      mode: r().settings.mode,
+                      mode2: r().settings.mode2,
+                      language: r().settings.language,
+                      punctuation: r().settings.punctuation,
+                      numbers: r().settings.numbers,
+                    }}
+                  />
+                </Show>
+              </div>
             )}
           </Show>
         </Show>

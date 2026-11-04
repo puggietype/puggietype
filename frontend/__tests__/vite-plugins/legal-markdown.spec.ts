@@ -20,6 +20,30 @@ describe("legal-markdown", () => {
     });
   }
 
+  it("privacy page descriptions do not say leaderboards are memory-only", () => {
+    const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+    expect(page).not.toMatch(/memory only|in memory/i);
+    expect(page).toContain("Neon database in Oregon");
+  });
+
+  it("includes the leaderboards privacy section verbatim", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    expect(md).toContain(
+      "The 'Show my score on the leaderboard' setting defaults on, but a score is posted only when you press a Submit score button (Submit score to leaderboard, or Submit score & next test, & repeat or & retry saving).",
+    );
+    expect(md).toContain(
+      "Solo scores are lightly checked by our server for impossible speeds, but they aren't verified like race scores, so they appear on a separate 'Solo (unverified)' board. We may remove any score that looks cheated.",
+    );
+    expect(md).toContain(
+      "email us your nickname, board, and the approximate date and score, and we'll find and remove it.",
+    );
+    expect(md).toContain(
+      "Neon, LLC (a Databricks company), USA, database hosting for leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.",
+    );
+    expect(md).not.toContain("account data once accounts launch");
+    expect(md).not.toContain("your rank");
+  });
+
   it("contains no chat clauses", () => {
     for (const name of ["terms", "privacy"]) {
       const md = readFileSync(path.join(legalDir, `${name}.md`), "utf-8");

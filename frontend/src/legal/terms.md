@@ -1,6 +1,6 @@
 # Terms of Service
 
-_Effective date: October 18, 2026. Last updated: October 18, 2026. "We", "us" and "our" mean the PuggieType team._
+_Effective date: November 4, 2026. Last updated: November 4, 2026. "We", "us" and "our" mean the PuggieType team._
 
 ## 1. Age requirement
 PuggieType's solo typing test needs no account and collects no account data. You must be **at least 13 years old** to use multiplayer. If you are under 18, or under the age of majority where you live, use multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.
@@ -11,9 +11,12 @@ Multiplayer races take place in rooms of up to 8 players. **Private lobbies:** w
 Quick Match may include computer-controlled Pug Bots. Bots are named "Pug Bot · ~NN wpm" (the number is the bot's approximate target pace, not its result), always carry a visible "Bot" label, and never count toward stats or leaderboards.
 
 ## 3. Nicknames
-In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown only to the other players in your lobby and is not stored after the lobby closes. There is no chat, and players can't send each other messages.
+In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown to the other players in your lobby. If you submit a leaderboard score, that nickname is also shown on the public leaderboard, as described in the privacy policy. There is no chat, and players can't send each other messages.
 
-## 4. Acceptable use
+## 4. Leaderboards
+If you submit a score, you let us show it publicly with your random nickname on PuggieType's leaderboards for the periods described in the privacy policy. We may remove any score, or block future scores, if it looks cheated, automated or otherwise breaks these terms. Leaderboards may be reset or changed at any time.
+
+## 5. Acceptable use
 When you use PuggieType, you agree not to:
 1. cheat, or use bots, scripts or automation to play or submit races;
 2. interfere with, overload or try to get unauthorized access to our servers, or disrupt other players' races;
@@ -23,10 +26,10 @@ When you use PuggieType, you agree not to:
 6. use PuggieType for anything illegal;
 7. file false or abusive player reports.
 
-## 5. Enforcement
+## 6. Enforcement
 We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. To report a player, use the in-game report button or email support@puggietype.com.
 
-## 6. Copyright complaints
+## 7. Copyright complaints
 We respect intellectual property rights. If you believe content on PuggieType (for example, a quote or word list) infringes your copyright, send a written notice to support@puggietype.com that includes:
 (a) your physical or electronic signature;
 (b) a description of the copyrighted work;
@@ -37,11 +40,11 @@ We respect intellectual property rights. If you believe content on PuggieType (f
 
 We will review valid notices and remove or replace infringing material.
 
-## 7. No warranty
+## 8. No warranty
 PuggieType is provided "as is", without warranty of any kind, to the extent permitted by law.
 
-## 8. Open-source license
+## 9. Open-source license
 The PuggieType website code is free software licensed under the GNU General Public License v3.0 (GPL-3.0). These Terms govern your use of the hosted service at puggietype.com and do not limit any rights you have under the GPL.
 
-## 9. Contact
+## 10. Contact
 The PuggieType team: support@puggietype.com.

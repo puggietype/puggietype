@@ -13,11 +13,27 @@ import { getAdProvider, noopAdProvider } from "../../../../ads/provider";
 import { getConfig } from "../../../../config/store";
 import { isAuthAvailable } from "../../../../firebase";
 import { useRefWithUtils } from "../../../../hooks/useRefWithUtils";
+import { isAgeConfirmed } from "../../../../multiplayer/age-gate";
+import { LeaderboardView } from "../../../../multiplayer/components/LeaderboardView";
+import { SoloLeaderboardSubmit } from "../../../../multiplayer/components/SoloLeaderboardSubmit";
+import { MULTIPLAYER_ENABLED } from "../../../../multiplayer/flags";
+import {
+  leaderboardSubmitBlocked,
+  requestSoloSubmit,
+  scoreFromResult,
+  soloAdvanceLabel,
+  soloScoreWillPost,
+} from "../../../../multiplayer/leaderboards";
+import { leaderboardsOn } from "../../../../multiplayer/store";
 import { getIsScreenshotting, isAuthenticated } from "../../../../states/core";
 import { getGlarsesMode } from "../../../../states/glarses-mode";
 import { resultState } from "../../../../states/result";
 import { getSnapshot } from "../../../../states/snapshot";
-import { getLastEventLog, getLastResult } from "../../../../states/test";
+import {
+  getLastEventLog,
+  getLastResult,
+  isTestInvalid,
+} from "../../../../states/test";
 import { restart, retrySavingResult } from "../../../../test/test-logic";
 import { setResultElement } from "../../../../test/test-ui";
 import { cn } from "../../../../utils/cn";
@@ -49,6 +65,12 @@ export function TestResult(): JSXElement {
 
   const [resultRef, resultEl] = useRefWithUtils<HTMLDivElement>();
   onMount(() => {
+    // learn welcome.features here, not from the nav on every page
+    if (isAgeConfirmed() && MULTIPLAYER_ENABLED) {
+      void import("../../../../multiplayer/race").then(({ connect }) =>
+        connect(),
+      );
+    }
     const el = resultEl();
     if (el === undefined) return;
     // test-ui fades it out on restart
@@ -98,6 +120,7 @@ export function TestResult(): JSXElement {
                   />
                 </Suspense>
               </div>
+              <InGameLeaderboard result={test().result} />
               <ResultSecondaryStats result={test().result} />
               <ResultWordsHistory eventLog={test().eventLog} />
               <ResultReplay />
@@ -113,6 +136,42 @@ export function TestResult(): JSXElement {
       </Show>
       <ResultAds />
     </div>
+  );
+}
+
+function InGameLeaderboard(props: {
+  result: Parameters<typeof scoreFromResult>[0];
+}): JSXElement {
+  const score = createMemo(() => scoreFromResult(props.result));
+  const blocked = (): boolean =>
+    leaderboardSubmitBlocked(
+      window.location.pathname,
+      document.referrer,
+      sessionStorage,
+    );
+  return (
+    <Show
+      when={
+        leaderboardsOn() && !isTestInvalid() && !blocked() ? score() : undefined
+      }
+    >
+      {(ready) => (
+        <div class="mb-8 grid gap-4" data-testid="lb-ingame">
+          <LeaderboardView
+            variant="compact"
+            initial={{
+              mode: ready().mode,
+              mode2: ready().mode2,
+              language: ready().language,
+              punctuation: ready().punctuation,
+              numbers: ready().numbers,
+              verified: false,
+            }}
+          />
+          <SoloLeaderboardSubmit score={ready()} />
+        </div>
+      )}
+    </Show>
   );
 }
 
@@ -139,8 +198,11 @@ function RetrySavingButton(): JSXElement {
           type="button"
           class="mb-4 justify-self-center bg-error px-8 py-4 text-bg"
           id="retrySavingResultButton"
-          onClick={() => void retrySavingResult()}
-          text="Retry saving result"
+          onClick={() => {
+            requestSoloSubmit("retry");
+            void retrySavingResult();
+          }}
+          text={soloAdvanceLabel("retry", soloScoreWillPost())}
           fa={{ icon: "fa-redo" }}
         />
       </div>

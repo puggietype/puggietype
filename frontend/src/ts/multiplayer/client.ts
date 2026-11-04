@@ -1,6 +1,8 @@
 import { isAgeConfirmed } from "./age-gate";
 import { computeClockOffset, type ClockSample } from "./clock";
 import { CONFIGURED_WS_URL } from "./flags";
+import { leaderboardSubmitBlocked } from "./leaderboards";
+import { leaderboardsOn, type ConnectionStatus } from "./store";
 import { isFlagEnabled } from "./feature-flags";
 import { wsUrl } from "./helpers";
 import type { ClientMessage, ServerMessage } from "./protocol";
@@ -12,7 +14,7 @@ const RECONNECT_DELAYS = [500, 1000, 2000, 4000];
 /** close codes after which reconnecting would be wrong */
 const NO_RECONNECT_CODES = new Set([4000, 4002]);
 
-export type ConnectionStatus = "idle" | "connecting" | "open" | "reconnecting";
+export type { ConnectionStatus };
 
 type Session = { playerId: string; sessionToken: string };
 
@@ -42,6 +44,11 @@ function loadSession(): Session | undefined {
 
 function saveSession(session: Session): void {
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+/** session from the last welcome, used to attach a nickname to a score */
+export function readStoredSession(): Session | undefined {
+  return loadSession();
 }
 
 /**
@@ -113,6 +120,15 @@ export class MultiplayerClient {
       ageConfirmed: true,
       ...(isFlagEnabled("characterSelect")
         ? { character: loadCharacter() }
+        : {}),
+      // only after welcome.features.leaderboards; a prod server rejects unknown keys
+      ...(leaderboardsOn() &&
+      leaderboardSubmitBlocked(
+        window.location.pathname,
+        document.referrer,
+        sessionStorage,
+      )
+        ? { kidsGuide: true as const }
         : {}),
     };
   }

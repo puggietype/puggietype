@@ -132,6 +132,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     ageConfirmed: z.boolean().optional(),
     /** Starting dog. Bad or unknown values fall back to "puggie" rather than erroring, for older clients. */
     character: CharacterSchema.catch(DEFAULT_CHARACTER).optional(),
+    /** This browser session started from /guide/typing-for-kids. The server refuses leaderboard scores. */
+    kidsGuide: z.literal(true).optional(),
   }),
   z.object({
     type: z.literal("room:create"),
@@ -195,6 +197,22 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     testMs: nonNeg,
     input: z.array(z.string().max(200)).max(5_000),
     keyCount: z.number().int().min(0),
+    /**
+     * Kids-guide session. Only sent when welcome.features.leaderboards is true.
+     * The server refuses the score. showOnLeaderboard is not on this message;
+     * opt-in is leaderboard:consent.
+     */
+    kidsGuide: z.literal(true).optional(),
+  }),
+  /**
+   * Opt in to the leaderboard for one race. The server accepts this for 60s
+   * after race:results and otherwise leaves the score off the board.
+   * Only sent when welcome.features.leaderboards is true.
+   */
+  z.object({
+    type: z.literal("leaderboard:consent"),
+    raceId: z.string().min(1).max(128),
+    show: z.literal(true),
   }),
   z.object({ type: z.literal("race:rematch") }),
   z.object({ type: z.literal("ping"), t: finite }),
@@ -331,6 +349,8 @@ export interface Features {
   report: boolean;
   /** Ready / start from the results screen (`player:toLobby`); absent on older servers. */
   resultsReady?: boolean;
+  /** Absent or false: leaderboard UI stays hidden and scores are not published. */
+  leaderboards?: boolean;
 }
 
 export type ServerMessage =
@@ -350,9 +370,11 @@ export type ServerMessage =
       startAt: number;
       words: string[];
       settings: Settings;
+      /** Id for leaderboard:consent. Older servers omit it. */
+      raceId?: string;
     }
   | { type: "race:progress"; players: PlayerProgress[] }
-  | { type: "race:results"; results: RaceResult[] }
+  | { type: "race:results"; results: RaceResult[]; raceId?: string }
   /** Listing of open rooms; `racing` counts humans in a countdown or race across the server. */
   | { type: "rooms:list"; rooms: OpenRoomEntry[]; racing: number }
   /**

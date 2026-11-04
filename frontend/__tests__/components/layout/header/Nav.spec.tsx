@@ -36,6 +36,7 @@ vi.mock("../../../../src/ts/components/layout/header/AccountXpBar", () => ({
 }));
 
 import { Nav } from "../../../../src/ts/components/layout/header/Nav";
+import { setServerFeatures } from "../../../../src/ts/multiplayer/store";
 import { setActivePage } from "../../../../src/ts/states/core";
 
 describe("Nav", () => {
@@ -45,6 +46,7 @@ describe("Nav", () => {
   });
   afterEach(() => {
     setActivePage("loading");
+    setServerFeatures(undefined);
   });
 
   const item = (container: HTMLElement, name: string): HTMLElement => {
@@ -141,6 +143,23 @@ describe("Nav", () => {
     expect(el.hasAttribute("title")).toBe(false);
     expect(el.textContent).toContain("leaderboard");
     expect(el.textContent).toContain("soon");
+  });
+
+  it("standalone: leaderboard is a link when the server enables it", () => {
+    setServerFeatures({
+      characterSelect: false,
+      openRooms: false,
+      quickMatch: false,
+      report: false,
+      leaderboards: true,
+    });
+    const { container } = render(() => <Nav />);
+    expect(container.querySelector('[data-nav-item="leaderboards-soon"]')).toBe(
+      null,
+    );
+    expect(item(container, "leaderboards").getAttribute("href")).toBe(
+      "/leaderboards",
+    );
   });
 
   it("with a backend: leaderboard is a link", () => {

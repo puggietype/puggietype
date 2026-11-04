@@ -12,6 +12,7 @@ import { restartTestEvent } from "../../../events/test";
 import { createEffectOn } from "../../../hooks/effects";
 import { useRefWithUtils } from "../../../hooks/useRefWithUtils";
 import { MULTIPLAYER_ENABLED } from "../../../multiplayer/flags";
+import { leaderboardsOn } from "../../../multiplayer/store";
 import { PageName } from "../../../pages/page";
 import { prefetchLeaderboardPage } from "../../../queries/prefetch";
 import { getServerConfigurationQueryOptions } from "../../../queries/server-configuration";
@@ -166,7 +167,7 @@ export function Nav(): JSXElement {
         />
       </Show>
       <Show
-        when={!isStandalone()}
+        when={!isStandalone() || leaderboardsOn()}
         fallback={
           // no leaderboards without a backend: a visible, inert placeholder
           <span
@@ -195,7 +196,7 @@ export function Nav(): JSXElement {
           page="leaderboards"
           shortLabel="ranks"
           onMouseEnter={() => {
-            prefetchLeaderboardPage();
+            if (!leaderboardsOn()) prefetchLeaderboardPage();
           }}
         />
       </Show>
