@@ -3,13 +3,19 @@ import { z } from "zod";
 export const BG_MUSIC_STORAGE_KEY = "bgMusic";
 
 /**
- * Royalty-free background loop.
- *
- * TODO: add a CC0 or public-domain looping track and set this to its public
- * URL, for example "/sounds/bg-music.ogg". Do not copy Monkeytype assets.
- * `null` keeps the player silent: nothing is fetched and nothing autoplays.
+ * Background music tracks for the web build: the same two CC0 tracks as the
+ * steam build (static/music/SOURCES.md), played one after another. Lazy:
+ * nothing is fetched until music is on and the user has clicked or pressed
+ * a key (preload "none"). The steam build has its own player
+ * (src/ts/steam/music.ts), so this one has no tracks there.
  */
-export const BG_MUSIC_SRC: string | null = null;
+export const BG_MUSIC_TRACKS: readonly string[] =
+  typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
+    ? []
+    : ["/music/sherwood.ogg", "/music/calm-theme.ogg"];
+
+/** first track, or `null` when there is none (player hidden and silent) */
+export const BG_MUSIC_SRC: string | null = BG_MUSIC_TRACKS[0] ?? null;
 
 export const KIDS_GUIDE_PATH = "/guide/typing-for-kids";
 
@@ -34,6 +40,7 @@ export type BgMusicAudio = {
   paused: boolean;
   play: () => Promise<void>;
   pause: () => void;
+  addEventListener?: (type: "ended", listener: () => void) => void;
 };
 
 export type BgMusicStore = {
@@ -119,6 +126,8 @@ type BackgroundMusicOptions = {
   getPathname: () => string;
   createAudio: (src: string) => BgMusicAudio;
   src: string | null;
+  /** play these in order (wrapping); `src` is the first. One track loops. */
+  tracks?: readonly string[];
 };
 
 /**
@@ -130,6 +139,7 @@ export class BackgroundMusic {
   private hasGesture = false;
   private suspended = false;
   private audio: BgMusicAudio | null = null;
+  private trackIndex = 0;
   private readonly options: BackgroundMusicOptions;
 
   constructor(options: BackgroundMusicOptions) {
@@ -212,6 +222,20 @@ export class BackgroundMusic {
     this.sync();
   }
 
+  /** current track (for tests and the smoke check) */
+  currentTrack(): string | null {
+    const tracks = this.options.tracks ?? [];
+    return tracks[this.trackIndex] ?? this.options.src;
+  }
+
+  private nextTrack(): void {
+    const tracks = this.options.tracks ?? [];
+    if (this.audio === null || tracks.length <= 1) return;
+    this.trackIndex = (this.trackIndex + 1) % tracks.length;
+    this.audio.src = tracks[this.trackIndex] ?? tracks[0] ?? "";
+    this.sync();
+  }
+
   private persist(): void {
     this.options.store.set(this.settings);
   }
@@ -237,7 +261,11 @@ export class BackgroundMusic {
         console.error("Background music failed to start", error);
         return;
       }
-      this.audio.loop = true;
+      const tracks = this.options.tracks ?? [src];
+      this.audio.loop = tracks.length <= 1;
+      if (tracks.length > 1) {
+        this.audio.addEventListener?.("ended", () => this.nextTrack());
+      }
     }
     this.audio.volume = this.settings.volume;
     if (!this.audio.paused) return;

@@ -24,15 +24,13 @@ function runCloseBundle(platform: "web" | "steam", outDir: string): void {
 }
 
 describe("steam game settings stay out of the web build", () => {
-  it("the web build drops static/music; the steam build keeps it", () => {
+  it("both builds keep static/music (web music is lazy and off by default)", () => {
     for (const platform of ["web", "steam"] as const) {
       const out = mkdtempSync(path.join(tmpdir(), "pt-music-"));
       mkdirSync(path.join(out, "music"));
       writeFileSync(path.join(out, "music", "a.ogg"), "x");
       runCloseBundle(platform, out);
-      expect(existsSync(path.join(out, "music")), platform).toBe(
-        platform === "steam",
-      );
+      expect(existsSync(path.join(out, "music")), platform).toBe(true);
     }
   });
 
