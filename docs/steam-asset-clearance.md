@@ -40,8 +40,9 @@ same quote objects, so the kept quotes' `source` fields are unchanged. Steam bui
 twice: the build output's `quotes/*.json` are rewritten without lyric quotes, and
 `QuotesController` filters at load time.
 
-**Result:** 929 of 15,828 quotes are dropped (english 906, vietnamese 15, romanian 5,
-french 2, indonesian 1). A test pins the total. Legal's regression sources are tested
+**Result:** 930 of 15,828 quotes are dropped (english 906, vietnamese 15, romanian 5,
+french 2, indonesian 1, norwegian_bokmal 1). Legal also excludes individual ids
+(`EXCLUDED_QUOTE_IDS`: norwegian_bokmal 3, a translated nursery rhyme). A test pins the total. Legal's regression sources are tested
 individually, and the kept sources containing "song" are listed for review in the PR.
 
 **Limits:** the method is biased toward dropping. A false positive only removes a quote from
@@ -53,6 +54,5 @@ before release. A curated or public-domain quote set stays the safer long-term o
 
 The About page (web and steam) adds:
 
-- "email support@puggietype.com to report a quote" (Legal's takedown wording, mailto link);
 - the quote credits line from Legal's PR #16 review, `QUOTE_CREDITS_LINE` in
   `src/ts/constants/quote-credits.ts`.

@@ -124,6 +124,27 @@ describe("lyric quote detection", () => {
     );
   });
 
+  it("drops Legal's id exclusions", () => {
+    const quote = loadQuotes("norwegian_bokmal").find((q) => q.id === 3);
+    expect(quote?.text).toMatch(/^Bæ bæ lille lam/);
+    expect(isSongLyricQuote({ ...quote, id: 3 }, "norwegian_bokmal")).toBe(
+      true,
+    );
+    expect(isSongLyricQuote({ id: 3, source: "x" }, "english")).toBe(false);
+  });
+
+  it("keeps the songwriting book's own prose (ids 1082, 1727, 4204)", () => {
+    const ids = [1082, 1727, 4204];
+    const quotes = loadQuotes("english").filter((q) =>
+      ids.includes(q.id ?? -1),
+    );
+    expect(quotes).toHaveLength(3);
+    for (const q of quotes) {
+      expect(q.source).toBe("Lyrics: Writing Better Words for Your Songs");
+      expect(isSongLyricQuote(q, "english"), String(q.id)).toBe(false);
+    }
+  });
+
   it("drops a known number of quotes from the shipped data", () => {
     let total = 0;
     let dropped = 0;
@@ -136,6 +157,6 @@ describe("lyric quote detection", () => {
       dropped += quotes.length - filterLyricQuotes(quotes, language).length;
     }
     // update together with docs/steam-asset-clearance.md when quotes change
-    expect({ total, dropped }).toEqual({ total: 15828, dropped: 929 });
+    expect({ total, dropped }).toEqual({ total: 15828, dropped: 930 });
   });
 });

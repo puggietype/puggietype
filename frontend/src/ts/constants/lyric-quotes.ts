@@ -739,8 +739,20 @@ export function isCodeQuoteLanguage(language: string): boolean {
   return language.startsWith("code_") || language === "docker_file";
 }
 
+/** individual quotes Legal ruled out by id (e.g. translated lyrics) */
+export const EXCLUDED_QUOTE_IDS: Readonly<Record<string, readonly number[]>> = {
+  // "Bæ Bæ lille lam": translated nursery-rhyme lyric (Legal, PR #16)
+  norwegian_bokmal: [3],
+};
+
 export function isSongLyricQuote(quote: QuoteLike, language: string): boolean {
   if (isCodeQuoteLanguage(language)) return false;
+  if (
+    quote.id !== undefined &&
+    EXCLUDED_QUOTE_IDS[language]?.includes(quote.id)
+  ) {
+    return true;
+  }
   return lyricMatch(quote.source) !== null;
 }
 
