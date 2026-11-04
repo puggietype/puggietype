@@ -139,6 +139,52 @@ export function AboutPage(): JSXElement {
           under the same license.
         </p>
         <p data-testid="quote-credits">{QUOTE_CREDITS_LINE}</p>
+        {
+          // steam flavor only (define compared inline so web is unchanged):
+          // licenses and source offer bundled by desktop/scripts/package.mjs
+          // oxlint-disable-next-line solid/prefer-show -- build-time constant; <Show> would stay in the web bundle
+          typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam" ? (
+            <p data-testid="desktop-licenses">
+              This desktop app is built with Electron and Chromium. Licenses and
+              source:{" "}
+              <Button
+                variant="text"
+                text="GPL-3.0 license"
+                href="/legal/LICENSE.txt"
+                class="p-0"
+              />
+              ,{" "}
+              <Button
+                variant="text"
+                text="notice"
+                href="/legal/NOTICE.txt"
+                class="p-0"
+              />
+              ,{" "}
+              <Button
+                variant="text"
+                text="Electron license"
+                href="/legal/ELECTRON-LICENSE.txt"
+                class="p-0"
+              />
+              ,{" "}
+              <Button
+                variant="text"
+                text="Chromium licenses"
+                href="/legal/LICENSES.chromium.html"
+                class="p-0"
+              />{" "}
+              and the{" "}
+              <Button
+                variant="text"
+                text="source code offer"
+                href="/legal/SOURCE.txt"
+                class="p-0"
+              />{" "}
+              for this build. puggietype is not affiliated with Valve or Steam.
+            </p>
+          ) : null
+        }
       </section>
     </div>
   );
