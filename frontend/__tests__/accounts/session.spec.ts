@@ -8,13 +8,19 @@ const sdk = vi.hoisted(() => ({
   sendVerification: vi.fn(),
   sendPasswordReset: vi.fn(),
   getFreshUser: vi.fn(),
+  reauthenticate: vi.fn(),
+  reauthKind: vi.fn(),
   getUserIdToken: vi.fn(),
   getRestoredUser: vi.fn(),
   signOutFirebase: vi.fn(),
 }));
 vi.mock("../../src/ts/accounts/firebase-sdk", () => sdk);
 
-const api = vi.hoisted(() => ({ createSession: vi.fn(), getMe: vi.fn() }));
+const api = vi.hoisted(() => ({
+  createSession: vi.fn(),
+  getMe: vi.fn(),
+  deleteMe: vi.fn(),
+}));
 vi.mock("../../src/ts/accounts/api", () => api);
 
 vi.mock("../../src/ts/accounts/config", async (importOriginal) => {
@@ -39,7 +45,9 @@ import {
   AGE_BLOCKED,
   cancelAgeCheck,
   completeAgeCheck,
+  deleteAccount,
   firebaseErrorMessage,
+  getReauthKind,
   refreshVerification,
   requestPasswordReset,
   resendVerification,
@@ -70,6 +78,7 @@ beforeEach(() => {
   sdk.deleteFirebaseUser.mockResolvedValue(undefined);
   sdk.sendVerification.mockResolvedValue(undefined);
   sdk.sendPasswordReset.mockResolvedValue(undefined);
+  sdk.reauthenticate.mockResolvedValue(undefined);
   sdk.getUserIdToken.mockResolvedValue("id-token");
   sdk.signOutFirebase.mockResolvedValue(undefined);
 });
@@ -413,5 +422,95 @@ describe("accounts email verification and password reset", () => {
       ok: false,
       message: accountsCopy.firebase["auth/invalid-email"],
     });
+  });
+});
+
+describe("accounts delete account", () => {
+  const order: string[] = [];
+  beforeEach(() => {
+    order.length = 0;
+    setAccountUser(user);
+    localStorage.setItem(SESSION_HINT_KEY, "1");
+    sdk.getRestoredUser.mockResolvedValue(fbUser);
+    sdk.reauthenticate.mockImplementation(
+      async () => void order.push("reauth"),
+    );
+    sdk.getUserIdToken.mockImplementation(async (_u, refresh: boolean) => {
+      order.push(`token:${refresh}`);
+      return "fresh-token";
+    });
+    api.deleteMe.mockImplementation(async () => {
+      order.push("api");
+      return { ok: true };
+    });
+    sdk.deleteFirebaseUser.mockImplementation(
+      async () => void order.push("firebase"),
+    );
+  });
+
+  it("re-auths, deletes via the API with a fresh token, then Firebase", async () => {
+    expect(await deleteAccount("pw")).toEqual({ ok: true });
+    expect(order).toEqual(["reauth", "token:true", "api", "firebase"]);
+    expect(sdk.reauthenticate).toHaveBeenCalledWith(fbUser, "pw");
+    expect(api.deleteMe).toHaveBeenCalledWith({
+      apiUrl: "https://api.example.test",
+      idToken: "fresh-token",
+    });
+    expect(getAccountUser()).toBeNull();
+    expect(localStorage.getItem(SESSION_HINT_KEY)).toBeNull();
+  });
+
+  it("a failed re-auth deletes nothing", async () => {
+    sdk.reauthenticate.mockRejectedValue({ code: "auth/invalid-credential" });
+    expect(await deleteAccount("bad")).toEqual({
+      ok: false,
+      message: accountsCopy.firebase["auth/invalid-credential"],
+    });
+    expect(api.deleteMe).not.toHaveBeenCalled();
+    expect(sdk.deleteFirebaseUser).not.toHaveBeenCalled();
+    expect(getAccountUser()).toEqual(user);
+  });
+
+  it("reauth_required from the API keeps the Firebase user", async () => {
+    api.deleteMe.mockResolvedValue({
+      ok: false,
+      status: 401,
+      code: "reauth_required",
+      message: accountsCopy.api.reauthRequired,
+    });
+    expect(await deleteAccount("pw")).toEqual({
+      ok: false,
+      message: accountsCopy.api.reauthRequired,
+    });
+    expect(sdk.deleteFirebaseUser).not.toHaveBeenCalled();
+    expect(getAccountUser()).toEqual(user);
+  });
+
+  it("Firebase delete failing after the API: signed out, told so", async () => {
+    sdk.deleteFirebaseUser.mockRejectedValue({
+      code: "auth/requires-recent-login",
+    });
+    expect(await deleteAccount("pw")).toEqual({
+      ok: false,
+      message: accountsCopy.account.partiallyDeleted,
+    });
+    expect(sdk.signOutFirebase).toHaveBeenCalledTimes(1);
+    expect(getAccountUser()).toBeNull();
+  });
+
+  it("signed out: nothing to delete", async () => {
+    sdk.getRestoredUser.mockResolvedValue(null);
+    expect(await deleteAccount()).toEqual({
+      ok: false,
+      message: accountsCopy.sessionExpired,
+    });
+    expect(api.deleteMe).not.toHaveBeenCalled();
+  });
+
+  it("reports how to re-auth", async () => {
+    sdk.reauthKind.mockReturnValue("google");
+    expect(await getReauthKind()).toBe("google");
+    sdk.getRestoredUser.mockResolvedValue(null);
+    expect(await getReauthKind()).toBeNull();
   });
 });

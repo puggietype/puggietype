@@ -24,6 +24,7 @@ const notify = vi.hoisted(() => ({
 vi.mock("../../src/ts/states/notifications", () => notify);
 
 import { AGE_BLOCK_KEY } from "../../src/ts/accounts/age";
+import { setAccountUser } from "../../src/ts/accounts/state";
 import { accountsCopy } from "../../src/ts/accounts/strings";
 import { SignInPage } from "../../src/ts/accounts/ui/SignInPage";
 
@@ -38,6 +39,7 @@ function button(container: HTMLElement, text: string): HTMLButtonElement {
 afterEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
+  setAccountUser(null);
 });
 
 describe("SignInPage", () => {
@@ -68,6 +70,27 @@ describe("SignInPage", () => {
     fireEvent.click(button(container, accountsCopy.tabs.signUp));
     expect(getByText(accountsCopy.age.blocked)).toBeTruthy();
     expect(container.querySelector("select")).toBeNull();
+  });
+
+  it("signed in: verify notice, sign out and delete account", () => {
+    session.signOut.mockResolvedValue(undefined);
+    setAccountUser({
+      uid: "u1",
+      displayName: "Sleepy Pug 42",
+      emailVerified: false,
+      ageOk: true,
+      lbListed: false,
+      verifiedTypist: false,
+      status: "active",
+      createdAt: "2026-11-04T00:00:00.000Z",
+    });
+    const { container, getByText } = render(() => <SignInPage />);
+    expect(getByText(accountsCopy.verify.notice)).toBeTruthy();
+    expect(button(container, accountsCopy.account.delete)).toBeTruthy();
+    fireEvent.click(button(container, accountsCopy.signedIn.signOut));
+    expect(session.signOut).toHaveBeenCalledTimes(1);
+    // the uid and pug name are not shown
+    expect(container.textContent).not.toContain("u1");
   });
 
   it("other errors go to a notification", async () => {

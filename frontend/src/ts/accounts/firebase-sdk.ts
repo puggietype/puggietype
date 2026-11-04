@@ -6,10 +6,13 @@ import {
   Auth,
   createUserWithEmailAndPassword,
   deleteUser,
+  EmailAuthProvider,
   getAdditionalUserInfo,
   getAuth,
   getIdToken,
   GoogleAuthProvider,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
@@ -122,4 +125,27 @@ export async function getFreshUser(
   const user = await getRestoredUser(config);
   await user?.reload();
   return user;
+}
+
+/** how the user confirms it's them: their password, or a Google popup */
+export function reauthKind(user: User): "password" | "google" {
+  return user.providerData.some((p) => p.providerId === "password")
+    ? "password"
+    : "google";
+}
+
+/** fresh sign-in for sensitive actions (delete); the email stays in Firebase */
+export async function reauthenticate(
+  user: User,
+  password: string | undefined,
+): Promise<void> {
+  if (reauthKind(user) === "password") {
+    const credential = EmailAuthProvider.credential(
+      user.email ?? "",
+      password ?? "",
+    );
+    await reauthenticateWithCredential(user, credential);
+  } else {
+    await reauthenticateWithPopup(user, new GoogleAuthProvider());
+  }
 }

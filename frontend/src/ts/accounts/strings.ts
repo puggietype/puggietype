@@ -85,6 +85,18 @@ export const accountsCopy = {
     stillUnverified: "Your email isn't verified yet",
     verified: "Email verified",
   },
+  account: {
+    delete: "delete account",
+    warning:
+      "This permanently deletes your account and its data. It can't be undone.",
+    confirmPassword: "Enter your password to confirm it's you.",
+    confirmGoogle: "You'll confirm it's you with Google.",
+    confirm: "delete my account",
+    cancel: "cancel",
+    deleted: "Your account was deleted",
+    partiallyDeleted:
+      "Your account data was deleted, but the sign-in could not be removed. Please contact support.",
+  },
   signedIn: {
     title: "signed in",
     signOut: "sign out",

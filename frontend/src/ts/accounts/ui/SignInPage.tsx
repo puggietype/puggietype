@@ -8,20 +8,19 @@ import {
 } from "solid-js";
 
 import { Button } from "../../components/common/Button";
-import { H3 } from "../../components/common/Headers";
 import {
   showErrorNotification,
   showSuccessNotification,
 } from "../../states/notifications";
 import { isAgeBlocked } from "../age";
-import { AGE_BLOCKED, AuthResult, preloadSdk, signOut } from "../session";
+import { AGE_BLOCKED, AuthResult, preloadSdk } from "../session";
 import { getAccountUser } from "../state";
 import { accountsCopy } from "../strings";
 import { AgeCheckPrompt } from "./AgeCheckPrompt";
 import { ResetPasswordForm } from "./ResetPasswordForm";
+import { SignedInPanel } from "./SignedInPanel";
 import { SignInForm } from "./SignInForm";
 import { SignUpForm } from "./SignUpForm";
-import { VerifyEmailNotice } from "./VerifyEmailNotice";
 
 type Mode = "signIn" | "signUp" | "reset" | "age";
 
@@ -108,23 +107,7 @@ export function SignInPage(): JSXElement {
             </Switch>
           }
         >
-          {(user) => (
-            <>
-              <H3
-                text={accountsCopy.signedIn.title}
-                fa={{ icon: "fa-user" }}
-                class="p-0"
-              />
-              <Show when={!user().emailVerified}>
-                <VerifyEmailNotice />
-              </Show>
-              <Button
-                text={accountsCopy.signedIn.signOut}
-                fa={{ icon: "fa-sign-out-alt" }}
-                onClick={() => void signOut()}
-              />
-            </>
-          )}
+          {(user) => <SignedInPanel user={user()} />}
         </Show>
       </div>
     </div>

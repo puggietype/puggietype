@@ -1,7 +1,7 @@
 import type { User } from "firebase/auth";
 
 import { blockAge, isAgeBlocked } from "./age";
-import { AccountUser, createSession, getMe } from "./api";
+import { AccountUser, createSession, deleteMe, getMe } from "./api";
 import { getAccountsConfig, missingAccountsConfig } from "./config";
 import { SESSION_HINT_KEY } from "./flag";
 import { setAccountUser } from "./state";
@@ -321,4 +321,49 @@ export async function refreshVerification(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** "password" or "google" for the signed-in user, null when signed out */
+export async function getReauthKind(): Promise<"password" | "google" | null> {
+  try {
+    const sdk = await loadSdk();
+    const user = await sdk.getRestoredUser(getAccountsConfig().firebase);
+    return user === null ? null : sdk.reauthKind(user);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deletes the account: re-auth (password, or a Google popup), DELETE /v1/me
+ * with the fresh token, then Firebase deleteUser. Signed out afterwards.
+ */
+export async function deleteAccount(password?: string): Promise<ActionResult> {
+  const config = getAccountsConfig();
+  const sdk = await loadSdk();
+  const user = await sdk.getRestoredUser(config.firebase).catch(() => null);
+  if (user === null) return { ok: false, message: accountsCopy.sessionExpired };
+
+  let idToken: string;
+  try {
+    await sdk.reauthenticate(user, password);
+    idToken = await sdk.getUserIdToken(user, true);
+  } catch (e) {
+    return { ok: false, message: firebaseErrorMessage(e) };
+  }
+
+  const deleted = await deleteMe({ apiUrl: config.apiUrl, idToken });
+  if (!deleted.ok) return { ok: false, message: deleted.message };
+
+  pendingAge = undefined;
+  try {
+    await sdk.deleteFirebaseUser(user);
+  } catch {
+    // the API account is gone already; drop the leftover sign-in at least
+    await sdk.signOutFirebase(config.firebase).catch(() => undefined);
+    setSignedIn(null);
+    return { ok: false, message: accountsCopy.account.partiallyDeleted };
+  }
+  setSignedIn(null);
+  return { ok: true };
 }
