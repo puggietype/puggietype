@@ -100,6 +100,15 @@ describe("steam settings page", () => {
     clickText(root, "steam-music-track", "Sherwood");
     clickText(root, "steam-music-while-typing", "lower");
     clickText(root, "steam-ui-scale", "125%");
+    // QA PR30-SCALE-ORPHAN: 6 scales in two even rows of 3
+    const scale = root.querySelector('[data-testid="steam-ui-scale"]');
+    expect(scale?.getAttribute("data-steam-cols")).toBe("3");
+    expect(scale?.children).toHaveLength(6);
+    expect(
+      root
+        .querySelector('[data-testid="steam-fps-cap"]')
+        ?.getAttribute("data-steam-cols"),
+    ).toBe("3");
     expect(saved().music).toMatchObject({
       enabled: true,
       track: "sherwood",

@@ -15,11 +15,14 @@ export function Choice<T>(props: {
   onSelect: (value: T) => void;
   /** wider columns for long labels (e.g. 2560×1440) */
   wide?: boolean;
+  /** fixed column count, so rows come out even (e.g. 6 options: 3 + 3) */
+  columns?: 2 | 3;
 }): JSXElement {
   return (
     <div
       data-testid={props.id}
       data-steam-choice={props.wide === true ? "wide" : ""}
+      data-steam-cols={props.columns}
       class="grid gap-2"
     >
       <For each={props.options}>

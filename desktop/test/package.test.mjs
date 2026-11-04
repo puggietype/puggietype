@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, it } from "node:test";
+import { before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import {
@@ -74,13 +74,22 @@ function fakeDist() {
 }
 
 describe("packaged output (GPL source bundling)", () => {
-  const out = fs.mkdtempSync(path.join(os.tmpdir(), "pt-pkg-"));
-  const { app, legal } = stagePackage({
-    distDir: fakeDist(),
-    outDir: out,
-    commit: COMMIT,
+  // Setup runs in before(), not in the describe body: node --test reports a
+  // throw in a describe body but can still exit 0 (QA P2
+  // DESKTOP-NODETEST-EXIT). A throw in before() fails every test below.
+  let out;
+  let app;
+  let legal;
+  let servedLegal;
+  before(() => {
+    out = fs.mkdtempSync(path.join(os.tmpdir(), "pt-pkg-"));
+    ({ app, legal } = stagePackage({
+      distDir: fakeDist(),
+      outDir: out,
+      commit: COMMIT,
+    }));
+    servedLegal = path.join(app, "web", "legal");
   });
-  const servedLegal = path.join(app, "web", "legal");
 
   it("ships LICENSE, NOTICE, the Electron and Chromium licenses and a source offer, twice", () => {
     for (const dir of [servedLegal, legal]) {
