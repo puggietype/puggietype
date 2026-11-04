@@ -126,13 +126,13 @@ describe("accounts session", () => {
       ok: false,
       status: 403,
       code: "turnstile_failed",
-      message: "The bot check failed, please try again",
+      message: accountsCopy.api.turnstileFailed,
     });
     const result = await signIn({ kind: "google" }, "t");
     expect(result).toEqual({
       status: "error",
       code: "turnstile_failed",
-      message: "The bot check failed, please try again",
+      message: accountsCopy.api.turnstileFailed,
     });
     expect(sdk.signOutFirebase).toHaveBeenCalledTimes(1);
     expect(getAccountUser()).toBeNull();

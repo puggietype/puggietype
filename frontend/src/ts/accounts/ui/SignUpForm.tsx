@@ -14,6 +14,9 @@ import { accountsCopy } from "../strings";
 import { BirthYearField } from "./BirthYearField";
 import { TurnstileControl, TurnstileWidget } from "./TurnstileWidget";
 
+const legal = accountsCopy.signUp.legal;
+const linkClass = "text-sub underline hover:text-text";
+
 /**
  * Email/password or Google sign-up with the neutral birth-year question.
  * The year is checked here and dropped: only "13 or older" moves on.
@@ -125,6 +128,17 @@ export function SignUpForm(props: {
           text={accountsCopy.signUp.submit}
           disabled={!canSubmit()}
         />
+        <p class="text-xs text-sub" data-testid="sign-up-legal">
+          {legal.beforeTerms}
+          <a class={linkClass} href={legal.termsHref}>
+            {legal.terms}
+          </a>
+          {legal.beforePrivacy}
+          <a class={linkClass} href={legal.privacyHref}>
+            {legal.privacy}
+          </a>
+          {legal.end}
+        </p>
       </form>
     </div>
   );

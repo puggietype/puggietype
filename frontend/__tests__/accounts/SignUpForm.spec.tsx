@@ -90,6 +90,43 @@ describe("SignUpForm birth year", () => {
   });
 });
 
+describe("SignUpForm legal line", () => {
+  it("sits under the submit button with real Terms and Privacy links", () => {
+    const { getByTestId, container } = render(() => (
+      <SignUpForm onResult={vi.fn()} onBlocked={vi.fn()} />
+    ));
+    const legal = getByTestId("sign-up-legal");
+    expect(legal.textContent).toBe(
+      "By creating an account, you agree to our Terms and confirm you've read our Privacy Policy.",
+    );
+    const links = [...legal.querySelectorAll("a")].map((a) => [
+      a.textContent,
+      a.getAttribute("href"),
+    ]);
+    expect(links).toEqual([
+      ["Terms", "/terms"],
+      ["Privacy Policy", "/privacy"],
+    ]);
+    const submit = container.querySelector('form button[type="submit"]');
+    expect(submit?.nextElementSibling).toBe(legal);
+  });
+
+  it("no age is mentioned next to the birth year field", () => {
+    const { container } = render(() => (
+      <SignUpForm onResult={vi.fn()} onBlocked={vi.fn()} />
+    ));
+    const label = container.querySelector("select")?.closest("label");
+    const text = [...(label?.childNodes ?? [])]
+      .filter((n) => n.nodeName !== "SELECT")
+      .map((n) => n.textContent)
+      .join("");
+    expect(text).toBe("birth year");
+    expect(container.textContent?.replace(/\d{4}/g, "")).not.toMatch(
+      /\d|\bage\b|years old/i,
+    );
+  });
+});
+
 describe("AgeCheckPrompt", () => {
   it("sends only the 13+ boolean to completeAgeCheck", async () => {
     session.completeAgeCheck.mockResolvedValue({ status: "signed-in" });
