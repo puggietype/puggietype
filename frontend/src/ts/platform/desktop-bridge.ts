@@ -26,6 +26,17 @@ export type DesktopBridge = {
      * or with why there are none. Older shells resolved null on cancel.
      */
     signIn: () => Promise<SteamBridgeSignInResult>;
+    /**
+     * Session token (server FEATURE_STEAM_SESSION), kept by the shell in
+     * the OS secure storage (Electron safeStorage) only. `set` returns false
+     * when there is no secure storage; then nothing is kept. Older shells
+     * have no `session`.
+     */
+    session?: {
+      get: () => string | null;
+      set: (token: string) => boolean;
+      clear: () => void;
+    };
   };
 };
 

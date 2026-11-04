@@ -20,6 +20,8 @@ vi.mock("../../../../src/ts/utils/file-storage", () => ({
 import type { SteamBridgeSignInResult } from "../../../../src/ts/platform/desktop-bridge";
 
 import {
+  STEAM_DELETE_TEXT,
+  STEAM_RESUMING_TEXT,
   STEAM_SIGNIN_ERROR_TEXT,
   SteamSignIn,
 } from "../../../../src/ts/components/pages/settings/custom-setting/SteamSignIn";
@@ -28,6 +30,7 @@ import {
   STEAM_NAME_HIDDEN_KEY,
   STEAM_SIGNIN_HINT,
 } from "../../../../src/ts/platform/steam-identity";
+import * as SteamSession from "../../../../src/ts/steam/steam-session";
 
 // Legal M3-HINT, exact copy
 const HINT =
@@ -37,9 +40,12 @@ const OPENID = { "openid.mode": "id_res", "openid.sig": "x" };
 let store: Map<string, string>;
 let signIn: ReturnType<typeof vi.fn<() => Promise<SteamBridgeSignInResult>>>;
 
+let secure: string | null = null;
+
 function installBridge(opts: {
   steam: boolean;
   result?: SteamBridgeSignInResult;
+  session?: boolean;
 }): void {
   signIn = vi.fn(async () =>
     "result" in opts
@@ -54,7 +60,25 @@ function installBridge(opts: {
       setItem: (k: string, v: string) => void store.set(k, v),
       removeItem: (k: string) => void store.delete(k),
     },
-    ...(opts.steam ? { steam: { signIn } } : {}),
+    ...(opts.steam
+      ? {
+          steam: {
+            signIn,
+            ...(opts.session
+              ? {
+                  session: {
+                    get: () => secure,
+                    set: (t: string) => {
+                      secure = t;
+                      return true;
+                    },
+                    clear: () => void (secure = null),
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
   });
 }
 
@@ -74,6 +98,7 @@ function press(el: HTMLElement, sel: string): void {
 }
 
 beforeEach(() => {
+  secure = null;
   store = new Map();
   vi.stubGlobal("__PLATFORM__", "steam");
 });
@@ -520,5 +545,174 @@ describe("Sign in with Steam: rendered attributes (SR-ANNOUNCE review)", () => {
     } finally {
       style.remove();
     }
+  });
+});
+
+describe("Delete my account", () => {
+  const TOKEN = "A".repeat(43);
+  async function signedIn(
+    deleteAccount?: (
+      ...a: unknown[]
+    ) => Promise<{ ok: true } | { ok: false; error: "expired" | "network" }>,
+  ): Promise<HTMLElement> {
+    installBridge({ steam: true, session: true });
+    server(200, {
+      ok: true,
+      steamId: "1",
+      ownsApp: true,
+      personaName: "PugFan",
+      sessionToken: TOKEN,
+    });
+    const el = render(
+      () => <SteamSignIn {...(deleteAccount ? { deleteAccount } : {})} />,
+      { container: document.body.appendChild(document.createElement("div")) },
+    ).container;
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() => expect($(el, "#steam-signout")).not.toBeNull());
+    return el;
+  }
+
+  it("Legal strings (exact)", () => {
+    expect(STEAM_DELETE_TEXT).toEqual({
+      button: "Delete my account",
+      confirm:
+        "Delete your account? This removes your Steam sign-in from PuggieType's server and signs you out on all your devices. It can't be undone.",
+      confirmButton: "Yes, delete my account",
+      cancel: "cancel",
+      pending: "Deleting your account...",
+      done: "Your account was deleted. You're signed out.",
+      expired:
+        "Your sign-in has expired. Sign in with Steam again, then delete your account.",
+      network:
+        "Couldn't delete your account. Check your connection and try again.",
+    });
+    expect(STEAM_RESUMING_TEXT).toBe("Signing in with Steam...");
+  });
+
+  it("only shows when a session token is kept", async () => {
+    const el = await signedIn();
+    expect(secure).toBe(TOKEN);
+    expect($(el, "#steam-delete-button")?.textContent).toBe(
+      "Delete my account",
+    );
+    cleanup();
+    installBridge({ steam: true });
+    server(200, { ok: true, steamId: "1", ownsApp: true });
+    const old = render(() => <SteamSignIn />).container;
+    press(old, "#steam-signin-button");
+    press(old, "#steam-signin-continue");
+    await waitFor(() => expect($(old, "#steam-signout")).not.toBeNull());
+    expect($(old, "#steam-delete-button")).toBeNull();
+  });
+
+  it("asks first; focus goes to cancel; cancel and Escape change nothing", async () => {
+    const del = vi.fn(async () => ({ ok: true as const }));
+    const el = await signedIn(del);
+    press(el, "#steam-delete-button");
+    expect($(el, "#steam-delete-confirm-text")?.textContent).toBe(
+      STEAM_DELETE_TEXT.confirm,
+    );
+    expect(document.activeElement?.id).toBe("steam-delete-cancel");
+    expect(
+      $(el, "#steam-delete-confirm")?.getAttribute("aria-describedby"),
+    ).toBe("steam-delete-confirm-text");
+    press(el, "#steam-delete-cancel");
+    expect(document.activeElement?.id).toBe("steam-delete-button");
+    press(el, "#steam-delete-button");
+    fireEvent.keyDown($(el, "#steam-delete-cancel") as HTMLElement, {
+      key: "Escape",
+    });
+    expect($(el, "#steam-delete-confirm")).toBeNull();
+    expect(document.activeElement?.id).toBe("steam-delete-button");
+    expect(del).not.toHaveBeenCalled();
+    expect(secure).toBe(TOKEN);
+  });
+
+  it("confirm deletes, clears secure storage and returns to sign-in", async () => {
+    const el = await signedIn();
+    const f = server(200, { ok: true, deleted: true });
+    press(el, "#steam-delete-button");
+    press(el, "#steam-delete-confirm");
+    expect($(el, '[data-testid="steam-delete-pending"]')?.textContent).toBe(
+      STEAM_DELETE_TEXT.pending,
+    );
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("steam-signin-button"),
+    );
+    expect(String(f.mock.calls[0]?.[0])).toMatch(/\/steam\/account\/delete$/);
+    expect(secure).toBeNull();
+    expect($(el, "#steam-signin-status")?.textContent).toBe(
+      STEAM_DELETE_TEXT.done,
+    );
+  });
+
+  it("an expired token returns to sign-in with the expired text", async () => {
+    const el = await signedIn(async () => ({ ok: false, error: "expired" }));
+    press(el, "#steam-delete-button");
+    press(el, "#steam-delete-confirm");
+    await waitFor(() =>
+      expect($(el, "#steam-signin-status")?.textContent).toBe(
+        STEAM_DELETE_TEXT.expired,
+      ),
+    );
+    expect($(el, "#steam-signin-button")).not.toBeNull();
+  });
+
+  it("a network error stays signed in, says so and refocuses delete", async () => {
+    const el = await signedIn(async () => ({ ok: false, error: "network" }));
+    press(el, "#steam-delete-button");
+    press(el, "#steam-delete-confirm");
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("steam-delete-button"),
+    );
+    expect($(el, '[data-testid="steam-delete-error"]')?.textContent).toBe(
+      STEAM_DELETE_TEXT.network,
+    );
+    expect($(el, "#steam-signout")).not.toBeNull();
+  });
+
+  it("sign out deletes the kept token", async () => {
+    const el = await signedIn();
+    server(200, { ok: true });
+    press(el, "#steam-signout");
+    expect(secure).toBeNull();
+  });
+});
+
+describe("Silent sign-in at launch", () => {
+  it("shows the launch result in settings", async () => {
+    const mod = SteamSession;
+    installBridge({ steam: true, session: true });
+    secure = "A".repeat(43);
+    let finish: () => void = () => undefined;
+    const p = mod.startSilentSteamSignIn(
+      async () =>
+        new Promise((res) => {
+          finish = () =>
+            res({
+              ok: true,
+              value: {
+                steamId: "1",
+                ownsApp: true,
+                displayName: "PugFan",
+                personaName: "PugFan",
+              },
+            });
+        }),
+    );
+    const el = render(() => <SteamSignIn />).container;
+    expect($(el, "#steam-signin-status")?.textContent).toBe(
+      STEAM_RESUMING_TEXT,
+    );
+    finish();
+    await p;
+    await waitFor(() =>
+      expect($(el, '[data-testid="steam-signin-name"]')?.textContent).toBe(
+        "PugFan",
+      ),
+    );
+    expect($(el, "#steam-delete-button")).not.toBeNull();
+    mod.__resetSteamSessionForTests();
   });
 });
