@@ -485,12 +485,7 @@ describe("Sign in with Steam: rendered attributes (SR-ANNOUNCE review)", () => {
     expect(cont?.dataset["ariaDescribedby"]).toBeUndefined();
   });
 
-  it("the idle live region is :empty, so the steam-only CSS cancels its gap", async () => {
-    installBridge({ steam: true });
-    const el = render(() => <SteamSignIn />).container;
-    const region = $(el, "#steam-signin-status");
-    expect(region?.matches(":empty")).toBe(true);
-    expect(region?.hidden).toBe(false);
+  it("empty region: the next control is pulled up; with text it is not (computed style)", async () => {
     const { readFileSync } = await import("node:fs");
     const path = await import("node:path");
     const css = readFileSync(
@@ -500,9 +495,30 @@ describe("Sign in with Steam: rendered attributes (SR-ANNOUNCE review)", () => {
       ),
       "utf8",
     );
-    expect(css).toMatch(
-      /#steam-signin-status:empty \{\s*margin-bottom: -0\.5rem;/,
-    );
     expect(css).not.toMatch(/display:\s*none/);
+    const style = document.head.appendChild(document.createElement("style"));
+    style.textContent = css;
+    try {
+      installBridge({ steam: true, result: { error: "timeout" } });
+      const el = render(() => <SteamSignIn />, {
+        container: document.body.appendChild(document.createElement("div")),
+      }).container;
+      const region = $(el, "#steam-signin-status");
+      const next = (): Element | null | undefined => region?.nextElementSibling;
+      expect(region?.matches(":empty")).toBe(true);
+      expect(region?.hidden).toBe(false);
+      expect(next()?.matches("#steam-signin-status:empty + *")).toBe(true);
+      expect(getComputedStyle(next() as Element).marginTop).toBe("-0.5rem");
+      press(el, "#steam-signin-button");
+      press(el, "#steam-signin-continue");
+      await waitFor(() =>
+        expect(region?.textContent).toBe(STEAM_SIGNIN_ERROR_TEXT.timeout),
+      );
+      expect(region?.matches(":empty")).toBe(false);
+      expect(next()?.matches("#steam-signin-status:empty + *")).toBe(false);
+      expect(getComputedStyle(next() as Element).marginTop).not.toBe("-0.5rem");
+    } finally {
+      style.remove();
+    }
   });
 });
