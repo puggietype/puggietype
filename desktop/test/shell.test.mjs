@@ -165,3 +165,60 @@ describe("no Steamworks, no ads", () => {
     assert.deepEqual(deps, ["electron"]);
   });
 });
+
+describe("Steam OpenID (M3)", async () => {
+  const {
+    loopbackReturnTo,
+    parseOpenIdCallback,
+    steamOpenIdLoginUrl,
+    steamSignInEnabled,
+  } = await import("../src/shell.mjs");
+  const state = "0123456789abcdef0123456789abcdef";
+
+  it("is off unless PUGGIE_STEAM_OPENID=1", () => {
+    assert.equal(steamSignInEnabled({}), false);
+    assert.equal(steamSignInEnabled({ PUGGIE_STEAM_OPENID: "1" }), true);
+  });
+
+  it("builds a checkid_setup URL with a 127.0.0.1 loopback return", () => {
+    const ret = loopbackReturnTo(43123, state);
+    assert.equal(ret, `http://127.0.0.1:43123/steam/callback?state=${state}`);
+    const u = new URL(steamOpenIdLoginUrl(ret));
+    assert.equal(
+      u.origin + u.pathname,
+      "https://steamcommunity.com/openid/login",
+    );
+    assert.equal(u.searchParams.get("openid.mode"), "checkid_setup");
+    assert.equal(u.searchParams.get("openid.return_to"), ret);
+    assert.equal(u.searchParams.get("openid.realm"), "http://127.0.0.1:43123");
+    assert.throws(() => loopbackReturnTo(0, state));
+    assert.throws(() => loopbackReturnTo(80, "nothex"));
+  });
+
+  it("accepts only its own callback path and state", () => {
+    const ok = `/steam/callback?state=${state}&openid.mode=id_res&openid.sig=s&x=y`;
+    assert.deepEqual(parseOpenIdCallback(ok, state), {
+      "openid.mode": "id_res",
+      "openid.sig": "s",
+    });
+    assert.equal(
+      parseOpenIdCallback(
+        `/steam/callback?state=${state}&openid.mode=cancel`,
+        state,
+      ),
+      "cancel",
+    );
+    assert.equal(
+      parseOpenIdCallback(ok.replace(state, "f".repeat(32)), state),
+      undefined,
+    );
+    assert.equal(
+      parseOpenIdCallback(`/other?state=${state}&openid.mode=id_res`, state),
+      undefined,
+    );
+    assert.equal(
+      parseOpenIdCallback(`/steam/callback?state=${state}`, state),
+      undefined,
+    );
+  });
+});

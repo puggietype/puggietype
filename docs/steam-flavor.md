@@ -48,3 +48,11 @@ In `frontend/`: `npm run build` (web) or `npm run build:steam`.
 - M3: Steam OpenID sign-in and server-side entitlement checks.
 - Cross-play: web and steam share the same core and ws protocol; the server
   accepts a protocol range and a hello without `protocol` counts as 1.
+
+## M3: Steam sign-in and ownership (draft, HOLD for Legal review)
+
+- No Steamworks SDK. With `PUGGIE_STEAM_OPENID=1`, the shell exposes `puggieDesktop.steam.signIn()`. It opens Steam's OpenID 2.0 login page in the system browser, with `return_to` set to a one-shot listener on `http://127.0.0.1:<port>/steam/callback?state=<random>`.
+- The shell checks the callback's path and state, then returns the `openid.*` fields. `signInWithSteam()` (frontend/src/ts/platform/steam-identity.ts) POSTs them to the game server's `/steam/auth`.
+- The server (puggietype-server) checks the assertion, verifies it with Steam (`check_authentication`), then calls `ISteamUser/CheckAppOwnership` with the publisher key, which is read from the env and never committed.
+- The Steam persona name is shown only if it passes the web username filter (`UserNameSchema`) and the player hasn't hidden it (`steamNameHidden`).
+- Everything is off by default: there's no app id or key yet, and there's no UI entry point.

@@ -203,3 +203,62 @@ export function isPermissionAllowed(permission, requestingUrl) {
     ALLOWED_PERMISSIONS.has(permission) && isInternalUrl(requestingUrl ?? "")
   );
 }
+
+// ---------------------------------------------------------------- Steam M3
+// Steam OpenID 2.0 in the system browser with a 127.0.0.1 loopback return.
+// No Steamworks SDK. The shell only collects the signed openid.* response;
+// the game server verifies it (check_authentication) and checks ownership.
+export const STEAM_OPENID_LOGIN = "https://steamcommunity.com/openid/login";
+export const STEAM_CALLBACK_PATH = "/steam/callback";
+export const STEAM_SIGNIN_TIMEOUT_MS = 5 * 60_000;
+
+/** Steam sign-in is off unless PUGGIE_STEAM_OPENID=1 (no Steam app yet). */
+export function steamSignInEnabled(env) {
+  return env["PUGGIE_STEAM_OPENID"] === "1";
+}
+
+export function loopbackReturnTo(port, state) {
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("bad port");
+  }
+  if (!/^[0-9a-f]{32}$/.test(state)) throw new Error("bad state");
+  return `http://127.0.0.1:${port}${STEAM_CALLBACK_PATH}?state=${state}`;
+}
+
+export function steamOpenIdLoginUrl(returnTo) {
+  const u = new URL(STEAM_OPENID_LOGIN);
+  const realm = new URL(returnTo).origin;
+  u.search = new URLSearchParams({
+    "openid.ns": "http://specs.openid.net/auth/2.0",
+    "openid.mode": "checkid_setup",
+    "openid.return_to": returnTo,
+    "openid.realm": realm,
+    "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+    "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
+  }).toString();
+  return u.toString();
+}
+
+/**
+ * Parse the loopback callback. Returns the openid.* params when the path and
+ * state match and the mode is id_res, "cancel" when the user cancelled, else
+ * undefined.
+ */
+export function parseOpenIdCallback(requestUrl, state) {
+  let u;
+  try {
+    u = new URL(requestUrl, "http://127.0.0.1");
+  } catch {
+    return undefined;
+  }
+  if (u.pathname !== STEAM_CALLBACK_PATH) return undefined;
+  if (u.searchParams.get("state") !== state) return undefined;
+  const mode = u.searchParams.get("openid.mode");
+  if (mode === "cancel") return "cancel";
+  if (mode !== "id_res") return undefined;
+  const out = {};
+  for (const [k, v] of u.searchParams) {
+    if (k.startsWith("openid.")) out[k] = v;
+  }
+  return out;
+}
