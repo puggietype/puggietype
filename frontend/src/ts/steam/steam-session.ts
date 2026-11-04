@@ -6,6 +6,7 @@ import { getPlatform } from "../platform";
 import { getDesktopBridge } from "../platform/desktop-bridge";
 import {
   resumeSteamSession,
+  signInWithSteamTicket,
   type SteamSignIn,
 } from "../platform/steam-identity";
 
@@ -43,10 +44,19 @@ let started: Promise<void> | undefined;
  */
 export async function startSilentSteamSignIn(
   resume: typeof resumeSteamSession = resumeSteamSession,
+  ticket: typeof signInWithSteamTicket = signInWithSteamTicket,
 ): Promise<void> {
   started ??= (async () => {
-    if (getDesktopBridge()?.steam?.session === undefined) return;
+    const steam = getDesktopBridge()?.steam;
+    if (steam?.session === undefined && steam?.ticket === undefined) return;
     setLaunchState({ kind: "resuming" });
+    // 1. a one-time Steam ticket (optional helper), 2. the kept session
+    // token, 3. nothing: the OpenID button in settings
+    const t = await ticket(steamSessionDeps());
+    if (t.ok) {
+      setLaunchState({ kind: "signedIn", value: t.value });
+      return;
+    }
     const r = await resume(steamSessionDeps());
     setLaunchState(
       r.ok ? { kind: "signedIn", value: r.value } : { kind: "idle" },

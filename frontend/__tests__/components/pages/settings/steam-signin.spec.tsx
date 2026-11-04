@@ -701,7 +701,7 @@ describe("Silent sign-in at launch", () => {
     const mod = SteamSession;
     installBridge({ steam: true, session: true });
     secure = "A".repeat(43);
-    let finish: () => void = () => undefined;
+    let finish: (() => void) | undefined;
     const p = mod.startSilentSteamSignIn(
       async () =>
         new Promise((res) => {
@@ -721,7 +721,9 @@ describe("Silent sign-in at launch", () => {
     expect($(el, "#steam-signin-status")?.textContent).toBe(
       STEAM_RESUMING_TEXT,
     );
-    finish();
+    // the token step runs after the (absent) ticket step
+    await waitFor(() => expect(finish).toBeDefined());
+    finish?.();
     await p;
     await waitFor(() =>
       expect($(el, '[data-testid="steam-signin-name"]')?.textContent).toBe(

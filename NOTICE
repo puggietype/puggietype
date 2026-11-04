@@ -39,6 +39,13 @@ in art/.
 
 Supporter pack artwork in assets/supporter/ is not covered by the GPL; see assets/supporter/LICENSE. All other artwork, including the current pug art, is GPL-3.0.
 
+The optional Steam ticket helper (tools/steam-ticket-helper) is a
+separate program that the desktop app may start as its own process. It is
+built with the Valve Steamworks SDK, which is not included in this
+repository and is not covered by the GPL; see
+tools/steam-ticket-helper/LICENSE. Steam and Steamworks are trademarks of
+Valve Corporation.
+
 PuggieType is an independent project and is not affiliated with or
 endorsed by Monkeytype.
 

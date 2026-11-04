@@ -1,0 +1,11 @@
+LICENSE STUB (needs Legal review before any helper binary ships)
+
+This directory contains no Steamworks SDK code. A future steam-ticket-helper
+binary built from it links the Valve Steamworks SDK, which is distributed
+under the Steamworks SDK Access Agreement, not under the GPL. The helper is a
+separate program that the GPL-3.0 PuggieType desktop app starts as its own
+process and talks to only through its standard output.
+
+The licence for the helper's own source, and the terms for redistributing
+the Steamworks redistributable files with it, are to be decided by Legal.
+Until then, do not ship a built helper.

@@ -312,3 +312,55 @@ export async function deleteSteamAccount(
   }
   return { ok: false, error: "network" };
 }
+
+const TICKET_RX = /^(?:[0-9a-fA-F]{2}){16,2048}$/;
+
+/**
+ * Silent sign-in with a one-time ticket from the Steam client, through the
+ * optional helper (PUGGIE_STEAM_SDK). Any failure returns "none" so the
+ * caller falls back to the kept session token, then the OpenID button. The
+ * ticket is sent once to POST /steam/ticket and never stored or logged.
+ */
+export async function signInWithSteamTicket(
+  deps: SessionDeps,
+): Promise<{ ok: true; value: SteamSignIn } | { ok: false; error: "none" }> {
+  const getTicket = deps.bridge?.steam?.ticket;
+  if (!getTicket) return { ok: false, error: "none" };
+  let ticket: unknown;
+  try {
+    ticket = (await getTicket())?.ticket;
+  } catch {
+    return { ok: false, error: "none" };
+  }
+  if (typeof ticket !== "string" || !TICKET_RX.test(ticket)) {
+    return { ok: false, error: "none" };
+  }
+  let status: number;
+  let body: unknown;
+  try {
+    const res = await (deps.fetch ?? fetch)(
+      sessionUrl(deps.serverBase, "/steam/ticket"),
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ticket,
+          ...(canKeepSession(deps.bridge) ? {} : { keep: false }),
+        }),
+      },
+    );
+    status = res.status;
+    body = await res.json();
+  } catch {
+    return { ok: false, error: "none" };
+  }
+  const b = body as { ok?: unknown; steamId?: unknown } | null;
+  if (status !== 200 || b?.ok !== true || typeof b.steamId !== "string") {
+    return { ok: false, error: "none" };
+  }
+  await keepSessionToken(deps, body);
+  return {
+    ok: true,
+    value: signInValue(b as { steamId: string }, deps.storage),
+  };
+}
