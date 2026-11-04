@@ -51,6 +51,7 @@ import { MinSpeed } from "./custom-setting/MinSpeed";
 import { PaceCaret } from "./custom-setting/PaceCaret";
 import { Presets } from "./custom-setting/Presets";
 import { SoundVolume } from "./custom-setting/SoundVolume";
+import { SteamSignIn } from "./custom-setting/SteamSignIn";
 import { Tags } from "./custom-setting/Tags";
 import { Theme } from "./custom-setting/Theme";
 import { SearchableAutoSetting } from "./SearchableAutoSetting";
@@ -261,6 +262,16 @@ export function SettingsPage(): JSXElement {
             <Layout />
             <SearchableAutoSetting key="codeUnindentOnBackspace" />
           </Section>
+          {
+            // steam flavor only (define compared inline so web is unchanged);
+            // the component also hides itself unless the shell exposes sign-in
+            // oxlint-disable-next-line solid/prefer-show -- build-time constant; <Show> would stay in the web bundle
+            typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam" ? (
+              <Section title="steam account" tab="gameplay">
+                <SteamSignIn />
+              </Section>
+            ) : null
+          }
           <Section title="danger zone" tab="gameplay">
             <ImportExport />
             <SearchableSetting

@@ -94,6 +94,7 @@ describe("signInWithSteam", () => {
         steamId: "76561197960287930",
         ownsApp: true,
         displayName: "PugFan",
+        personaName: "PugFan",
       },
     });
     expect(fetch).toHaveBeenCalledWith("https://ws.example/steam/auth", {
@@ -224,5 +225,47 @@ describe("Legal review 2026-11-04", () => {
         /\bownsApp\b/.test(readFileSync(f, "utf8")),
     );
     expect(users).toEqual([]);
+  });
+});
+
+describe("signInWithSteam: shell and server outcomes", () => {
+  async function run(
+    result: Parameters<typeof bridgeWith>[0],
+    status = 200,
+    body: unknown = { ok: true, steamId: "1" },
+  ): ReturnType<typeof signInWithSteam> {
+    return signInWithSteam({
+      bridge: bridgeWith(result),
+      serverBase: "https://ws.example",
+      storage: memStorage(),
+      fetch: server(status, body),
+    });
+  }
+  function bridgeWith(
+    result: Awaited<ReturnType<NonNullable<DesktopBridge["steam"]>["signIn"]>>,
+  ): DesktopBridge {
+    const b: DesktopBridge = {
+      version: 1,
+      fullscreen: { isFullscreen: () => false, toggle: () => undefined },
+      storage: memStorage(),
+      steam: { signIn: async () => result },
+    };
+    return b;
+  }
+
+  it.each([
+    [{ error: "cancelled" }, "cancelled"],
+    [{ error: "timeout" }, "timeout"],
+    [{ error: "busy" }, "busy"],
+    [{ error: "failed" }, "cancelled"],
+  ] as const)("shell %o -> %s", async (result, error) => {
+    expect(await run(result)).toEqual({ ok: false, error });
+  });
+
+  it("server 404 means the feature is off", async () => {
+    expect(await run({ openid: OPENID }, 404, "Not Found")).toEqual({
+      ok: false,
+      error: "feature_off",
+    });
   });
 });
