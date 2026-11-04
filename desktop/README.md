@@ -19,5 +19,7 @@ npm run smoke          # loads the app, checks sandbox + bridge + fullscreen, ex
 - `src/preload.cjs` exposes `window.puggieDesktop` (v1): `fullscreen.{isFullscreen,toggle}`
   and `storage.{getItem,setItem,removeItem}` (JSON file in userData). The frontend's
   steam adapter (`frontend/src/ts/platform/steam.ts`) uses it when present.
+- Every `app://` response carries a strict CSP (`buildCsp` in `src/shell.mjs`): `'self'` plus the build's inline-script hashes, `connect-src` limited to the ws server and its https twin (leaderboards), no eval, frames, plugins or remote images. Hashes and the ws origin are read from the steam build's rendered `_headers`.
+- Permissions are denied by default (`setPermissionRequestHandler` / `setPermissionCheckHandler`); only `clipboard-sanitized-write` and `fullscreen` are allowed, and only for `app://puggietype`.
 - True fullscreen: F11 or Alt+Enter, or the in-app fullscreen command.
 - Packaging and Steam depots are later milestones.
