@@ -1,7 +1,6 @@
 import { createSignal } from "solid-js";
 
 import { loadCharacter, saveCharacter } from "./character-storage";
-import type { ConnectionStatus } from "./client";
 import { isFlagEnabled } from "./feature-flags";
 import type { RoomsList } from "./open-rooms";
 import type { QueueState } from "./quick-match";
@@ -14,6 +13,8 @@ import {
   type RoomState,
   type Settings,
 } from "./protocol";
+
+export type ConnectionStatus = "idle" | "connecting" | "open" | "reconnecting";
 
 export type RaceInfo = {
   startAt: number;

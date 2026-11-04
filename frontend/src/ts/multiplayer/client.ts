@@ -2,7 +2,7 @@ import { isAgeConfirmed } from "./age-gate";
 import { computeClockOffset, type ClockSample } from "./clock";
 import { CONFIGURED_WS_URL } from "./flags";
 import { leaderboardSubmitBlocked } from "./leaderboards";
-import { leaderboardsOn } from "./store";
+import { leaderboardsOn, type ConnectionStatus } from "./store";
 import { isFlagEnabled } from "./feature-flags";
 import { wsUrl } from "./helpers";
 import type { ClientMessage, ServerMessage } from "./protocol";
@@ -14,7 +14,7 @@ const RECONNECT_DELAYS = [500, 1000, 2000, 4000];
 /** close codes after which reconnecting would be wrong */
 const NO_RECONNECT_CODES = new Set([4000, 4002]);
 
-export type ConnectionStatus = "idle" | "connecting" | "open" | "reconnecting";
+export type { ConnectionStatus };
 
 type Session = { playerId: string; sessionToken: string };
 
