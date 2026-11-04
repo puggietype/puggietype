@@ -408,6 +408,8 @@ function getCssOptions({
   };
 }
 
+const STEAM_DEFAULT_WS_URL = "wss://ws.puggietype.com/ws";
+
 function parsePlatform(value: string | undefined): "web" | "steam" {
   if (value === undefined || value === "" || value === "web") return "web";
   if (value === "steam") return "steam";
@@ -432,6 +434,11 @@ export default defineConfig(({ mode }): UserConfig => {
   const standalone = (env["BACKEND_URL"] ?? "") === "";
   // PLATFORM=steam selects the desktop flavor; anything unset means web
   const platform = parsePlatform(env["PLATFORM"]);
+  // the steam build loads from local files: no same-origin /ws, so it always
+  // bakes in an absolute server URL (the runtime falls back the same way)
+  if (platform === "steam" && (env["VITE_WS_URL"] ?? "") === "") {
+    process.env["VITE_WS_URL"] = STEAM_DEFAULT_WS_URL;
+  }
   const firebaseStub = path.resolve(
     __dirname,
     "src/ts/standalone/firebase-stub.ts",
