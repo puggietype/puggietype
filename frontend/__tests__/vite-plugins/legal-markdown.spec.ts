@@ -47,6 +47,15 @@ const ACCOUNTS_RETENTION_ROWS = [
   "| Firebase sign-in | deleted with the account (within 30 days at most) |",
 ].join("\n");
 
+const NEON_PROVIDER =
+  "- Neon, LLC (a Databricks company), USA, database hosting for account data (account ID, generated name, settings, scores) and leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.";
+const ACCOUNTS_PROVIDERS = [
+  '- **Google LLC**, USA, account sign-in with Google Firebase Authentication, including Google sign-in if you use it. Google acts as our processor under its data processing terms; transfers are covered as described in "Accounts (ages 13+)".',
+  '- **Cloudflare, Inc.** also runs Cloudflare Turnstile, the security check on sign-in and sign-up, which checks browser and device signals (such as your IP address) to tell people from bots. Cloudflare acts as our processor under its data processing terms; transfers are covered as described in "Accounts (ages 13+)".',
+].join("\n");
+const PROVIDERS_NOT_IN_EFFECT =
+  '<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. The Google (Firebase Authentication) and Cloudflare Turnstile entries, and the account data in the Neon entry, are pre-launch text for the "Accounts (ages 13+)" section. Accounts are behind a flag that is off; these entries describe no processing that happens today. -->';
+
 describe("legal-markdown", () => {
   for (const name of ["terms", "privacy"]) {
     it(`renders src/legal/${name}.md verbatim into ${name}.html`, () => {
@@ -77,9 +86,7 @@ describe("legal-markdown", () => {
     expect(md).toContain(
       "email us your nickname, board, and the approximate date and score, and we'll find and remove it.",
     );
-    expect(md).toContain(
-      "Neon, LLC (a Databricks company), USA, database hosting for leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.",
-    );
+    expect(md).toContain(`\n${NEON_PROVIDER}\n`);
     expect(md).not.toContain("account data once accounts launch");
     expect(md).not.toContain("your rank");
   });
@@ -121,6 +128,31 @@ describe("legal-markdown", () => {
     expect(html).toContain(ACCOUNTS_NOT_IN_EFFECT);
     expect(visible).not.toMatch(/not in effect|pre-launch/i);
     expect(visible).toContain("<h2>Accounts (ages 13+)</h2>");
+  });
+
+  it("lists the accounts service providers, marked not in effect", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    expect(md).toContain(
+      `## Service providers\n${PROVIDERS_NOT_IN_EFFECT}\n- **Cloudflare, Inc.** hosts`,
+    );
+    expect(md).toContain(`\n${NEON_PROVIDER}\n${ACCOUNTS_PROVIDERS}\n\n`);
+  });
+
+  it("renders the service providers as one list, note hidden", () => {
+    const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+    const html = renderLegalMarkdown(page, legalDir);
+    const section = html.slice(
+      html.indexOf("<h2>Service providers</h2>"),
+      html.indexOf("<h2>Cookies"),
+    );
+    const visible = section.replace(/<!--[\s\S]*?-->/g, "");
+
+    expect(section).toContain(PROVIDERS_NOT_IN_EFFECT);
+    expect(visible).not.toMatch(/not in effect|pre-launch/i);
+    expect(visible.match(/<ul>/g)).toHaveLength(1);
+    expect(visible.match(/<li>/g)).toHaveLength(5);
+    expect(visible).toContain("<li><strong>Google LLC</strong>, USA");
+    expect(visible).toContain("Cloudflare Turnstile");
   });
 
   it("contains no chat clauses", () => {
