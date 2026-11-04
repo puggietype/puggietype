@@ -172,3 +172,57 @@ describe("steam adapter identity", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("Legal review 2026-11-04", () => {
+  it("has the exact 127.0.0.1 sign-in hint", async () => {
+    const { STEAM_SIGNIN_HINT } =
+      await import("../../src/ts/platform/steam-identity");
+    expect(STEAM_SIGNIN_HINT).toBe(
+      "Steam will show this sign-in as coming from 127.0.0.1 (your own computer).",
+    );
+  });
+
+  it("entitlements never come from a client-held ownsApp", async () => {
+    const { b } = bridge({ openid: OPENID });
+    vi.stubGlobal("puggieDesktop", b);
+    const r = await signInWithSteam({
+      bridge: b,
+      serverBase: "https://ws.example",
+      storage: memStorage(),
+      fetch: server(200, {
+        ok: true,
+        steamId: "1",
+        ownsApp: true,
+        ownedDlc: ["1001"],
+        personaName: "PugFan",
+      }),
+    });
+    expect(r.ok).toBe(true);
+    // server DLC lists are not copied into the client result...
+    expect(JSON.stringify(r)).not.toContain("1001");
+    // ...and the adapter owns nothing until the server issues entitlements
+    await expect(steamAdapter.entitlements.getOwned()).resolves.toEqual([]);
+    vi.unstubAllGlobals();
+  });
+
+  it("no module outside steam-identity reads ownsApp", async () => {
+    const { readFileSync, readdirSync, statSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const root = join(__dirname, "../../src/ts");
+    const walk = (d: string): string[] =>
+      readdirSync(d).flatMap((n) => {
+        const p = join(d, n);
+        return statSync(p).isDirectory()
+          ? walk(p)
+          : /\.tsx?$/.test(n)
+            ? [p]
+            : [];
+      });
+    const users = walk(root).filter(
+      (f) =>
+        !f.endsWith("platform/steam-identity.ts") &&
+        /\bownsApp\b/.test(readFileSync(f, "utf8")),
+    );
+    expect(users).toEqual([]);
+  });
+});

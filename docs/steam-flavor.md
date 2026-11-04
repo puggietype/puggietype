@@ -55,4 +55,6 @@ In `frontend/`: `npm run build` (web) or `npm run build:steam`.
 - The shell checks the callback's path and state, then returns the `openid.*` fields. `signInWithSteam()` (frontend/src/ts/platform/steam-identity.ts) POSTs them to the game server's `/steam/auth`.
 - The server (puggietype-server) checks the assertion, verifies it with Steam (`check_authentication`), then calls `ISteamUser/CheckAppOwnership` with the publisher key, which is read from the env and never committed.
 - The Steam persona name is shown only if it passes the web username filter (`UserNameSchema`) and the player hasn't hidden it (`steamNameHidden`).
+- The sign-in UI must show `STEAM_SIGNIN_HINT` before opening Steam: "Steam will show this sign-in as coming from 127.0.0.1 (your own computer)."
+- `ownsApp` is informational only. Paid and DLC features must be checked on the server, and the client never grants entitlements (`entitlements.getOwned()` stays empty until there's a server-issued token).
 - Everything is off by default: there's no app id or key yet, and there's no UI entry point.

@@ -36,5 +36,8 @@ export const steamAdapter: PlatformAdapter = {
     // only when the shell exposes Steam sign-in (PUGGIE_STEAM_OPENID=1)
     isAvailable: () => getDesktopBridge()?.steam !== undefined,
   },
+  // Entitlements are server-checked only. A client-held ownership flag from
+  // signInWithSteam() is never trusted (Legal P1-2), so until the server
+  // issues an entitlement token this owns nothing.
   entitlements: { getOwned: async () => [] },
 };

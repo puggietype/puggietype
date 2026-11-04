@@ -8,8 +8,21 @@ import type { PlatformStorage } from "./types";
  * openid.* response; the game server verifies it with Steam and checks
  * ownership (POST /steam/auth). No Steamworks SDK.
  */
+/**
+ * Legal review 2026-11-04 (P3-8): the sign-in UI must show this before it
+ * opens Steam, because Steam names the loopback realm as the requester.
+ */
+export const STEAM_SIGNIN_HINT =
+  "Steam will show this sign-in as coming from 127.0.0.1 (your own computer).";
+
 export type SteamSignIn = {
   steamId: string;
+  /**
+   * Informational only (Legal P1-2). Never gate anything on it: paid or DLC
+   * features must be checked by the server, which re-checks ownership itself
+   * (or binds it to a server-issued token). Entitlements come only from
+   * PlatformAdapter.entitlements, which does not read this value.
+   */
   ownsApp: boolean;
   /** persona name if it passes the web name filter and is not hidden */
   displayName: string | null;
