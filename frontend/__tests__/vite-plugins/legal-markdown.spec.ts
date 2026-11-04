@@ -7,6 +7,9 @@ import { renderLegalMarkdown } from "../../vite-plugins/legal-markdown";
 
 const legalDir = path.resolve(__dirname, "../../src/legal");
 const srcDir = path.resolve(__dirname, "../../src");
+// Legal review 2026-11-04, Ruling 5, variant A (exact copy)
+const STEAM_VARIANT_A =
+  "The PuggieType desktop app on Steam can let you sign in with your Steam account. Sign-in happens on Steam's own website in your browser; we never see your Steam password. When you sign in, Steam tells our game server your public Steam ID, and our server asks Steam whether your account owns PuggieType (and any supporter pack) and what your Steam display name is. We use this only to sign you in, unlock what you own, and show your display name if it passes our name filter and you haven't hidden it. Our server does not store or log your Steam ID or display name; it holds them in memory only while handling the sign-in request. We don't sell or share Steam data, or use it for marketing. Our game server runs on Fly.io; see Hosting providers. Steam data is provided by Valve 'as is', without warranty. Valve's own handling of your data is described in Valve's Privacy Policy (https://store.steampowered.com/privacy_agreement/).";
 
 describe("legal-markdown", () => {
   for (const name of ["terms", "privacy"]) {
@@ -42,6 +45,15 @@ describe("legal-markdown", () => {
     );
     expect(md).not.toContain("account data once accounts launch");
     expect(md).not.toContain("your rank");
+  });
+
+  it("includes Legal's Steam sign-in section (variant A) verbatim", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    expect(md).toContain(
+      `## Steam sign-in (desktop app)\n${STEAM_VARIANT_A}\n`,
+    );
+    // variant B (session token) is not live yet
+    expect(md).not.toContain("random session token");
   });
 
   it("contains no chat clauses", () => {
