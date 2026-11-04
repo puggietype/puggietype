@@ -70,7 +70,12 @@ describe("sound clearance lists", () => {
     const traced = sources
       .split("\n")
       .filter((l) => l.startsWith("| `") && l.includes("| TRACED |"));
-    expect(untraced).toHaveLength(153);
+    const generated = sources
+      .split("\n")
+      .filter((l) => l.startsWith("| `") && l.includes("| GENERATED |"));
+    // click1-5 (21 files) were replaced by scripts/generate-click-sounds.py
+    expect(untraced).toHaveLength(132);
+    expect(generated).toHaveLength(21);
     expect(traced.map((l) => l.split("`")[1])).toEqual([
       "error2/1.wav",
       "error3/1.wav",
