@@ -159,6 +159,10 @@ describe("SettingsPage", () => {
     fireEvent.click(soundTab);
     const setting = container.querySelector('[data-setting-key="bgMusic"]');
     expect(setting).not.toBeNull();
+    // Legal's exact copy
+    expect(setting?.textContent).toContain(
+      "Play quiet background music while you type. Off by default and saved only in this browser. It stays silent until you click or press a key.",
+    );
     const buttons = [...(setting?.querySelectorAll("button") ?? [])];
     const pressed = (): string | undefined =>
       buttons.find((b) => b.getAttribute("aria-pressed") === "true")
