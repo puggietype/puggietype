@@ -1,5 +1,10 @@
 import { JSXElement } from "solid-js";
 
+import {
+  QUOTE_CREDITS_LINE,
+  QUOTE_REPORT_EMAIL,
+  QUOTE_TAKEDOWN_LINE,
+} from "../../constants/quote-credits";
 import { Button } from "../common/Button";
 import { H2, H3 } from "../common/Headers";
 import { PugHead } from "../common/PugHead";
@@ -136,6 +141,15 @@ export function AboutPage(): JSXElement {
             class="p-0"
           />{" "}
           under the same license.
+        </p>
+        <p data-testid="quote-credits">{QUOTE_CREDITS_LINE}</p>
+        <p data-testid="quote-takedown">
+          <Button
+            variant="text"
+            text={QUOTE_TAKEDOWN_LINE}
+            href={`mailto:${QUOTE_REPORT_EMAIL}`}
+            class="p-0"
+          />
         </p>
       </section>
     </div>

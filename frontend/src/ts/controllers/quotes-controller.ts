@@ -1,4 +1,6 @@
 import { removeLanguageSize } from "../utils/strings";
+import { filterLyricQuotes } from "../constants/lyric-quotes";
+import { getPlatformName } from "../platform";
 import { randomElementFromArray, shuffle } from "../utils/arrays";
 import { cachedFetchJson } from "../utils/json-data";
 import { configEvent } from "../events/config";
@@ -60,15 +62,21 @@ class QuotesController {
         return defaultQuoteCollection;
       }
 
+      // steam: song lyrics are dropped (also stripped from the build output)
+      const quotes =
+        getPlatformName() === "steam"
+          ? filterLyricQuotes(data.quotes, normalizedLanguage)
+          : data.quotes;
+
       this.quoteCollection = {
         quotes: [],
-        length: data.quotes.length,
+        length: quotes.length,
         groups: [],
         language: data.language,
       };
 
       // Transform JSON Quote schema to MonkeyTypes Quote schema
-      data.quotes.forEach((quote) => {
+      quotes.forEach((quote) => {
         const monkeyTypeQuote: Quote = {
           text: quote.text,
           britishText: quote.britishText,

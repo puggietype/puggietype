@@ -212,14 +212,16 @@ export function SettingsPage(): JSXElement {
                 void previewError(option);
               }}
             />
-            <SearchableAutoSetting
-              key="playTimeWarning"
-              wide
-              onOptionClick={(option) => {
-                if (option === "off") return;
-                void playTimeWarning();
-              }}
-            />
+            <Show when={!isConfigKeyHidden("playTimeWarning")}>
+              <SearchableAutoSetting
+                key="playTimeWarning"
+                wide
+                onOptionClick={(option) => {
+                  if (option === "off") return;
+                  void playTimeWarning();
+                }}
+              />
+            </Show>
           </Section>
         </TabPanel>
         <TabPanel id="gameplay" tab={tab()}>
