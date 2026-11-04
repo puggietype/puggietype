@@ -1,4 +1,3 @@
-import { format } from "date-fns/format";
 import {
   createEffect,
   createSignal,
@@ -13,6 +12,7 @@ import { LoadingCircle } from "../../components/common/LoadingCircle";
 import { getTheme } from "../../states/theme";
 import { cn } from "../../utils/cn";
 import { readStoredSession } from "../client";
+import { boardHeading } from "../leaderboard-dates";
 import {
   currentLeaderboardBase,
   defaultLeaderboardQuery,
@@ -52,19 +52,6 @@ const PERIOD_LABEL: Record<LeaderboardPeriod, string> = {
   monthly: "monthly",
   "all-time": "all-time",
 };
-
-function epochMs(n: number): number {
-  return Math.abs(n) < 1e12 ? n * 1000 : n;
-}
-
-function rangeText(startsAt: number, endsAt: number | null): string {
-  const start = new Date(epochMs(startsAt));
-  if (Number.isNaN(start.getTime())) return "";
-  if (endsAt === null) return `since ${format(start, "MMM d, yyyy")}`;
-  const end = new Date(epochMs(endsAt));
-  if (Number.isNaN(end.getTime())) return format(start, "MMM d, yyyy");
-  return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")}`;
-}
 
 /** roving tabindex: arrows move the checked radio and focus, Home/End jump */
 function moveRadio(
@@ -404,10 +391,7 @@ export function LeaderboardView(props: {
             {(board) => (
               <div class="grid gap-3">
                 <p class="text-sm text-sub" data-testid="lb-meta">
-                  {board().periodKey}
-                  {rangeText(board().startsAt, board().endsAt) === ""
-                    ? ""
-                    : ` · ${rangeText(board().startsAt, board().endsAt)}`}
+                  <span data-testid="lb-range">{boardHeading(board())}</span>
                   {` · minimum accuracy ${board().accuracyFloor}%`}
                 </p>
                 <Show

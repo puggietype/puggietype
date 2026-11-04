@@ -1,4 +1,5 @@
 import {
+  lazy,
   createResource,
   createSignal,
   JSXElement,
@@ -65,6 +66,16 @@ import {
 } from "./settings-tabs";
 import { SettingsSearch } from "./SettingsSearch";
 import { SettingsTabs } from "./SettingsTabs";
+
+// Steam flavor only. Lazy and behind the inline define so the web build
+// keeps no trace of it (QA P3 WEB-CHUNK: a static import split the
+// leaderboards module into an extra web chunk).
+const SteamSignIn =
+  typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
+    ? lazy(async () => ({
+        default: (await import("./custom-setting/SteamSignIn")).SteamSignIn,
+      }))
+    : undefined;
 
 export function SettingsPage(): JSXElement {
   const [hasLocalBg] = createResource(
@@ -261,6 +272,19 @@ export function SettingsPage(): JSXElement {
             <Layout />
             <SearchableAutoSetting key="codeUnindentOnBackspace" />
           </Section>
+          {
+            // steam flavor only (define compared inline so web is unchanged);
+            // the component also hides itself unless the shell exposes sign-in
+            // oxlint-disable-next-line solid/prefer-show -- build-time constant; <Show> would stay in the web bundle
+            typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam" ? (
+              <Section title="steam account" tab="gameplay">
+                {
+                  // oxlint-disable-next-line solid/prefer-show -- build-time constant
+                  SteamSignIn ? <SteamSignIn /> : null
+                }
+              </Section>
+            ) : null
+          }
           <Section title="danger zone" tab="gameplay">
             <ImportExport />
             <SearchableSetting

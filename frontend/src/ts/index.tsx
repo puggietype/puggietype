@@ -1,6 +1,9 @@
 // Import sorting is disabled for this file (.oxfmtrc.json): many imports run
 // side effects on load, so their order matters.
 
+// steam: master gain before any AudioContext can exist (empty on web)
+import "./steam/early-audio";
+
 // register signal tracking hook before any signals are created
 import "./dev/signal-tracker";
 
@@ -104,6 +107,10 @@ if (!__STANDALONE__) {
   document.body.appendChild(recaptcha);
 }
 void init(onAuthStateChanged);
+// accounts sign-in (VITE_FEATURE_ACCOUNTS); an off build drops the import
+if (__FEATURE_ACCOUNTS__) {
+  void import("./accounts/boot").then(async (m) => m.initAccounts());
+}
 
 installBackgroundMusic();
 // steam flavor: UI scale, reduced motion, master volume and its own music

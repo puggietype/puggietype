@@ -27,6 +27,10 @@ Set them for **both** Production and Preview. All are optional.
 | `VITE_PUBLIC_MATCHES` | off | off shows the "public match: coming soon" card. |
 | `VITE_FLAGS` | unset (all on) | Client feature flags, all **on** by default: `characterSelect` (dog picker, dogs in lobby/podium/solo), `opponentDogs` (opponents' dogs in races). Set to a comma list to ship only those, or `none` to turn all off (build-time kill switch). Per tab: `?flags=characterSelect` limits to those, `?flags=none` turns all off, `?flags=default` clears (kept in sessionStorage). `characterSelect` also needs the WS server's `FEATURE_CHARACTER_SELECT=1`, else everyone stays Puggie (server off = picker off, safe). |
 | `BACKEND_URL` | unset | leave unset: no accounts/API (standalone build). |
+| `VITE_FEATURE_ACCOUNTS` | off | `true` (exactly) turns on accounts sign-in (milestone A): `/login` sign-in page (email, Google) and a nav button. Off: the build drops all of it (no Firebase, no Turnstile, CSP unchanged). Not for prod until Legal copy, privacy and QA gates pass. |
+| `VITE_ACCOUNTS_API_URL` | unset | PuggieType API base url (`https://`, required when accounts are on); sign-in calls `POST /v1/auth/session`. Its origin is added to the CSP `connect-src`. |
+| `VITE_TURNSTILE_SITE_KEY` | empty | Cloudflare Turnstile site key (public). Empty: sign-in shows "not available yet". Cloudflare's test keys work on staging. |
+| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` | unset | Firebase web config (public, but set it on Pages, never commit it); required when accounts are on. Accounts on also adds Turnstile, `apis.google.com`, the auth domain and Google's auth APIs to the CSP. |
 
 The WS server's Origin allowlist must include every host serving the frontend
 (`https://puggietype.com`, `https://www.puggietype.com`, preview hosts if wanted).

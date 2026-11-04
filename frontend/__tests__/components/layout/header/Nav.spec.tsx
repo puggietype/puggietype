@@ -47,6 +47,31 @@ describe("Nav", () => {
   afterEach(() => {
     setActivePage("loading");
     setServerFeatures(undefined);
+    vi.unstubAllGlobals();
+  });
+
+  it("accounts off: no sign-in button", () => {
+    const { container } = render(() => <Nav />);
+    expect(container.querySelector('[data-nav-item="login"]')).toBe(null);
+  });
+
+  it("accounts on (standalone): sign-in button is the last nav item", () => {
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
+    const { container } = render(() => <Nav />);
+    const nav = container.querySelector("nav");
+    expect(nav?.lastElementChild?.getAttribute("data-nav-item")).toBe("login");
+    expect(nav?.lastElementChild?.getAttribute("href")).toBe("/login");
+  });
+
+  it("accounts on with a backend: no extra sign-in button", () => {
+    standalone.value = false;
+    const logins = (): number =>
+      render(() => <Nav />).container.querySelectorAll(
+        '[data-nav-item="login"]',
+      ).length;
+    const off = logins();
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
+    expect(logins()).toBe(off);
   });
 
   const item = (container: HTMLElement, name: string): HTMLElement => {

@@ -30,6 +30,7 @@ function board(names: string[]): Extract<LeaderboardResult, { ok: true }> {
     periodKey: "2026-11-04",
     startsAt: Date.UTC(2026, 10, 4),
     endsAt: Date.UTC(2026, 10, 5),
+    earliestAt: null,
     mode: "time" as const,
     mode2: 30,
     accuracyFloor: 75,
@@ -210,5 +211,44 @@ describe("LeaderboardView", () => {
     expect(note).toHaveTextContent(
       "Solo scores are self-reported and checked for plausibility, not verified.",
     );
+  });
+
+  it("shows the all-time header since the earliest record", async () => {
+    setServerFeatures(featuresOn);
+    const allTime = {
+      ...board(["OldPug"]),
+      period: "all-time" as const,
+      periodKey: "all",
+      startsAt: Date.UTC(2025, 11, 1),
+      endsAt: Date.UTC(2026, 11, 1),
+      earliestAt: Date.UTC(2026, 9, 17, 12),
+    };
+    const { findByTestId } = render(() => (
+      <LeaderboardView
+        variant="page"
+        initial={{ period: "all-time" }}
+        load={loadWith(allTime)}
+      />
+    ));
+    expect(await findByTestId("lb-range")).toHaveTextContent(
+      /^All-time · Since Oct 17, 2026$/,
+    );
+  });
+
+  it("shows plain All-time without an earliest record", async () => {
+    setServerFeatures(featuresOn);
+    const allTime = {
+      ...board(["OldPug"]),
+      period: "all-time" as const,
+      periodKey: "all",
+    };
+    const { findByTestId } = render(() => (
+      <LeaderboardView
+        variant="page"
+        initial={{ period: "all-time" }}
+        load={loadWith(allTime)}
+      />
+    ));
+    expect(await findByTestId("lb-range")).toHaveTextContent(/^All-time$/);
   });
 });

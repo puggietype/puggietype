@@ -132,7 +132,7 @@ export function SteamGraphicsSettings(): JSXElement {
       <SearchableSetting
         key="steamBrightness"
         title="brightness"
-        description="Make the whole screen brighter or darker."
+        description="Make PuggieType brighter or darker."
         fa={{ icon: "fa-sun" }}
         inputs={
           <div data-testid="steam-brightness">

@@ -21,10 +21,18 @@ export type DesktopBridge = {
   };
   /** Steam M3, only when the shell runs with PUGGIE_STEAM_OPENID=1 */
   steam?: {
-    /** system-browser Steam OpenID; resolves null on cancel or timeout */
-    signIn: () => Promise<{ openid: Record<string, string> } | null>;
+    /**
+     * System-browser Steam OpenID. Resolves with the signed openid.* params,
+     * or with why there are none. Older shells resolved null on cancel.
+     */
+    signIn: () => Promise<SteamBridgeSignInResult>;
   };
 };
+
+export type SteamBridgeSignInResult =
+  | { openid: Record<string, string> }
+  | { error: "cancelled" | "timeout" | "busy" | "failed" }
+  | null;
 
 export function getDesktopBridge(
   target: unknown = globalThis,
