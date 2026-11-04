@@ -17,7 +17,10 @@ vi.mock("../../../../src/ts/utils/file-storage", () => ({
   },
 }));
 
-import type { SteamBridgeSignInResult } from "../../../../src/ts/platform/desktop-bridge";
+import type {
+  DesktopBridge,
+  SteamBridgeSignInResult,
+} from "../../../../src/ts/platform/desktop-bridge";
 
 import {
   STEAM_DELETE_TEXT,
@@ -740,21 +743,47 @@ describe("Sign-in description (Legal F1)", () => {
     "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. We don't store any of these; see our ";
   const NEW =
     "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. To keep you signed in, we store your Steam ID with a scrambled sign-in token, never your name or what you own; see our ";
+  const MAYBE =
+    "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. If PuggieType keeps you signed in, we store your Steam ID with a scrambled sign-in token, never your name or what you own; see our ";
   const text = (el: HTMLElement): string | undefined =>
     $(el, '[data-testid="steam-signin-description"]')?.textContent ?? undefined;
 
   it("exact strings", () => {
-    expect(STEAM_SIGNIN_DESCRIPTION).toEqual({ noTokens: OLD, tokens: NEW });
+    expect(STEAM_SIGNIN_DESCRIPTION).toEqual({
+      noTokens: OLD,
+      maybeTokens: MAYBE,
+      tokens: NEW,
+    });
   });
-  it("flag off (server sends no token): the original text, also after sign-in", async () => {
+  it("C35-1: a device that can keep a token but hasn't seen one gets the conditional text (first launch, flag off)", async () => {
     installBridge({ steam: true, session: true });
     server(200, { ok: true, steamId: "1", ownsApp: true });
+    const el = render(() => <SteamSignIn />).container;
+    expect(text(el)).toBe(`${MAYBE}privacy policy.`);
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() => expect($(el, "#steam-signout")).not.toBeNull());
+    expect(text(el)).toBe(`${MAYBE}privacy policy.`);
+  });
+  it("C35-1: the original text only where keep:false applies (no secure storage, or no session support)", async () => {
+    installBridge({ steam: true, session: true });
+    const b = (globalThis as { puggieDesktop?: DesktopBridge }).puggieDesktop;
+    if (b?.steam?.session) b.steam.session.canKeep = () => false;
+    const f = server(200, { ok: true, steamId: "1", ownsApp: true });
     const el = render(() => <SteamSignIn />).container;
     expect(text(el)).toBe(`${OLD}privacy policy.`);
     press(el, "#steam-signin-button");
     press(el, "#steam-signin-continue");
     await waitFor(() => expect($(el, "#steam-signout")).not.toBeNull());
+    expect(JSON.parse(String(f.mock.calls[0]?.[1]?.body))).toMatchObject({
+      keep: false,
+    });
     expect(text(el)).toBe(`${OLD}privacy policy.`);
+    cleanup();
+    installBridge({ steam: true });
+    expect(text(render(() => <SteamSignIn />).container)).toBe(
+      `${OLD}privacy policy.`,
+    );
   });
   it("flag on: the new text once the server issues a token, and on later launches", async () => {
     installBridge({ steam: true, session: true });
