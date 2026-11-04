@@ -8,8 +8,14 @@ import { renderLegalMarkdown } from "../../vite-plugins/legal-markdown";
 const legalDir = path.resolve(__dirname, "../../src/legal");
 const srcDir = path.resolve(__dirname, "../../src");
 // Legal review 2026-11-04, Ruling 5, variant A (exact copy)
+const VALVE_CONTROLLER =
+  '**Valve Corporation (Steam)**, USA, is not our service provider. If you sign in with Steam, Valve processes your Steam account data as an independent controller under its own [Privacy Policy](https://store.steampowered.com/privacy_agreement/). We receive only your Steam ID, your ownership of PuggieType and its supporter pack, and your Steam display name, as described in "Steam sign-in (desktop app)".';
+const STEAM_LEGAL_BASIS =
+  "- To sign you in with Steam and unlock what you own on Steam, if you choose to (Art. 6(1)(b), performance of a contract).";
+const STEAM_RETENTION_ROW_A =
+  "| Steam ID, Steam ownership result and Steam display name (desktop app sign-in, on the game server) | in memory only while the sign-in request is handled; not written to disk, a database or logs |";
 const STEAM_VARIANT_A =
-  "The PuggieType desktop app on Steam can let you sign in with your Steam account. Sign-in happens on Steam's own website in your browser; we never see your Steam password. When you sign in, Steam tells our game server your public Steam ID, and our server asks Steam whether your account owns PuggieType (and any supporter pack) and what your Steam display name is. We use this only to sign you in, unlock what you own, and show your display name if it passes our name filter and you haven't hidden it. Our server does not store or log your Steam ID or display name; it holds them in memory only while handling the sign-in request. We don't sell or share Steam data, or use it for marketing. Our game server runs on Fly.io; see Hosting providers. Steam data is provided by Valve 'as is', without warranty. Valve's own handling of your data is described in Valve's Privacy Policy (https://store.steampowered.com/privacy_agreement/).";
+  "The PuggieType desktop app on Steam can let you sign in with your Steam account. Sign-in happens on Steam's own website in your browser; we never see your Steam password. When you sign in, Steam tells our game server your public Steam ID, and our server asks Steam whether your account owns PuggieType (and any supporter pack) and what your Steam display name is. We use this only to sign you in, unlock what you own, and show your display name if it passes our name filter and you haven't hidden it. Our server does not store or log your Steam ID or display name; it holds them in memory only while handling the sign-in request. We don't sell or share Steam data, or use it for marketing. Our game server runs on Fly.io; see Service providers. Steam data is provided by Valve 'as is', without warranty. Valve's own handling of your data is described in Valve's Privacy Policy (https://store.steampowered.com/privacy_agreement/).";
 
 describe("legal-markdown", () => {
   for (const name of ["terms", "privacy"]) {
@@ -52,6 +58,13 @@ describe("legal-markdown", () => {
     expect(md).toContain(
       `## Steam sign-in (desktop app)\n${STEAM_VARIANT_A}\n`,
     );
+    // Legal addendum 2026-11-04 (2): exact texts
+    expect(md).toContain(`\n\n${VALVE_CONTROLLER}\n\n## Cookies`);
+    expect(md).toContain(
+      `- To comply with legal obligations (Art. 6(1)(c)).\n${STEAM_LEGAL_BASIS}\n`,
+    );
+    expect(md).toContain(`\n${STEAM_RETENTION_ROW_A}\n`);
+    expect(md).not.toContain("Hosting providers");
     // variant B (session token) is not live yet
     expect(md).not.toContain("random session token");
   });
