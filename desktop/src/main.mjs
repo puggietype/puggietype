@@ -56,6 +56,20 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 let store;
 
+// PUGGIE_SMOKE_TEST=1 plus PUGGIE_SMOKE_STEAM_UI=<dir>: drive the Steam
+// sign-in UI against a mocked Steam (no browser) and a mocked /steam/auth,
+// and save screenshots to <dir>. Ignored outside the smoke test.
+const smokeSteamUiDir =
+  !app.isPackaged && process.env["PUGGIE_SMOKE_TEST"] === "1"
+    ? process.env["PUGGIE_SMOKE_STEAM_UI"] || undefined
+    : undefined;
+const SMOKE_OPENID = {
+  "openid.ns": "http://specs.openid.net/auth/2.0",
+  "openid.mode": "id_res",
+  "openid.claimed_id": "https://steamcommunity.com/openid/id/76561197960287930",
+  "openid.sig": "smoke",
+};
+
 function createWindow() {
   const win = new BrowserWindow(windowOptions(path.join(here, "preload.cjs")));
   win.once("ready-to-show", () => win.show());
@@ -147,8 +161,10 @@ function runSmokeTest(win) {
         r.geolocation !== "granted" &&
         r.remoteFetchBlocked === true &&
         r.fullscreen === true;
-      console.log(JSON.stringify({ ok, ...r }));
-      app.exit(ok ? 0 : 1);
+      let steamUi = { ok: true };
+      if (smokeSteamUiDir) steamUi = await runSteamUiSmoke(win);
+      console.log(JSON.stringify({ ok: ok && steamUi.ok, ...r, steamUi }));
+      app.exit(ok && steamUi.ok ? 0 : 1);
     } catch (e) {
       fail(String(e));
     }
@@ -208,7 +224,11 @@ app.whenReady().then(() => {
   });
   if (steamEnabled) {
     ipcMain.handle("steam:signin", (event) =>
-      isInternalUrl(event.senderFrame?.url ?? "") ? steamSignIn() : null,
+      !isInternalUrl(event.senderFrame?.url ?? "")
+        ? null
+        : smokeSteamUiDir
+          ? { openid: SMOKE_OPENID }
+          : steamSignIn(),
     );
   }
   ipcMain.on("fullscreen:get", (event) => {
@@ -232,6 +252,7 @@ app.whenReady().then(() => {
     event.returnValue = null;
   });
 
+  if (smokeSteamUiDir) mockSteamAuthServer();
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -243,11 +264,12 @@ app.on("window-all-closed", () => {
 });
 
 // Steam M3: one-shot loopback listener on 127.0.0.1, system browser for the
-// Steam login page. Resolves with the openid.* params, or null on cancel or
-// timeout. The server verifies them; nothing is trusted here.
+// Steam login page. Resolves with { openid } or { error: "cancelled" |
+// "timeout" | "busy" | "failed" }. The server verifies the openid params;
+// nothing is trusted here.
 let steamSignInRunning = false;
 function steamSignIn() {
-  if (steamSignInRunning) return Promise.resolve(null);
+  if (steamSignInRunning) return Promise.resolve({ error: "busy" });
   steamSignInRunning = true;
   const state = crypto.randomBytes(16).toString("hex");
   return new Promise((resolve) => {
@@ -265,16 +287,19 @@ function steamSignIn() {
       res.end(
         "<!doctype html><meta charset=utf-8><title>PuggieType</title><p>You can close this tab and return to PuggieType.</p>",
       );
-      finish(result === "cancel" ? null : result);
+      finish(result === "cancel" ? { error: "cancelled" } : { openid: result });
     });
     const finish = (value) => {
       clearTimeout(timer);
       server.close();
       steamSignInRunning = false;
-      resolve(value === null ? null : { openid: value });
+      resolve(value);
     };
-    timer = setTimeout(() => finish(null), STEAM_SIGNIN_TIMEOUT_MS);
-    server.on("error", () => finish(null));
+    timer = setTimeout(
+      () => finish({ error: "timeout" }),
+      STEAM_SIGNIN_TIMEOUT_MS,
+    );
+    server.on("error", () => finish({ error: "failed" }));
     server.listen(0, "127.0.0.1", () => {
       const { port } = server.address();
       void shell.openExternal(
@@ -282,4 +307,130 @@ function steamSignIn() {
       );
     });
   });
+}
+
+// Smoke only: answers POST /steam/auth on the game server's https origin with
+// a canned verified response; everything else goes to the network as usual.
+function mockSteamAuthServer() {
+  const cors = {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "POST",
+    "access-control-allow-headers": "content-type",
+  };
+  protocol.handle("https", (request) => {
+    const url = new URL(request.url);
+    if (url.pathname !== "/steam/auth") {
+      return net.fetch(request, { bypassCustomProtocolHandlers: true });
+    }
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: cors });
+    }
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        steamId: "76561197960287930",
+        ownsApp: true,
+        ownedDlc: [],
+        personaName: "PugFan",
+      }),
+      { headers: { "content-type": "application/json", ...cors } },
+    );
+  });
+}
+
+// Smoke only: settings > gameplay > steam account. Screenshots the signed-out
+// button, the M3-HINT dialog and the signed-in state into smokeSteamUiDir.
+async function runSteamUiSmoke(win) {
+  const js = (code) => win.webContents.executeJavaScript(code);
+  const waitFor = (sel, present = true) =>
+    js(`new Promise((res) => {
+      const t0 = Date.now();
+      const tick = () => {
+        const el = document.querySelector(${JSON.stringify(sel)});
+        if ((el !== null) === ${present}) return res(true);
+        if (Date.now() - t0 > 10000) return res(false);
+        setTimeout(tick, 100);
+      };
+      tick();
+    })`);
+  const shot = async (name) => {
+    await new Promise((res) => setTimeout(res, 400));
+    const image = await win.webContents.capturePage();
+    const file = path.join(smokeSteamUiDir, name);
+    fs.writeFileSync(file, image.toPNG());
+    return file;
+  };
+  const click = (sel) =>
+    js(
+      `(() => { const el = document.querySelector(${JSON.stringify(sel)}); if (el) el.click(); return el !== null; })()`,
+    );
+  // Settings content above loads late and shifts the page, so scroll until
+  // the section heading stays near the top of the viewport.
+  const showSteamSection = () =>
+    js(`new Promise((res) => {
+      let n = 0;
+      const step = () => {
+        const sec = document.getElementById("group_steamAccount");
+        if (!sec) return res(false);
+        sec.scrollIntoView({ block: "start" });
+        setTimeout(() => {
+          const top = sec.getBoundingClientRect().top;
+          const ok = top >= 0 && top < 120;
+          if (ok || ++n > 20) return res(ok);
+          step();
+        }, 250);
+      };
+      step();
+    })`);
+  const out = { ok: false, shots: [] };
+  try {
+    fs.mkdirSync(smokeSteamUiDir, { recursive: true });
+    win.setFullScreen(false);
+    const loaded = new Promise((res) =>
+      win.webContents.once("did-finish-load", res),
+    );
+    void win.loadURL(`${APP_ORIGIN}/settings`);
+    await loaded;
+    if (!(await waitFor("#settings-tab-gameplay"))) {
+      return { ...out, reason: "no settings tabs" };
+    }
+    await click("#settings-tab-gameplay");
+    const hasBridge = await js(`window.puggieDesktop.steam !== undefined`);
+    if (!hasBridge) {
+      // flag off: the button must not appear
+      out.button = !(await waitFor("#steam-signin-button", false));
+      out.ok = out.button === false;
+      return out;
+    }
+    out.button = await waitFor("#steam-signin-button", true);
+    if (!out.button) return { ...out, reason: "no sign-in button" };
+    out.inView = await showSteamSection();
+    out.shots.push(await shot("signed-out.png"));
+    await click("#steam-signin-button");
+    await showSteamSection();
+    out.hint = await js(
+      `document.getElementById("steam-signin-hint-text")?.textContent ?? null`,
+    );
+    out.shots.push(await shot("hint-dialog.png"));
+    await click("#steam-signin-continue");
+    out.signedIn = await waitFor('[data-testid="steam-signin-name"]');
+    out.name = await js(
+      `document.querySelector('[data-testid="steam-signin-name"]')?.textContent ?? null`,
+    );
+    await showSteamSection();
+    out.shots.push(await shot("signed-in.png"));
+    await click("#steam-name-hidden-on");
+    out.hiddenWorks = await waitFor('[data-testid="steam-signin-name"]', false);
+    await click("#steam-name-hidden-off");
+    out.ok =
+      out.hint ===
+        "Steam will show this sign-in as coming from 127.0.0.1 (your own computer)." &&
+      out.signedIn === true &&
+      out.name === "PugFan" &&
+      out.hiddenWorks === true &&
+      out.inView === true;
+    return out;
+  } catch (e) {
+    return { ...out, reason: String(e) };
+  }
 }
