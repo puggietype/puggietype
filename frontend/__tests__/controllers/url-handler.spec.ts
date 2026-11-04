@@ -209,6 +209,29 @@ describe("url-handler", () => {
         expect(notice).not.toContain("wikipedia");
       });
 
+      it("steam: drops the funbox line when every funbox was filtered out", () => {
+        vi.stubGlobal("__PLATFORM__", "steam");
+        findGetParameterMock.mockReturnValue(
+          urlData({ funbox: ["poetry", "wikipedia"], punctuation: true }),
+        );
+        loadTestSettingsFromUrl("");
+        const notice = notifySuccessMock.mock.calls[0]?.[0] ?? "";
+        expect(notice).toContain("punctuation: on");
+        expect(notice).not.toContain("funbox");
+      });
+
+      it("steam: no notice at all when only unavailable funboxes were in the link", () => {
+        vi.stubGlobal("__PLATFORM__", "steam");
+        expect(noticeFor(["poetry"])).toBe("");
+        expect(notifySuccessMock).not.toHaveBeenCalled();
+      });
+
+      it("web: still lists a link with only poetry and wikipedia", () => {
+        expect(noticeFor(["poetry", "wikipedia"])).toContain(
+          "funbox: poetry, wikipedia",
+        );
+      });
+
       it("web: unchanged, lists the URL value", () => {
         const notice = noticeFor(["poetry", "mirror", "wikipedia"]);
         expect(notice).toContain("funbox: poetry, mirror, wikipedia");
