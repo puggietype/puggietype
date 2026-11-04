@@ -64,6 +64,8 @@ describe("SoloLeaderboardSubmit", () => {
     fireEvent.click(box);
     vi.advanceTimersByTime(2000);
     expect(button).not.toBeDisabled();
+    expect(button).toHaveTextContent("Submit score to leaderboard");
+    expect(button.parentElement).toBe(box.parentElement?.parentElement);
     fireEvent.click(button);
     await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
     const body = postedBody();

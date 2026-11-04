@@ -70,6 +70,8 @@ const commands: Command[] = [
     available: (): boolean => {
       return getResultVisible() && !isRaceRestartLocked();
     },
+    // Does not post a leaderboard score. A control that posts and starts
+    // the next test has to say so ("Submit score & next test").
     exec: (): void => {
       void TestLogic.restart();
     },

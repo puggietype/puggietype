@@ -34,9 +34,10 @@ import {
   type RaceFinishData,
 } from "./engine-hooks";
 import { isFlagEnabled } from "./feature-flags";
-import { showOnLeaderboard } from "./leaderboard-pref";
 import {
+  CONSENT_AFTER_RESULTS_MS,
   finishLeaderboardFields,
+  leaderboardConsentMessage,
   leaderboardSubmitBlocked,
   scoreConsentElapsed,
 } from "./leaderboards";
@@ -175,8 +176,8 @@ export function joinRoom(code: string): void {
 }
 
 export function leaveRoom(): void {
-  // leaving is not Submit: a pending score stays off the board
-  dropPendingScore();
+  // leaving is not Submit: never send leaderboard:consent
+  cancelLeaderboardConsent();
   send({ type: "room:leave" });
   dropRoom();
 }
@@ -346,8 +347,8 @@ function syncRaceUrl(code: string | undefined): void {
 
 /** forget the room locally (left, kicked out or session taken over) */
 function dropRoom(): void {
-  // kicked or replaced before they confirmed: finish the race, don't publish
-  dropPendingScore();
+  // kick or a replaced session: do not send leaderboard:consent
+  cancelLeaderboardConsent();
   openOnCreate = false;
   const wasRacing = isRaceActive();
   sessionStorage.removeItem(ROOM_KEY);
@@ -437,17 +438,23 @@ function handleMessage(msg: ServerMessage): void {
       return;
     }
     case "race:countdown":
-      onCountdown({
-        startAt: msg.startAt,
-        words: msg.words,
-        settings: msg.settings,
-      });
+      onCountdown(
+        {
+          startAt: msg.startAt,
+          words: msg.words,
+          settings: msg.settings,
+        },
+        msg.raceId,
+      );
       return;
     case "race:progress":
       setOpponentProgress(msg.players);
       return;
     case "race:results":
-      endRace();
+      if (msg.raceId !== undefined) consentRaceId = msg.raceId;
+      // results start the 60s consent window; do not treat that as leaving
+      endRace({ keepConsent: true });
+      noteConsentResults();
       setResults(msg.results.map(withBotDefault));
       if (getActivePage() !== "race") goTo(`/r/${room()?.code ?? ""}`);
       return;
@@ -531,9 +538,14 @@ function withBotDefault<T extends { isBot?: boolean }>(
   return { ...p, isBot: p.isBot === true };
 }
 
-function onCountdown(info: RaceInfo): void {
+function onCountdown(info: RaceInfo, raceId?: string): void {
   // a reconnect re-sends the countdown of the race we're already in
-  if (race()?.startAt === info.startAt) return;
+  if (race()?.startAt === info.startAt) {
+    if (raceId !== undefined && consentRaceId === undefined) {
+      consentRaceId = raceId;
+    }
+    return;
+  }
   // only a snapshot of a running race says we finished this one: a lobby or
   // results snapshot still carries the last race's flags
   const r = room();
@@ -543,6 +555,9 @@ function onCountdown(info: RaceInfo): void {
     (r?.phase === "countdown" || r?.phase === "racing")
   ) {
     // reloaded after finishing: just wait for the results
+    if (raceId !== undefined && consentRaceId === undefined) {
+      consentRaceId = raceId;
+    }
     batch(() => {
       setRace(info);
       setRaceFinished(true);
@@ -550,6 +565,9 @@ function onCountdown(info: RaceInfo): void {
     if (getActivePage() !== "race") goTo(`/r/${room()?.code ?? ""}`);
     return;
   }
+  // starting another race is not Submit. Drop an unsent score.
+  // An explicit Submit still waiting on results keeps its race id.
+  openConsentForRace(raceId);
   void beginRace(info);
 }
 
@@ -725,12 +743,24 @@ function sendProgress(): void {
   client.send({ type: "race:progress", ...next });
 }
 
-const [pendingLeaderboardFinish, setPendingLeaderboardFinish] = createSignal<
-  RaceFinishData | undefined
+const [leaderboardConsentOpen, setLeaderboardConsentOpen] = createSignal(false);
+const [leaderboardConsentWpm, setLeaderboardConsentWpm] = createSignal<
+  number | undefined
 >();
-export { pendingLeaderboardFinish };
-/** when the results-screen toggle was shown; unset until then */
+export { leaderboardConsentOpen, leaderboardConsentWpm };
+
+/** when the results-screen toggle was shown */
 let consentShownAt: number | undefined;
+/** from race:countdown or race:results; required on leaderboard:consent */
+let consentRaceId: string | undefined;
+/** race id for the next race, held while an earlier Submit is still in flight */
+let nextConsentRaceId: string | undefined;
+/** when race:results arrived; the server accepts consent for 60s after that */
+let consentResultsAt: number | undefined;
+/** explicit Submit with the toggle on, possibly waiting for results */
+let consentArmed = false;
+let consentClosed = false;
+let consentTimer: ReturnType<typeof setTimeout> | undefined;
 
 function scoreIsBlocked(): boolean {
   return leaderboardSubmitBlocked(
@@ -740,24 +770,85 @@ function scoreIsBlocked(): boolean {
   );
 }
 
-/**
- * Hold race:finish until the results screen shows the leaderboard toggle.
- * Off in tests and when the server has no leaderboards, so the finish still
- * goes out immediately.
- */
-function holdFinishForConsent(): boolean {
-  return leaderboardsOn() && !scoreIsBlocked();
+/** leave, kick, or the room ending: do not send leaderboard:consent */
+function cancelLeaderboardConsent(): void {
+  clearTimeout(consentTimer);
+  consentTimer = undefined;
+  consentShownAt = undefined;
+  consentResultsAt = undefined;
+  consentRaceId = undefined;
+  nextConsentRaceId = undefined;
+  consentArmed = false;
+  consentClosed = true;
+  setLeaderboardConsentOpen(false);
 }
 
-function dispatchFinish(
-  data: RaceFinishData,
-  show: boolean,
-  navigate: boolean,
-): void {
+/**
+ * A new countdown. Do not carry the previous race's submit window forward.
+ * "start next race" and rematch do not post; the score stays off the board
+ * unless Submit already happened.
+ */
+function openConsentForRace(raceId: string | undefined): void {
+  if (consentArmed && !consentClosed) {
+    nextConsentRaceId = raceId;
+    return;
+  }
+  cancelLeaderboardConsent();
+  consentRaceId = raceId;
+}
+
+function flushLeaderboardConsent(): void {
+  if (!consentArmed || consentClosed) return;
+  if (!leaderboardsOn() || scoreIsBlocked()) return;
+  if (consentResultsAt === undefined || consentRaceId === undefined) return;
+  if (Date.now() - consentResultsAt > CONSENT_AFTER_RESULTS_MS) {
+    cancelLeaderboardConsent();
+    return;
+  }
+  client.send(leaderboardConsentMessage(consentRaceId));
+  consentArmed = false;
+  consentClosed = true;
+  clearTimeout(consentTimer);
+  consentTimer = undefined;
+  setLeaderboardConsentOpen(false);
+  if (nextConsentRaceId !== undefined) {
+    consentRaceId = nextConsentRaceId;
+    nextConsentRaceId = undefined;
+    consentResultsAt = undefined;
+  }
+}
+
+/** race:results opened the 60s window. A Submit from before results goes out now. */
+function noteConsentResults(): void {
+  consentResultsAt = Date.now();
+  clearTimeout(consentTimer);
+  consentTimer = setTimeout(() => {
+    cancelLeaderboardConsent();
+  }, CONSENT_AFTER_RESULTS_MS);
+  flushLeaderboardConsent();
+}
+
+/**
+ * Explicit Submit. Before the toggle has been visible for 2s this does not
+ * send, so the player can still submit once the button unlocks. No message
+ * means the server leaves the score off the board. show:true is sent only
+ * after race:results, and only when this server has leaderboards.
+ */
+export function submitLeaderboardConsent(show: boolean): void {
+  if (consentClosed || consentShownAt === undefined) return;
+  if (!scoreConsentElapsed(consentShownAt, Date.now())) return;
+  if (scoreIsBlocked() || !show) {
+    cancelLeaderboardConsent();
+    return;
+  }
+  consentArmed = true;
+  flushLeaderboardConsent();
+  if (!consentClosed) setLeaderboardConsentOpen(false);
+}
+
+function sendFinish(data: RaceFinishData): void {
   if (finishSent) return;
   finishSent = true;
-  consentShownAt = undefined;
-  setPendingLeaderboardFinish(undefined);
   setRaceFinished(true);
   clearInterval(progressTimer);
   client.send({
@@ -768,60 +859,22 @@ function dispatchFinish(
     testMs: data.testMs,
     input: finishInput(data.input),
     keyCount: data.keyCount,
-    // older servers reject unknown keys; only the leaderboard build reads showOnLeaderboard.
-    // kidsGuide is always sent for a kids-guide session so the server can refuse the score.
     ...finishLeaderboardFields({
-      show,
       kids: scoreIsBlocked(),
       leaderboards: leaderboardsOn(),
     }),
   });
-  if (!navigate) return;
-  // the test is done for us: unhook the engine and wait on the race page
+  // the test is done for us: unhook the engine and wait on the race page.
+  // finish is not held for consent; one idle player must not stall the room.
   releaseEngine({ finished: true });
   goTo(`/r/${room()?.code ?? ""}`);
-}
-
-/**
- * Explicit Submit. Before the toggle has been visible for 2s this does not
- * send, so the player can still submit once the button unlocks. Kids-guide
- * sessions always finish with the score withheld.
- */
-export function submitPendingFinish(show: boolean): void {
-  const data = pendingLeaderboardFinish();
-  if (data === undefined) return;
-  if (scoreIsBlocked()) {
-    dispatchFinish(data, false, false);
-    return;
-  }
-  if (
-    consentShownAt === undefined ||
-    !scoreConsentElapsed(consentShownAt, Date.now())
-  ) {
-    return;
-  }
-  dispatchFinish(data, show, false);
-}
-
-/** leave, kick, or the room ending: finish the race and do not publish */
-function dropPendingScore(): void {
-  const data = pendingLeaderboardFinish();
-  if (data === undefined || finishSent) return;
-  dispatchFinish(data, false, false);
-}
-
-function sendFinish(data: RaceFinishData): void {
-  if (finishSent || pendingLeaderboardFinish() !== undefined) return;
-  if (holdFinishForConsent()) {
+  if (leaderboardsOn() && !scoreIsBlocked()) {
     consentShownAt = Date.now();
-    setPendingLeaderboardFinish(data);
-    setRaceFinished(true);
-    clearInterval(progressTimer);
-    releaseEngine({ finished: true });
-    goTo(`/r/${room()?.code ?? ""}`);
-    return;
+    consentArmed = false;
+    consentClosed = false;
+    setLeaderboardConsentWpm(data.wpm);
+    setLeaderboardConsentOpen(true);
   }
-  dispatchFinish(data, showOnLeaderboard(), true);
 }
 
 // ---------------------------------------------------------------- config
@@ -894,12 +947,10 @@ function releaseEngine(options: { finished?: boolean } = {}): void {
   restoreConfig();
 }
 
-function endRace(): void {
-  // the room moved on without Submit
-  dropPendingScore();
+function endRace(options?: { keepConsent?: boolean }): void {
+  if (options?.keepConsent !== true) cancelLeaderboardConsent();
   raceToken++;
   finishSent = false;
-  setPendingLeaderboardFinish(undefined);
   releaseEngine();
   batch(() => {
     setRace(undefined);

@@ -35,26 +35,22 @@ export function LeaderboardConsent(props: {
           you finished · {Math.round(props.wpm ?? 0)} wpm
         </div>
       </Show>
-      <label class="flex cursor-pointer items-center gap-3 text-text">
-        <input
-          type="checkbox"
-          name="showOnLeaderboard"
-          class="size-4 shrink-0 accent-main"
-          data-testid="lb-show-score"
-          checked={showOnLeaderboard()}
-          disabled={props.disabled}
-          onChange={(e) => setShowOnLeaderboard(e.currentTarget.checked)}
-        />
-        Show my score on the leaderboard
-      </label>
-      <p class="text-sm text-sub">
-        Uncheck to keep this score off the public leaderboard. Your random
-        nickname, wpm, accuracy and raw speed are what gets saved.
-      </p>
       <div class="flex flex-wrap items-center gap-3">
+        <label class="flex cursor-pointer items-center gap-3 text-text">
+          <input
+            type="checkbox"
+            name="showOnLeaderboard"
+            class="size-4 shrink-0 accent-main"
+            data-testid="lb-show-score"
+            checked={showOnLeaderboard()}
+            disabled={props.disabled}
+            onChange={(e) => setShowOnLeaderboard(e.currentTarget.checked)}
+          />
+          Show my score on the leaderboard
+        </label>
         <Button
           type="submit"
-          text={props.disabled ? "Submitting…" : "Submit score"}
+          text={props.disabled ? "Submitting…" : "Submit score to leaderboard"}
           fa={{ icon: "fa-crown" }}
           class={cn(PRIMARY_BUTTON, "px-5 py-3")}
           disabled={locked()}

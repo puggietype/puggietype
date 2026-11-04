@@ -147,7 +147,29 @@ describe("LeaderboardView", () => {
         period: "monthly",
         mode: "words",
         mode2: 50,
+        verified: true,
       });
     });
+  });
+
+  it("shows solo scores on their own tab and does not merge them", async () => {
+    setServerFeatures(featuresOn);
+    const load = vi.fn<Load>(async (_base, query) => {
+      if (!query.verified) {
+        return { ...board(["SoloPug"]), verified: false };
+      }
+      return { ...board(["RacePug"]), verified: true };
+    });
+    const { findByText, getByTestId, queryByText } = render(() => (
+      <LeaderboardView variant="page" load={load} />
+    ));
+    expect(await findByText("RacePug")).toBeTruthy();
+    expect(queryByText("SoloPug")).toBeNull();
+    expect(getByTestId("lb-board-solo")).toHaveTextContent("Solo (unverified)");
+    fireEvent.click(getByTestId("lb-board-solo"));
+    expect(await findByText("SoloPug")).toBeTruthy();
+    expect(queryByText("RacePug")).toBeNull();
+    const urls = load.mock.calls.map((call) => call[1].verified);
+    expect(urls).toEqual([true, false]);
   });
 });

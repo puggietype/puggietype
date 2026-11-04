@@ -7,7 +7,9 @@ import {
   leaderboardSubmitBlocked,
   postLeaderboardScore,
   registerSoloSubmit,
+  SCORE_CONSENT_MS,
   scoreConsentElapsed,
+  setSoloScoreWillPost,
   type ScoreSubmission,
 } from "../leaderboards";
 import { LeaderboardConsent } from "./LeaderboardConsent";
@@ -48,6 +50,7 @@ export function SoloLeaderboardSubmit(props: {
     if (!scoreConsentElapsed(shownAt, clock())) return;
     finished = true;
     setSent(true);
+    setSoloScoreWillPost(false);
     const token = readStoredSession()?.sessionToken;
     void postLeaderboardScore(currentLeaderboardBase(), {
       ...props.score,
@@ -64,7 +67,15 @@ export function SoloLeaderboardSubmit(props: {
 
   onMount(() => {
     shownAt = clock();
-    onCleanup(registerSoloSubmit(onExplicit));
+    const unregister = registerSoloSubmit(onExplicit);
+    const arm = setTimeout(() => {
+      if (!finished) setSoloScoreWillPost(true);
+    }, SCORE_CONSENT_MS);
+    onCleanup(() => {
+      clearTimeout(arm);
+      setSoloScoreWillPost(false);
+      unregister();
+    });
   });
 
   return (

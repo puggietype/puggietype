@@ -12,9 +12,13 @@ import {
   LEADERBOARD_PERIODS,
   parseLeaderboardBody,
   finishLeaderboardFields,
+  leaderboardConsentMessage,
+  leaderboardMatchesBoard,
   postLeaderboardScore,
+  showRaceLeaderboard,
   scoreConsentElapsed,
   scoreFromResult,
+  soloAdvanceLabel,
 } from "../../src/ts/multiplayer/leaderboards";
 import {
   loadShowOnLeaderboard,
@@ -68,7 +72,7 @@ describe("leaderboard url", () => {
       }),
     );
     expect(url).toBe(
-      "https://ws.puggietype.com/leaderboards?period=monthly&mode=words&mode2=25&language=english&punctuation=false&numbers=true&limit=50",
+      "https://ws.puggietype.com/leaderboards?period=monthly&mode=words&mode2=25&language=english&punctuation=false&numbers=true&limit=50&verified=true",
     );
   });
 });
@@ -99,6 +103,14 @@ describe("parseLeaderboardBody", () => {
     expect(parseLeaderboardBody(rest)).toMatchObject({ endsAt: null });
   });
 
+  it("keeps a solo board off the race tab", () => {
+    expect(leaderboardMatchesBoard({ verified: false }, true)).toBe(false);
+    expect(leaderboardMatchesBoard({ verified: false }, false)).toBe(true);
+    expect(leaderboardMatchesBoard({ verified: true }, true)).toBe(true);
+    expect(leaderboardMatchesBoard({}, true)).toBe(true);
+    expect(leaderboardMatchesBoard({}, false)).toBe(false);
+  });
+
   it("rejects an unexpected shape", () => {
     expect(parseLeaderboardBody({ ok: true })).toEqual({
       ok: false,
@@ -122,6 +134,52 @@ describe("fetchLeaderboard", () => {
         fetchImpl,
       ),
     ).resolves.toEqual({ ok: false, error: "closed" });
+  });
+
+  it("sends x-session-token from the existing session and keeps it out of the url", async () => {
+    let seenUrl = "";
+    let seenInit: RequestInit | undefined;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      seenUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      seenInit = init;
+      return new Response(JSON.stringify({ ok: false, error: "closed" }), {
+        status: 503,
+      });
+    };
+    await fetchLeaderboard(
+      "https://ws.puggietype.com",
+      defaultLeaderboardQuery({ verified: false }),
+      undefined,
+      fetchImpl,
+      "secret-token",
+    );
+    expect(seenUrl).toContain("verified=false");
+    expect(seenUrl).not.toContain("secret-token");
+    expect(seenInit?.headers).toMatchObject({
+      "x-session-token": "secret-token",
+    });
+  });
+
+  it("omits the session header when no token is passed", async () => {
+    let seenInit: RequestInit | undefined;
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      seenInit = init;
+      return new Response(JSON.stringify({ ok: false, error: "closed" }), {
+        status: 503,
+      });
+    };
+    await fetchLeaderboard(
+      "https://ws.puggietype.com",
+      defaultLeaderboardQuery(),
+      undefined,
+      fetchImpl,
+    );
+    expect(seenInit?.headers).not.toHaveProperty("x-session-token");
   });
 
   it("returns a network failure without throwing", async () => {
@@ -254,35 +312,60 @@ describe("score consent and kids finish fields", () => {
     expect(scoreConsentElapsed(1_000, 3_000)).toBe(true);
   });
 
-  it("marks a kids-guide finish and otherwise omits the flag", () => {
+  it("marks a kids-guide finish only when this server has leaderboards", () => {
     expect(
       finishLeaderboardFields({
-        show: true,
         kids: true,
         leaderboards: true,
       }),
-    ).toEqual({ kidsGuide: true, showOnLeaderboard: false });
+    ).toEqual({ kidsGuide: true });
     expect(
       finishLeaderboardFields({
-        show: true,
         kids: true,
         leaderboards: false,
       }),
     ).toEqual({});
     expect(
       finishLeaderboardFields({
-        show: true,
-        kids: false,
-        leaderboards: false,
-      }),
-    ).toEqual({});
-    expect(
-      finishLeaderboardFields({
-        show: false,
         kids: false,
         leaderboards: true,
       }),
-    ).toEqual({ showOnLeaderboard: false });
+    ).toEqual({});
+  });
+});
+
+describe("leaderboard consent message", () => {
+  it("is show:true only, named leaderboard:consent", () => {
+    expect(leaderboardConsentMessage("race-1")).toEqual({
+      type: "leaderboard:consent",
+      raceId: "race-1",
+      show: true,
+    });
+  });
+
+  it("names a button that posts and advances", () => {
+    expect(soloAdvanceLabel("next", false)).toBe("Next test");
+    expect(soloAdvanceLabel("next", true)).toBe("Submit score & next test");
+    expect(soloAdvanceLabel("repeat", true)).toBe("Submit score & repeat");
+    expect(soloAdvanceLabel("retry", true)).toBe("Submit score & retry saving");
+    expect(soloAdvanceLabel("retry", false)).toBe("Retry saving result");
+  });
+
+  it("hides the race board for a kids-guide session", () => {
+    expect(
+      showRaceLeaderboard({
+        leaderboards: true,
+        kids: true,
+        inRaceOrResults: true,
+      }),
+    ).toBe(false);
+    expect(
+      showRaceLeaderboard({
+        leaderboards: true,
+        kids: false,
+        inRaceOrResults: true,
+      }),
+    ).toBe(true);
   });
 });
 

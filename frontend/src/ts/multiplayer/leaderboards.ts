@@ -1,3 +1,4 @@
+import { createSignal } from "solid-js";
 import { z } from "zod";
 
 import { CONFIGURED_WS_URL } from "./flags";
@@ -27,6 +28,8 @@ export type LeaderboardQuery = {
   punctuation: boolean;
   numbers: boolean;
   limit: number;
+  /** false is the separate solo board. Race boards are true. */
+  verified: boolean;
 };
 
 export type LeaderboardEntry = {
@@ -48,6 +51,8 @@ export type LeaderboardOk = {
   mode: LeaderboardMode;
   mode2: number;
   accuracyFloor: number;
+  /** false on the solo board. Omitted by an older server, which is race-only. */
+  verified?: boolean;
   entries: LeaderboardEntry[];
 };
 
@@ -72,6 +77,7 @@ const OkSchema = z.object({
   mode: z.enum(["time", "words"]),
   mode2: z.number(),
   accuracyFloor: z.number(),
+  verified: z.boolean().optional(),
   entries: z.array(EntrySchema),
 });
 
@@ -123,20 +129,61 @@ export function requestSoloSubmit(action: SoloSubmitAction): void {
 }
 
 /**
- * Fields added to race:finish and hello. Omitted entirely unless this server
- * said welcome.features.leaderboards, so an older server is not sent unknown keys.
- * kidsGuide tells that server to refuse the score.
+ * kidsGuide on hello and race:finish. Omitted unless this server said
+ * welcome.features.leaderboards, so an older server is not sent unknown keys.
  */
 export function finishLeaderboardFields(options: {
-  show: boolean;
   kids: boolean;
   leaderboards: boolean;
-}): { showOnLeaderboard?: boolean; kidsGuide?: true } {
-  if (!options.leaderboards) return {};
-  return {
-    ...(options.kids ? { kidsGuide: true as const } : {}),
-    showOnLeaderboard: options.kids ? false : options.show,
-  };
+}): { kidsGuide?: true } {
+  if (!options.leaderboards || !options.kids) return {};
+  return { kidsGuide: true };
+}
+
+/** server accepts leaderboard:consent for this long after race:results */
+export const CONSENT_AFTER_RESULTS_MS = 60_000;
+
+export function leaderboardConsentMessage(raceId: string): {
+  type: "leaderboard:consent";
+  raceId: string;
+  show: true;
+} {
+  return { type: "leaderboard:consent", raceId, show: true };
+}
+
+const [soloScoreWillPost, setSoloScoreWillPostSignal] = createSignal(false);
+/** Next / Retry will also post the leaderboard score */
+export { soloScoreWillPost };
+
+export function setSoloScoreWillPost(will: boolean): void {
+  setSoloScoreWillPostSignal(will);
+}
+
+/**
+ * Visible label for a control that posts the score and also starts another
+ * test. A generic Next is only used when the click will not post.
+ */
+export function soloAdvanceLabel(
+  action: "next" | "repeat" | "retry",
+  willPost: boolean,
+): string {
+  if (!willPost) {
+    if (action === "next") return "Next test";
+    if (action === "repeat") return "Repeat test";
+    return "Retry saving result";
+  }
+  if (action === "next") return "Submit score & next test";
+  if (action === "repeat") return "Submit score & repeat";
+  return "Submit score & retry saving";
+}
+
+/** compact race board: hidden for kids-guide sessions */
+export function showRaceLeaderboard(options: {
+  leaderboards: boolean;
+  kids: boolean;
+  inRaceOrResults: boolean;
+}): boolean {
+  return options.leaderboards && !options.kids && options.inRaceOrResults;
 }
 
 /** http(s) origin for the game server that serves GET /leaderboards */
@@ -163,6 +210,7 @@ export function leaderboardUrl(base: string, query: LeaderboardQuery): string {
   url.searchParams.set("punctuation", String(query.punctuation));
   url.searchParams.set("numbers", String(query.numbers));
   url.searchParams.set("limit", String(query.limit));
+  url.searchParams.set("verified", String(query.verified));
   return url.toString();
 }
 
@@ -180,6 +228,7 @@ export function defaultLeaderboardQuery(
     punctuation: over.punctuation ?? false,
     numbers: over.numbers ?? false,
     limit: over.limit ?? LEADERBOARD_LIMIT,
+    verified: over.verified ?? true,
   };
 }
 
@@ -253,8 +302,22 @@ export function parseLeaderboardBody(body: unknown): LeaderboardResult {
     mode: ok.data.mode,
     mode2: ok.data.mode2,
     accuracyFloor: ok.data.accuracyFloor,
+    verified: ok.data.verified,
     entries: ok.data.entries,
   };
+}
+
+/**
+ * Race and solo boards stay separate. A solo response is verified:false.
+ * A race tab accepts a race board or an older response that omits the flag.
+ * Entries from the other board are not shown.
+ */
+export function leaderboardMatchesBoard(
+  board: { verified?: boolean },
+  verified: boolean,
+): boolean {
+  if (verified) return board.verified !== false;
+  return board.verified === false;
 }
 
 export async function fetchLeaderboard(
@@ -262,11 +325,17 @@ export async function fetchLeaderboard(
   query: LeaderboardQuery,
   signal?: AbortSignal,
   fetchImpl: typeof fetch = fetch,
+  /** from the existing websocket session. Not logged or written anywhere. */
+  sessionToken?: string,
 ): Promise<LeaderboardResult> {
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (sessionToken !== undefined && sessionToken !== "") {
+    headers["x-session-token"] = sessionToken;
+  }
   try {
     const response = await fetchImpl(leaderboardUrl(base, query), {
       method: "GET",
-      headers: { accept: "application/json" },
+      headers,
       signal,
     });
     const text = await response.text();

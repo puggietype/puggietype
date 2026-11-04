@@ -21,6 +21,8 @@ import {
   leaderboardSubmitBlocked,
   requestSoloSubmit,
   scoreFromResult,
+  soloAdvanceLabel,
+  soloScoreWillPost,
 } from "../../../../multiplayer/leaderboards";
 import { leaderboardsOn } from "../../../../multiplayer/store";
 import { getIsScreenshotting, isAuthenticated } from "../../../../states/core";
@@ -163,6 +165,7 @@ function InGameLeaderboard(props: {
               language: ready().language,
               punctuation: ready().punctuation,
               numbers: ready().numbers,
+              verified: false,
             }}
           />
           <SoloLeaderboardSubmit score={ready()} />
@@ -199,7 +202,7 @@ function RetrySavingButton(): JSXElement {
             requestSoloSubmit("retry");
             void retrySavingResult();
           }}
-          text="Retry saving result"
+          text={soloAdvanceLabel("retry", soloScoreWillPost())}
           fa={{ icon: "fa-redo" }}
         />
       </div>

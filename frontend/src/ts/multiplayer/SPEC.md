@@ -36,7 +36,7 @@ Solo typing must keep working unchanged. Pug mode works during races.
   (colour `var(--oppN)`, name tag), toggle (UI, commandline, persisted config). Progress bars.
 - Finish: `race:finish`, then on `race:results` a podium replaces the result screen: winner with
   the pug-winner frame, table (place, name, wpm, raw, acc, flagged, ready badge), next-race
-  controls (above) or Rematch (host) / waiting, Leave. Results are not saved to an account. An eligible score can be added to the game-server leaderboard when the results-screen toggle is on (`showOnLeaderboard`).
+  controls (above) or Rematch (host) / waiting, Leave. Results are not saved to an account. A score is posted only when you press Submit score to leaderboard. The show-on-leaderboard setting defaults on.
 - Reconnect with the persisted `playerId` + `sessionToken` (sessionStorage).
 
 ## Structure

@@ -29,8 +29,13 @@ describe("legal-markdown", () => {
   it("includes the leaderboards privacy section verbatim", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     expect(md).toContain(
-      "When you finish an eligible test or race, we may add your result to a public leaderboard: your rank, your randomly assigned nickname, and your speed (wpm), accuracy and raw speed. We save this in our database, which is hosted for us by Neon on Amazon Web Services servers in Oregon, USA. We don't store your IP address or any other identifier with it. Daily, weekly and monthly boards are cleared when each period ends. All-time boards keep scores for up to 12 months. Each board shows only its top 100 scores, and lower scores are deleted. You can turn off 'Show my score on the leaderboard' before submitting, or email support@puggietype.com with your nickname and the board to have a score removed. We may remove scores that look cheated or that break our rules.",
+      "The 'Show me on leaderboards' setting defaults on, but a score is posted only when you press Submit score to leaderboard.",
     );
+    expect(md).toContain(
+      "Neon (Databricks, Inc.), USA, database hosting for leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.",
+    );
+    expect(md).not.toContain("account data once accounts launch");
+    expect(md).not.toContain("your rank");
   });
 
   it("contains no chat clauses", () => {

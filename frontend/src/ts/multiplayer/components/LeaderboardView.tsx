@@ -12,10 +12,12 @@ import { Button } from "../../components/common/Button";
 import { LoadingCircle } from "../../components/common/LoadingCircle";
 import { getTheme } from "../../states/theme";
 import { cn } from "../../utils/cn";
+import { readStoredSession } from "../client";
 import {
   currentLeaderboardBase,
   defaultLeaderboardQuery,
   fetchLeaderboard,
+  leaderboardMatchesBoard,
   LEADERBOARD_PERIODS,
   type LeaderboardMode,
   type LeaderboardOk,
@@ -88,6 +90,7 @@ export function LeaderboardView(props: {
   load?: typeof fetchLeaderboard;
 }): JSXElement {
   const seed = defaultLeaderboardQuery(props.initial);
+  const [verified, setVerified] = createSignal(seed.verified);
   const [period, setPeriod] = createSignal<LeaderboardPeriod>(seed.period);
   const [mode, setMode] = createSignal<LeaderboardMode>(seed.mode);
   const [mode2, setMode2] = createSignal(seed.mode2);
@@ -105,6 +108,7 @@ export function LeaderboardView(props: {
       language: language(),
       punctuation: punctuation(),
       numbers: numbers(),
+      verified: verified(),
     });
 
   const lengths = (): readonly number[] =>
@@ -132,9 +136,17 @@ export function LeaderboardView(props: {
     const ac = new AbortController();
     setState({ kind: "loading" });
     const load = props.load ?? fetchLeaderboard;
-    void load(currentLeaderboardBase(), next, ac.signal)
+    const sessionToken = readStoredSession()?.sessionToken;
+    void load(currentLeaderboardBase(), next, ac.signal, fetch, sessionToken)
       .then((result) => {
         if (ac.signal.aborted) return;
+        if (result.ok && !leaderboardMatchesBoard(result, next.verified)) {
+          setState({
+            kind: "error",
+            error: "Couldn't load the leaderboard.",
+          });
+          return;
+        }
         setState(
           result.ok
             ? { kind: "ready", data: result }
@@ -172,6 +184,48 @@ export function LeaderboardView(props: {
         >
           leaderboard
         </h2>
+        <div role="radiogroup" aria-label="Leaderboard kind" class="flex gap-1">
+          <For
+            each={
+              [
+                { verified: true, label: "Race", id: "race" },
+                {
+                  verified: false,
+                  label: "Solo (unverified)",
+                  id: "solo",
+                },
+              ] as const
+            }
+          >
+            {(item, index) => (
+              <button
+                type="button"
+                role="radio"
+                id={`lb-board-${item.id}`}
+                data-testid={`lb-board-${item.id}`}
+                aria-checked={verified() === item.verified}
+                tabIndex={verified() === item.verified ? 0 : -1}
+                class={cn(
+                  "rounded px-3 py-1.5 text-sm",
+                  verified() === item.verified
+                    ? "bg-main text-bg"
+                    : "bg-sub-alt text-sub hover:text-text",
+                )}
+                onClick={() => setVerified(item.verified)}
+                onKeyDown={(e) => {
+                  const next = moveRadio(index(), e.key, 2);
+                  if (next === undefined) return;
+                  e.preventDefault();
+                  const boardNext = next === 0;
+                  setVerified(boardNext);
+                  focusId(boardNext ? "lb-board-race" : "lb-board-solo");
+                }}
+              >
+                {item.label}
+              </button>
+            )}
+          </For>
+        </div>
         <div
           role="radiogroup"
           aria-label="Leaderboard period"
