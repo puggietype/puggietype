@@ -1,7 +1,11 @@
 // Neutral 13+ age gate (plan section 2, Legal item 1). The birth year only
 // ever lives in the form: callers keep the boolean result and drop the year.
 
-/** sessionStorage key set after an under-13 answer; blocks retries */
+/**
+ * localStorage key set to "1" after an under-13 answer; blocks retries in
+ * every tab and after restarts. Never expires (Legal wants 30+ days), and
+ * holds nothing else: no year, no date, nothing identifying.
+ */
 export const AGE_BLOCK_KEY = "ptAccountsAgeBlock";
 
 const MIN_AGE = 13;

@@ -263,8 +263,8 @@ describe("accounts sign-up and age check", () => {
     expect(sdk.signOutFirebase).toHaveBeenCalledTimes(1);
   });
 
-  it("sign-up in a blocked tab never reaches Firebase", async () => {
-    sessionStorage.setItem(AGE_BLOCK_KEY, "1");
+  it("sign-up on a blocked device never reaches Firebase", async () => {
+    localStorage.setItem(AGE_BLOCK_KEY, "1");
     expect(await signUp({ kind: "google" }, "t")).toMatchObject({
       status: "error",
       code: AGE_BLOCKED,
@@ -296,7 +296,7 @@ describe("accounts sign-up and age check", () => {
     expect(getAccountUser()).toEqual(user);
   });
 
-  it("under 13 at the age question: Firebase user deleted, tab blocked", async () => {
+  it("under 13 at the age question: Firebase user deleted, device blocked", async () => {
     sdk.signInGoogle.mockResolvedValue({ user: fbUser, isNew: true });
     api.createSession.mockResolvedValueOnce(refusal("age_check_required"));
     await signIn({ kind: "google" }, "t1");
@@ -307,7 +307,7 @@ describe("accounts sign-up and age check", () => {
     });
     expect(api.createSession).toHaveBeenCalledTimes(1);
     expect(sdk.deleteFirebaseUser).toHaveBeenCalledWith(fbUser);
-    expect(sessionStorage.getItem(AGE_BLOCK_KEY)).toBe("1");
+    expect(localStorage.getItem(AGE_BLOCK_KEY)).toBe("1");
     expect(getAccountUser()).toBeNull();
     // nothing left pending
     expect(await completeAgeCheck(true, "t3")).toMatchObject({
@@ -316,14 +316,67 @@ describe("accounts sign-up and age check", () => {
     expect(api.createSession).toHaveBeenCalledTimes(1);
   });
 
-  it("age_check_required in a blocked tab is refused at once", async () => {
-    sessionStorage.setItem(AGE_BLOCK_KEY, "1");
+  it("age_check_required on a blocked device is refused at once", async () => {
+    localStorage.setItem(AGE_BLOCK_KEY, "1");
     api.createSession.mockResolvedValueOnce(refusal("age_check_required"));
     expect(await signIn({ kind: "google" }, "t")).toMatchObject({
       status: "error",
       code: AGE_BLOCKED,
     });
     expect(sdk.deleteFirebaseUser).toHaveBeenCalledWith(fbUser);
+  });
+
+  describe("a new tab after an under-13 answer", () => {
+    // a new tab or a restart: fresh sessionStorage and module state, same
+    // localStorage
+    const openNewTab = async (): Promise<
+      typeof import("../../src/ts/accounts/session")
+    > => {
+      sessionStorage.clear();
+      vi.resetModules();
+      return import("../../src/ts/accounts/session");
+    };
+
+    beforeEach(async () => {
+      sdk.signInGoogle.mockResolvedValue({ user: fbUser, isNew: true });
+      api.createSession.mockResolvedValueOnce(refusal("age_check_required"));
+      await signIn({ kind: "google" }, "t1");
+      await completeAgeCheck(false, "t2");
+      expect(localStorage.getItem(AGE_BLOCK_KEY)).toBe("1");
+      vi.clearAllMocks();
+    });
+
+    it("signUp is refused before Firebase", async () => {
+      const tab = await openNewTab();
+      expect(await tab.signUp(email, "t")).toMatchObject({
+        status: "error",
+        code: AGE_BLOCKED,
+      });
+      expect(sdk.createUserEmail).not.toHaveBeenCalled();
+      expect(sdk.signInGoogle).not.toHaveBeenCalled();
+      expect(api.createSession).not.toHaveBeenCalled();
+    });
+
+    it("establish refuses age_check_required without asking again", async () => {
+      const tab = await openNewTab();
+      sdk.signInGoogle.mockResolvedValue({ user: fbUser, isNew: true });
+      api.createSession.mockResolvedValueOnce(refusal("age_check_required"));
+      expect(await tab.signIn({ kind: "google" }, "t")).toMatchObject({
+        status: "error",
+        code: AGE_BLOCKED,
+      });
+      expect(sdk.deleteFirebaseUser).toHaveBeenCalledWith(fbUser);
+      expect(api.createSession).toHaveBeenCalledTimes(1);
+      expect(await tab.completeAgeCheck(true, "t3")).toMatchObject({
+        status: "error",
+      });
+      expect(api.createSession).toHaveBeenCalledTimes(1);
+    });
+
+    it("only the flag is stored, in localStorage", () => {
+      expect(Object.keys(localStorage)).toEqual([AGE_BLOCK_KEY]);
+      expect(sessionStorage).toHaveLength(0);
+    });
   });
 
   it("cancel deletes a just-created user, else only signs out", async () => {

@@ -39,6 +39,7 @@ function button(container: HTMLElement, text: string): HTMLButtonElement {
 
 afterEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   sessionStorage.clear();
 });
 
@@ -77,16 +78,17 @@ describe("SignUpForm birth year", () => {
     await vi.waitFor(() => expect(onResult).toHaveBeenCalled());
     expect(session.signUp).toHaveBeenCalledWith({ kind: "google" }, "ts-token");
     expect(select.value).toBe("");
-    expect(sessionStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
+    expect(localStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
   });
 
-  it("under 13: no sign-up at all, tab blocked", () => {
+  it("under 13: no sign-up at all, device blocked", () => {
     const { container, onBlocked } = renderForm();
     pickYear(container, thisYear - 5);
     fireEvent.click(button(container, "sign up with google"));
     expect(session.signUp).not.toHaveBeenCalled();
     expect(onBlocked).toHaveBeenCalledTimes(1);
-    expect(sessionStorage.getItem(AGE_BLOCK_KEY)).toBe("1");
+    expect(localStorage.getItem(AGE_BLOCK_KEY)).toBe("1");
+    expect(sessionStorage.getItem(AGE_BLOCK_KEY)).toBeNull();
   });
 });
 

@@ -27,9 +27,7 @@ type Mode = "signIn" | "signUp" | "reset" | "age";
 /** accounts milestone A (VITE_FEATURE_ACCOUNTS) /login, replaces LoginPage */
 export function SignInPage(): JSXElement {
   const [mode, setMode] = createSignal<Mode>("signIn");
-  const [ageBlocked, setAgeBlocked] = createSignal(
-    isAgeBlocked(sessionStorage),
-  );
+  const [ageBlocked, setAgeBlocked] = createSignal(isAgeBlocked(localStorage));
 
   const onResult = (result: AuthResult): void => {
     if (result.status === "signed-in") {

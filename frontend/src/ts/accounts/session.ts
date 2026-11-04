@@ -74,7 +74,7 @@ async function discard(sdk: Sdk, user: User, remove: boolean): Promise<void> {
 
 /** under 13: no account; the Firebase user (it has no API account) goes */
 async function rejectUnderage(sdk: Sdk, user: User): Promise<AuthResult> {
-  blockAge(sessionStorage);
+  blockAge(localStorage);
   await discard(sdk, user, true);
   return error(AGE_BLOCKED, accountsCopy.age.blocked);
 }
@@ -110,7 +110,7 @@ async function establish(
     return { status: "signed-in", created: session.created };
   }
   if (session.code === "age_check_required" && ageOk !== true) {
-    if (isAgeBlocked(sessionStorage)) return rejectUnderage(sdk, user);
+    if (isAgeBlocked(localStorage)) return rejectUnderage(sdk, user);
     pendingAge = { user, isNew };
     return { status: "needs-age" };
   }
@@ -176,14 +176,14 @@ export async function signIn(
 
 /**
  * New account, after the sign-up form found the user 13+ (only that boolean
- * goes on, as `ageOk: true`). Refuses without touching Firebase in a tab
- * that already answered under 13.
+ * goes on, as `ageOk: true`). Refuses without touching Firebase on a
+ * device that already answered under 13.
  */
 export async function signUp(
   method: AuthMethod,
   turnstileToken: string,
 ): Promise<AuthResult> {
-  if (isAgeBlocked(sessionStorage)) {
+  if (isAgeBlocked(localStorage)) {
     return error(AGE_BLOCKED, accountsCopy.age.blocked);
   }
   return start(method, turnstileToken, true);

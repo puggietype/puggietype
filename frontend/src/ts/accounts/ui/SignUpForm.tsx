@@ -41,7 +41,7 @@ export function SignUpForm(props: {
     const ageOk = isAgeOk(year, new Date());
     setBirthYear(null);
     if (!ageOk) {
-      blockAge(sessionStorage);
+      blockAge(localStorage);
       props.onBlocked();
       return;
     }

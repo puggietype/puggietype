@@ -38,6 +38,7 @@ function button(container: HTMLElement, text: string): HTMLButtonElement {
 
 afterEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   sessionStorage.clear();
   setAccountUser(null);
 });
@@ -64,8 +65,8 @@ describe("SignInPage", () => {
     expect(notify.showErrorNotification).not.toHaveBeenCalled();
   });
 
-  it("a blocked tab gets no sign-up form", () => {
-    sessionStorage.setItem(AGE_BLOCK_KEY, "1");
+  it("a blocked device (any tab) gets no sign-up form", () => {
+    localStorage.setItem(AGE_BLOCK_KEY, "1");
     const { container, getByText } = render(() => <SignInPage />);
     fireEvent.click(button(container, accountsCopy.tabs.signUp));
     expect(getByText(accountsCopy.age.blocked)).toBeTruthy();
