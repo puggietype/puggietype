@@ -87,6 +87,11 @@ const routes: Route[] = [
   {
     path: "/login",
     load: async (_params, options) => {
+      // accounts sign-in page shows its own signed-in state
+      if (__FEATURE_ACCOUNTS__) {
+        await PageController.change("login", options);
+        return;
+      }
       if (!isAuthAvailable()) {
         await navigate("/", options);
         return;

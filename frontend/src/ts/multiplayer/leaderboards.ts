@@ -48,6 +48,8 @@ export type LeaderboardOk = {
   periodKey: string;
   startsAt: number;
   endsAt: number | null;
+  /** earliest record on this board. Null when the server does not send it. */
+  earliestAt: number | null;
   mode: LeaderboardMode;
   mode2: number;
   accuracyFloor: number;
@@ -74,6 +76,7 @@ const OkSchema = z.object({
   periodKey: z.string(),
   startsAt: z.number(),
   endsAt: z.number().nullable().optional(),
+  earliestAt: z.number().nullable().optional(),
   mode: z.enum(["time", "words"]),
   mode2: z.number(),
   accuracyFloor: z.number(),
@@ -303,6 +306,7 @@ export function parseLeaderboardBody(body: unknown): LeaderboardResult {
     periodKey: ok.data.periodKey,
     startsAt: ok.data.startsAt,
     endsAt: ok.data.endsAt ?? null,
+    earliestAt: ok.data.earliestAt ?? null,
     mode: ok.data.mode,
     mode2: ok.data.mode2,
     accuracyFloor: ok.data.accuracyFloor,

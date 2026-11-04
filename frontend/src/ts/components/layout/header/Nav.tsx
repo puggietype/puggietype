@@ -6,7 +6,9 @@ import {
   onCleanup,
   Show,
 } from "solid-js";
+import { insert } from "solid-js/web";
 
+import { AccountsNavButton } from "../../../accounts/ui/AccountsNavButton";
 import { usePendingConnectionsQuery } from "../../../collections/connections";
 import { restartTestEvent } from "../../../events/test";
 import { createEffectOn } from "../../../hooks/effects";
@@ -143,7 +145,7 @@ export function Nav(): JSXElement {
   const showLoginButton = (): boolean =>
     !isStandalone() && (serverConfig.data?.users.signUp ?? true);
 
-  return (
+  const nav = (
     <nav class={cn("z-5 flex w-full items-center gap-1 md:gap-2")}>
       <NavLink
         href="/"
@@ -330,5 +332,12 @@ export function Nav(): JSXElement {
         </AnimePresence>
       </Show>
     </nav>
-  );
+  ) as HTMLElement;
+
+  // accounts sign-in (VITE_FEATURE_ACCOUNTS, standalone builds). Not a JSX
+  // slot: an off build would keep an empty insert, this `if` drops entirely
+  if (__FEATURE_ACCOUNTS__ && isStandalone()) {
+    insert(nav, () => <AccountsNavButton class={buttonClass()} />, null);
+  }
+  return nav;
 }

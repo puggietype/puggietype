@@ -264,3 +264,20 @@ describe("app scheme privileges", () => {
     );
   });
 });
+
+describe("smoke-only Steam mocks (QA P3 SMOKE-PACKAGED)", () => {
+  it("are gated on !app.isPackaged and PUGGIE_SMOKE_TEST=1", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(
+      new URL("../src/main.mjs", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      src,
+      /const smokeSteamUiDir =\s*!app\.isPackaged && process\.env\["PUGGIE_SMOKE_TEST"\] === "1"/,
+    );
+    // the mocks are only reachable through that constant
+    assert.match(src, /if \(smokeSteamUiDir\) mockSteamAuthServer\(\);/);
+    assert.match(src, /: smokeSteamUiDir\s*\? \{ openid: SMOKE_OPENID \}/);
+  });
+});

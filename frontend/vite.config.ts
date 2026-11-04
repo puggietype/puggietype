@@ -18,6 +18,13 @@ import { resolvePlatform } from "./vite-plugins/platform";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
+import { firebaseStub } from "./vite-plugins/firebase-stub";
+import {
+  accountsCspSources,
+  accountsTailwindSources,
+  checkAccountsEnv,
+  isAccountsEnabled,
+} from "./vite-plugins/accounts-env";
 import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
@@ -119,6 +126,10 @@ function getPlugins({
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     // PLATFORM from the build script shell only, never .env (see 432d097)
     steamAssetClearance({ platform: resolvePlatform(process.env) }),
+    accountsTailwindSources({
+      enabled: isAccountsEnabled(env),
+      cssFile: path.resolve(__dirname, "src/styles/tailwind.css"),
+    }),
     tailwindcss(),
 
     solidPlugin(),
@@ -213,7 +224,10 @@ function getPlugins({
     inlineStaticPageCss(),
     notFoundPage(),
     minifyJson(),
-    pagesHeaders({ wsUrl: env["VITE_WS_URL"] }),
+    pagesHeaders({
+      wsUrl: env["VITE_WS_URL"],
+      ...(isAccountsEnabled(env) ? { extraCsp: accountsCspSources(env) } : {}),
+    }),
   ];
 
   return [...plugins, ...(isDevelopment ? devPlugins : prodPlugins)].filter(
@@ -332,9 +346,11 @@ function getBuildOptions({
               name: "preload-helper",
               test: /preload-helper/,
             },
+            // incl. the firebase/* wrappers: their registerVersion side effect
+            // would otherwise sit in (boot-loaded) vendor and pull this in
             {
               name: "vendor-firebase",
-              test: /node_modules\/@firebase\//,
+              test: /node_modules\/@?firebase\//,
             },
             {
               name: "puggietype-packages",
@@ -426,6 +442,7 @@ export default defineConfig(({ mode }): UserConfig => {
     ) {
       throw new Error(`${mode}: RECAPTCHA_SITE_KEY is not defined`);
     }
+    if (isAccountsEnabled(env)) checkAccountsEnv(env);
   }
 
   // no BACKEND_URL => no auth/api: swap the Firebase SDK for a stub and let
@@ -439,22 +456,41 @@ export default defineConfig(({ mode }): UserConfig => {
   if (platform === "steam" && (env["VITE_WS_URL"] ?? "") === "") {
     process.env["VITE_WS_URL"] = STEAM_DEFAULT_WS_URL;
   }
-  const firebaseStub = path.resolve(
+  const firebaseStubPath = path.resolve(
     __dirname,
     "src/ts/standalone/firebase-stub.ts",
   );
 
+  // accounts sign-in (VITE_FEATURE_ACCOUNTS) keeps the real SDK for its own
+  // lazy module; everything else still gets the stub
+  const firebaseSdkModule = isAccountsEnabled(env)
+    ? path.resolve(__dirname, "src/ts/accounts/firebase-sdk.ts")
+    : undefined;
+
   return {
-    plugins: getPlugins({ isDevelopment, env }),
+    plugins: [
+      ...(standalone
+        ? [
+            firebaseStub({
+              stub: firebaseStubPath,
+              allowImporter: firebaseSdkModule,
+            }),
+          ]
+        : []),
+      ...getPlugins({ isDevelopment, env }),
+    ],
     define: {
       __STANDALONE__: JSON.stringify(standalone),
       __PLATFORM__: JSON.stringify(platform),
+      __FEATURE_ACCOUNTS__: JSON.stringify(isAccountsEnabled(env)),
     },
     resolve: {
       alias: standalone
         ? [
-            { find: /^firebase\/(app|auth)$/, replacement: firebaseStub },
-            { find: /^.*\/load-firebase-config$/, replacement: firebaseStub },
+            {
+              find: /^.*\/load-firebase-config$/,
+              replacement: firebaseStubPath,
+            },
           ]
         : [],
     },
