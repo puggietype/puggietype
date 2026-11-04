@@ -521,14 +521,14 @@ export function LeaderboardView(props: {
                     </table>
                   </div>
                 </Show>
-                <Show when={board().verified === false}>
-                  <p class="text-xs text-sub" data-testid="lb-solo-note">
-                    Solo scores are self-reported and checked for plausibility,
-                    not verified.
-                  </p>
-                </Show>
               </div>
             )}
+          </Show>
+          <Show when={!verified()}>
+            <p class="text-xs text-sub" data-testid="lb-solo-note">
+              Solo scores are self-reported and checked for plausibility, not
+              verified.
+            </p>
           </Show>
         </div>
       </section>

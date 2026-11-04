@@ -177,4 +177,24 @@ describe("LeaderboardView", () => {
     const urls = load.mock.calls.map((call) => call[1].verified);
     expect(urls).toEqual([true, false]);
   });
+
+  it("shows the Solo note as soon as the Solo tab is open, even before the board loads", async () => {
+    setServerFeatures(featuresOn);
+    const load = vi.fn<Load>(async (_base, query) => {
+      if (query.verified) return { ...board(["RacePug"]), verified: true };
+      return new Promise(() => undefined);
+    });
+    const { findByText, getByTestId, queryByTestId } = render(() => (
+      <LeaderboardView variant="page" load={load} />
+    ));
+    expect(await findByText("RacePug")).toBeTruthy();
+    expect(queryByTestId("lb-solo-note")).toBeNull();
+    fireEvent.click(getByTestId("lb-board-solo"));
+    const note = getByTestId("lb-solo-note");
+    expect(note).toBeVisible();
+    expect(note.tagName).toBe("P");
+    expect(note).toHaveTextContent(
+      "Solo scores are self-reported and checked for plausibility, not verified.",
+    );
+  });
 });

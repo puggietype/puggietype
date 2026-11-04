@@ -28,7 +28,7 @@ export type LeaderboardQuery = {
   punctuation: boolean;
   numbers: boolean;
   limit: number;
-  /** false is the separate solo board. Race boards are true. */
+  /** false is the separate Solo board. Multiplayer boards are true. */
   verified: boolean;
 };
 
@@ -181,7 +181,7 @@ export function soloAdvanceLabel(
   return "Submit score & retry saving";
 }
 
-/** compact race board: hidden for kids-guide sessions */
+/** compact Multiplayer board on the race screen: hidden for kids-guide sessions */
 export function showRaceLeaderboard(options: {
   leaderboards: boolean;
   kids: boolean;
@@ -313,7 +313,7 @@ export function parseLeaderboardBody(body: unknown): LeaderboardResult {
 
 /**
  * Race and solo boards stay separate. A solo response is verified:false.
- * A race tab accepts a race board or an older response that omits the flag.
+ * The Multiplayer tab accepts a Multiplayer board or an older response that omits the flag.
  * Entries from the other board are not shown.
  */
 export function leaderboardMatchesBoard(
