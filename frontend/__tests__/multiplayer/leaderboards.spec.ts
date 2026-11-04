@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import {
   defaultLeaderboardQuery,
@@ -242,7 +243,6 @@ describe("scores", () => {
         acc: 97,
         rawWpm: 84,
         charStats: [400, 20, 5, 2],
-        charTotal: 430,
         testDuration: 60,
       }),
     ).toEqual({
@@ -254,7 +254,7 @@ describe("scores", () => {
       wpm: 80,
       acc: 97,
       raw: 84,
-      chars: { typed: 430, correct: 400 },
+      chars: 400,
       durationMs: 60_000,
     });
     expect(
@@ -281,9 +281,103 @@ describe("scores", () => {
         testDuration: 15.5,
       }),
     ).toMatchObject({
-      chars: { typed: 55, correct: 50 },
+      chars: 50,
       durationMs: 15_500,
     });
+    expect(
+      scoreFromResult({
+        mode: "time",
+        mode2: 15,
+        language: "english",
+        wpm: 0,
+        acc: 0,
+        rawWpm: 0,
+        charStats: [0, 0, 0, 0],
+        testDuration: 15,
+      }),
+    ).toBeUndefined();
+  });
+
+  /**
+   * Mirrors puggietype-server parseSoloSubmit (3f5ad2e, soloSubmit.ts):
+   * chars is one integer >= 1, the correct-character count passed to
+   * computeWpm(chars, durationMs). wpm above 250 is rejected, accuracy is
+   * 0–100, and wpm must match that character count and duration.
+   */
+  function computeWpm(chars: number, durationMs: number): number {
+    return chars / 5 / (durationMs / 60_000);
+  }
+
+  const soloSubmitSchema = z
+    .object({
+      showOnLeaderboard: z.boolean(),
+      mode: z.enum(["time", "words"]),
+      mode2: z.number().int(),
+      language: z.string().min(1).max(64),
+      punctuation: z.boolean(),
+      numbers: z.boolean(),
+      wpm: z.number().finite().gte(0).lte(250),
+      acc: z.number().finite().gte(0).lte(100),
+      raw: z.number().finite().nonnegative(),
+      chars: z.number().int().gte(1),
+      durationMs: z.number().int().gte(1),
+      sessionToken: z.string().min(1).max(128).optional(),
+    })
+    .strict()
+    .superRefine((body, ctx) => {
+      const expected = computeWpm(body.chars, body.durationMs);
+      if (Math.abs(body.wpm - expected) > 1) {
+        ctx.addIssue({
+          code: "custom",
+          message: "wpm is not consistent with chars and durationMs",
+          path: ["wpm"],
+        });
+      }
+    });
+
+  it("builds a payload parseSoloSubmit accepts", () => {
+    const score = scoreFromResult({
+      mode: "time",
+      mode2: 60,
+      language: "english",
+      punctuation: false,
+      numbers: false,
+      wpm: 80,
+      acc: 97,
+      rawWpm: 84,
+      charStats: [400, 20, 5, 2],
+      testDuration: 60,
+    });
+    expect(score).toBeDefined();
+    if (score === undefined) return;
+    const payload = {
+      ...score,
+      showOnLeaderboard: true,
+      sessionToken: "session-secret",
+    };
+    expect(payload.chars).toBe(400);
+    expect(soloSubmitSchema.safeParse(payload).success).toBe(true);
+    expect(
+      soloSubmitSchema.safeParse({
+        ...payload,
+        chars: { typed: 430, correct: 400 },
+      }).success,
+    ).toBe(false);
+    expect(soloSubmitSchema.safeParse({ ...payload, chars: 0 }).success).toBe(
+      false,
+    );
+    expect(soloSubmitSchema.safeParse({ ...payload, wpm: 251 }).success).toBe(
+      false,
+    );
+    expect(soloSubmitSchema.safeParse({ ...payload, acc: 101 }).success).toBe(
+      false,
+    );
+    expect(
+      soloSubmitSchema.safeParse({ ...payload, durationMs: 0 }).success,
+    ).toBe(false);
+    expect(soloSubmitSchema.safeParse({ ...payload, wpm: 200 }).success).toBe(
+      false,
+    );
   });
 
   it("posts showOnLeaderboard with the score", async () => {
@@ -310,7 +404,7 @@ describe("scores", () => {
         wpm: 70,
         acc: 99,
         raw: 72,
-        chars: { typed: 360, correct: 350 },
+        chars: 175,
         durationMs: 30_000,
         sessionToken: "t",
       },
@@ -325,7 +419,7 @@ describe("scores", () => {
       showOnLeaderboard: false,
       sessionToken: "t",
       wpm: 70,
-      chars: { typed: 360, correct: 350 },
+      chars: 175,
       durationMs: 30_000,
     });
     expect(body).not.toHaveProperty("playerId");

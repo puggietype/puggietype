@@ -17,7 +17,7 @@ const score = {
   wpm: 88,
   acc: 99,
   raw: 90,
-  chars: { typed: 220, correct: 210 },
+  chars: 210,
   durationMs: 15_000,
 };
 

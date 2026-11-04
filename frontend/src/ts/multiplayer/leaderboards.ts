@@ -90,13 +90,8 @@ const ErrSchema = z.object({
  * Solo POST body. The nickname is on the websocket session, not this request.
  * `sessionToken` is the secret from `welcome` and the only field the server
  * needs to resolve that nickname. The public player id is not sent.
+ * `chars` is the correct-character count, the same integer computeWpm uses.
  */
-/** characters typed, then the correct characters the wpm was calculated from */
-export type SoloCharCounts = {
-  typed: number;
-  correct: number;
-};
-
 export type ScoreSubmission = {
   showOnLeaderboard: boolean;
   mode: LeaderboardMode;
@@ -107,8 +102,8 @@ export type ScoreSubmission = {
   wpm: number;
   acc: number;
   raw: number;
-  /** required by the server's solo parser */
-  chars: SoloCharCounts;
+  /** correct characters; server requires an integer >= 1 */
+  chars: number;
   durationMs: number;
   sessionToken?: string;
 };
@@ -384,10 +379,8 @@ export function scoreFromResult(result: {
   wpm: number;
   acc: number;
   rawWpm: number;
-  /** [correct, incorrect, extra, missed] from the completed test */
+  /** [correct, incorrect, extra, missed]. chars sent is the correct count. */
   charStats?: readonly [number, number, number, number];
-  /** characters typed; falls back to correct + incorrect + extra */
-  charTotal?: number;
   /** test length in seconds, the same duration wpm was calculated from */
   testDuration?: number;
 }): Omit<ScoreSubmission, "showOnLeaderboard" | "sessionToken"> | undefined {
@@ -396,22 +389,17 @@ export function scoreFromResult(result: {
   if (result.mode !== "time" && result.mode !== "words") return undefined;
   const language = result.language ?? "";
   if (!/^[a-z0-9_]{1,64}$/.test(language)) return undefined;
-  const stats = result.charStats;
-  const correct = wholeCount(stats?.[0]);
-  const typed = wholeCount(
-    result.charTotal ??
-      (stats === undefined ? undefined : stats[0] + stats[1] + stats[2]),
-  );
+  const chars = wholeCount(result.charStats?.[0]);
   const durationMs =
     result.testDuration === undefined
       ? undefined
       : Math.round(result.testDuration * 1000);
   if (
-    correct === undefined ||
-    typed === undefined ||
+    chars === undefined ||
+    chars < 1 ||
     durationMs === undefined ||
     !Number.isInteger(durationMs) ||
-    durationMs <= 0
+    durationMs < 1
   ) {
     return undefined;
   }
@@ -424,7 +412,7 @@ export function scoreFromResult(result: {
     wpm: result.wpm,
     acc: result.acc,
     raw: result.rawWpm,
-    chars: { typed, correct },
+    chars,
     durationMs,
   };
 }
