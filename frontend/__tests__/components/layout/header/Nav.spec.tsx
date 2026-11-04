@@ -95,7 +95,7 @@ describe("Nav", () => {
     const expected: [string, string, string][] = [
       ["test", "solo", "solo"],
       ["race", "multi", "multiplayer"],
-      ["leaderboards-soon", "ranks", "leaderboard soon"],
+      ["leaderboards-soon", "ranks", "leaderboard"],
       ["about", "guides", "guides"],
       ["settings", "settings", "settings"],
     ];
@@ -142,7 +142,7 @@ describe("Nav", () => {
     expect(el.hasAttribute("aria-label")).toBe(false);
     expect(el.hasAttribute("title")).toBe(false);
     expect(el.textContent).toContain("leaderboard");
-    expect(el.textContent).toContain("soon");
+    expect(el.textContent).not.toContain("soon");
   });
 
   it("standalone: leaderboard is a link when the server enables it", () => {

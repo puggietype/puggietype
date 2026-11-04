@@ -422,7 +422,13 @@ export function LeaderboardView(props: {
                     </p>
                   }
                 >
-                  <div class="overflow-x-auto rounded-lg bg-sub-alt">
+                  <div
+                    class="overflow-x-auto rounded-lg bg-sub-alt"
+                    tabIndex={0}
+                    role="region"
+                    aria-label={`${verified() ? "Multiplayer" : "Solo"} ${PERIOD_LABEL[board().period]} leaderboard`}
+                    data-testid="lb-scroll"
+                  >
                     <table class="w-full font-(--font)" data-testid="lb-table">
                       <caption class="sr-only">
                         {board().verified === false ? "Solo" : "Multiplayer"}{" "}
@@ -431,27 +437,30 @@ export function LeaderboardView(props: {
                       </caption>
                       <thead>
                         <tr class="text-left text-xs text-sub">
-                          <th scope="col" class="px-3 py-3 font-normal">
+                          <th scope="col" class="px-2 py-3 font-normal sm:px-3">
                             rank
                           </th>
-                          <th scope="col" class="w-full px-3 py-3 font-normal">
+                          <th
+                            scope="col"
+                            class="w-full px-2 py-3 font-normal sm:px-3"
+                          >
                             typist
                           </th>
                           <th
                             scope="col"
-                            class="px-3 py-3 text-right font-normal"
+                            class="px-2 py-3 text-right font-normal sm:px-3"
                           >
                             wpm
                           </th>
                           <th
                             scope="col"
-                            class="px-3 py-3 text-right font-normal"
+                            class="px-2 py-3 text-right font-normal sm:px-3"
                           >
                             raw
                           </th>
                           <th
                             scope="col"
-                            class="px-3 py-3 text-right font-normal"
+                            class="px-2 py-3 text-right font-normal sm:px-3"
                           >
                             acc
                           </th>
@@ -475,14 +484,14 @@ export function LeaderboardView(props: {
                                 <th
                                   scope="row"
                                   class={cn(
-                                    "px-3 py-3 text-left font-normal text-text",
+                                    "px-2 py-3 text-left font-normal text-text sm:px-3",
                                     mine() && SELF_BAR,
                                   )}
                                 >
                                   {entry.rank}
                                 </th>
-                                <td class="px-3 py-3">
-                                  <span class="inline-flex min-w-0 items-center gap-2">
+                                <td class="max-w-0 px-2 py-3 sm:px-3">
+                                  <span class="inline-flex max-w-full min-w-0 items-center gap-2">
                                     <span
                                       class={cn(
                                         "truncate text-text",
@@ -504,13 +513,19 @@ export function LeaderboardView(props: {
                                     </Show>
                                   </span>
                                 </td>
-                                <td class="px-3 py-3 text-right text-text">
+                                <td class="px-2 py-3 text-right text-text sm:px-3">
                                   {Math.round(entry.wpm)}
                                 </td>
-                                <td class="px-3 py-3 text-right text-sub">
+                                <td
+                                  class={cn(
+                                    "px-2 py-3 text-right sm:px-3",
+                                    mine() ? "text-text" : "text-sub",
+                                  )}
+                                  data-testid="lb-raw"
+                                >
                                   {Math.round(entry.raw)}
                                 </td>
-                                <td class="px-3 py-3 text-right text-text">
+                                <td class="px-2 py-3 text-right text-text sm:px-3">
                                   {entry.acc.toFixed(1)}%
                                 </td>
                               </tr>
