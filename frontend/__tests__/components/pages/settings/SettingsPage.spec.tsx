@@ -191,6 +191,25 @@ describe("SettingsPage", () => {
     expect(
       container.querySelector('[role="tablist"]')?.parentElement,
     ).toHaveClass("hidden");
+    for (const id of ["graphics", "sound", "gameplay"]) {
+      const panel = document.getElementById(`settings-panel-${id}`);
+      expect(panel, id).not.toHaveAttribute("role");
+      expect(panel, id).not.toHaveAttribute("aria-labelledby");
+    }
     expect(container.textContent).not.toMatch(/enable music|turn on music/i);
+
+    fireEvent.input(input, { target: { value: "" } });
+    expect(document.getElementById("settings-panel-graphics")).toHaveAttribute(
+      "role",
+      "tabpanel",
+    );
+    expect(document.getElementById("settings-panel-graphics")).toHaveAttribute(
+      "aria-labelledby",
+      "settings-tab-graphics",
+    );
+    expect(document.getElementById("settings-panel-sound")).toHaveAttribute(
+      "role",
+      "tabpanel",
+    );
   });
 });

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { createSignal } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -16,8 +17,11 @@ import {
   isKidsGuidePath,
   KIDS_GUIDE_PATH,
   readBgMusicSettings,
+  shouldSuspendBackgroundMusic,
 } from "../../src/ts/controllers/background-music";
 import {
+  backgroundMusic,
+  bindBackgroundMusicHold,
   getBgMusicEnabled,
   getBgMusicVolume,
   installBackgroundMusic,
@@ -180,6 +184,7 @@ describe("canPlayBackgroundMusic", () => {
         pathname: "/guide/typing-for-kids/",
       }),
     ).toBe(false);
+    expect(canPlayBackgroundMusic({ ...ready, suspended: true })).toBe(false);
   });
 });
 
@@ -341,6 +346,162 @@ describe("BackgroundMusic", () => {
 
   it("stores under the local key", () => {
     expect(BG_MUSIC_STORAGE_KEY).toBe("bgMusic");
+  });
+
+  const playing = {
+    testActive: false,
+    raceActive: false,
+    documentHidden: false,
+  };
+
+  it("pauses for a test, a race, or a hidden tab, then resumes", () => {
+    const { music, audio } = player({
+      initial: { enabled: true, volume: 0.4 },
+    });
+    music.noteUserGesture();
+    expect(audio.play).toHaveBeenCalledTimes(1);
+
+    music.setPlaybackSuspended({ ...playing, testActive: true });
+    expect(audio.pause).toHaveBeenCalledTimes(1);
+    music.setPlaybackSuspended({ ...playing, raceActive: true });
+    music.setPlaybackSuspended({ ...playing, documentHidden: true });
+    expect(audio.play).toHaveBeenCalledTimes(1);
+
+    music.setPlaybackSuspended(playing);
+    expect(audio.play).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays quiet through a hold that begins before playback", () => {
+    const { music, audio, created } = player({
+      initial: { enabled: true, volume: 0.5 },
+    });
+    music.setPlaybackSuspended({ ...playing, testActive: true });
+    music.noteUserGesture();
+    expect(created()).toBe(0);
+    music.setPlaybackSuspended(playing);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not resume a hold when music is off", () => {
+    const { music, audio } = player({
+      initial: { enabled: true, volume: 0.5 },
+    });
+    music.noteUserGesture();
+    music.setPlaybackSuspended({ ...playing, raceActive: true });
+    music.setEnabled(false);
+    music.setPlaybackSuspended(playing);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    expect(music.getSettings().enabled).toBe(false);
+  });
+});
+
+describe("shouldSuspendBackgroundMusic", () => {
+  it("is true for a test, a race, or a hidden document", () => {
+    expect(
+      shouldSuspendBackgroundMusic({
+        testActive: false,
+        raceActive: false,
+        documentHidden: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldSuspendBackgroundMusic({
+        testActive: true,
+        raceActive: false,
+        documentHidden: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldSuspendBackgroundMusic({
+        testActive: false,
+        raceActive: true,
+        documentHidden: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldSuspendBackgroundMusic({
+        testActive: false,
+        raceActive: false,
+        documentHidden: true,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("bindBackgroundMusicHold", () => {
+  afterEach(() => {
+    uninstallBackgroundMusic();
+    backgroundMusic.setPlaybackSuspended({
+      testActive: false,
+      raceActive: false,
+      documentHidden: false,
+    });
+    window.history.pushState({}, "", "/");
+    vi.restoreAllMocks();
+  });
+
+  it("tracks the test, the race, and visibilitychange", () => {
+    const [testActive, setTestActive] = createSignal(false);
+    const [raceActive, setRaceActive] = createSignal(false);
+    let hidden = false;
+    let onVisibility: (() => void) | undefined;
+    const spy = vi.spyOn(backgroundMusic, "setPlaybackSuspended");
+    bindBackgroundMusicHold({
+      isTestActive: testActive,
+      isRaceActive: raceActive,
+      isDocumentHidden: () => hidden,
+      subscribeVisibility: (listener) => {
+        onVisibility = listener;
+        return () => {
+          onVisibility = undefined;
+        };
+      },
+    });
+    expect(spy).toHaveBeenLastCalledWith({
+      testActive: false,
+      raceActive: false,
+      documentHidden: false,
+    });
+    setTestActive(true);
+    expect(spy).toHaveBeenLastCalledWith({
+      testActive: true,
+      raceActive: false,
+      documentHidden: false,
+    });
+    setTestActive(false);
+    setRaceActive(true);
+    expect(spy).toHaveBeenLastCalledWith({
+      testActive: false,
+      raceActive: true,
+      documentHidden: false,
+    });
+    hidden = true;
+    onVisibility?.();
+    expect(spy).toHaveBeenLastCalledWith({
+      testActive: false,
+      raceActive: true,
+      documentHidden: true,
+    });
+    setRaceActive(false);
+    hidden = false;
+    onVisibility?.();
+    expect(spy).toHaveBeenLastCalledWith({
+      testActive: false,
+      raceActive: false,
+      documentHidden: false,
+    });
+  });
+
+  it("does not subscribe on the kids guide", () => {
+    window.history.pushState({}, "", "/guide/typing-for-kids");
+    const subscribe = vi.fn(() => () => undefined);
+    bindBackgroundMusicHold({
+      isTestActive: () => false,
+      isRaceActive: () => false,
+      isDocumentHidden: () => false,
+      subscribeVisibility: subscribe,
+    });
+    expect(subscribe).not.toHaveBeenCalled();
   });
 });
 

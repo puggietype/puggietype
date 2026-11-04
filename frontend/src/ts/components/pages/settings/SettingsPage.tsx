@@ -384,14 +384,15 @@ function TabPanel(props: {
   tab: SettingsTabId;
   children: JSXElement;
 }): JSXElement {
-  const shown = (): boolean =>
-    isSettingsSearchActive() || props.tab === props.id;
+  const searching = (): boolean => isSettingsSearchActive();
+  const shown = (): boolean => searching() || props.tab === props.id;
   return (
     <div
-      role="tabpanel"
       id={settingsPanelDomId(props.id)}
-      aria-labelledby={settingsTabDomId(props.id)}
-      class={cn(!shown() && "hidden", isSettingsSearchActive() && "grid gap-8")}
+      // search hides the tablist, so these regions are ordinary sections
+      role={searching() ? undefined : "tabpanel"}
+      aria-labelledby={searching() ? undefined : settingsTabDomId(props.id)}
+      class={cn(!shown() && "hidden", searching() && "grid gap-8")}
     >
       {props.children}
     </div>

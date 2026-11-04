@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createEffect, createRoot, createSignal } from "solid-js";
 
 import {
   BackgroundMusic,
@@ -11,6 +11,7 @@ import {
   isKidsGuidePath,
   readBgMusicSettings,
 } from "../controllers/background-music";
+import type { BackgroundMusicHold } from "../controllers/background-music";
 import { LocalStorageWithSchema } from "../utils/local-storage-with-schema";
 
 const bgMusicLS = new LocalStorageWithSchema({
@@ -74,7 +75,46 @@ export function resetBackgroundMusic(): void {
   publish();
 }
 
+export type BackgroundMusicHoldSources = {
+  isTestActive: () => boolean;
+  isRaceActive: () => boolean;
+  isDocumentHidden: () => boolean;
+  subscribeVisibility: (listener: () => void) => () => void;
+};
+
 let teardown: (() => void) | undefined;
+let disposeHold: (() => void) | undefined;
+
+/**
+ * Pause while a test or race is active, or while the document is hidden,
+ * then resume if music is still enabled. No listeners on the kids guide.
+ */
+export function bindBackgroundMusicHold(
+  sources: BackgroundMusicHoldSources,
+): void {
+  disposeHold?.();
+  disposeHold = undefined;
+  if (isKidsGuidePath(window.location.pathname)) return;
+
+  const update = (): void => {
+    const hold: BackgroundMusicHold = {
+      testActive: sources.isTestActive(),
+      raceActive: sources.isRaceActive(),
+      documentHidden: sources.isDocumentHidden(),
+    };
+    backgroundMusic.setPlaybackSuspended(hold);
+  };
+  const disposeEffect = createRoot((dispose) => {
+    createEffect(update);
+    return dispose;
+  });
+  const unsubscribe = sources.subscribeVisibility(update);
+  disposeHold = () => {
+    unsubscribe();
+    disposeEffect();
+    disposeHold = undefined;
+  };
+}
 
 /**
  * Arm the player after the app mounts. Never calls `play()` here.
@@ -105,4 +145,5 @@ export function installBackgroundMusic(): void {
 
 export function uninstallBackgroundMusic(): void {
   teardown?.();
+  disposeHold?.();
 }

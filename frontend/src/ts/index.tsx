@@ -34,11 +34,14 @@ import { App } from "./components/core/App";
 import "./ready";
 import { setVersion } from "./states/core";
 import { loadFromLocalStorage } from "./config/lifecycle";
-import { installBackgroundMusic } from "./states/background-music";
-
+import { isRaceActive } from "./multiplayer/engine-hooks";
+import {
+  bindBackgroundMusicHold,
+  installBackgroundMusic,
+} from "./states/background-music";
 import "./input/hotkeys";
 import { showModal } from "./states/modals";
-import { getLastEventLog } from "./states/test";
+import { getLastEventLog, isTestActive } from "./states/test";
 import { buildEventLog } from "./test/events/data";
 
 // Lock Math.random
@@ -103,6 +106,17 @@ if (!__STANDALONE__) {
 void init(onAuthStateChanged);
 
 installBackgroundMusic();
+bindBackgroundMusicHold({
+  isTestActive,
+  isRaceActive,
+  isDocumentHidden: () => document.visibilityState === "hidden",
+  subscribeVisibility: (listener) => {
+    document.addEventListener("visibilitychange", listener);
+    return () => {
+      document.removeEventListener("visibilitychange", listener);
+    };
+  },
+});
 
 addToGlobal({
   snapshot: DB.getSnapshot,

@@ -86,15 +86,30 @@ export function readBgMusicSettings(raw: string | null): BgMusicSettings {
   }
 }
 
+export type BackgroundMusicHold = {
+  testActive: boolean;
+  raceActive: boolean;
+  documentHidden: boolean;
+};
+
+/** Pause during a test, a race, or while this tab is hidden. */
+export function shouldSuspendBackgroundMusic(
+  hold: BackgroundMusicHold,
+): boolean {
+  return hold.testActive || hold.raceActive || hold.documentHidden;
+}
+
 export function canPlayBackgroundMusic(input: {
   pathname: string;
   enabled: boolean;
   hasUserGesture: boolean;
   src: string | null;
+  suspended?: boolean;
 }): boolean {
   if (isKidsGuidePath(input.pathname)) return false;
   if (!input.enabled) return false;
   if (!input.hasUserGesture) return false;
+  if (input.suspended === true) return false;
   if (input.src === null || input.src === "") return false;
   return true;
 }
@@ -113,6 +128,7 @@ type BackgroundMusicOptions = {
 export class BackgroundMusic {
   private settings: BgMusicSettings;
   private hasGesture = false;
+  private suspended = false;
   private audio: BgMusicAudio | null = null;
   private readonly options: BackgroundMusicOptions;
 
@@ -172,6 +188,17 @@ export class BackgroundMusic {
     if (this.audio !== null) this.audio.volume = this.settings.volume;
   }
 
+  /**
+   * Pause while a test or race is running, or while the tab is hidden.
+   * Clearing the hold resumes playback only when music is still enabled.
+   */
+  setPlaybackSuspended(hold: BackgroundMusicHold): void {
+    const next = shouldSuspendBackgroundMusic(hold);
+    if (next === this.suspended) return;
+    this.suspended = next;
+    this.sync();
+  }
+
   /** Another tab wrote the preference. Does not count as a gesture. */
   replace(next: BgMusicSettings): void {
     this.settings = sanitizeBgMusicSettings(next);
@@ -195,6 +222,7 @@ export class BackgroundMusic {
       enabled: this.settings.enabled,
       hasUserGesture: this.hasGesture,
       src: this.options.src,
+      suspended: this.suspended,
     });
     if (!allowed) {
       if (this.audio !== null && !this.audio.paused) this.audio.pause();
