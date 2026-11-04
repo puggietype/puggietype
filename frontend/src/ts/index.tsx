@@ -34,6 +34,7 @@ import { App } from "./components/core/App";
 import "./ready";
 import { setVersion } from "./states/core";
 import { loadFromLocalStorage } from "./config/lifecycle";
+import { installBackgroundMusic } from "./states/background-music";
 
 import "./input/hotkeys";
 import { showModal } from "./states/modals";
@@ -100,6 +101,8 @@ if (!__STANDALONE__) {
   document.body.appendChild(recaptcha);
 }
 void init(onAuthStateChanged);
+
+installBackgroundMusic();
 
 addToGlobal({
   snapshot: DB.getSnapshot,
