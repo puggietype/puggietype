@@ -37,6 +37,7 @@ describe("static routing", () => {
     "/guide/improve-accuracy",
     "/guide/typing-for-kids",
     "/contact",
+    "/creators",
   ];
 
   const sitemapPaths = [

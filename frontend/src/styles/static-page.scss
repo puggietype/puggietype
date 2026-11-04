@@ -210,6 +210,23 @@ header {
   --error-extra-color: #a84a43;
 }
 
+// puggie light for the creators page when the system prefers light
+@media (prefers-color-scheme: light) {
+  :root:has(body.creatorsPage) {
+    --bg-color: #f7f2ea;
+    --main-color: #9a531d;
+    --caret-color: #9a531d;
+    --sub-color: #6b6157;
+    --sub-alt-color: #eae2d5;
+    --text-color: #2a2522;
+    --error-color: #c2382f;
+    --error-extra-color: #8c2a24;
+    --pug-ink: #2a2522;
+    --pug-fill: #f4e5cb;
+    --pug-mask: #2a211d;
+  }
+}
+
 body {
   display: flex;
   justify-content: center;
