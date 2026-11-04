@@ -27,9 +27,12 @@ const soundsDir = path.resolve(__dirname, "../../static/sounds");
 const sourcesPath = path.resolve(__dirname, "../../../docs/sounds-SOURCES.md");
 
 describe("sound clearance lists", () => {
-  it("covers every file-backed click pack and nothing synthesized", () => {
+  it("covers every untraced file-backed click pack and nothing synthesized", () => {
+    const generated = ["1", "2", "3", "4", "5"];
     expect([...UNTRACED_CLICK_SOUNDS].sort()).toEqual(
-      Object.keys(clickSoundConfig).sort(),
+      Object.keys(clickSoundConfig)
+        .filter((id) => !generated.includes(id))
+        .sort(),
     );
     for (const synth of ["8", "9", "10", "11", "12", "13"]) {
       expect(isClickSoundExcluded(synth, "steam")).toBe(false);
@@ -45,8 +48,12 @@ describe("sound clearance lists", () => {
   });
 
   it("excludes only on steam", () => {
-    expect(isClickSoundExcluded("1", "web")).toBe(false);
-    expect(isClickSoundExcluded("1", "steam")).toBe(true);
+    expect(isClickSoundExcluded("14", "web")).toBe(false);
+    expect(isClickSoundExcluded("14", "steam")).toBe(true);
+    // click1-5 are generated in-house (scripts/generate-click-sounds.py)
+    for (const id of ["1", "2", "3", "4", "5"]) {
+      expect(isClickSoundExcluded(id, "steam")).toBe(false);
+    }
     expect(isErrorSoundExcluded("1", "steam")).toBe(true);
     expect(isErrorSoundExcluded("2", "steam")).toBe(false);
     expect(isErrorSoundExcluded("3", "steam")).toBe(false);
@@ -70,7 +77,12 @@ describe("sound clearance lists", () => {
     const traced = sources
       .split("\n")
       .filter((l) => l.startsWith("| `") && l.includes("| TRACED |"));
-    expect(untraced).toHaveLength(153);
+    const generated = sources
+      .split("\n")
+      .filter((l) => l.startsWith("| `") && l.includes("| GENERATED |"));
+    // click1-5 (21 files) were replaced by scripts/generate-click-sounds.py
+    expect(untraced).toHaveLength(132);
+    expect(generated).toHaveLength(21);
     expect(traced.map((l) => l.split("`")[1])).toEqual([
       "error2/1.wav",
       "error3/1.wav",
@@ -82,7 +94,8 @@ describe("steam option hiding", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("hides untraced options on steam only", () => {
-    expect(isSoundOptionHidden("playSoundOnClick", "5", "steam")).toBe(true);
+    expect(isSoundOptionHidden("playSoundOnClick", "14", "steam")).toBe(true);
+    expect(isSoundOptionHidden("playSoundOnClick", "5", "steam")).toBe(false);
     expect(isSoundOptionHidden("playSoundOnClick", "8", "steam")).toBe(false);
     expect(isSoundOptionHidden("playSoundOnClick", "off", "steam")).toBe(false);
     expect(isSoundOptionHidden("playSoundOnClick", "5", "web")).toBe(false);
@@ -93,9 +106,9 @@ describe("steam option hiding", () => {
 
   it("reads the build platform by default", () => {
     vi.stubGlobal("__PLATFORM__", "steam");
-    expect(isSoundOptionHidden("playSoundOnClick", "1")).toBe(true);
+    expect(isSoundOptionHidden("playSoundOnClick", "14")).toBe(true);
     vi.stubGlobal("__PLATFORM__", "web");
-    expect(isSoundOptionHidden("playSoundOnClick", "1")).toBe(false);
+    expect(isSoundOptionHidden("playSoundOnClick", "14")).toBe(false);
   });
 
   it("resets synced web configs that pick excluded sounds", () => {
@@ -128,9 +141,11 @@ describe("steam build output stripping", () => {
 
   it("removes untraced sounds and lyric quotes, keeping everything else", () => {
     dir = mkdtempSync(path.join(os.tmpdir(), "steam-strip-"));
+    mkdirSync(path.join(dir, "sounds/click14"), { recursive: true });
     mkdirSync(path.join(dir, "sounds/click1"), { recursive: true });
     mkdirSync(path.join(dir, "sounds/error2"), { recursive: true });
     mkdirSync(path.join(dir, "quotes"));
+    writeFileSync(path.join(dir, "sounds/click14/1.wav"), "x");
     writeFileSync(path.join(dir, "sounds/click1/1.wav"), "x");
     writeFileSync(path.join(dir, "sounds/error2/1.wav"), "x");
     writeFileSync(path.join(dir, "sounds/timeWarning.wav"), "x");
@@ -148,7 +163,8 @@ describe("steam build output stripping", () => {
     );
 
     expect(stripSteamAssets(dir)).toEqual({ sounds: 2, quotes: 1 });
-    expect(existsSync(path.join(dir, "sounds/click1"))).toBe(false);
+    expect(existsSync(path.join(dir, "sounds/click14"))).toBe(false);
+    expect(existsSync(path.join(dir, "sounds/click1/1.wav"))).toBe(true);
     expect(existsSync(path.join(dir, "sounds/timeWarning.wav"))).toBe(false);
     expect(existsSync(path.join(dir, "sounds/error2/1.wav"))).toBe(true);
     const out = JSON.parse(
