@@ -92,7 +92,7 @@ describe("parseLeaderboardBody", () => {
   };
 
   it("accepts a board and an explicit error", () => {
-    expect(parseLeaderboardBody(ok)).toEqual(ok);
+    expect(parseLeaderboardBody(ok)).toEqual({ ...ok, earliestAt: null });
     expect(parseLeaderboardBody({ ok: false, error: "nope" })).toEqual({
       ok: false,
       error: "nope",
@@ -102,6 +102,16 @@ describe("parseLeaderboardBody", () => {
   it("treats a missing endsAt as open-ended", () => {
     const { endsAt: _endsAt, ...rest } = ok;
     expect(parseLeaderboardBody(rest)).toMatchObject({ endsAt: null });
+  });
+
+  it("keeps earliestAt when the server sends it", () => {
+    const earliestAt = Date.UTC(2026, 9, 17, 12);
+    expect(parseLeaderboardBody({ ...ok, earliestAt })).toMatchObject({
+      earliestAt,
+    });
+    expect(parseLeaderboardBody({ ...ok, earliestAt: null })).toMatchObject({
+      earliestAt: null,
+    });
   });
 
   it("keeps a Solo board off the Multiplayer tab", () => {
