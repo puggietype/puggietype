@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  connectSrcOrigins,
   inlineScriptHashes,
   renderHeaders,
   wsOrigin,
@@ -38,6 +39,17 @@ describe("wsOrigin", () => {
   });
 });
 
+describe("connectSrcOrigins", () => {
+  it("allows the http origin next to the websocket origin", () => {
+    expect(connectSrcOrigins(undefined)).toBe(
+      "wss://ws.puggietype.com https://ws.puggietype.com",
+    );
+    expect(connectSrcOrigins("ws://localhost:2567/ws")).toBe(
+      "ws://localhost:2567 http://localhost:2567",
+    );
+  });
+});
+
 describe("renderHeaders", () => {
   const template = readFileSync(
     path.resolve(__dirname, "../../static/_headers"),
@@ -45,13 +57,15 @@ describe("renderHeaders", () => {
   );
   const out = renderHeaders(template, {
     scriptHashes: [sha("a()")],
-    wsOrigin: "wss://ws.puggietype.com",
+    wsOrigin: connectSrcOrigins(undefined),
   });
 
   it("fills every placeholder", () => {
     expect(out).not.toMatch(/__[A-Z_]+__/);
     expect(out).toContain(`script-src 'self' ${sha("a()")};`);
-    expect(out).toMatch(/connect-src 'self' wss:\/\/ws\.puggietype\.com /);
+    expect(out).toMatch(
+      /connect-src 'self' wss:\/\/ws\.puggietype\.com https:\/\/ws\.puggietype\.com /,
+    );
   });
   it("sets the security headers", () => {
     for (const header of [

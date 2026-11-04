@@ -8,6 +8,20 @@
 import { z } from "zod";
 
 export const PROTOCOL_VERSION = 1;
+/** Server protocols this client can talk to (welcome.protocol). */
+export const MIN_SERVER_PROTOCOL = 1;
+export const MAX_SERVER_PROTOCOL = PROTOCOL_VERSION;
+/** Close code: the server (or this client) needs a newer build. */
+export const CLOSE_UPGRADE_REQUIRED = 4003;
+
+export function isServerProtocolSupported(protocol: unknown): boolean {
+  return (
+    typeof protocol === "number" &&
+    Number.isInteger(protocol) &&
+    protocol >= MIN_SERVER_PROTOCOL &&
+    protocol <= MAX_SERVER_PROTOCOL
+  );
+}
 export const MAX_PLAYERS = 8;
 /** Code space is 31^8 (~8.5e11); combined with join throttling, brute-forcing a lobby isn't realistic. */
 export const ROOM_CODE_LENGTH = 8;
@@ -132,6 +146,14 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     ageConfirmed: z.boolean().optional(),
     /** Starting dog. Bad or unknown values fall back to "puggie" rather than erroring, for older clients. */
     character: CharacterSchema.catch(DEFAULT_CHARACTER).optional(),
+    /** This browser session started from /guide/typing-for-kids. The server refuses leaderboard scores. */
+    kidsGuide: z.literal(true).optional(),
+    /** Client wire protocol (servers treat a missing value as 1). */
+    protocol: z.number().int().min(0).optional(),
+    /** Client build id, informational. */
+    engine: z.string().min(1).max(64).optional(),
+    /** Client flavor: "web" or "steam", informational. */
+    platform: z.string().min(1).max(16).optional(),
   }),
   z.object({
     type: z.literal("room:create"),
@@ -195,6 +217,22 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     testMs: nonNeg,
     input: z.array(z.string().max(200)).max(5_000),
     keyCount: z.number().int().min(0),
+    /**
+     * Kids-guide session. Only sent when welcome.features.leaderboards is true.
+     * The server refuses the score. showOnLeaderboard is not on this message;
+     * opt-in is leaderboard:consent.
+     */
+    kidsGuide: z.literal(true).optional(),
+  }),
+  /**
+   * Opt in to the leaderboard for one race. The server accepts this for 60s
+   * after race:results and otherwise leaves the score off the board.
+   * Only sent when welcome.features.leaderboards is true.
+   */
+  z.object({
+    type: z.literal("leaderboard:consent"),
+    raceId: z.string().min(1).max(128),
+    show: z.literal(true),
   }),
   z.object({ type: z.literal("race:rematch") }),
   z.object({ type: z.literal("ping"), t: finite }),
@@ -331,6 +369,8 @@ export interface Features {
   report: boolean;
   /** Ready / start from the results screen (`player:toLobby`); absent on older servers. */
   resultsReady?: boolean;
+  /** Absent or false: leaderboard UI stays hidden and scores are not published. */
+  leaderboards?: boolean;
 }
 
 export type ServerMessage =
@@ -350,9 +390,11 @@ export type ServerMessage =
       startAt: number;
       words: string[];
       settings: Settings;
+      /** Id for leaderboard:consent. Older servers omit it. */
+      raceId?: string;
     }
   | { type: "race:progress"; players: PlayerProgress[] }
-  | { type: "race:results"; results: RaceResult[] }
+  | { type: "race:results"; results: RaceResult[]; raceId?: string }
   /** Listing of open rooms; `racing` counts humans in a countdown or race across the server. */
   | { type: "rooms:list"; rooms: OpenRoomEntry[]; racing: number }
   /**
@@ -370,7 +412,16 @@ export type ServerMessage =
   | { type: "room:closed"; reason: "idle" }
   /** You were kicked by the host. */
   | { type: "room:kicked" }
-  | { type: "error"; code: ErrorCode; message: string };
+  | { type: "error"; code: ErrorCode; message: string }
+  /** Sent instead of welcome when this client's protocol is out of range; the socket then closes with 4003. */
+  | {
+      type: "upgrade_required";
+      clientProtocol: number;
+      minProtocol: number;
+      maxProtocol: number;
+      reason: "client_too_old" | "client_too_new";
+      message: string;
+    };
 export type ServerMessageType = ServerMessage["type"];
 
 /** Decode and validate one incoming frame, yielding the message or a readable error string. */

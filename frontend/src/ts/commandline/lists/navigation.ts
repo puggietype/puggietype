@@ -1,5 +1,7 @@
 import { navigate } from "../../controllers/route-controller";
+import { leaderboardsOn } from "../../multiplayer/store";
 import { isAuthenticated } from "../../states/core";
+import { isStandalone } from "../../utils/env";
 import { toggleFullscreen } from "../../utils/misc";
 import { Command, withValidation } from "../types";
 import { remoteValidation } from "../../utils/remote-validation";
@@ -21,6 +23,7 @@ const commands: Command[] = [
     display: "View Leaderboards",
     alias: "navigate go to",
     icon: "fa-crown",
+    available: (): boolean => !isStandalone() || leaderboardsOn(),
     exec: (): void => {
       void navigate("/leaderboards");
     },

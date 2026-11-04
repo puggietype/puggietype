@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { confirmAge } from "../../src/ts/multiplayer/age-gate";
 import { MultiplayerClient } from "../../src/ts/multiplayer/client";
-import type { ServerMessage } from "../../src/ts/multiplayer/protocol";
+import { KIDS_FLOW_KEY } from "../../src/ts/multiplayer/leaderboards";
+import { setServerFeatures } from "../../src/ts/multiplayer/store";
+import {
+  CLOSE_UPGRADE_REQUIRED,
+  PROTOCOL_VERSION,
+  type ServerMessage,
+} from "../../src/ts/multiplayer/protocol";
 
 class FakeSocket {
   static OPEN = 1;
@@ -103,6 +109,9 @@ describe("MultiplayerClient", () => {
     expect(lastSocket().sent[5]).toEqual({
       type: "hello",
       ageConfirmed: true,
+      protocol: PROTOCOL_VERSION,
+      engine: "TESTING",
+      platform: "web",
       character: "puggie",
     });
   });
@@ -169,6 +178,9 @@ describe("MultiplayerClient", () => {
       playerId: "p1",
       sessionToken: "secret",
       ageConfirmed: true,
+      protocol: PROTOCOL_VERSION,
+      engine: "TESTING",
+      platform: "web",
       character: "puggie",
     });
   });
@@ -200,5 +212,104 @@ describe("MultiplayerClient", () => {
       });
     }
     expect(client.serverNow()).toBe(Date.now() + 5000);
+  });
+
+  it("sends kidsGuide on hello only after the server enabled leaderboards", () => {
+    sessionStorage.setItem(KIDS_FLOW_KEY, "1");
+    try {
+      const { client } = setup();
+      client.connect();
+      lastSocket().open();
+      expect(lastSocket().sent.at(-1)).toEqual({
+        type: "hello",
+        ageConfirmed: true,
+        protocol: PROTOCOL_VERSION,
+        engine: "TESTING",
+        platform: "web",
+        character: "puggie",
+      });
+      client.close();
+      setServerFeatures({
+        characterSelect: false,
+        openRooms: false,
+        quickMatch: false,
+        report: false,
+        leaderboards: true,
+      });
+      client.connect();
+      lastSocket().open();
+      expect(lastSocket().sent.at(-1)).toMatchObject({
+        type: "hello",
+        kidsGuide: true,
+      });
+    } finally {
+      sessionStorage.removeItem(KIDS_FLOW_KEY);
+      setServerFeatures(undefined);
+    }
+  });
+});
+
+describe("MultiplayerClient protocol versioning", () => {
+  beforeEach(() => {
+    FakeSocket.instances = [];
+    sessionStorage.clear();
+    localStorage.clear();
+    confirmAge();
+    vi.stubGlobal("WebSocket", FakeSocket);
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("upgrade_required then close 4003 terminates without reconnecting", () => {
+    const { client, terminated, messages } = setup();
+    client.connect();
+    const socket = lastSocket();
+    socket.open();
+    socket.receive({
+      type: "upgrade_required",
+      clientProtocol: 0,
+      minProtocol: 1,
+      maxProtocol: 1,
+      reason: "client_too_old",
+      message: "update",
+    });
+    socket.serverClose(CLOSE_UPGRADE_REQUIRED);
+    expect(terminated).toEqual([CLOSE_UPGRADE_REQUIRED]);
+    expect(messages).toEqual([]);
+    vi.advanceTimersByTime(10_000);
+    expect(FakeSocket.instances).toHaveLength(1);
+    // a later connect does not open a socket with this build
+    client.connect();
+    expect(FakeSocket.instances).toHaveLength(1);
+    expect(terminated).toEqual([
+      CLOSE_UPGRADE_REQUIRED,
+      CLOSE_UPGRADE_REQUIRED,
+    ]);
+  });
+
+  it("an unsupported welcome.protocol is treated as upgrade required", () => {
+    const { client, terminated, statuses, messages } = setup();
+    client.connect();
+    client.send({ type: "room:create" });
+    const socket = lastSocket();
+    socket.open();
+    socket.receive({ ...welcome, protocol: PROTOCOL_VERSION + 1 });
+    expect(terminated).toEqual([CLOSE_UPGRADE_REQUIRED]);
+    expect(statuses[statuses.length - 1]).toBe("idle");
+    expect(messages).toEqual([]);
+    expect(socket.types()).not.toContain("room:create");
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("a supported welcome.protocol connects normally", () => {
+    const { client, terminated, statuses } = setup();
+    client.connect();
+    lastSocket().open();
+    lastSocket().receive(welcome);
+    expect(terminated).toEqual([]);
+    expect(statuses).toContain("open");
   });
 });

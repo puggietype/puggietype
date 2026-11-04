@@ -36,7 +36,7 @@ Solo typing must keep working unchanged. Pug mode works during races.
   (colour `var(--oppN)`, name tag), toggle (UI, commandline, persisted config). Progress bars.
 - Finish: `race:finish`, then on `race:results` a podium replaces the result screen: winner with
   the pug-winner frame, table (place, name, wpm, raw, acc, flagged, ready badge), next-race
-  controls (above) or Rematch (host) / waiting, Leave. Results are never saved to the backend.
+  controls (above) or Rematch (host) / waiting, Leave. Results are not saved to an account. A score is posted only when you press a Submit score button (Submit score to leaderboard, or Submit score & next test, & repeat or & retry saving). The 'Show my score on the leaderboard' setting defaults on.
 - Reconnect with the persisted `playerId` + `sessionToken` (sessionStorage).
 
 ## Structure
@@ -72,7 +72,7 @@ Engine hook points are kept small and marked `// multiplayer hook`.
   words before it are replayed as typed correctly (mistakes before the reload are lost).
   After finishing, a reload just waits for the results.
 - Browser back mid-race asks to leave (confirm); closing/reloading the tab prompts too.
-- Public matchmaking is a stub. Results are never saved.
+- Public matchmaking is a stub. Account result saving stays off. Leaderboard scores are opt-out via the results-screen toggle.
 
 ## Dev
 

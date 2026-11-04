@@ -1,3 +1,4 @@
+import { isFunboxAvailable } from "../../platform/funbox-availability";
 import * as Funbox from "../../test/funbox/funbox";
 import * as TestLogic from "../../test/test-logic";
 import { getAllFunboxes, checkCompatibility } from "@monkeytype/funbox";
@@ -19,7 +20,11 @@ const list: Command[] = [
   },
 ];
 
-for (const funbox of getAllFunboxes()) {
+// define compared inline so the web build folds this back to getAllFunboxes()
+for (const funbox of typeof __PLATFORM__ !== "undefined" &&
+__PLATFORM__ === "steam"
+  ? getAllFunboxes().filter((f) => isFunboxAvailable(f.name))
+  : getAllFunboxes()) {
   list.push({
     id: `changeFunbox${funbox.name}`,
     display: funbox.name.replace(/_/g, " "),

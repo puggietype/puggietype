@@ -1,3 +1,4 @@
+import { dropUnavailableFunboxes } from "../platform/funbox-availability";
 import type {
   Config as ConfigSchema,
   FunboxName,
@@ -7,6 +8,7 @@ import * as ConfigSchemas from "@monkeytype/schemas/configs";
 import { typedKeys } from "@monkeytype/util/objects";
 import { getDefaultConfig } from "../constants/default-config";
 import { resetAccountOnlyConfig } from "../constants/standalone";
+import { resetExcludedSounds } from "../steam/asset-clearance";
 import { sanitize } from "../utils/sanitize";
 import { Config } from "./store";
 /**
@@ -15,8 +17,10 @@ import { Config } from "./store";
  * @returns
  */
 export function migrateConfig(config: PartialConfig | object): ConfigSchema {
-  return resetAccountOnlyConfig(
-    mergeWithDefaultConfig(sanitizeConfig(replaceLegacyValues(config))),
+  return resetExcludedSounds(
+    resetAccountOnlyConfig(
+      mergeWithDefaultConfig(sanitizeConfig(replaceLegacyValues(config))),
+    ),
   );
 }
 
@@ -27,6 +31,11 @@ function mergeWithDefaultConfig(config: PartialConfig): ConfigSchema {
     const newValue = config[key] ?? defaultConfig[key];
     //@ts-expect-error cant be bothered to deal with this
     mergedConfig[key] = newValue;
+  }
+  // steam: saved, imported or synced configs quietly lose unavailable funboxes
+  // (define compared inline so the web build drops this line)
+  if (typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") {
+    mergedConfig.funbox = dropUnavailableFunboxes(mergedConfig.funbox);
   }
   return mergedConfig;
 }
@@ -72,6 +81,11 @@ function replaceLegacyValues(
   //@ts-expect-error legacy configs
   if (configObj.showAverage === "wpm") {
     configObj.showAverage = "speed";
+  }
+
+  // osu (6), hitmarker (7) and fart (16) click sounds were removed
+  if (["6", "7", "16"].includes(configObj.playSoundOnClick as string)) {
+    configObj.playSoundOnClick = "off";
   }
 
   if (typeof configObj.playSoundOnError === "boolean") {

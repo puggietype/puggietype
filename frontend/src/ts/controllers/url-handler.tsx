@@ -26,6 +26,7 @@ import { setConfig } from "../config/setters";
 import { Config } from "../config/store";
 import * as DB from "../db";
 import { authEvent } from "../events/auth";
+import { dropUnavailableFunboxes } from "../platform/funbox-availability";
 import { hideLoaderBar, showLoaderBar } from "../states/loader-bar";
 import {
   showErrorNotification,
@@ -285,7 +286,18 @@ export function loadTestSettingsFromUrl(getOverride?: string): void {
     setConfig("funbox", val, {
       nosave: true,
     });
-    applied["funbox"] = val.join(", ");
+    // steam: list what was actually applied (unavailable funboxes are
+    // dropped by the config override), and leave the line out when the link
+    // only had unavailable ones (QA PR20-EMPTY-FUNBOX). The web build folds
+    // to the else branch.
+    if (typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") {
+      const kept = dropUnavailableFunboxes(val);
+      if (kept.length > 0 || val.length === 0) {
+        applied["funbox"] = kept.join(", ");
+      }
+    } else {
+      applied["funbox"] = val.join(", ");
+    }
   }
 
   void restartTest({

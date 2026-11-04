@@ -1,4 +1,5 @@
 import { Config } from "../config/store";
+import { isSoundOptionHidden } from "../steam/asset-clearance";
 import { setConfig } from "../config/setters";
 import { ConfigMetadata, configMetadata } from "../config/metadata";
 import { capitalizeFirstLetter } from "../utils/strings";
@@ -109,9 +110,9 @@ function buildCommandWithSubgroup<K extends keyof ConfigSchemas.Config>(
       `Unsupported schema type for key "${key}": ${(schema as ZodFirstPartySchemaTypes)._def.typeName}`,
     );
   }
-  const list = values.map((value) =>
-    buildSubgroupCommand<K>(key, value, subgroupProps),
-  );
+  const list = values
+    .filter((value) => !isSoundOptionHidden(key, value))
+    .map((value) => buildSubgroupCommand<K>(key, value, subgroupProps));
 
   list.sort((a, b) => {
     if (a.configValue === "off" || a.configValue === false) return -1;

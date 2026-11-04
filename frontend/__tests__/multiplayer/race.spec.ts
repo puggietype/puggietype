@@ -187,7 +187,10 @@ function roomState(overrides: Partial<RoomState> = {}): ServerMessage {
   };
 }
 
-function countdown(startAt = Date.now() + 3500): ServerMessage {
+function countdown(
+  startAt = Date.now() + 3500,
+  raceId?: string,
+): ServerMessage {
   return {
     type: "race:countdown",
     startAt,
@@ -199,6 +202,7 @@ function countdown(startAt = Date.now() + 3500): ServerMessage {
       numbers: false,
       language: "english",
     },
+    ...(raceId === undefined ? {} : { raceId }),
   };
 }
 
@@ -441,6 +445,91 @@ describe("race lifecycle", () => {
       options: { force: true },
     });
     expect(Store.raceFinished()).toBe(true);
+  });
+
+  function leaderboardWelcome(): ServerMessage {
+    return {
+      type: "welcome",
+      playerId: "me",
+      sessionToken: "t",
+      name: "ZippyPug42",
+      protocol: 1,
+      features: {
+        characterSelect: false,
+        openRooms: false,
+        quickMatch: false,
+        report: false,
+        leaderboards: true,
+      },
+    };
+  }
+
+  async function finishWithLeaderboards(raceId: string): Promise<void> {
+    receive(leaderboardWelcome());
+    receive(roomState({ phase: "countdown" }));
+    receive(countdown(Date.now(), raceId));
+    await flush();
+    await vi.advanceTimersByTimeAsync(0);
+    Hooks.handleRaceFinish({
+      wpm: 80,
+      raw: 82,
+      acc: 98,
+      testMs: 4000,
+      input: ["the"],
+      keyCount: 3,
+    });
+  }
+
+  it("sends race:finish immediately and consents only after Submit and results", async () => {
+    await finishWithLeaderboards("race-1");
+    const finish = fakeClient.sent.find((m) => m.type === "race:finish");
+    expect(finish).toMatchObject({ type: "race:finish", wpm: 80 });
+    expect(finish).not.toHaveProperty("showOnLeaderboard");
+    expect(fakeClient.sent.some((m) => m.type === "leaderboard:consent")).toBe(
+      false,
+    );
+    Race.submitLeaderboardConsent(true);
+    expect(fakeClient.sent.some((m) => m.type === "leaderboard:consent")).toBe(
+      false,
+    );
+    vi.advanceTimersByTime(2000);
+    Race.submitLeaderboardConsent(true);
+    expect(fakeClient.sent.some((m) => m.type === "leaderboard:consent")).toBe(
+      false,
+    );
+    receive({ type: "race:results", results: [], raceId: "race-1" });
+    expect(fakeClient.sent.at(-1)).toEqual({
+      type: "leaderboard:consent",
+      raceId: "race-1",
+      show: true,
+    });
+  });
+
+  it("does not post when the next race starts without Submit", async () => {
+    await finishWithLeaderboards("race-3");
+    receive({ type: "race:results", results: [], raceId: "race-3" });
+    vi.advanceTimersByTime(2000);
+    Race.startRace();
+    Race.rematch();
+    receive(roomState({ phase: "lobby" }));
+    receive(countdown(Date.now() + 20_000, "race-4"));
+    await flush();
+    Race.submitLeaderboardConsent(true);
+    expect(fakeClient.sent.some((m) => m.type === "leaderboard:consent")).toBe(
+      false,
+    );
+  });
+
+  it("never sends leaderboard:consent on leave", async () => {
+    await finishWithLeaderboards("race-2");
+    vi.advanceTimersByTime(2000);
+    Race.leaveRoom();
+    expect(fakeClient.sent.some((m) => m.type === "leaderboard:consent")).toBe(
+      false,
+    );
+    expect(
+      fakeClient.sent.find((m) => m.type === "race:finish"),
+    ).not.toHaveProperty("showOnLeaderboard");
   });
 
   it("stops a running test when results arrive first, so nothing is saved", async () => {

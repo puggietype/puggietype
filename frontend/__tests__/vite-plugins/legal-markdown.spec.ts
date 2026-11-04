@@ -7,6 +7,15 @@ import { renderLegalMarkdown } from "../../vite-plugins/legal-markdown";
 
 const legalDir = path.resolve(__dirname, "../../src/legal");
 const srcDir = path.resolve(__dirname, "../../src");
+// Legal review 2026-11-04, Ruling 5, variant A (exact copy)
+const VALVE_CONTROLLER =
+  '**Valve Corporation (Steam)**, USA, is not our service provider. If you sign in with Steam, Valve processes your Steam account data as an independent controller under its own [Privacy Policy](https://store.steampowered.com/privacy_agreement/). We receive only your Steam ID, your ownership of PuggieType and its supporter pack, and your Steam display name, as described in "Steam sign-in (desktop app)".';
+const STEAM_LEGAL_BASIS =
+  "- To sign you in with Steam and unlock what you own on Steam, if you choose to (Art. 6(1)(b), performance of a contract).";
+const STEAM_RETENTION_ROW_A =
+  "| Steam ID, Steam ownership result and Steam display name (desktop app sign-in, on the game server) | in memory only while the sign-in request is handled; not written to disk, a database or logs |";
+const STEAM_VARIANT_A =
+  "The PuggieType desktop app on Steam can let you sign in with your Steam account. Sign-in happens on Steam's own website in your browser; we never see your Steam password. When you sign in, Steam tells our game server your public Steam ID, and our server asks Steam whether your account owns PuggieType (and any supporter pack) and what your Steam display name is. We use this only to sign you in, unlock what you own, and show your display name if it passes our name filter and you haven't hidden it. Our server does not store or log your Steam ID or display name; it holds them in memory only while handling the sign-in request. We don't sell or share Steam data, or use it for marketing. Our game server runs on Fly.io; see Service providers. Steam data is provided by Valve 'as is', without warranty. Valve's own handling of your data is described in Valve's Privacy Policy (https://store.steampowered.com/privacy_agreement/).";
 
 describe("legal-markdown", () => {
   for (const name of ["terms", "privacy"]) {
@@ -19,6 +28,47 @@ describe("legal-markdown", () => {
       expect(html).toContain(marked.parse(md, { async: false }));
     });
   }
+
+  it("privacy page descriptions do not say leaderboards are memory-only", () => {
+    const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+    expect(page).not.toMatch(/memory only|in memory/i);
+    expect(page).toContain("Neon database in Oregon");
+  });
+
+  it("includes the leaderboards privacy section verbatim", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    expect(md).toContain(
+      "The 'Show my score on the leaderboard' setting defaults on, but a score is posted only when you press a Submit score button (Submit score to leaderboard, or Submit score & next test, & repeat or & retry saving). We then save your randomly assigned nickname and your speed (wpm), accuracy and raw speed. Solo scores are lightly checked by our server for impossible speeds, but they aren't verified like multiplayer scores, so they appear on a separate 'Solo' board. We save these scores in our database, which is hosted for us by Neon on Amazon Web Services servers in Oregon, USA.",
+    );
+    expect(md).toContain(
+      "We may remove scores that look cheated or that break our rules.",
+    );
+    expect(md).not.toContain("We may remove any score that looks cheated.");
+    expect(md).toContain(
+      "email us your nickname, board, and the approximate date and score, and we'll find and remove it.",
+    );
+    expect(md).toContain(
+      "Neon, LLC (a Databricks company), USA, database hosting for leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.",
+    );
+    expect(md).not.toContain("account data once accounts launch");
+    expect(md).not.toContain("your rank");
+  });
+
+  it("includes Legal's Steam sign-in section (variant A) verbatim", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    expect(md).toContain(
+      `## Steam sign-in (desktop app)\n${STEAM_VARIANT_A}\n`,
+    );
+    // Legal addendum 2026-11-04 (2): exact texts
+    expect(md).toContain(`\n\n${VALVE_CONTROLLER}\n\n## Cookies`);
+    expect(md).toContain(
+      `- To comply with legal obligations (Art. 6(1)(c)).\n${STEAM_LEGAL_BASIS}\n`,
+    );
+    expect(md).toContain(`\n${STEAM_RETENTION_ROW_A}\n`);
+    expect(md).not.toContain("Hosting providers");
+    // variant B (session token) is not live yet
+    expect(md).not.toContain("random session token");
+  });
 
   it("contains no chat clauses", () => {
     for (const name of ["terms", "privacy"]) {

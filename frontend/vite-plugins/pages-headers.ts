@@ -51,6 +51,15 @@ export function addCspSources(
   return out;
 }
 
+/** websocket origin plus the http(s) origin used for /leaderboards */
+export function connectSrcOrigins(configured: string | undefined): string {
+  const ws = wsOrigin(configured);
+  const http = ws
+    .replace(/^wss:\/\//, "https://")
+    .replace(/^ws:\/\//, "http://");
+  return http === ws ? ws : `${ws} ${http}`;
+}
+
 export function renderHeaders(
   template: string,
   values: {
@@ -91,7 +100,7 @@ export function pagesHeaders(options: {
         .map((f) => readFileSync(path.join(outDir, f), "utf8"));
       const rendered = renderHeaders(readFileSync(headersPath, "utf8"), {
         scriptHashes: inlineScriptHashes(htmls),
-        wsOrigin: wsOrigin(options.wsUrl),
+        wsOrigin: connectSrcOrigins(options.wsUrl),
         extraCsp: options.extraCsp,
       });
       writeFileSync(headersPath, rendered);

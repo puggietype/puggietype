@@ -1,25 +1,35 @@
 import { isAgeConfirmed } from "./age-gate";
 import { computeClockOffset, type ClockSample } from "./clock";
 import { CONFIGURED_WS_URL } from "./flags";
+import { leaderboardSubmitBlocked } from "./leaderboards";
+import { leaderboardsOn, type ConnectionStatus } from "./store";
 import { isFlagEnabled } from "./feature-flags";
 import { wsUrl } from "./helpers";
-import type { ClientMessage, ServerMessage } from "./protocol";
+import {
+  CLOSE_UPGRADE_REQUIRED,
+  isServerProtocolSupported,
+  PROTOCOL_VERSION,
+  type ClientMessage,
+  type ServerMessage,
+} from "./protocol";
+import { envConfig } from "virtual:env-config";
+import { getPlatformName } from "../platform";
 import { loadCharacter } from "./character-storage";
 
 const SESSION_KEY = "puggie-mp-session";
 const PING_SAMPLES = 5;
 const RECONNECT_DELAYS = [500, 1000, 2000, 4000];
 /** close codes after which reconnecting would be wrong */
-const NO_RECONNECT_CODES = new Set([4000, 4002]);
+const NO_RECONNECT_CODES = new Set([4000, 4002, CLOSE_UPGRADE_REQUIRED]);
 
-export type ConnectionStatus = "idle" | "connecting" | "open" | "reconnecting";
+export type { ConnectionStatus };
 
 type Session = { playerId: string; sessionToken: string };
 
 type Handlers = {
   onMessage: (msg: ServerMessage) => void;
   onStatus: (status: ConnectionStatus) => void;
-  /** the server ended the session for good (replaced by another tab, full) */
+  /** the server ended the session for good (replaced by another tab, full, upgrade required) */
   onTerminated: (code: number) => void;
 };
 
@@ -44,6 +54,11 @@ function saveSession(session: Session): void {
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
+/** session from the last welcome, used to attach a nickname to a score */
+export function readStoredSession(): Session | undefined {
+  return loadSession();
+}
+
 /**
  * One WebSocket to /ws: clock sync, hello (with the stored session for
  * reconnects), and automatic reconnect with backoff.
@@ -58,6 +73,8 @@ export class MultiplayerClient {
   private closedByUser = false;
   private queue: ClientMessage[] = [];
   private helloDone = false;
+  /** set by upgrade_required or an unsupported welcome.protocol; blocks reconnects */
+  private upgradeRequired = false;
   private readonly handlers: Handlers;
 
   constructor(handlers: Handlers) {
@@ -76,6 +93,10 @@ export class MultiplayerClient {
   /** no-op until the user passed the age gate: no socket before that */
   connect(): void {
     if (!isAgeConfirmed()) return;
+    if (this.upgradeRequired) {
+      this.handlers.onTerminated(CLOSE_UPGRADE_REQUIRED);
+      return;
+    }
     this.closedByUser = false;
     if (this.ws !== undefined) return;
     this.open("connecting");
@@ -111,8 +132,23 @@ export class MultiplayerClient {
       type: "hello",
       ...session,
       ageConfirmed: true,
+      protocol: PROTOCOL_VERSION,
+      engine: envConfig.clientVersion.slice(0, 64),
+      platform: getPlatformName(),
       ...(isFlagEnabled("characterSelect")
         ? { character: loadCharacter() }
+        : {}),
+      // only after welcome.features.leaderboards. Unknown hello keys are safe:
+      // the server (prod at 149852b) parses hello with a plain z.object, which
+      // strips them (puggietype-server src/protocol.ts:105-107), so older
+      // servers ignore kidsGuide and protocol/engine/platform
+      ...(leaderboardsOn() &&
+      leaderboardSubmitBlocked(
+        window.location.pathname,
+        document.referrer,
+        sessionStorage,
+      )
+        ? { kidsGuide: true as const }
         : {}),
     };
   }
@@ -186,6 +222,22 @@ export class MultiplayerClient {
         receivedAt: Date.now(),
       });
       this.offset = computeClockOffset(this.samples);
+      return;
+    }
+    if (msg.type === "upgrade_required") {
+      // the server closes with 4003 next; never retry with this build
+      this.upgradeRequired = true;
+      return;
+    }
+    if (msg.type === "welcome" && !isServerProtocolSupported(msg.protocol)) {
+      this.upgradeRequired = true;
+      const ws = this.ws;
+      this.ws = undefined;
+      this.helloDone = false;
+      this.queue = [];
+      ws?.close(1000);
+      this.handlers.onStatus("idle");
+      this.handlers.onTerminated(CLOSE_UPGRADE_REQUIRED);
       return;
     }
     if (msg.type === "welcome") {

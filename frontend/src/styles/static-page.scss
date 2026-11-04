@@ -203,11 +203,29 @@ header {
   --bg-color: #161514;
   --main-color: #e8a96b;
   --caret-color: #e8a96b;
-  --sub-color: #77706a;
+  // lighter than the app theme so small text passes 4.5:1 (STATIC-A11Y-01)
+  --sub-color: #958d86;
   --sub-alt-color: #211f1d;
   --text-color: #ece6dd;
   --error-color: #ef6b5f;
   --error-extra-color: #a84a43;
+}
+
+// puggie light for the creators page when the system prefers light
+@media (prefers-color-scheme: light) {
+  :root:has(body.creatorsPage) {
+    --bg-color: #f7f2ea;
+    --main-color: #9a531d;
+    --caret-color: #9a531d;
+    --sub-color: #6b6157;
+    --sub-alt-color: #eae2d5;
+    --text-color: #2a2522;
+    --error-color: #c2382f;
+    --error-extra-color: #8c2a24;
+    --pug-ink: #2a2522;
+    --pug-fill: #f4e5cb;
+    --pug-mask: #2a211d;
+  }
 }
 
 body {

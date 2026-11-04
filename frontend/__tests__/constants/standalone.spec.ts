@@ -28,12 +28,18 @@ describe("standalone visibility", () => {
       "/friends",
       "/profile",
       "/profile/:uidOrName",
-      "/leaderboards",
       "/verify",
     ]) {
       expect(isRouteHidden(path), path).toBe(true);
     }
-    for (const path of ["/", "/race", "/r/:code", "/settings", "/about"]) {
+    for (const path of [
+      "/",
+      "/race",
+      "/r/:code",
+      "/settings",
+      "/about",
+      "/leaderboards",
+    ]) {
       expect(isRouteHidden(path), path).toBe(false);
     }
   });
@@ -49,7 +55,7 @@ describe("standalone visibility", () => {
     for (const mode of ["off", "last", "custom"] as const) {
       expect(isPaceCaretHidden(mode), mode).toBe(false);
     }
-    expect(isCommandHidden("viewLeaderboards")).toBe(true);
+    expect(isCommandHidden("viewLeaderboards")).toBe(false);
     expect(isCommandHidden("viewSettings")).toBe(false);
   });
 

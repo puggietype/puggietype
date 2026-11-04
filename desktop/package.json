@@ -1,0 +1,19 @@
+{
+  "name": "@puggietype/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PuggieType desktop shell (Steam flavor). Plain Electron, no Steamworks SDK, no ads.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "main": "src/main.mjs",
+  "scripts": {
+    "build:web": "cd ../frontend && PLATFORM=steam npm run build",
+    "start": "electron .",
+    "smoke": "PUGGIE_SMOKE_TEST=1 electron .",
+    "test": "node --test test/*.test.mjs",
+    "package": "node scripts/package.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.2.2"
+  }
+}

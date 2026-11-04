@@ -18,6 +18,7 @@ import {
   ValidNotes,
 } from "../constants/sounds";
 import { getModifierState } from "../states/modifiers";
+import { isSoundOptionHidden } from "../steam/asset-clearance";
 
 let howlerModulePromise: Promise<typeof import("howler")> | null = null;
 async function getHowlerModule(): Promise<typeof import("howler")> {
@@ -45,29 +46,27 @@ let errorSounds: ErrorSounds | null = null;
 
 let timeWarning: Howl | null = null;
 
-let fartReverb: Howl | null = null;
-
 async function initTimeWarning(): Promise<void> {
   if (timeWarning !== null) return;
   timeWarning = await getHowl("../sounds/timeWarning.wav");
 }
 
-async function initFartReverb(): Promise<void> {
-  if (fartReverb !== null) return;
-  fartReverb = await getHowl("../sounds/fart-reverb.wav");
-}
+const errorSoundFiles: Record<Exclude<PlaySoundOnError, "off">, string[]> = {
+  1: ["../sounds/error1/1.wav"],
+  2: ["../sounds/error2/1.wav"],
+  3: ["../sounds/error3/1.wav"],
+  4: ["../sounds/error4/1.wav", "../sounds/error4/2.wav"],
+};
 
 async function initErrorSound(): Promise<void> {
   if (errorSounds !== null) return;
-  errorSounds = {
-    1: [await getHowl("../sounds/error1/1.wav")],
-    2: [await getHowl("../sounds/error2/1.wav")],
-    3: [await getHowl("../sounds/error3/1.wav")],
-    4: [
-      await getHowl("../sounds/error4/1.wav"),
-      await getHowl("../sounds/error4/2.wav"),
-    ],
-  };
+  const loaded: Partial<ErrorSounds> = {};
+  for (const [id, files] of Object.entries(errorSoundFiles)) {
+    // steam: untraced error sounds are not in the build, don't request them
+    if (isSoundOptionHidden("playSoundOnError", id)) continue;
+    loaded[id as keyof ErrorSounds] = await Promise.all(files.map(getHowl));
+  }
+  errorSounds = loaded as ErrorSounds;
   (await getHowlerModule()).Howler.volume(Config.soundVolume);
 }
 
@@ -85,6 +84,7 @@ async function init(): Promise<void> {
   //preload sounds
   const clickId = Config.playSoundOnClick;
   if (clickId === "off") return;
+  if (isSoundOptionHidden("playSoundOnClick", clickId)) return;
 
   if (!loadedBundles.has(clickId)) {
     loadedBundles.add(clickId);
@@ -99,6 +99,7 @@ async function init(): Promise<void> {
 
 export async function previewClick(clickId: PlaySoundOnClick): Promise<void> {
   if (clickId === "off") return;
+  if (isSoundOptionHidden("playSoundOnClick", clickId)) return;
 
   const config = soundsConfig[clickId];
 
@@ -126,6 +127,7 @@ export async function previewClick(clickId: PlaySoundOnClick): Promise<void> {
 
 export async function previewError(val: PlaySoundOnError): Promise<void> {
   if (val === "off") return;
+  if (isSoundOptionHidden("playSoundOnError", val)) return;
   if (errorSounds === null) await initErrorSound();
 
   const safeErrorSounds = errorSounds as ErrorSounds;
@@ -300,16 +302,10 @@ function playScale(validNotes: ValidNotes[], scaleMeta: ScaleData): void {
 }
 
 export async function playTimeWarning(): Promise<void> {
+  // steam: file is left out of the build (docs/sounds-SOURCES.md)
+  if (isSoundOptionHidden("playTimeWarning", "1")) return;
   if (timeWarning === null) await initTimeWarning();
   const soundToPlay = timeWarning as Howl;
-  soundToPlay.stop();
-  soundToPlay.seek(0);
-  soundToPlay.play();
-}
-
-export async function playFartReverb(): Promise<void> {
-  if (fartReverb === null) await initFartReverb();
-  const soundToPlay = fartReverb as Howl;
   soundToPlay.stop();
   soundToPlay.seek(0);
   soundToPlay.play();
@@ -357,6 +353,7 @@ function playNote(options: {
 export async function playClick(codeOverride?: string): Promise<void> {
   const val = Config.playSoundOnClick;
   if (val === "off") return;
+  if (isSoundOptionHidden("playSoundOnClick", val)) return;
 
   const config = soundsConfig[val];
 
@@ -386,6 +383,7 @@ export async function playClick(codeOverride?: string): Promise<void> {
 
 export async function playError(): Promise<void> {
   if (Config.playSoundOnError === "off") return;
+  if (isSoundOptionHidden("playSoundOnError", Config.playSoundOnError)) return;
   if (errorSounds === null) await initErrorSound();
 
   const sounds = (errorSounds as ErrorSounds)[Config.playSoundOnError];

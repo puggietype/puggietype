@@ -72,6 +72,7 @@ export const projects: UserWorkspaceConfig[] = [
   },
 ];
 export default defineConfig({
+  define: { __PLATFORM__: JSON.stringify("web") },
   test: {
     projects: projects,
     coverage: {

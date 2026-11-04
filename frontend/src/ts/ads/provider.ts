@@ -1,3 +1,5 @@
+import { getPlatform } from "../platform";
+
 /**
  * Ad provider hook. No ad network is wired: the default provider does
  * nothing. A future provider (e.g. AdSense) may only fill the
@@ -20,6 +22,8 @@ export const noopAdProvider: AdProvider = {
 let provider: AdProvider = noopAdProvider;
 
 export function getAdProvider(): AdProvider {
+  // the steam flavor never shows ads, whatever provider is set
+  if (!getPlatform().adsAllowed) return noopAdProvider;
   return provider;
 }
 

@@ -14,6 +14,7 @@ import { Fonts } from "./src/ts/constants/fonts";
 import { fontawesomeSubset } from "./vite-plugins/fontawesome-subset";
 import { fontPreview } from "./vite-plugins/font-preview";
 import { envConfig } from "./vite-plugins/env-config";
+import { resolvePlatform } from "./vite-plugins/platform";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
@@ -27,6 +28,7 @@ import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
 import { inlineStaticPageCss } from "./vite-plugins/inline-static-css";
+import { steamAssetClearance } from "./vite-plugins/steam-asset-clearance";
 import { notFoundPage } from "./vite-plugins/not-found-page";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
 import {
@@ -121,6 +123,8 @@ function getPlugins({
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
+    // PLATFORM from the build script shell only, never .env (see 432d097)
+    steamAssetClearance({ platform: resolvePlatform(process.env) }),
     tailwindcss(),
 
     solidPlugin(),
@@ -250,6 +254,7 @@ function getBuildOptions({
         // static content pages, served by pages at their clean url (/faq, /guide/about)
         faq: path.resolve(__dirname, "src/faq.html"),
         contact: path.resolve(__dirname, "src/contact.html"),
+        creators: path.resolve(__dirname, "src/creators.html"),
         "guide/about": path.resolve(__dirname, "src/guide/about.html"),
         "guide/wpm-accuracy": path.resolve(
           __dirname,
@@ -419,6 +424,8 @@ function getCssOptions({
   };
 }
 
+const STEAM_DEFAULT_WS_URL = "wss://ws.puggietype.com/ws";
+
 export default defineConfig(({ mode }): UserConfig => {
   const env = loadEnv(mode, process.cwd(), "");
   const isDevelopment = mode !== "production";
@@ -436,6 +443,14 @@ export default defineConfig(({ mode }): UserConfig => {
   // no BACKEND_URL => no auth/api: swap the Firebase SDK for a stub and let
   // the minifier drop backend-only code (reCAPTCHA loader) behind __STANDALONE__
   const standalone = (env["BACKEND_URL"] ?? "") === "";
+  // PLATFORM=steam selects the desktop flavor; unset means web. Read from the
+  // build script's shell only (process.env), never from loadEnv/.env files.
+  const platform = resolvePlatform(process.env);
+  // the steam build loads from local files: no same-origin /ws, so it always
+  // bakes in an absolute server URL (the runtime falls back the same way)
+  if (platform === "steam" && (env["VITE_WS_URL"] ?? "") === "") {
+    process.env["VITE_WS_URL"] = STEAM_DEFAULT_WS_URL;
+  }
   const firebaseStubPath = path.resolve(
     __dirname,
     "src/ts/standalone/firebase-stub.ts",
@@ -461,6 +476,7 @@ export default defineConfig(({ mode }): UserConfig => {
     ],
     define: {
       __STANDALONE__: JSON.stringify(standalone),
+      __PLATFORM__: JSON.stringify(platform),
       __FEATURE_ACCOUNTS__: JSON.stringify(isAccountsEnabled(env)),
     },
     resolve: {
@@ -493,6 +509,14 @@ export default defineConfig(({ mode }): UserConfig => {
             process.env["MP_WS_TARGET"] ??
             "ws://localhost:2567",
           ws: true,
+        },
+        // same game server, over http: GET/POST /leaderboards
+        "/leaderboards": {
+          target: (
+            process.env["PUGGIE_WS_PROXY_TARGET"] ??
+            process.env["MP_WS_TARGET"] ??
+            "ws://localhost:2567"
+          ).replace(/^ws/, "http"),
         },
       },
       watch: {

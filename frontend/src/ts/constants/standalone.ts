@@ -1,12 +1,13 @@
 import type { Config, ConfigKey, PaceCaret } from "@monkeytype/schemas/configs";
 
+import { getPlatformName } from "../platform";
 import { isStandalone } from "../utils/env";
+import { isTimeWarningExcluded } from "./sound-clearance";
 import { getDefaultConfig } from "./default-config";
 
 /** routes that need an account or the backend; 404 in standalone builds */
 const BACKEND_ROUTES: readonly string[] = [
   "/verify",
-  "/leaderboards",
   "/login",
   "/account",
   "/account-settings",
@@ -32,7 +33,6 @@ const ACCOUNT_ONLY_PACE_CARETS: readonly PaceCaret[] = [
 
 /** commandline commands that need an account or the backend */
 const BACKEND_COMMAND_IDS: readonly string[] = [
-  "viewLeaderboards",
   "viewAccount",
   "searchProfile",
   "signOut",
@@ -47,6 +47,10 @@ export function isRouteHidden(path: string): boolean {
 }
 
 export function isConfigKeyHidden(key: ConfigKey): boolean {
+  // steam: timeWarning.wav is untraced and left out (docs/sounds-SOURCES.md)
+  if (key === "playTimeWarning" && isTimeWarningExcluded(getPlatformName())) {
+    return true;
+  }
   return isStandalone() && ACCOUNT_ONLY_CONFIG_KEYS.includes(key);
 }
 

@@ -42,8 +42,8 @@ const AccountSettingsPage = lazyPage(
   "AccountSettingsPage",
 );
 const LeaderboardPage = lazyPage(
-  async () => import("./leaderboard/LeaderboardPage"),
-  "LeaderboardPage",
+  async () => import("./leaderboard/LeaderboardRoute"),
+  "LeaderboardRoute",
 );
 const FriendsPage = lazyPage(
   async () => import("./connections/FriendsPage"),

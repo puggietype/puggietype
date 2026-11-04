@@ -24,7 +24,6 @@ const ACCOUNT_ROUTES = [
   "/friends",
   "/profile",
   "/profile/:uidOrName",
-  "/leaderboards",
   "/verify",
 ];
 
@@ -56,6 +55,8 @@ describe("accounts flag gating", () => {
     for (const path of ACCOUNT_ROUTES) {
       expect(isRouteHidden(path), path).toBe(true);
     }
+    // multiplayer leaderboards (main) are not an account page
+    expect(isRouteHidden("/leaderboards")).toBe(false);
   });
 
   it("on with a backend: /login is not hidden either", () => {

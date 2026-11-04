@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Difficulty, Mode, Mode2 } from "@monkeytype/schemas/shared";
 import { compressToURI } from "lz-ts";
 import * as UpdateConfig from "../../src/ts/config/setters";
@@ -192,6 +192,50 @@ describe("url-handler", () => {
         },
       );
       expect(restartTestMock).toHaveBeenCalled();
+    });
+    describe("applied settings notice lists the applied funboxes", () => {
+      afterEach(() => vi.unstubAllGlobals());
+      const noticeFor = (funbox: FunboxName[]): string => {
+        findGetParameterMock.mockReturnValue(urlData({ funbox }));
+        loadTestSettingsFromUrl("");
+        return notifySuccessMock.mock.calls[0]?.[0] ?? "";
+      };
+
+      it("steam: leaves out poetry and wikipedia", () => {
+        vi.stubGlobal("__PLATFORM__", "steam");
+        const notice = noticeFor(["poetry", "mirror", "wikipedia"]);
+        expect(notice).toContain("funbox: mirror");
+        expect(notice).not.toContain("poetry");
+        expect(notice).not.toContain("wikipedia");
+      });
+
+      it("steam: drops the funbox line when every funbox was filtered out", () => {
+        vi.stubGlobal("__PLATFORM__", "steam");
+        findGetParameterMock.mockReturnValue(
+          urlData({ funbox: ["poetry", "wikipedia"], punctuation: true }),
+        );
+        loadTestSettingsFromUrl("");
+        const notice = notifySuccessMock.mock.calls[0]?.[0] ?? "";
+        expect(notice).toContain("punctuation: on");
+        expect(notice).not.toContain("funbox");
+      });
+
+      it("steam: no notice at all when only unavailable funboxes were in the link", () => {
+        vi.stubGlobal("__PLATFORM__", "steam");
+        expect(noticeFor(["poetry"])).toBe("");
+        expect(notifySuccessMock).not.toHaveBeenCalled();
+      });
+
+      it("web: still lists a link with only poetry and wikipedia", () => {
+        expect(noticeFor(["poetry", "wikipedia"])).toContain(
+          "funbox: poetry, wikipedia",
+        );
+      });
+
+      it("web: unchanged, lists the URL value", () => {
+        const notice = noticeFor(["poetry", "mirror", "wikipedia"]);
+        expect(notice).toContain("funbox: poetry, mirror, wikipedia");
+      });
     });
     it("sets funbox legacy", () => {
       //GIVEN

@@ -1,3 +1,4 @@
+import { getPlatform } from "../platform";
 import { lastElementFromArray } from "./arrays";
 import { Config } from "@monkeytype/schemas/configs";
 import { Mode, Mode2, PersonalBests } from "@monkeytype/schemas/shared";
@@ -116,11 +117,7 @@ export function objectToQueryString<T extends string | number | boolean>(
 }
 
 export function toggleFullscreen(): void {
-  if (!document.fullscreenElement) {
-    void document.documentElement.requestFullscreen();
-  } else {
-    void document.exitFullscreen();
-  }
+  getPlatform().window.toggleFullscreen();
 }
 
 export function escapeRegExp(str: string): string {
