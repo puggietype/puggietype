@@ -22,6 +22,7 @@ import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
 import { inlineStaticPageCss } from "./vite-plugins/inline-static-css";
+import { steamAssetClearance } from "./vite-plugins/steam-asset-clearance";
 import { notFoundPage } from "./vite-plugins/not-found-page";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
 import {
@@ -116,6 +117,8 @@ function getPlugins({
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
+    // PLATFORM from the build script shell only, never .env (see 432d097)
+    steamAssetClearance({ platform: resolvePlatform(process.env) }),
     tailwindcss(),
 
     solidPlugin(),

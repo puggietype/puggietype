@@ -10,6 +10,7 @@ import { dropUnavailableFunboxes } from "../platform/funbox-availability";
 import { isBootSettled } from "../states/boot";
 import { getUserId, isAuthenticated } from "../states/core";
 import { showNoticeNotification } from "../states/notifications";
+import { isSoundOptionHidden } from "../steam/asset-clearance";
 import { FaObject } from "../types/font-awesome";
 import { isDevEnvironment } from "../utils/env";
 import { reloadAfter } from "../utils/misc";
@@ -1356,7 +1357,7 @@ export function getVisibleOptions<K extends keyof ConfigSchemas.Config>(
   return getOptions(ConfigSchemas.ConfigSchema.shape[key])?.filter(
     (option) =>
       getOptionMetadata(key, option as ConfigSchemas.Config[K])?.visible !==
-      false,
+        false && !isSoundOptionHidden(key, option),
   ) as ConfigSchemas.Config[K][] | undefined;
 }
 

@@ -1,0 +1,7 @@
+/**
+ * About/credits copy for quotes, shown on both web and steam (Legal & Trust,
+ * steam asset ruling 2026-11-03).
+ */
+/** credits line, exact wording from Legal & Trust (PR #16 review) */
+export const QUOTE_CREDITS_LINE =
+  "Quotes are short excerpts credited to their original authors and remain their property. Their authors aren't affiliated with PuggieType and don't endorse it. To report a quote, email support@puggietype.com.";

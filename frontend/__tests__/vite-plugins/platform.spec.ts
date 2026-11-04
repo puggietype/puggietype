@@ -36,5 +36,8 @@ describe("vite.config PLATFORM source", () => {
     expect(config).toContain("resolvePlatform(process.env)");
     expect(config).not.toMatch(/env\[\s*["']PLATFORM["']\s*\]/);
     expect(config).not.toMatch(/env\.PLATFORM\b/);
+    // every PLATFORM read goes through resolvePlatform (no stale helper)
+    expect(config).not.toContain("parsePlatform(");
+    expect(config.match(/resolvePlatform\(process\.env\)/g)?.length).toBe(2);
   });
 });
