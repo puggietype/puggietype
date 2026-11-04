@@ -1,7 +1,7 @@
 import { JSXElement } from "solid-js";
 
-import { getAccountUser } from "../../../accounts/state";
-import { Button } from "../../common/Button";
+import { Button } from "../../components/common/Button";
+import { getAccountUser } from "../state";
 
 /** accounts sign-in (VITE_FEATURE_ACCOUNTS) entry point, standalone builds */
 export function AccountsNavButton(props: { class?: string }): JSXElement {

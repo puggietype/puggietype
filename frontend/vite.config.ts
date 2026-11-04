@@ -21,6 +21,7 @@ import { pagesHeaders } from "./vite-plugins/pages-headers";
 import { firebaseStub } from "./vite-plugins/firebase-stub";
 import {
   accountsCspSources,
+  accountsTailwindSources,
   checkAccountsEnv,
   isAccountsEnabled,
 } from "./vite-plugins/accounts-env";
@@ -125,6 +126,10 @@ function getPlugins({
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     // PLATFORM from the build script shell only, never .env (see 432d097)
     steamAssetClearance({ platform: resolvePlatform(process.env) }),
+    accountsTailwindSources({
+      enabled: isAccountsEnabled(env),
+      cssFile: path.resolve(__dirname, "src/styles/tailwind.css"),
+    }),
     tailwindcss(),
 
     solidPlugin(),

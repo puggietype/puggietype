@@ -1,3 +1,5 @@
+import { Plugin } from "vite";
+
 /** VITE_FEATURE_ACCOUNTS: same literal check as src/ts/accounts/flag.ts */
 export function isAccountsEnabled(env: Record<string, string>): boolean {
   return env["VITE_FEATURE_ACCOUNTS"] === "true";
@@ -42,4 +44,27 @@ export function accountsCspSources(
       "https://securetoken.googleapis.com",
     ],
   };
+}
+
+/**
+ * Flag off: Tailwind must not scan the accounts UI (src/ts/accounts), or its
+ * classes land in the CSS of a build that never renders them.
+ */
+export function accountsTailwindSources(options: {
+  enabled: boolean;
+  cssFile: string;
+}): Plugin {
+  return {
+    name: "accounts-tailwind-sources",
+    enforce: "pre",
+    transform(code, id) {
+      if (options.enabled || id.split("?")[0] !== options.cssFile) return;
+      return { code: excludeAccountsSources(code), map: null };
+    },
+  };
+}
+
+/** appends the Tailwind exclusion, relative to src/styles/tailwind.css */
+export function excludeAccountsSources(css: string): string {
+  return `${css}\n@source not "../ts/accounts";\n`;
 }

@@ -1,24 +1,19 @@
 import { createForm } from "@tanstack/solid-form";
 import { createSignal, JSXElement, onMount, Show } from "solid-js";
 
-import { getAccountsConfig } from "../../../accounts/config";
-import {
-  preloadSdk,
-  signIn,
-  SignInMethod,
-  signOut,
-} from "../../../accounts/session";
-import { getAccountUser } from "../../../accounts/state";
+import { Button } from "../../components/common/Button";
+import { H3 } from "../../components/common/Headers";
+import { Separator } from "../../components/common/Separator";
+import { InputField } from "../../components/ui/form/InputField";
+import { SubmitButton } from "../../components/ui/form/SubmitButton";
+import { allFieldsMandatory } from "../../components/ui/form/utils";
 import {
   showErrorNotification,
   showSuccessNotification,
-} from "../../../states/notifications";
-import { Button } from "../../common/Button";
-import { H3 } from "../../common/Headers";
-import { Separator } from "../../common/Separator";
-import { InputField } from "../../ui/form/InputField";
-import { SubmitButton } from "../../ui/form/SubmitButton";
-import { allFieldsMandatory } from "../../ui/form/utils";
+} from "../../states/notifications";
+import { getAccountsConfig } from "../config";
+import { preloadSdk, signIn, SignInMethod, signOut } from "../session";
+import { getAccountUser } from "../state";
 import { TurnstileControl, TurnstileWidget } from "./TurnstileWidget";
 
 /** accounts milestone A sign-in (VITE_FEATURE_ACCOUNTS), replaces LoginPage */

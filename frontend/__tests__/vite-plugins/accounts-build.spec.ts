@@ -3,7 +3,11 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { accountsCspSources } from "../../vite-plugins/accounts-env";
+import {
+  accountsCspSources,
+  accountsTailwindSources,
+  excludeAccountsSources,
+} from "../../vite-plugins/accounts-env";
 import { shouldStubFirebase } from "../../vite-plugins/firebase-stub";
 import { addCspSources, renderHeaders } from "../../vite-plugins/pages-headers";
 
@@ -82,5 +86,35 @@ describe("accounts CSP", () => {
         "frame-src": ["https://x"],
       }),
     ).toThrow(/frame-src/);
+  });
+});
+
+describe("accounts Tailwind sources", () => {
+  const cssFile = "/repo/frontend/src/styles/tailwind.css";
+  const run = (enabled: boolean, id: string): unknown => {
+    const plugin = accountsTailwindSources({ enabled, cssFile });
+    const transform = plugin.transform as (code: string, id: string) => unknown;
+    return transform.call({}, '@import "tailwindcss";', id);
+  };
+
+  it("accounts off: excludes src/ts/accounts from tailwind.css", () => {
+    expect(run(false, cssFile)).toEqual({
+      code: excludeAccountsSources('@import "tailwindcss";'),
+      map: null,
+    });
+    expect(run(false, `${cssFile}?direct`)).toBeDefined();
+    expect(excludeAccountsSources("")).toContain(
+      '@source not "../ts/accounts";',
+    );
+  });
+
+  it("accounts on, or any other file: untouched", () => {
+    expect(run(true, cssFile)).toBeUndefined();
+    expect(run(false, "/repo/frontend/src/styles/other.css")).toBeUndefined();
+  });
+
+  it("the excluded path is the accounts dir next to styles/", () => {
+    const dir = path.resolve(path.dirname(cssFile), "../ts/accounts");
+    expect(dir).toBe("/repo/frontend/src/ts/accounts");
   });
 });

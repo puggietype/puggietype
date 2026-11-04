@@ -1,11 +1,11 @@
 import { createSignal, JSXElement, onCleanup, onMount, Show } from "solid-js";
 
+import { cn } from "../../utils/cn";
 import {
   loadTurnstile,
   TurnstileApi,
   TurnstileRenderOptions,
-} from "../../../accounts/turnstile";
-import { cn } from "../../../utils/cn";
+} from "../turnstile";
 
 export type TurnstileControl = { reset: () => void };
 

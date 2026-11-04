@@ -68,7 +68,10 @@ export const pageRegistry: PageRegistry = {
   // inline so an off build drops the import (and the chunk) entirely
   login: {
     component: __FEATURE_ACCOUNTS__
-      ? lazyPage(async () => import("./login/SignInPage"), "SignInPage")
+      ? lazyPage(
+          async () => import("../../accounts/ui/SignInPage"),
+          "SignInPage",
+        )
       : LoginPage,
   },
   profile: { component: ProfilePage },
