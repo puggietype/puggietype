@@ -62,6 +62,7 @@ describe("Footer", () => {
         ["faq", "/faq"],
         ["guides", "/guide/typing-tips"],
         ["contact", "/contact"],
+        ["creators", "/creators"],
       ],
     );
     for (const a of anchors) {
