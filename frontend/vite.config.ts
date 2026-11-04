@@ -17,6 +17,12 @@ import { envConfig } from "./vite-plugins/env-config";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
+import { firebaseStub } from "./vite-plugins/firebase-stub";
+import {
+  accountsCspSources,
+  checkAccountsEnv,
+  isAccountsEnabled,
+} from "./vite-plugins/accounts-env";
 import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
@@ -209,7 +215,10 @@ function getPlugins({
     inlineStaticPageCss(),
     notFoundPage(),
     minifyJson(),
-    pagesHeaders({ wsUrl: env["VITE_WS_URL"] }),
+    pagesHeaders({
+      wsUrl: env["VITE_WS_URL"],
+      ...(isAccountsEnabled(env) ? { extraCsp: accountsCspSources(env) } : {}),
+    }),
   ];
 
   return [...plugins, ...(isDevelopment ? devPlugins : prodPlugins)].filter(
@@ -327,9 +336,11 @@ function getBuildOptions({
               name: "preload-helper",
               test: /preload-helper/,
             },
+            // incl. the firebase/* wrappers: their registerVersion side effect
+            // would otherwise sit in (boot-loaded) vendor and pull this in
             {
               name: "vendor-firebase",
-              test: /node_modules\/@firebase\//,
+              test: /node_modules\/@?firebase\//,
             },
             {
               name: "puggietype-packages",
@@ -419,24 +430,46 @@ export default defineConfig(({ mode }): UserConfig => {
     ) {
       throw new Error(`${mode}: RECAPTCHA_SITE_KEY is not defined`);
     }
+    if (isAccountsEnabled(env)) checkAccountsEnv(env);
   }
 
   // no BACKEND_URL => no auth/api: swap the Firebase SDK for a stub and let
   // the minifier drop backend-only code (reCAPTCHA loader) behind __STANDALONE__
   const standalone = (env["BACKEND_URL"] ?? "") === "";
-  const firebaseStub = path.resolve(
+  const firebaseStubPath = path.resolve(
     __dirname,
     "src/ts/standalone/firebase-stub.ts",
   );
 
+  // accounts sign-in (VITE_FEATURE_ACCOUNTS) keeps the real SDK for its own
+  // lazy module; everything else still gets the stub
+  const firebaseSdkModule = isAccountsEnabled(env)
+    ? path.resolve(__dirname, "src/ts/accounts/firebase-sdk.ts")
+    : undefined;
+
   return {
-    plugins: getPlugins({ isDevelopment, env }),
-    define: { __STANDALONE__: JSON.stringify(standalone) },
+    plugins: [
+      ...(standalone
+        ? [
+            firebaseStub({
+              stub: firebaseStubPath,
+              allowImporter: firebaseSdkModule,
+            }),
+          ]
+        : []),
+      ...getPlugins({ isDevelopment, env }),
+    ],
+    define: {
+      __STANDALONE__: JSON.stringify(standalone),
+      __FEATURE_ACCOUNTS__: JSON.stringify(isAccountsEnabled(env)),
+    },
     resolve: {
       alias: standalone
         ? [
-            { find: /^firebase\/(app|auth)$/, replacement: firebaseStub },
-            { find: /^.*\/load-firebase-config$/, replacement: firebaseStub },
+            {
+              find: /^.*\/load-firebase-config$/,
+              replacement: firebaseStubPath,
+            },
           ]
         : [],
     },

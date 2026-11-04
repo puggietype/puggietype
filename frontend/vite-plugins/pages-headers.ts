@@ -28,20 +28,53 @@ export function wsOrigin(configured: string | undefined): string {
   return `${url.protocol}//${url.host}`;
 }
 
+/**
+ * Appends sources to CSP directives (a `'none'` value is replaced). Every
+ * directive must already exist, so a typo can't silently widen nothing.
+ */
+export function addCspSources(
+  headers: string,
+  sources: Record<string, string[]>,
+): string {
+  let out = headers;
+  for (const [directive, values] of Object.entries(sources)) {
+    const re = new RegExp(
+      `(Content-Security-Policy:[^\\n]*?\\b${directive}) ([^;\\n]*)`,
+      "g",
+    );
+    if (out.match(re) === null) throw new Error(`CSP has no ${directive}`);
+    out = out.replace(re, (_m, head: string, current: string) => {
+      const kept = current.trim() === "'none'" ? [] : [current.trim()];
+      return `${head} ${[...kept, ...values].join(" ")}`;
+    });
+  }
+  return out;
+}
+
 export function renderHeaders(
   template: string,
-  values: { scriptHashes: string[]; wsOrigin: string },
+  values: {
+    scriptHashes: string[];
+    wsOrigin: string;
+    extraCsp?: Record<string, string[]>;
+  },
 ): string {
-  return template
+  const rendered = template
     .replaceAll("__SCRIPT_HASHES__", values.scriptHashes.join(" "))
     .replaceAll("__WS_ORIGIN__", values.wsOrigin);
+  return values.extraCsp === undefined
+    ? rendered
+    : addCspSources(rendered, values.extraCsp);
 }
 
 /**
  * Fills the CSP placeholders of the Cloudflare Pages `_headers` file copied
  * from static/: hashes of the final (minified) inline scripts and the WS origin.
  */
-export function pagesHeaders(options: { wsUrl: string | undefined }): Plugin {
+export function pagesHeaders(options: {
+  wsUrl: string | undefined;
+  extraCsp?: Record<string, string[]>;
+}): Plugin {
   let outDir = path.resolve("./dist");
   return {
     name: "pages-headers",
@@ -59,6 +92,7 @@ export function pagesHeaders(options: { wsUrl: string | undefined }): Plugin {
       const rendered = renderHeaders(readFileSync(headersPath, "utf8"), {
         scriptHashes: inlineScriptHashes(htmls),
         wsOrigin: wsOrigin(options.wsUrl),
+        extraCsp: options.extraCsp,
       });
       writeFileSync(headersPath, rendered);
     },

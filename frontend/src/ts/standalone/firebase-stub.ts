@@ -36,6 +36,7 @@ export const setPersistence = unavailable;
 export const onAuthStateChanged = unavailable;
 export const signInWithEmailAndPassword = unavailable;
 export const signInWithPopup = unavailable;
+export const signOut = unavailable;
 export const createUserWithEmailAndPassword = unavailable;
 export const getIdToken = unavailable;
 export const getAdditionalUserInfo = unavailable;
