@@ -167,6 +167,64 @@ async function signInVia(
   return el;
 }
 
+// Legal approval of PR #27, exact copy
+const DESCRIPTION =
+  "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. We don't store any of these; see our privacy policy.";
+const CANCELLED = "Sign-in was cancelled or couldn't finish. Please try again.";
+const NOT_VERIFIED =
+  "We couldn't verify this sign-in with Steam. Please try again.";
+
+describe("Sign in with Steam: Legal copy", () => {
+  it("uses the approved strings", () => {
+    expect(STEAM_SIGNIN_ERROR_TEXT.cancelled).toBe(CANCELLED);
+    expect(STEAM_SIGNIN_ERROR_TEXT.not_verified).toBe(NOT_VERIFIED);
+  });
+
+  it("shows the exact description with privacy policy linked to /privacy", () => {
+    installBridge({ steam: true });
+    const el = render(() => <SteamSignIn />).container;
+    const d = $(el, '[data-testid="steam-signin-description"]');
+    expect(d?.textContent?.replace(/\s+/g, " ").trim()).toBe(DESCRIPTION);
+    const link = d?.querySelector("a");
+    expect(link?.textContent).toBe("privacy policy");
+    expect(link?.getAttribute("href")).toBe("/privacy");
+  });
+
+  it.each([
+    ["shell failed", { error: "failed" }],
+    ["shell cancelled", { error: "cancelled" }],
+  ] as const)("%s shows the cancelled copy", async (_, result) => {
+    const el = await signInVia(result);
+    expect($(el, '[data-testid="steam-signin-error"]')?.textContent).toBe(
+      CANCELLED,
+    );
+  });
+
+  it("a thrown shell error shows the cancelled copy", async () => {
+    installBridge({ steam: true });
+    signIn.mockRejectedValueOnce(new Error("ipc gone"));
+    server(200, {});
+    const el = render(() => <SteamSignIn />).container;
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() =>
+      expect($(el, '[data-testid="steam-signin-error"]')?.textContent).toBe(
+        CANCELLED,
+      ),
+    );
+  });
+
+  it.each([500, 429, 401])(
+    "server %i shows the not verified copy",
+    async (status) => {
+      const el = await signInVia({ openid: OPENID }, status, { ok: false });
+      expect($(el, '[data-testid="steam-signin-error"]')?.textContent).toBe(
+        NOT_VERIFIED,
+      );
+    },
+  );
+});
+
 describe("Sign in with Steam: states", () => {
   it("success shows the persona name the server returned", async () => {
     const el = await signInVia({ openid: OPENID });

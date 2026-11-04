@@ -30,11 +30,11 @@ type State =
   | { kind: "error"; error: SteamSignInError };
 
 export const STEAM_SIGNIN_ERROR_TEXT: Record<SteamSignInError, string> = {
-  cancelled: "Sign-in was cancelled.",
+  cancelled: "Sign-in was cancelled or couldn't finish. Please try again.",
   timeout: "Sign-in timed out. Please try again.",
   busy: "A sign-in is already open in your browser.",
   feature_off: "Steam sign-in isn't available right now.",
-  not_verified: "Steam couldn't verify this sign-in. Please try again.",
+  not_verified: "We couldn't verify this sign-in with Steam. Please try again.",
   steam_unavailable: "Steam is not responding. Please try again later.",
   network: "Couldn't reach the PuggieType server. Check your connection.",
   unavailable: "Steam sign-in isn't available in this version.",
@@ -83,7 +83,20 @@ export function SteamSignIn(props: {
       <SearchableSetting
         key="steamSignIn"
         title="steam sign-in"
-        description="Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name."
+        description={
+          <span data-testid="steam-signin-description">
+            {
+              "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. We don't store any of these; see our "
+            }
+            <Button
+              variant="text"
+              href="/privacy"
+              text="privacy policy"
+              class="p-0"
+            />
+            .
+          </span>
+        }
         fa={{ icon: "fa-user" }}
         inputs={
           <div data-testid="steam-signin" class="grid gap-2">

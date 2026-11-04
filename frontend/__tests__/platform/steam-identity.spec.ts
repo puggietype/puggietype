@@ -262,6 +262,30 @@ describe("signInWithSteam: shell and server outcomes", () => {
     expect(await run(result)).toEqual({ ok: false, error });
   });
 
+  it.each([500, 429])("server %i is not verified", async (status) => {
+    expect(await run({ openid: OPENID }, status, { ok: false })).toEqual({
+      ok: false,
+      error: "not_verified",
+    });
+  });
+
+  it("a thrown shell error is cancelled", async () => {
+    const b = bridgeWith(null);
+    b.steam = {
+      signIn: async () => {
+        throw new Error("ipc gone");
+      },
+    };
+    expect(
+      await signInWithSteam({
+        bridge: b,
+        serverBase: "https://ws.example",
+        storage: memStorage(),
+        fetch: server(200, {}),
+      }),
+    ).toEqual({ ok: false, error: "cancelled" });
+  });
+
   it("server 404 means the feature is off", async () => {
     expect(await run({ openid: OPENID }, 404, "Not Found")).toEqual({
       ok: false,
