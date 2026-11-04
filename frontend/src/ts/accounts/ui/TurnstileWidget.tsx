@@ -1,6 +1,7 @@
 import { createSignal, JSXElement, onCleanup, onMount, Show } from "solid-js";
 
 import { cn } from "../../utils/cn";
+import { accountsCopy } from "../strings";
 import {
   loadTurnstile,
   TurnstileApi,
@@ -67,12 +68,10 @@ export function TurnstileWidget(props: {
         class={cn("min-h-16.25", { hidden: problem() !== null })}
       ></div>
       <Show when={problem() === "unconfigured"}>
-        <p class="text-sm text-sub">Sign-in is not available yet.</p>
+        <p class="text-sm text-sub">{accountsCopy.turnstile.unconfigured}</p>
       </Show>
       <Show when={problem() === "failed"}>
-        <p class="text-sm text-error">
-          The bot check could not load. Refresh the page and try again.
-        </p>
+        <p class="text-sm text-error">{accountsCopy.turnstile.failed}</p>
       </Show>
     </>
   );

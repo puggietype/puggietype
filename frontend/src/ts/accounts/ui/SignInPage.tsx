@@ -14,6 +14,7 @@ import {
 import { getAccountsConfig } from "../config";
 import { preloadSdk, signIn, SignInMethod, signOut } from "../session";
 import { getAccountUser } from "../state";
+import { accountsCopy } from "../strings";
 import { TurnstileControl, TurnstileWidget } from "./TurnstileWidget";
 
 /** accounts milestone A sign-in (VITE_FEATURE_ACCOUNTS), replaces LoginPage */
@@ -31,7 +32,7 @@ export function SignInPage(): JSXElement {
     setBusy(true);
     try {
       const result = await signIn(method, token);
-      if (result.ok) showSuccessNotification("Signed in");
+      if (result.ok) showSuccessNotification(accountsCopy.signIn.success);
       else showErrorNotification(result.message);
     } finally {
       // the token was spent either way
@@ -60,9 +61,13 @@ export function SignInPage(): JSXElement {
         when={getAccountUser()}
         fallback={
           <div class="grid w-full grid-cols-1 gap-2 sm:w-80">
-            <H3 text="sign in" fa={{ icon: "fa-sign-in-alt" }} class="p-0" />
+            <H3
+              text={accountsCopy.signIn.title}
+              fa={{ icon: "fa-sign-in-alt" }}
+              class="p-0"
+            />
             <Button
-              text="google"
+              text={accountsCopy.signIn.google}
               fa={{ icon: "fa-google", variant: "brand" }}
               onClick={() => void trySignIn({ kind: "google" })}
               disabled={!canSubmit()}
@@ -75,13 +80,13 @@ export function SignInPage(): JSXElement {
                 void form.handleSubmit();
               }}
             >
-              <Separator text="or" />
+              <Separator text={accountsCopy.signIn.or} />
               <form.Field
                 name="email"
                 children={(field) => (
                   <InputField
                     field={field}
-                    placeholder="email"
+                    placeholder={accountsCopy.signIn.email}
                     autocomplete="email"
                     disabled={busy()}
                   />
@@ -92,7 +97,7 @@ export function SignInPage(): JSXElement {
                 children={(field) => (
                   <InputField
                     field={field}
-                    placeholder="password"
+                    placeholder={accountsCopy.signIn.password}
                     type="password"
                     autocomplete="current-password"
                     disabled={busy()}
@@ -101,14 +106,14 @@ export function SignInPage(): JSXElement {
               />
               <TurnstileWidget
                 siteKey={config.turnstileSiteKey}
-                action="signin"
+                action="session"
                 onToken={setTurnstileToken}
                 control={(c) => (turnstile = c)}
               />
               <SubmitButton
                 form={form}
                 fa={{ icon: "fa-sign-in-alt" }}
-                text="sign in"
+                text={accountsCopy.signIn.submit}
                 disabled={!canSubmit()}
               />
             </form>
@@ -117,12 +122,16 @@ export function SignInPage(): JSXElement {
       >
         {(user) => (
           <div class="grid w-full grid-cols-1 gap-2 sm:w-80">
-            <H3 text="signed in" fa={{ icon: "fa-user" }} class="p-0" />
+            <H3
+              text={accountsCopy.signedIn.title}
+              fa={{ icon: "fa-user" }}
+              class="p-0"
+            />
             <Show when={!user().emailVerified}>
-              <p class="text-sub">Your email is not verified yet.</p>
+              <p class="text-sub">{accountsCopy.signedIn.notVerified}</p>
             </Show>
             <Button
-              text="sign out"
+              text={accountsCopy.signedIn.signOut}
               fa={{ icon: "fa-sign-out-alt" }}
               onClick={() => void signOut()}
             />

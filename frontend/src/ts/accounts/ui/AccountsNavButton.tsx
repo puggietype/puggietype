@@ -2,6 +2,7 @@ import { JSXElement } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { getAccountUser } from "../state";
+import { accountsCopy } from "../strings";
 
 /** accounts sign-in (VITE_FEATURE_ACCOUNTS) entry point, standalone builds */
 export function AccountsNavButton(props: { class?: string }): JSXElement {
@@ -11,7 +12,7 @@ export function AccountsNavButton(props: { class?: string }): JSXElement {
       variant="text"
       href="/login"
       balloon={{
-        text: signedIn() ? "signed in" : "sign in",
+        text: signedIn() ? accountsCopy.nav.signedIn : accountsCopy.nav.signIn,
         position: "down",
       }}
       dataset={{ "data-nav-item": "login" }}
