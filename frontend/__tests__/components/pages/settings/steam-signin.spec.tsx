@@ -131,8 +131,13 @@ describe("Sign in with Steam: hint before the browser opens (M3-HINT)", () => {
     const el = render(() => <SteamSignIn />).container;
     press(el, "#steam-signin-button");
     const dialog = $(el, '[data-testid="steam-signin-hint"]');
-    expect(dialog?.getAttribute("role")).toBe("status");
-    expect(dialog?.getAttribute("aria-live")).toBe("polite");
+    // SR-ANNOUNCE: the hint is read via continue's aria-describedby (focus
+    // moves there), not as a second live region
+    expect(dialog).not.toBeNull();
+    expect(dialog?.hasAttribute("aria-live")).toBe(false);
+    expect(
+      $(el, "#steam-signin-continue")?.getAttribute("aria-describedby"),
+    ).toBe("steam-signin-hint-text");
     expect($(el, "#steam-signin-hint-text")?.textContent).toBe(HINT);
     expect(signIn).not.toHaveBeenCalled();
     press(el, "#steam-signin-continue");
@@ -383,5 +388,137 @@ describe("Sign in with Steam: focus (QA P2 A11Y)", () => {
     await waitFor(() =>
       expect(document.activeElement?.id).toBe("steam-signin-button"),
     );
+  });
+});
+
+describe("Sign in with Steam: screen reader announcements (SR-ANNOUNCE)", () => {
+  const mount = (): HTMLElement =>
+    render(() => <SteamSignIn />, {
+      container: document.body.appendChild(document.createElement("div")),
+    }).container;
+
+  it("continue is described by the hint text", () => {
+    installBridge({ steam: true });
+    const el = mount();
+    press(el, "#steam-signin-button");
+    const cont = $(el, "#steam-signin-continue");
+    expect(cont?.getAttribute("aria-describedby")).toBe(
+      "steam-signin-hint-text",
+    );
+    expect(document.getElementById("steam-signin-hint-text")?.textContent).toBe(
+      STEAM_SIGNIN_HINT,
+    );
+  });
+
+  it("has exactly one live region, mounted before anything happens", () => {
+    installBridge({ steam: true });
+    const el = mount();
+    const live = el.querySelectorAll(
+      "[aria-live], [role='status'], [role='alert']",
+    );
+    expect(live).toHaveLength(1);
+    const region = live[0] as HTMLElement;
+    expect(region.id).toBe("steam-signin-status");
+    expect(region.getAttribute("role")).toBe("status");
+    expect(region.getAttribute("aria-live")).toBe("polite");
+    expect(region.getAttribute("aria-atomic")).toBe("true");
+    expect(region.textContent).toBe("");
+  });
+
+  it("the same region element carries pending, then signed-in text", async () => {
+    let finish: (r: SteamBridgeSignInResult) => void = () => undefined;
+    installBridge({ steam: true });
+    signIn.mockImplementationOnce(
+      async () => new Promise<SteamBridgeSignInResult>((res) => (finish = res)),
+    );
+    server(200, {
+      ok: true,
+      steamId: "1",
+      ownsApp: true,
+      personaName: "PugFan",
+    });
+    const el = mount();
+    const region = $(el, "#steam-signin-status");
+    press(el, "#steam-signin-button");
+    expect($(el, "#steam-signin-status")).toBe(region);
+    expect(region?.textContent).toBe("");
+    press(el, "#steam-signin-continue");
+    expect($(el, "#steam-signin-status")).toBe(region);
+    expect(region?.textContent).toBe("Waiting for Steam in your browser...");
+    finish({ openid: OPENID });
+    await waitFor(() =>
+      expect(region?.textContent).toBe("Signed in with Steam as PugFan."),
+    );
+    expect($(el, "#steam-signin-status")).toBe(region);
+    expect(el.querySelectorAll("[aria-live], [role='status']")).toHaveLength(1);
+    press(el, "#steam-signout");
+    expect($(el, "#steam-signin-status")).toBe(region);
+    expect(region?.textContent).toBe("");
+  });
+
+  it("the same region element carries the error text", async () => {
+    installBridge({ steam: true, result: { error: "timeout" } });
+    const el = mount();
+    const region = $(el, "#steam-signin-status");
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() =>
+      expect(region?.textContent).toBe(STEAM_SIGNIN_ERROR_TEXT.timeout),
+    );
+    expect($(el, "#steam-signin-status")).toBe(region);
+    expect(el.querySelectorAll("[aria-live], [role='status']")).toHaveLength(1);
+    expect($(el, "#steam-signin-button")).not.toBeNull();
+  });
+});
+
+describe("Sign in with Steam: rendered attributes (SR-ANNOUNCE review)", () => {
+  it("continue has the real aria-describedby attribute, not data-aria-describedby", () => {
+    installBridge({ steam: true });
+    const el = render(() => <SteamSignIn />).container;
+    press(el, "#steam-signin-button");
+    const cont = $(el, "#steam-signin-continue");
+    expect(cont?.getAttributeNames()).toContain("aria-describedby");
+    expect(cont?.getAttributeNames()).not.toContain("data-aria-describedby");
+    expect(cont?.outerHTML).toMatch(
+      / aria-describedby="steam-signin-hint-text"/,
+    );
+    expect(cont?.dataset["ariaDescribedby"]).toBeUndefined();
+  });
+
+  it("empty region: the next control is pulled up; with text it is not (computed style)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const css = readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../../src/ts/components/pages/settings/custom-setting/steam-signin.css",
+      ),
+      "utf8",
+    );
+    expect(css).not.toMatch(/display:\s*none/);
+    const style = document.head.appendChild(document.createElement("style"));
+    style.textContent = css;
+    try {
+      installBridge({ steam: true, result: { error: "timeout" } });
+      const el = render(() => <SteamSignIn />, {
+        container: document.body.appendChild(document.createElement("div")),
+      }).container;
+      const region = $(el, "#steam-signin-status");
+      const next = (): Element | null | undefined => region?.nextElementSibling;
+      expect(region?.matches(":empty")).toBe(true);
+      expect(region?.hidden).toBe(false);
+      expect(next()?.matches("#steam-signin-status:empty + *")).toBe(true);
+      expect(getComputedStyle(next() as Element).marginTop).toBe("-0.5rem");
+      press(el, "#steam-signin-button");
+      press(el, "#steam-signin-continue");
+      await waitFor(() =>
+        expect(region?.textContent).toBe(STEAM_SIGNIN_ERROR_TEXT.timeout),
+      );
+      expect(region?.matches(":empty")).toBe(false);
+      expect(next()?.matches("#steam-signin-status:empty + *")).toBe(false);
+      expect(getComputedStyle(next() as Element).marginTop).not.toBe("-0.5rem");
+    } finally {
+      style.remove();
+    }
   });
 });

@@ -708,6 +708,24 @@ async function runSteamUiSmoke(win) {
     out.button = await waitFor("#steam-signin-button", true);
     if (!out.button) return { ...out, reason: "no sign-in button" };
     out.inView = await showSteamSection();
+    // QA: the empty live region adds no gap above the button
+    const layout = () =>
+      js(`(() => {
+        const box = document.querySelector('[data-testid="steam-signin"]');
+        const region = document.getElementById("steam-signin-status");
+        const next = region?.nextElementSibling;
+        const btn = box?.querySelector("button");
+        if (!box || !region || !btn) return null;
+        const top = box.getBoundingClientRect().top;
+        return {
+          empty: region.matches(":empty"),
+          ruleMatches: next?.matches("#steam-signin-status:empty + *") ?? false,
+          marginTop: next ? getComputedStyle(next).marginTop : null,
+          buttonOffset: btn.getBoundingClientRect().top - top,
+          regionBottom: region.getBoundingClientRect().bottom - top,
+        };
+      })()`);
+    out.idleLayout = await layout();
     out.shots.push(await shot("signed-out.png"));
     await click("#steam-signin-button");
     await showSteamSection();
@@ -721,6 +739,7 @@ async function runSteamUiSmoke(win) {
       `document.querySelector('[data-testid="steam-signin-name"]')?.textContent ?? null`,
     );
     await showSteamSection();
+    out.signedInLayout = await layout();
     out.shots.push(await shot("signed-in.png"));
     await click("#steam-name-hidden-on");
     out.hiddenWorks = await waitFor('[data-testid="steam-signin-name"]', false);
@@ -731,7 +750,20 @@ async function runSteamUiSmoke(win) {
       out.signedIn === true &&
       out.name === "PugFan" &&
       out.hiddenWorks === true &&
-      out.inView === true;
+      out.inView === true &&
+      // empty: the rule matches and the button sits where the region is
+      out.idleLayout?.empty === true &&
+      out.idleLayout.ruleMatches === true &&
+      out.idleLayout.marginTop === "-8px" &&
+      Math.abs(out.idleLayout.buttonOffset - out.idleLayout.regionBottom) <
+        0.5 &&
+      // with text: no pull-up, the normal 8px gap stays
+      out.signedInLayout?.empty === false &&
+      out.signedInLayout.ruleMatches === false &&
+      out.signedInLayout.marginTop === "0px" &&
+      Math.abs(
+        out.signedInLayout.buttonOffset - out.signedInLayout.regionBottom - 8,
+      ) < 0.5;
     return out;
   } catch (e) {
     return { ...out, reason: String(e) };
