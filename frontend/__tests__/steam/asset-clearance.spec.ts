@@ -35,6 +35,14 @@ describe("sound clearance lists", () => {
     }
   });
 
+  it("no longer lists sounds #17 removed from the repo", () => {
+    const excluded = steamExcludedSoundPaths();
+    for (const gone of ["click6", "click7", "click16", "fart-reverb.wav"]) {
+      expect(excluded).not.toContain(gone);
+      expect(existsSync(path.join(soundsDir, gone)), gone).toBe(false);
+    }
+  });
+
   it("excludes only on steam", () => {
     expect(isClickSoundExcluded("1", "web")).toBe(false);
     expect(isClickSoundExcluded("1", "steam")).toBe(true);
@@ -68,10 +76,10 @@ describe("steam option hiding", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("hides untraced options on steam only", () => {
-    expect(isSoundOptionHidden("playSoundOnClick", "6", "steam")).toBe(true);
+    expect(isSoundOptionHidden("playSoundOnClick", "5", "steam")).toBe(true);
     expect(isSoundOptionHidden("playSoundOnClick", "8", "steam")).toBe(false);
     expect(isSoundOptionHidden("playSoundOnClick", "off", "steam")).toBe(false);
-    expect(isSoundOptionHidden("playSoundOnClick", "6", "web")).toBe(false);
+    expect(isSoundOptionHidden("playSoundOnClick", "5", "web")).toBe(false);
     expect(isSoundOptionHidden("playTimeWarning", "3", "steam")).toBe(true);
     expect(isSoundOptionHidden("playTimeWarning", "off", "steam")).toBe(false);
     expect(isSoundOptionHidden("fontSize", 2, "steam")).toBe(false);

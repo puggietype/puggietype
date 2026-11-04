@@ -38,6 +38,8 @@ square. The time warning setting is hidden. The web build is unchanged.
 
 ## Files
 
+> Update 2026-11-04: `click6` (osu), `click7` (hitmarker), `click16` (fart) and `fart-reverb.wav` were removed from the repo for every platform by PR #17 (0719083). Their rows below are kept as the provenance record.
+
 | File | Pack (setting label) | Status | Original source | Licence | URL | Notes |
 |---|---|---|---|---|---|---|
 | `click1/1.wav` | click | UNTRACED | UNTRACED. Upstream added in 370b072e3 (2020-08-24, Jack / Miodec, "added play sound on click"); original origin unknown | UNTRACED (only the upstream repo's GPL-3.0; original rights unverified) | https://github.com/monkeytypegame/monkeytype/commit/370b072e3 | No source, author or licence in the commit, PR or upstream docs. |

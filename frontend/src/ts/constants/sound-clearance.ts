@@ -9,18 +9,18 @@
  * Kept free of runtime imports so vite.config.ts can read the same lists.
  */
 
-/** click packs backed by wav files that could not be traced (all of them) */
+/**
+ * click packs backed by wav files that could not be traced (all of them).
+ * osu (6), hitmarker (7) and fart (16) are gone from the repo since #17.
+ */
 export const UNTRACED_CLICK_SOUNDS: readonly string[] = [
   "1",
   "2",
   "3",
   "4",
   "5",
-  "6",
-  "7",
   "14",
   "15",
-  "16",
   "17",
   "18",
   "19",
@@ -39,7 +39,7 @@ export const UNTRACED_ERROR_SOUNDS: readonly string[] = ["1", "4"];
 /** single-file sounds that could not be traced */
 export const UNTRACED_SINGLE_SOUNDS = {
   timeWarning: "timeWarning.wav",
-  fartReverb: "fart-reverb.wav",
+  // fart-reverb.wav was removed from the repo for every platform by #17
 } as const;
 
 /** static/sounds paths (relative to the sounds dir) removed from the steam build */
@@ -69,9 +69,5 @@ export function isErrorSoundExcluded(
 
 /** timeWarning.wav is untraced, so the time warning setting is steam-hidden */
 export function isTimeWarningExcluded(platform: SoundPlatform): boolean {
-  return platform === "steam";
-}
-
-export function isFartReverbExcluded(platform: SoundPlatform): boolean {
   return platform === "steam";
 }
