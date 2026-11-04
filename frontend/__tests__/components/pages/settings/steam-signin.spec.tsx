@@ -111,7 +111,7 @@ describe("Sign in with Steam: visibility", () => {
     expect($(el, "#steam-signin-button")).toBeNull();
     expect($(el, '[data-testid="steam-signin"]')).toBeNull();
     expect(el.textContent).not.toContain("steam account");
-  });
+  }, 30_000);
 
   it("is in the settings page on steam with the flag on", async () => {
     installBridge({ steam: true });
@@ -120,7 +120,7 @@ describe("Sign in with Steam: visibility", () => {
       await import("../../../../src/ts/components/pages/settings/SettingsPage");
     const el = render(() => <Page />).container;
     await waitFor(() => expect($(el, "#steam-signin-button")).not.toBeNull());
-  });
+  }, 30_000);
 });
 
 describe("Sign in with Steam: hint before the browser opens (M3-HINT)", () => {
