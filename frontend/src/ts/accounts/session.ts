@@ -337,6 +337,8 @@ export async function getReauthKind(): Promise<"password" | "google" | null> {
 /**
  * Deletes the account: re-auth (password, or a Google popup), DELETE /v1/me
  * with the fresh token, then Firebase deleteUser. Signed out afterwards.
+ * The client deleteUser is best-effort: the server removes a leftover
+ * Firebase user itself.
  */
 export async function deleteAccount(password?: string): Promise<ActionResult> {
   const config = getAccountsConfig();

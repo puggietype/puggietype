@@ -112,8 +112,9 @@ export const accountsCopy = {
     confirm: "delete my account",
     cancel: "cancel",
     deleted: "Your account was deleted",
+    // the server finishes removing the sign-in (Legal review (f))
     partiallyDeleted:
-      "Your account data was deleted, but the sign-in could not be removed. Please contact support.",
+      "Your account and saved data have been deleted. We couldn't finish removing your sign-in details just now, so we'll remove them automatically within 30 days. You don't need to do anything. Questions? Email support@puggietype.com.",
   },
   signedIn: {
     title: "signed in",

@@ -63,6 +63,12 @@ describe("accountsCopy (Legal-approved)", () => {
     );
   });
 
+  it("partiallyDeleted asks nothing of the user", () => {
+    expect(accountsCopy.account.partiallyDeleted).toBe(
+      "Your account and saved data have been deleted. We couldn't finish removing your sign-in details just now, so we'll remove them automatically within 30 days. You don't need to do anything. Questions? Email support@puggietype.com.",
+    );
+  });
+
   it("age.blocked is unchanged and stays neutral", () => {
     expect(accountsCopy.age.blocked).toBe(
       "Sorry, we can't create an account for you.",
