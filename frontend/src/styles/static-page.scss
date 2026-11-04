@@ -203,7 +203,8 @@ header {
   --bg-color: #161514;
   --main-color: #e8a96b;
   --caret-color: #e8a96b;
-  --sub-color: #77706a;
+  // lighter than the app theme so small text passes 4.5:1 (STATIC-A11Y-01)
+  --sub-color: #958d86;
   --sub-alt-color: #211f1d;
   --text-color: #ece6dd;
   --error-color: #ef6b5f;

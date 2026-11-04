@@ -43,6 +43,19 @@ describe("creators page", () => {
     expect(html).not.toContain("REWRITTEN");
   });
 
+  it("sends step 1 to the race page", () => {
+    expect(html).toContain('<a href="/race">puggietype.com</a>');
+  });
+
+  it("sets a theme-color for dark and light", () => {
+    expect(html).toMatch(
+      /name="theme-color"\s+content="#161514"\s+media="\(prefers-color-scheme: dark\)"/,
+    );
+    expect(html).toMatch(
+      /name="theme-color"\s+content="#f7f2ea"\s+media="\(prefers-color-scheme: light\)"/,
+    );
+  });
+
   it("is linked from the static footer", () => {
     expect(footer).toContain('<a href="/creators">Creators</a>');
   });
