@@ -139,7 +139,12 @@ export function stagePackage({
     "NOTICE.txt": path.join(repoRoot, "NOTICE"),
     "ELECTRON-LICENSE.txt": path.join(electronDist, "LICENSE"),
     "LICENSES.chromium.html": path.join(electronDist, "LICENSES.chromium.html"),
-    "DLC-ASSETS-LICENSE.txt": path.join(repoRoot, "assets", "LICENSE"),
+    "DLC-ASSETS-LICENSE.txt": path.join(
+      repoRoot,
+      "assets",
+      "supporter",
+      "LICENSE",
+    ),
   };
   for (const [name, src] of Object.entries(need)) {
     if (!fs.existsSync(src)) throw new Error(`missing ${name} source: ${src}`);

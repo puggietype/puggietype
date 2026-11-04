@@ -21,6 +21,47 @@ import {
 } from "../src/shell.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// Legal addendum 2026-11-04 (1): exact text
+const ADDENDUM_LICENCE = `PuggieType Supporter Pack Artwork Licence
+Copyright (C) 2026 the PuggieType team. All rights reserved.
+
+1. Scope. This licence applies only to the artwork files in the
+   assets/supporter/ directory of the PuggieType repository and the
+   corresponding files in the PuggieType Supporter Pack downloadable
+   content on Steam (the "Supporter Artwork"). It does not apply to any
+   other file.
+
+2. Not covered by the GPL. The Supporter Artwork is a separate work
+   distributed alongside PuggieType as separate data files. It is not part
+   of PuggieType's program code and is not licensed under the GNU General
+   Public License.
+
+3. Your rights to the GPL parts are unaffected. Nothing in this licence
+   limits any right you have under the GNU General Public License,
+   version 3 only, to PuggieType's program code or to any other PuggieType
+   artwork, including the existing pug and character art, which remains
+   licensed under GPL-3.0 (see NOTICE). You may run, study, modify and
+   share PuggieType without the Supporter Artwork.
+
+4. Personal-use licence. If you obtain the Supporter Pack through Steam,
+   the PuggieType team grants you a personal, non-exclusive,
+   non-transferable, revocable licence to use the Supporter Artwork only
+   inside PuggieType, for your own non-commercial use, for as long as your
+   Steam account holds a licence to the Supporter Pack. Showing the
+   Supporter Artwork on screen while you play, stream or record PuggieType,
+   including monetized videos and streams, is permitted.
+
+5. Restrictions. Except as allowed in section 4 or by law, you may not
+   copy, redistribute, sell, sublicense, publish or extract the Supporter
+   Artwork, make it available to others (for example in a fork, mod pack
+   or asset dump), or use it to train or build other artwork or models.
+
+6. No warranty. The Supporter Artwork is provided "as is", without
+   warranty of any kind. To the extent permitted by law, the PuggieType
+   team is not liable for any damages arising from its use.
+
+7. Contact. Questions and permission requests: support@puggietype.com.
+`;
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 
 function fakeDist() {
@@ -114,7 +155,10 @@ describe("packaged output (GPL source bundling)", () => {
     const repo = path.resolve(here, "../..");
     assert.equal(
       fs.readFileSync(path.join(servedLegal, "DLC-ASSETS-LICENSE.txt"), "utf8"),
-      fs.readFileSync(path.join(repo, "assets", "LICENSE"), "utf8"),
+      fs.readFileSync(
+        path.join(repo, "assets", "supporter", "LICENSE"),
+        "utf8",
+      ),
     );
     assert.match(
       fs.readFileSync(path.join(servedLegal, "DLC-ASSETS-LICENSE.txt"), "utf8"),
@@ -124,7 +168,7 @@ describe("packaged output (GPL source bundling)", () => {
       fs
         .readFileSync(path.join(servedLegal, "NOTICE.txt"), "utf8")
         .includes(
-          "Supporter pack artwork in assets/ is not covered by the GPL; see assets/LICENSE. All other artwork, including the current pug art, is GPL-3.0.",
+          "Supporter pack artwork in assets/supporter/ is not covered by the GPL; see assets/supporter/LICENSE. All other artwork, including the current pug art, is GPL-3.0.",
         ),
     );
   });
