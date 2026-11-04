@@ -19,6 +19,7 @@ import {
   setSteamNameHidden,
   signInWithSteam,
   signOutSteam,
+  steamSessionsOn,
   type SteamDeleteError,
   STEAM_SIGNIN_HINT,
   steamDisplayName,
@@ -49,18 +50,31 @@ type State =
   | { kind: "deleting"; value: SteamSignInValue }
   | { kind: "error"; error: SteamSignInError };
 
-/** "Delete my account" texts (Legal review: list of new strings). */
+/** "Delete my sign-in data" texts (Legal review 2026-11-04, F3, exact). */
 export const STEAM_DELETE_TEXT = {
-  button: "Delete my account",
+  button: "Delete my sign-in data",
   confirm:
-    "Delete your account? This removes your Steam sign-in from PuggieType's server and signs you out on all your devices. It can't be undone.",
-  confirmButton: "Yes, delete my account",
+    "Delete your Steam sign-in data? This removes your sign-in from PuggieType's server on all your devices. Each device will need to sign in with Steam again the next time it starts PuggieType. Your settings and scores on this device are not affected.",
+  confirmButton: "Yes, delete it",
   cancel: "cancel",
-  pending: "Deleting your account...",
-  done: "Your account was deleted. You're signed out.",
+  pending: "Deleting your sign-in data...",
+  done: "Your sign-in data was deleted. You're signed out.",
   expired:
-    "Your sign-in has expired. Sign in with Steam again, then delete your account.",
-  network: "Couldn't delete your account. Check your connection and try again.",
+    "Your sign-in has expired. Sign in with Steam again, then delete your sign-in data.",
+  network:
+    "Couldn't delete your sign-in data. Check your connection and try again.",
+} as const;
+
+/**
+ * Sign-in description (Legal F1): the original text while the server issues
+ * no session tokens; once it does (or a token is kept here), the text that
+ * says what is stored.
+ */
+export const STEAM_SIGNIN_DESCRIPTION = {
+  noTokens:
+    "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. We don't store any of these; see our ",
+  tokens:
+    "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. To keep you signed in, we store your Steam ID with a scrambled sign-in token, never your name or what you own; see our ",
 } as const;
 
 export const STEAM_RESUMING_TEXT = "Signing in with Steam...";
@@ -120,6 +134,11 @@ export function SteamSignIn(props: {
       : undefined;
   };
   const canDelete = (): boolean => hasSteamSession(getDesktopBridge());
+  // re-read after every sign-in step (state changes)
+  const tokensStored = (): boolean => {
+    state();
+    return canDelete() || steamSessionsOn(storage);
+  };
   const [hidden, setHidden] = createSignal(isSteamNameHidden(storage));
 
   const shownName = (): string | null => {
@@ -166,7 +185,7 @@ export function SteamSignIn(props: {
     backToSignedOut();
   };
 
-  // Delete my account: a confirmation step first (focus goes to cancel, the
+  // Delete my sign-in data: a confirmation step first (focus goes to cancel, the
   // safe choice; Escape cancels). Plain buttons, so keyboard and controller
   // navigation work as everywhere else.
   const askDelete = (): void => {
@@ -210,9 +229,9 @@ export function SteamSignIn(props: {
         title="steam sign-in"
         description={
           <span data-testid="steam-signin-description">
-            {
-              "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. We don't store any of these; see our "
-            }
+            {tokensStored()
+              ? STEAM_SIGNIN_DESCRIPTION.tokens
+              : STEAM_SIGNIN_DESCRIPTION.noTokens}
             <Button
               variant="text"
               href="/privacy"

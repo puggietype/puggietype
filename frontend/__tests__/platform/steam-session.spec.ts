@@ -28,7 +28,7 @@ const storage: PlatformStorage = {
 };
 
 function bridge(
-  opts: { session?: boolean; secureOk?: boolean } = {},
+  opts: { session?: boolean; secureOk?: boolean; canKeep?: boolean } = {},
 ): DesktopBridge {
   return {
     version: 1,
@@ -50,6 +50,9 @@ function bridge(
               clear: () => {
                 secure = null;
               },
+              ...(opts.canKeep === undefined
+                ? {}
+                : { canKeep: () => opts.canKeep === true }),
             },
           }),
     },
@@ -143,7 +146,76 @@ describe("OpenID sign-in keeps the server's session token in secure storage", ()
         }),
       ),
     );
-    expect(spy).not.toHaveBeenCalled();
+    // only the non-secret "server issues tokens" marker, never the token
+    expect(spy.mock.calls).toEqual([["steamSessionsOn", "1"]]);
+  });
+});
+
+describe("tokens that can't be kept are revoked at once (Legal F2)", () => {
+  const ok = { ok: true, steamId: STEAM_ID, ownsApp: true, sessionToken: T1 };
+  const body = (f: FakeFetch, i: number): unknown =>
+    JSON.parse(f.mock.calls[i]?.[1].body ?? "null");
+  it("no secure storage: asks the server not to issue one (keep: false)", async () => {
+    const f = server({ status: 200, body: { ok: true, steamId: STEAM_ID } });
+    await signInWithSteam(deps(bridge({ canKeep: false }), f));
+    expect(body(f, 0)).toMatchObject({ keep: false });
+    const g = server({ status: 200, body: { ok: true, steamId: STEAM_ID } });
+    await signInWithSteam(deps(bridge({ session: false }), g));
+    expect(body(g, 0)).toMatchObject({ keep: false });
+    const h = server({ status: 200, body: ok });
+    await signInWithSteam(deps(bridge({ canKeep: true }), h));
+    expect(body(h, 0)).not.toHaveProperty("keep");
+  });
+  it("the secure storage check failing counts as can't keep (keep: false)", async () => {
+    const b = bridge();
+    const session = b.steam?.session;
+    if (!session) throw new Error("test bridge has a session");
+    session.canKeep = () => {
+      throw new Error("safeStorage broken");
+    };
+    const f = server({ status: 200, body: { ok: true, steamId: STEAM_ID } });
+    await signInWithSteam(deps(b, f));
+    expect(body(f, 0)).toMatchObject({ keep: false });
+  });
+  it("set() returns false: POST /steam/session/signout with the issued token", async () => {
+    const f = server({ status: 200, body: ok }, { status: 200 });
+    expect(
+      (await signInWithSteam(deps(bridge({ secureOk: false }), f))).ok,
+    ).toBe(true);
+    expect(f.mock.calls[1]?.[0]).toBe(
+      "https://ws.example/steam/session/signout",
+    );
+    expect(body(f, 1)).toEqual({ token: T1 });
+    expect(secure).toBeNull();
+  });
+  it("no session bridge (older shell) but a token came anyway: revoked too", async () => {
+    const f = server({ status: 200, body: ok }, { status: 200 });
+    await signInWithSteam(deps(bridge({ session: false }), f));
+    expect(f.mock.calls[1]?.[0]).toBe(
+      "https://ws.example/steam/session/signout",
+    );
+    expect(body(f, 1)).toEqual({ token: T1 });
+  });
+  it("a failed revoke doesn't fail the sign-in", async () => {
+    const f = server({ status: 200, body: ok }, "throw");
+    expect(
+      (await signInWithSteam(deps(bridge({ secureOk: false }), f))).ok,
+    ).toBe(true);
+  });
+  it("a rotated token that can't be kept is revoked as well", async () => {
+    secure = T1;
+    const f = server(
+      { status: 200, body: { ok: true, steamId: STEAM_ID, sessionToken: T2 } },
+      { status: 200 },
+    );
+    await resumeSteamSession(deps(bridge({ secureOk: false }), f));
+    expect(body(f, 1)).toEqual({ token: T2 });
+  });
+  it("kept tokens are not revoked", async () => {
+    const f = server({ status: 200, body: ok });
+    await signInWithSteam(deps(bridge(), f));
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(secure).toBe(T1);
   });
 });
 

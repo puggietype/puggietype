@@ -22,6 +22,7 @@ import type { SteamBridgeSignInResult } from "../../../../src/ts/platform/deskto
 import {
   STEAM_DELETE_TEXT,
   STEAM_RESUMING_TEXT,
+  STEAM_SIGNIN_DESCRIPTION,
   STEAM_SIGNIN_ERROR_TEXT,
   SteamSignIn,
 } from "../../../../src/ts/components/pages/settings/custom-setting/SteamSignIn";
@@ -548,7 +549,7 @@ describe("Sign in with Steam: rendered attributes (SR-ANNOUNCE review)", () => {
   });
 });
 
-describe("Delete my account", () => {
+describe("Delete my sign-in data", () => {
   const TOKEN = "A".repeat(43);
   async function signedIn(
     deleteAccount?: (
@@ -575,17 +576,17 @@ describe("Delete my account", () => {
 
   it("Legal strings (exact)", () => {
     expect(STEAM_DELETE_TEXT).toEqual({
-      button: "Delete my account",
+      button: "Delete my sign-in data",
       confirm:
-        "Delete your account? This removes your Steam sign-in from PuggieType's server and signs you out on all your devices. It can't be undone.",
-      confirmButton: "Yes, delete my account",
+        "Delete your Steam sign-in data? This removes your sign-in from PuggieType's server on all your devices. Each device will need to sign in with Steam again the next time it starts PuggieType. Your settings and scores on this device are not affected.",
+      confirmButton: "Yes, delete it",
       cancel: "cancel",
-      pending: "Deleting your account...",
-      done: "Your account was deleted. You're signed out.",
+      pending: "Deleting your sign-in data...",
+      done: "Your sign-in data was deleted. You're signed out.",
       expired:
-        "Your sign-in has expired. Sign in with Steam again, then delete your account.",
+        "Your sign-in has expired. Sign in with Steam again, then delete your sign-in data.",
       network:
-        "Couldn't delete your account. Check your connection and try again.",
+        "Couldn't delete your sign-in data. Check your connection and try again.",
     });
     expect(STEAM_RESUMING_TEXT).toBe("Signing in with Steam...");
   });
@@ -594,7 +595,7 @@ describe("Delete my account", () => {
     const el = await signedIn();
     expect(secure).toBe(TOKEN);
     expect($(el, "#steam-delete-button")?.textContent).toBe(
-      "Delete my account",
+      "Delete my sign-in data",
     );
     cleanup();
     installBridge({ steam: true });
@@ -645,6 +646,21 @@ describe("Delete my account", () => {
     expect($(el, "#steam-signin-status")?.textContent).toBe(
       STEAM_DELETE_TEXT.done,
     );
+  });
+
+  it("leaves settings and scores on this device alone", async () => {
+    store.set(STEAM_NAME_HIDDEN_KEY, "1");
+    store.set("config", '{"theme":"pug"}');
+    localStorage.setItem("results", "[1,2,3]");
+    const el = await signedIn();
+    const before = new Map(store);
+    server(200, { ok: true, deleted: true });
+    press(el, "#steam-delete-button");
+    press(el, "#steam-delete-confirm");
+    await waitFor(() => expect($(el, "#steam-signin-button")).not.toBeNull());
+    expect(new Map(store)).toEqual(before);
+    expect(localStorage.getItem("results")).toBe("[1,2,3]");
+    localStorage.removeItem("results");
   });
 
   it("an expired token returns to sign-in with the expired text", async () => {
@@ -714,5 +730,45 @@ describe("Silent sign-in at launch", () => {
     );
     expect($(el, "#steam-delete-button")).not.toBeNull();
     mod.__resetSteamSessionForTests();
+  });
+});
+
+describe("Sign-in description (Legal F1)", () => {
+  const OLD =
+    "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. We don't store any of these; see our ";
+  const NEW =
+    "Sign in with your Steam account. PuggieType receives your Steam ID, whether you own PuggieType and its supporter pack, and your Steam display name. To keep you signed in, we store your Steam ID with a scrambled sign-in token, never your name or what you own; see our ";
+  const text = (el: HTMLElement): string | undefined =>
+    $(el, '[data-testid="steam-signin-description"]')?.textContent ?? undefined;
+
+  it("exact strings", () => {
+    expect(STEAM_SIGNIN_DESCRIPTION).toEqual({ noTokens: OLD, tokens: NEW });
+  });
+  it("flag off (server sends no token): the original text, also after sign-in", async () => {
+    installBridge({ steam: true, session: true });
+    server(200, { ok: true, steamId: "1", ownsApp: true });
+    const el = render(() => <SteamSignIn />).container;
+    expect(text(el)).toBe(`${OLD}privacy policy.`);
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() => expect($(el, "#steam-signout")).not.toBeNull());
+    expect(text(el)).toBe(`${OLD}privacy policy.`);
+  });
+  it("flag on: the new text once the server issues a token, and on later launches", async () => {
+    installBridge({ steam: true, session: true });
+    server(200, {
+      ok: true,
+      steamId: "1",
+      ownsApp: true,
+      sessionToken: "A".repeat(43),
+    });
+    const el = render(() => <SteamSignIn />).container;
+    press(el, "#steam-signin-button");
+    press(el, "#steam-signin-continue");
+    await waitFor(() => expect(text(el)).toBe(`${NEW}privacy policy.`));
+    cleanup();
+    secure = null; // signed out, but the server still issues tokens
+    const later = render(() => <SteamSignIn />).container;
+    expect(text(later)).toBe(`${NEW}privacy policy.`);
   });
 });

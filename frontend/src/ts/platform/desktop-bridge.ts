@@ -36,6 +36,8 @@ export type DesktopBridge = {
       get: () => string | null;
       set: (token: string) => boolean;
       clear: () => void;
+      /** false without real secure storage (then nothing can be kept) */
+      canKeep?: () => boolean;
     };
   };
 };

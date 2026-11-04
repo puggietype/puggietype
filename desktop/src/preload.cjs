@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld("puggieDesktop", {
             clear: () => {
               ipcRenderer.sendSync("steam:session:clear");
             },
+            canKeep: () =>
+              ipcRenderer.sendSync("steam:session:available") === true,
           },
         },
       }

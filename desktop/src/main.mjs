@@ -322,6 +322,9 @@ app.whenReady().then(() => {
     ipcMain.on("steam:session:set", (event, token) => {
       event.returnValue = trusted(event) ? tokens.set(token) : false;
     });
+    ipcMain.on("steam:session:available", (event) => {
+      event.returnValue = trusted(event) && tokens.available();
+    });
     ipcMain.on("steam:session:clear", (event) => {
       if (trusted(event)) tokens.clear();
       event.returnValue = null;
@@ -804,7 +807,7 @@ async function runSteamUiSmoke(win) {
     await click("#steam-name-hidden-off");
 
     // session token: kept in (smoke) secure storage; a reload signs in
-    // silently with it; Delete my account asks first, then clears it
+    // silently with it; Delete my sign-in data asks first, then clears it
     out.tokenKept = await js(
       `typeof window.puggieDesktop.steam.session?.get() === "string"`,
     );
@@ -848,7 +851,7 @@ async function runSteamUiSmoke(win) {
       out.deleteButton === true &&
       out.confirmFocus === "steam-delete-cancel" &&
       out.backToSignIn === true &&
-      out.deletedText === "Your account was deleted. You're signed out." &&
+      out.deletedText === "Your sign-in data was deleted. You're signed out." &&
       out.tokenCleared === true &&
       out.deleteCalled === true &&
       out.inView === true &&

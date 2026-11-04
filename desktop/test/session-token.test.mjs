@@ -50,10 +50,27 @@ describe("SecureTokenStore (safeStorage only)", () => {
       { backend: "unknown" },
     ]) {
       const { store, disk } = fakes(opts);
+      // canKeep() in the preload is this: false -> the client sends keep:false
+      assert.equal(store.available(), false);
       assert.equal(store.set(TOKEN), false);
       assert.equal(disk.writes, 0);
       assert.equal(store.get(), null);
     }
+  });
+  it("a throwing safeStorage check counts as unavailable", () => {
+    const { store } = fakes();
+    store.safe.isEncryptionAvailable = () => {
+      throw new Error("keyring locked");
+    };
+    assert.equal(store.available(), false);
+    assert.equal(store.set(TOKEN), false);
+  });
+  it("main.mjs answers canKeep with tokens.available()", () => {
+    const main = fs.readFileSync(path.join(here, "../src/main.mjs"), "utf8");
+    assert.match(
+      main,
+      /"steam:session:available"[\s\S]{0,120}tokens\.available\(\)/,
+    );
   });
   it("rejects anything that isn't a session token", () => {
     const { store, disk } = fakes();
