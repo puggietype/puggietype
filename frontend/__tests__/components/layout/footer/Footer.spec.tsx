@@ -69,4 +69,12 @@ describe("Footer", () => {
       expect(a.getAttribute("target")).toBeNull();
     }
   });
+
+  it("renders no support links while the tip URLs are empty", () => {
+    const { queryByTestId, container } = render(() => <Footer />);
+    expect(queryByTestId("support-links")).toBeNull();
+    expect(container.textContent).not.toContain("Ko-fi");
+    expect(container.textContent).not.toContain("GitHub Sponsors");
+    expect(container.textContent).not.toContain("Support PuggieType");
+  });
 });

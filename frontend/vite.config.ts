@@ -23,6 +23,7 @@ import { injectPreload } from "./vite-plugins/inject-preload";
 import { inlineStaticPageCss } from "./vite-plugins/inline-static-css";
 import { notFoundPage } from "./vite-plugins/not-found-page";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
+import { supportLinks } from "./vite-plugins/support-links";
 import {
   getCommitHash,
   getSourceLinks,
@@ -114,6 +115,9 @@ function getPlugins({
     sourceTarball(sourceLinks),
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
+    // after html-inject when both are "normal"; also safe if this runs first,
+    // because applySupportHtml inlines the footer partial itself
+    supportLinks(),
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     tailwindcss(),
 

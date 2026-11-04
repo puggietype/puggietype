@@ -32,7 +32,7 @@ describe("Button component", () => {
     expect(anchor).toBeTruthy();
     expect(anchor).toHaveAttribute("href", "https://example.com");
     expect(anchor).toHaveAttribute("target", "_blank");
-    expect(anchor).toHaveAttribute("rel", "noreferrer noopener");
+    expect(anchor).toHaveAttribute("rel", "noopener noreferrer");
     expect(anchor).not.toHaveAttribute("router-link");
     expect(anchor).not.toHaveAttribute("aria-label");
     expect(anchor).not.toHaveAttribute("data-balloon-pos");
