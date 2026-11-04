@@ -317,8 +317,8 @@ const TICKET_RX = /^(?:[0-9a-fA-F]{2}){16,2048}$/;
 
 /**
  * Silent sign-in with a one-time ticket from the Steam client, through the
- * optional helper (PUGGIE_STEAM_SDK). Any failure returns "none" so the
- * caller falls back to the kept session token, then the OpenID button. The
+ * optional helper (PUGGIE_STEAM_SDK). Tried only after the kept session token (Legal C37-1); any failure returns
+ * "none" and the player uses the OpenID button. The
  * ticket is sent once to POST /steam/ticket and never stored or logged.
  */
 export async function signInWithSteamTicket(

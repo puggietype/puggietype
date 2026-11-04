@@ -361,7 +361,8 @@ export class SecureTokenStore {
 // PUGGIE_STEAM_SDK=1 (off by default). It is a separate one-shot program
 // that prints one hex Web API ticket to stdout and exits; this shell never
 // links the SDK. Any failure (missing helper, timeout, bad output) returns
-// null, and the app falls back to the stored session token, then OpenID.
+// null, and the app falls back to the OpenID button (the kept session token
+// is tried before the helper, Legal C37-1).
 // The ticket is never stored or logged.
 export const STEAM_TICKET_HEX_RX = /^(?:[0-9a-fA-F]{2}){16,2048}$/;
 export const STEAM_TICKET_TIMEOUT_MS = 5000;

@@ -149,3 +149,7 @@ art/__pycache__/
 
 # e2e screenshots (SCREENS_DIR default)
 e2e/screens/
+
+# proprietary Steam ticket helper: never commit a build or SDK files here
+tools/steam-ticket-helper/*
+!tools/steam-ticket-helper/README.md

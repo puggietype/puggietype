@@ -5,6 +5,7 @@ import { leaderboardHttpBase } from "../multiplayer/leaderboards";
 import { getPlatform } from "../platform";
 import { getDesktopBridge } from "../platform/desktop-bridge";
 import {
+  hasSteamSession,
   resumeSteamSession,
   signInWithSteamTicket,
   type SteamSignIn,
@@ -38,8 +39,8 @@ export function steamSessionDeps(): Parameters<typeof resumeSteamSession>[0] {
 let started: Promise<void> | undefined;
 
 /**
- * At launch: sign in silently with the kept session token. Without one, or
- * when the server no longer accepts it, nothing is shown and the player can
+ * At launch: sign in silently with the kept session token, else with a
+ * one-time Steam ticket when the helper is on. Otherwise nothing is shown and the player can
  * sign in with Steam OpenID from settings as before.
  */
 export async function startSilentSteamSignIn(
@@ -50,16 +51,23 @@ export async function startSilentSteamSignIn(
     const steam = getDesktopBridge()?.steam;
     if (steam?.session === undefined && steam?.ticket === undefined) return;
     setLaunchState({ kind: "resuming" });
-    // 1. a one-time Steam ticket (optional helper), 2. the kept session
-    // token, 3. nothing: the OpenID button in settings
-    const t = await ticket(steamSessionDeps());
-    if (t.ok) {
-      setLaunchState({ kind: "signedIn", value: t.value });
+    // Legal C37-1: 1. the kept session token, 2. a one-time Steam ticket
+    // (optional helper), 3. nothing: the OpenID button in settings. A token
+    // the server rejects is cleared by resume; while one is still kept (e.g.
+    // the server was unreachable) no ticket is tried, so a new token family
+    // never replaces one the server still holds.
+    const r = await resume(steamSessionDeps());
+    if (r.ok) {
+      setLaunchState({ kind: "signedIn", value: r.value });
       return;
     }
-    const r = await resume(steamSessionDeps());
+    if (hasSteamSession(getDesktopBridge())) {
+      setLaunchState({ kind: "idle" });
+      return;
+    }
+    const t = await ticket(steamSessionDeps());
     setLaunchState(
-      r.ok ? { kind: "signedIn", value: r.value } : { kind: "idle" },
+      t.ok ? { kind: "signedIn", value: t.value } : { kind: "idle" },
     );
   })();
   return started;

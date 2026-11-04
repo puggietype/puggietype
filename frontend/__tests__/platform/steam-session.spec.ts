@@ -417,7 +417,7 @@ describe("signInWithSteamTicket (optional helper)", () => {
   });
 });
 
-describe("launch order: ticket, then kept token, then OpenID", () => {
+describe("launch order (Legal C37-1): kept token, then ticket, then OpenID", () => {
   afterEach(() => {
     __resetSteamSessionForTests();
     vi.unstubAllGlobals();
@@ -428,29 +428,48 @@ describe("launch order: ticket, then kept token, then OpenID", () => {
     displayName: null,
     personaName: null,
   };
-  it("a ticket sign-in skips the token", async () => {
+  const none = async (): Promise<{ ok: false; error: "none" }> => ({
+    ok: false,
+    error: "none",
+  });
+  function withHelper(): ReturnType<typeof vi.fn> {
     const b = bridge();
-    if (b.steam) b.steam.ticket = async () => null;
+    const helper = vi.fn(async () => ({
+      ticket: `14000000${"ab".repeat(120)}`,
+    }));
+    if (b.steam) b.steam.ticket = helper;
     vi.stubGlobal("puggieDesktop", b);
-    const resume = vi.fn();
-    await startSilentSteamSignIn(resume, async () => ({ ok: true, value }));
-    expect(resume).not.toHaveBeenCalled();
+    return helper;
+  }
+  it("a kept token that works: the helper is never spawned", async () => {
+    const helper = withHelper();
+    secure = T1;
+    const resume = vi.fn(async () => ({ ok: true as const, value }));
+    await startSilentSteamSignIn(resume); // the real ticket step
+    expect(resume).toHaveBeenCalledTimes(1);
+    expect(helper).not.toHaveBeenCalled();
     expect(steamLaunchState()).toEqual({ kind: "signedIn", value });
   });
-  it("ticket fails: the kept token; both fail: idle (OpenID button)", async () => {
-    vi.stubGlobal("puggieDesktop", bridge());
-    const resume = vi.fn(async () => ({ ok: true as const, value }));
-    await startSilentSteamSignIn(resume, async () => ({
-      ok: false,
-      error: "none",
-    }));
-    expect(resume).toHaveBeenCalledTimes(1);
-    expect(steamLaunchState().kind).toBe("signedIn");
-    __resetSteamSessionForTests();
-    await startSilentSteamSignIn(
-      async () => ({ ok: false, error: "none" }),
-      async () => ({ ok: false, error: "none" }),
-    );
+  it("a token still kept after a failed resume (server unreachable): no ticket, no new token family", async () => {
+    const helper = withHelper();
+    secure = T1;
+    await startSilentSteamSignIn(none);
+    expect(helper).not.toHaveBeenCalled();
+    expect(secure).toBe(T1);
+    expect(steamLaunchState()).toEqual({ kind: "idle" });
+  });
+  it("no kept token (or one the server rejected and resume cleared): the ticket", async () => {
+    withHelper();
+    secure = null;
+    const ticket = vi.fn(async () => ({ ok: true as const, value }));
+    await startSilentSteamSignIn(none, ticket);
+    expect(ticket).toHaveBeenCalledTimes(1);
+    expect(steamLaunchState()).toEqual({ kind: "signedIn", value });
+  });
+  it("both fail: idle (the OpenID button)", async () => {
+    withHelper();
+    secure = null;
+    await startSilentSteamSignIn(none, none);
     expect(steamLaunchState()).toEqual({ kind: "idle" });
   });
 });

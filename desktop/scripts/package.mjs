@@ -115,6 +115,20 @@ export function tagSteamBuild({ cwd, tag, commit, remote = "origin" }) {
   git(cwd, ["push", remote, `refs/tags/${tag}`]);
 }
 
+// Legal helper ruling 2026-11-04 (4): the proprietary ticket helper and the
+// steam_api redistributables ship only as separate files in the Steam depot,
+// never inside the app (asar), the GPL source tarball or the web build.
+export const STEAM_HELPER_FILE_RX =
+  /(^|\/)(steam-ticket-helper(\.exe)?|(lib)?steam_api(64)?\.(dll|so|dylib|lib)|steam_appid\.txt)$/i;
+
+export function assertNoSteamHelper(dir) {
+  for (const f of fs.readdirSync(dir, { recursive: true })) {
+    if (STEAM_HELPER_FILE_RX.test(String(f).split(path.sep).join("/"))) {
+      throw new Error(`Steam helper file must not be packaged: ${f}`);
+    }
+  }
+}
+
 function electronDistDir() {
   return path.join(desktopDir, "node_modules", "electron", "dist");
 }
@@ -191,6 +205,7 @@ export function stagePackage({
     if (!fs.existsSync(path.join(app, "web", "legal", f)))
       throw new Error(`not staged: ${f}`);
   }
+  assertNoSteamHelper(outDir);
   return { app, legal: path.join(outDir, "legal") };
 }
 
