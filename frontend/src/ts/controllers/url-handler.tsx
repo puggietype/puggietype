@@ -26,6 +26,7 @@ import { setConfig } from "../config/setters";
 import { Config } from "../config/store";
 import * as DB from "../db";
 import { authEvent } from "../events/auth";
+import { dropUnavailableFunboxes } from "../platform/funbox-availability";
 import { hideLoaderBar, showLoaderBar } from "../states/loader-bar";
 import {
   showErrorNotification,
@@ -285,7 +286,13 @@ export function loadTestSettingsFromUrl(getOverride?: string): void {
     setConfig("funbox", val, {
       nosave: true,
     });
-    applied["funbox"] = val.join(", ");
+    // steam: list what was actually applied (unavailable funboxes are
+    // dropped by the config override); the web build folds to val.
+    applied["funbox"] = (
+      typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
+        ? dropUnavailableFunboxes(val)
+        : val
+    ).join(", ");
   }
 
   void restartTest({

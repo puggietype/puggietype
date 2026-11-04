@@ -20,9 +20,11 @@ const list: Command[] = [
   },
 ];
 
-for (const funbox of getAllFunboxes().filter((f) =>
-  isFunboxAvailable(f.name),
-)) {
+// define compared inline so the web build folds this back to getAllFunboxes()
+for (const funbox of typeof __PLATFORM__ !== "undefined" &&
+__PLATFORM__ === "steam"
+  ? getAllFunboxes().filter((f) => isFunboxAvailable(f.name))
+  : getAllFunboxes()) {
   list.push({
     id: `changeFunbox${funbox.name}`,
     display: funbox.name.replace(/_/g, " "),

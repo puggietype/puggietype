@@ -420,8 +420,14 @@ export const configMetadata: ConfigMetadataObject = {
     group: "behavior",
     description:
       "These are special modes that change the website in some special way (by altering the word generation, behavior of the website or the looks). Give each one of them a try!",
-    // steam: quietly drop funboxes it cannot run (URL, presets, challenges)
-    overrideValue: ({ value }) => dropUnavailableFunboxes(value),
+    // steam: quietly drop funboxes it cannot run (URL, presets, challenges).
+    // The define is compared inline so web has no overrideValue at all.
+    ...(typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
+      ? {
+          overrideValue: ({ value }: { value: ConfigSchemas.FunboxName[] }) =>
+            dropUnavailableFunboxes(value),
+        }
+      : {}),
     isBlocked: ({ value, currentConfig }) => {
       if (!checkCompatibility(value)) {
         showNoticeNotification(
