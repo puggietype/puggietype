@@ -70,19 +70,79 @@ function player(
 }
 
 describe("steam game settings: defaults and persistence", () => {
-  it("music is off by default; other defaults", () => {
+  it("music is on by default at 35%; other defaults", () => {
     expect(DEFAULT_STEAM_SETTINGS).toEqual({
+      displayMode: "windowed",
+      resolution: "native",
+      vsync: true,
+      fpsCap: 60,
       uiScale: 1,
-      reducedMotion: false,
+      animation: "full",
+      brightness: 1,
       masterVolume: 1,
+      sfxVolume: 1,
+      muted: false,
       music: {
-        enabled: false,
-        volume: 0.5,
+        enabled: true,
+        volume: 0.35,
         track: "shuffle",
         whileTyping: "pause",
       },
     });
-    expect(readSteamSettings(memStorage()).music.enabled).toBe(false);
+    const fresh = readSteamSettings(memStorage());
+    expect(fresh.music.enabled).toBe(true);
+    expect(fresh.music.volume).toBe(0.35);
+  });
+
+  it("keeps valid fields of an older or partly bad store", () => {
+    const s = memStorage();
+    s.setItem(
+      STEAM_SETTINGS_KEY,
+      JSON.stringify({
+        uiScale: 1.25,
+        reducedMotion: true,
+        masterVolume: 7,
+        music: { enabled: false, volume: 0.2, track: "nope" },
+      }),
+    );
+    const r = readSteamSettings(s);
+    expect(r.uiScale).toBe(1.25);
+    expect(r.animation).toBe("reduced");
+    expect(r.masterVolume).toBe(1);
+    expect(r.music).toEqual({
+      enabled: false,
+      volume: 0.2,
+      track: "shuffle",
+      whileTyping: "pause",
+    });
+    expect(r.fpsCap).toBe(60);
+  });
+
+  it("rejects values outside each setting's options", () => {
+    const s = memStorage();
+    s.setItem(
+      STEAM_SETTINGS_KEY,
+      JSON.stringify({
+        displayMode: "tiny",
+        resolution: "123x45",
+        vsync: "yes",
+        fpsCap: 75,
+        brightness: 3,
+        sfxVolume: -1,
+        muted: 1,
+        animation: "max",
+      }),
+    );
+    const r = readSteamSettings(s);
+    const d = DEFAULT_STEAM_SETTINGS;
+    expect(r.displayMode).toBe(d.displayMode);
+    expect(r.resolution).toBe(d.resolution);
+    expect(r.vsync).toBe(d.vsync);
+    expect(r.fpsCap).toBe(d.fpsCap);
+    expect(r.brightness).toBe(d.brightness);
+    expect(r.sfxVolume).toBe(d.sfxVolume);
+    expect(r.muted).toBe(d.muted);
+    expect(r.animation).toBe(d.animation);
   });
 
   it("round-trips through the platform storage", () => {
@@ -106,10 +166,28 @@ describe("steam game settings: defaults and persistence", () => {
 });
 
 describe("SteamMusic", () => {
-  it("off by default: never creates audio or fetches, even after a gesture", () => {
-    const { music, createAudio } = player(DEFAULT_STEAM_SETTINGS);
+  it("turned off: never creates audio or fetches, even after a gesture", () => {
+    const { music, createAudio } = player(withMusic({ enabled: false }));
     music.noteGesture();
     expect(createAudio).not.toHaveBeenCalled();
+  });
+
+  it("on by default, but fetches nothing before a gesture (autoplay rules)", () => {
+    const { music, audio, createAudio } = player(DEFAULT_STEAM_SETTINGS);
+    music.update(DEFAULT_STEAM_SETTINGS);
+    expect(createAudio).not.toHaveBeenCalled();
+    music.noteGesture();
+    expect(audio.plays).toBe(1);
+    expect(audio.volume).toBeCloseTo(0.35);
+  });
+
+  it("mute silences the music without forgetting its volume", () => {
+    const s = { ...withMusic({ enabled: true, volume: 0.5 }), muted: true };
+    const { music, audio } = player(s);
+    music.noteGesture();
+    expect(audio.volume).toBe(0);
+    music.update({ ...s, muted: false });
+    expect(audio.volume).toBeCloseTo(0.5);
   });
 
   it("waits for a gesture, then plays the chosen track at its volume", () => {

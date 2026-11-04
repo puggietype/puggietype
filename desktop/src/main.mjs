@@ -7,6 +7,7 @@ import {
   ipcMain,
   net,
   protocol,
+  screen,
   session,
   shell,
 } from "electron";
@@ -35,6 +36,15 @@ import {
   steamSignInEnabled,
   windowOptions,
 } from "./shell.mjs";
+import {
+  STEAM_SETTINGS_KEY,
+  applyWindowState,
+  needsRestart,
+  parseDisplay,
+  vsyncSwitches,
+  windowOptionsFor,
+  windowState,
+} from "./display.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // packaged (scripts/package.mjs): ../web next to src/; dev: ../../frontend/dist
@@ -60,6 +70,26 @@ protocol.registerSchemesAsPrivileged([
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
+// Steam game settings the shell applies (display mode, resolution, VSync),
+// read from the renderer's store once at launch. VSync is a Chromium
+// switch, so changing it needs a restart.
+function readStartDisplay() {
+  try {
+    const file = path.join(app.getPath("userData"), "storage.json");
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    return parseDisplay(data?.[STEAM_SETTINGS_KEY]);
+  } catch {
+    return parseDisplay(null);
+  }
+}
+const startDisplay = readStartDisplay();
+for (const sw of vsyncSwitches(startDisplay)) app.commandLine.appendSwitch(sw);
+
+function screenFor(display) {
+  const d = screen.getPrimaryDisplay();
+  return display.displayMode === "borderless" ? d.bounds : d.workArea;
+}
+
 let store;
 
 // PUGGIE_SMOKE_TEST=1 plus PUGGIE_SMOKE_SETTINGS=<dir>: open settings, check
@@ -79,7 +109,11 @@ const smokeSettingsDir =
     : undefined;
 
 function createWindow() {
-  const win = new BrowserWindow(windowOptions(path.join(here, "preload.cjs")));
+  const win = new BrowserWindow({
+    ...windowOptions(path.join(here, "preload.cjs")),
+    ...windowOptionsFor(startDisplay),
+  });
+  applyWindowState(win, windowState(startDisplay, screenFor(startDisplay)));
   win.once("ready-to-show", () => win.show());
 
   win.webContents.on("before-input-event", (event, input) => {
@@ -247,6 +281,19 @@ app.whenReady().then(() => {
     const win = fromWindow(event);
     win?.setFullScreen(!win.isFullScreen());
   });
+  // live display changes from the Graphics settings; returns whether the
+  // change only fully applies after a restart
+  ipcMain.on("display:apply", (event, json) => {
+    // returnValue answers the sync call, so set it exactly once
+    const win = trusted(event) ? fromWindow(event) : null;
+    if (!win) {
+      event.returnValue = { restartRequired: false };
+      return;
+    }
+    const next = parseDisplay(String(json));
+    applyWindowState(win, windowState(next, screenFor(next)));
+    event.returnValue = { restartRequired: needsRestart(startDisplay, next) };
+  });
   ipcMain.on("storage:get", (event, key) => {
     event.returnValue = trusted(event) ? store.getItem(key) : null;
   });
@@ -366,6 +413,10 @@ async function runSettingsSmoke(win) {
     out.graphics = await waitFor('[data-testid="steam-graphics"]');
     out.graphicsInView = await show('[data-testid="steam-graphics"]');
     out.shots.push(await shot("graphics.png"));
+    await js(
+      `document.getElementById("steam-graphics-reset")?.scrollIntoView({ block: "end" })`,
+    );
+    out.shots.push(await shot("graphics-2.png"));
     await js(`document.getElementById("settings-tab-sound").click()`);
     out.sound = await waitFor('[data-testid="steam-sound"]');
     out.soundInView = await show('[data-testid="steam-sound"]');
@@ -377,6 +428,10 @@ async function runSettingsSmoke(win) {
       `fetch("/music/sherwood.ogg").then((r) => r.status + " " + r.headers.get("content-type"), (e) => String(e))`,
     );
     out.shots.push(await shot("sound.png"));
+    await js(
+      `document.querySelector('[data-testid="steam-music-while-typing"]')?.scrollIntoView({ block: "end" })`,
+    );
+    out.shots.push(await shot("sound-2.png"));
     await js(`document.getElementById("settings-tab-gameplay").click()`);
     await js(`window.scrollTo(0, 0)`);
     out.shots.push(await shot("gameplay.png"));
@@ -385,7 +440,7 @@ async function runSettingsSmoke(win) {
       out.sound === true &&
       out.graphicsInView === true &&
       out.soundInView === true &&
-      out.musicDefault === "off" &&
+      out.musicDefault === "on" &&
       String(out.musicFile).startsWith("200 audio/");
     return out;
   } catch (e) {
@@ -408,7 +463,8 @@ async function runMusicSmoke(win) {
     win.focus();
     win.webContents.focus();
     await js(`window.puggieDesktop.storage.setItem("steamGameSettings", JSON.stringify({
-      uiScale: 1.25, reducedMotion: false, masterVolume: 1,
+      uiScale: 1.25, brightness: 1.2, fpsCap: 30, animation: "off",
+      masterVolume: 1,
       music: { enabled: true, volume: 0.2, track: "sherwood", whileTyping: "pause" },
     }))`);
     const loaded = new Promise((res) =>
@@ -420,6 +476,23 @@ async function runMusicSmoke(win) {
     // (d) applied at startup, before any interaction
     out.zoom = await js(`document.documentElement.style.zoom`);
     out.uiScale = await js(`document.documentElement.dataset.uiScale ?? null`);
+    out.brightness = await js(`document.documentElement.style.filter`);
+    out.fpsCap = await js(`document.documentElement.dataset.fpsCap ?? null`);
+    out.animOff = await js(
+      `document.documentElement.classList.contains("anim-off")`,
+    );
+    // Electron main applies display changes through BrowserWindow
+    await js(
+      `window.puggieDesktop.display.apply({ displayMode: "windowed", resolution: "1280x720", vsync: true })`,
+    );
+    await sleep(300);
+    out.windowSize = win.getSize();
+    out.vsyncRestart = await js(
+      `window.puggieDesktop.display.apply({ displayMode: "windowed", resolution: "1280x720", vsync: false })`,
+    );
+    await js(
+      `window.puggieDesktop.display.apply({ displayMode: "windowed", resolution: "1280x720", vsync: true })`,
+    );
     out.beforeGesture = await audioState();
     // (c) a real click is the gesture that allows playback
     win.webContents.sendInputEvent({
@@ -457,6 +530,7 @@ async function runMusicSmoke(win) {
       await sleep(80);
     }
     await sleep(500);
+    out.path = await js(`location.pathname`);
     out.typed = await js(
       `document.querySelector("#wordsInput")?.value ?? null`,
     );
@@ -466,6 +540,12 @@ async function runMusicSmoke(win) {
     out.ok =
       out.zoom === "1.25" &&
       out.uiScale === "1.25" &&
+      out.brightness === "brightness(1.2)" &&
+      out.fpsCap === "30" &&
+      out.animOff === true &&
+      out.windowSize?.[0] === 1280 &&
+      out.windowSize?.[1] === 720 &&
+      out.vsyncRestart?.restartRequired === true &&
       out.beforeGesture === null &&
       out.playing === true &&
       out.timeAdvanced === true &&

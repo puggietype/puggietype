@@ -21,9 +21,9 @@ type MusicDeps = {
 };
 
 /**
- * Steam background music. Off by default; nothing is fetched until it is
- * on and the user has clicked or pressed a key (files are lazy: preload
- * none). Shuffle plays the tracks in a random order, one after another.
+ * Steam background music. On by default at 35%, but nothing is fetched
+ * until the user has clicked or pressed a key (files are lazy: preload
+ * none), so autoplay rules are respected. Shuffle plays the tracks in a random order, one after another.
  */
 export class SteamMusic {
   private audio: MusicAudio | null = null;
@@ -58,7 +58,8 @@ export class SteamMusic {
 
   /** effective 0..1 volume for the current state */
   volume(): number {
-    const { music, masterVolume } = this.settings;
+    const { music, masterVolume, muted } = this.settings;
+    if (muted) return 0;
     const duck =
       this.typing && music.whileTyping === "lower" ? MUSIC_DUCK_FACTOR : 1;
     return music.volume * masterVolume * duck;

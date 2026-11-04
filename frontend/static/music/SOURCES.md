@@ -2,7 +2,9 @@
 
 Every file in this folder must be listed here with a matching sha256
 (checked by `__tests__/steam/music.spec.ts`). CC0 only, no
-attribution required, nothing paid. The web build does not ship this folder.
+attribution required, nothing paid. Only light, cozy tracks. The web build
+does not ship this folder. On the steam build music is on by default at 35%
+volume, and nothing is fetched or played until the first click or key press.
 
 | File | Title | Author | Source URL | File URL | Licence | Licence page | Retrieved | sha256 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

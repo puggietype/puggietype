@@ -11,6 +11,14 @@ export type DesktopBridge = {
     toggle: () => void;
   };
   storage: PlatformStorage;
+  /** Steam Graphics settings: live display mode and resolution */
+  display?: {
+    apply: (settings: {
+      displayMode: string;
+      resolution: string;
+      vsync: boolean;
+    }) => { restartRequired: boolean };
+  };
   /** Steam M3, only when the shell runs with PUGGIE_STEAM_OPENID=1 */
   steam?: {
     /** system-browser Steam OpenID; resolves null on cancel or timeout */

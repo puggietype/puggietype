@@ -35,9 +35,40 @@ export function SteamSoundSettings(): JSXElement {
         }
       />
       <SearchableSetting
+        key="steamSfxVolume"
+        title="sound effects volume"
+        description="Volume of the typing and error sounds."
+        fa={{ icon: "fa-keyboard" }}
+        inputs={
+          <Slider
+            label="sound effects volume"
+            min={0}
+            max={1}
+            step={0.05}
+            text={(v) => `${Math.round(v * 100)}%`}
+            value={getSteamSettings().sfxVolume}
+            onEveryChange={(sfxVolume) => set((s) => ({ ...s, sfxVolume }))}
+          />
+        }
+      />
+      <SearchableSetting
+        key="steamMute"
+        title="mute"
+        description="Silence all sounds and music."
+        fa={{ icon: "fa-volume-mute" }}
+        inputs={
+          <Choice
+            id="steam-mute"
+            options={ON_OFF}
+            selected={getSteamSettings().muted}
+            onSelect={(muted) => set((s) => ({ ...s, muted }))}
+          />
+        }
+      />
+      <SearchableSetting
         key="steamMusic"
         title="background music"
-        description="Play quiet background music. Off by default."
+        description="Play quiet background music. On by default at 35%."
         extraSearchKeywords="music soundtrack audio"
         fa={{ icon: "fa-music" }}
         inputs={
@@ -52,8 +83,8 @@ export function SteamSoundSettings(): JSXElement {
               label="music volume"
               min={0}
               max={1}
-              step={0.1}
-              text={(v) => v.toFixed(1)}
+              step={0.05}
+              text={(v) => `${Math.round(v * 100)}%`}
               value={music().volume}
               onEveryChange={(volume) => setMusic({ volume })}
             />

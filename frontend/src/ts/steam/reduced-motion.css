@@ -78,3 +78,17 @@ html.reduce-motion .motion-safe\:animate-pulse {
 html.reduce-motion .motion-reduce\:flex {
   display: flex;
 }
+
+/* animation quality "off": every CSS animation and transition finishes at
+   once. Near-zero durations, not "none", so animationend / transitionend
+   still fire (the test page waits for them). */
+html.anim-off *,
+html.anim-off *::before,
+html.anim-off *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
