@@ -1,3 +1,4 @@
+import { dropUnavailableFunboxes } from "../platform/funbox-availability";
 import type {
   Config as ConfigSchema,
   FunboxName,
@@ -31,6 +32,8 @@ function mergeWithDefaultConfig(config: PartialConfig): ConfigSchema {
     //@ts-expect-error cant be bothered to deal with this
     mergedConfig[key] = newValue;
   }
+  // steam: saved, imported or synced configs quietly lose unavailable funboxes
+  mergedConfig.funbox = dropUnavailableFunboxes(mergedConfig.funbox);
   return mergedConfig;
 }
 
