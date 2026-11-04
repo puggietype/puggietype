@@ -28,7 +28,7 @@ In `frontend/`: `npm run build` (web) or `npm run build:steam`.
 - No ads in the steam flavor.
 - Ship GPL source and Electron/Chromium licenses; About screen with credits,
   non-affiliation line and source link.
-- DLC is new art only, all-rights-reserved under `assets/LICENSE`, in
+- DLC is new art only, all-rights-reserved under `assets/supporter/LICENSE` (art only in `assets/supporter/`), in
   DLC-only depots.
 
 ## Milestones

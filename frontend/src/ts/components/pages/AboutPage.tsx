@@ -17,7 +17,7 @@ export function AboutPage(): JSXElement {
       <section>
         <H2 fa={{ icon: "fa-info-circle" }} text="about" />
         <p>
-          puggietype is a minimalist and customizable typing test with a little
+          PuggieType is a minimalist and customizable typing test with a little
           pug who types along with you. It features many test modes, multiplayer
           races with friends, and user-configurable features such as themes,
           sounds, a smooth caret, and more. It attempts to emulate the
@@ -111,7 +111,7 @@ export function AboutPage(): JSXElement {
       <section>
         <H2 fa={{ icon: "fa-users" }} text="credits" />
         <p>
-          puggietype is based on{" "}
+          PuggieType is based on{" "}
           <Button
             variant="text"
             text="Monkeytype"
@@ -125,11 +125,11 @@ export function AboutPage(): JSXElement {
             href="https://github.com/monkeytypegame/monkeytype/graphs/contributors"
             class="p-0"
           />
-          , licensed under GPL-3.0. puggietype is not affiliated with
+          , licensed under GPL-3.0. PuggieType is not affiliated with
           Monkeytype.
         </p>
         <p>
-          The source code of puggietype is available on{" "}
+          The source code of PuggieType is available on{" "}
           <Button
             variant="text"
             text="GitHub"
@@ -139,6 +139,70 @@ export function AboutPage(): JSXElement {
           under the same license.
         </p>
         <p data-testid="quote-credits">{QUOTE_CREDITS_LINE}</p>
+        {
+          // steam flavor only (define compared inline so web is unchanged):
+          // licenses and source offer bundled by desktop/scripts/package.mjs
+          // oxlint-disable-next-line solid/prefer-show -- build-time constant; <Show> would stay in the web bundle
+          typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam" ? (
+            <>
+              <p data-testid="desktop-licenses">
+                This desktop app is built with Electron and Chromium. Licenses
+                and source:{" "}
+                <Button
+                  variant="text"
+                  text="GPL-3.0 license"
+                  href="/legal/LICENSE.txt"
+                  class="p-0"
+                />
+                ,{" "}
+                <Button
+                  variant="text"
+                  text="notice"
+                  href="/legal/NOTICE.txt"
+                  class="p-0"
+                />
+                ,{" "}
+                <Button
+                  variant="text"
+                  text="Electron license"
+                  href="/legal/ELECTRON-LICENSE.txt"
+                  class="p-0"
+                />
+                ,{" "}
+                <Button
+                  variant="text"
+                  text="Chromium licenses"
+                  href="/legal/LICENSES.chromium.html"
+                  class="p-0"
+                />
+                , the{" "}
+                <Button
+                  variant="text"
+                  text="source code offer"
+                  href="/legal/SOURCE.txt"
+                  class="p-0"
+                />{" "}
+                for this build and the{" "}
+                <Button
+                  variant="text"
+                  text="Supporter pack art licence"
+                  href="/legal/DLC-ASSETS-LICENSE.txt"
+                  class="p-0"
+                />
+                .
+              </p>
+              <p data-testid="valve-non-affiliation">
+                PuggieType is not affiliated with, endorsed or sponsored by
+                Valve Corporation. Steam and the Steam logo are trademarks
+                and/or registered trademarks of Valve Corporation in the U.S.
+                and/or other countries.
+              </p>
+              <p data-testid="steam-data-as-is">
+                Steam data is provided as is, without warranty from Valve.
+              </p>
+            </>
+          ) : null
+        }
       </section>
     </div>
   );

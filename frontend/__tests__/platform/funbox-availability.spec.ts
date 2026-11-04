@@ -16,7 +16,6 @@ vi.mock("../../src/ts/test/funbox/list", () => ({
 
 import type { FunboxName } from "@monkeytype/schemas/configs";
 import { migrateConfig } from "../../src/ts/config/utils";
-import { configMetadata } from "../../src/ts/config/metadata";
 import {
   dropUnavailableFunboxes,
   isFunboxAvailable,
@@ -28,9 +27,19 @@ type Override = (o: {
   currentValue: FunboxName[];
   currentConfig: unknown;
 }) => FunboxName[];
-const override = configMetadata.funbox.overrideValue as unknown as Override;
-const run = (value: FunboxName[]): FunboxName[] =>
-  override({ value, currentValue: [], currentConfig: {} });
+// metadata decides at module load whether funbox has an override (steam
+// only), so load it fresh after the platform is stubbed.
+async function funboxOverride(): Promise<Override | undefined> {
+  vi.resetModules();
+  const { configMetadata } = await import("../../src/ts/config/metadata");
+  return configMetadata.funbox.overrideValue as unknown as Override | undefined;
+}
+async function run(value: FunboxName[]): Promise<FunboxName[]> {
+  const override = await funboxOverride();
+  return override
+    ? override({ value, currentValue: [], currentConfig: {} })
+    : value;
+}
 
 async function funboxCommandIds(): Promise<string[]> {
   vi.resetModules();
@@ -56,10 +65,11 @@ describe("funbox availability on steam", () => {
     expect(isFunboxAvailable("mirror")).toBe(true);
   });
 
-  it("setConfig / URL / preset values drop them quietly", () => {
+  it("setConfig / URL / preset values drop them quietly", async () => {
     steam();
-    expect(run(["poetry", "mirror", "wikipedia"])).toEqual(["mirror"]);
-    expect(run(["wikipedia"])).toEqual([]);
+    expect(await funboxOverride()).toBeTypeOf("function");
+    expect(await run(["poetry", "mirror", "wikipedia"])).toEqual(["mirror"]);
+    expect(await run(["wikipedia"])).toEqual([]);
     const same: FunboxName[] = ["mirror"];
     expect(dropUnavailableFunboxes(same)).toBe(same);
   });
@@ -95,8 +105,8 @@ describe("funbox availability on web (unchanged)", () => {
   it("everything stays available and configs keep them", async () => {
     expect(isFunboxAvailable("poetry")).toBe(true);
     expect(isFunboxAvailable("wikipedia")).toBe(true);
-    const value: FunboxName[] = ["poetry", "wikipedia"];
-    expect(run(value)).toBe(value);
+    // web has no funbox override at all (as before the steam flavor)
+    expect(await funboxOverride()).toBeUndefined();
     expect(migrateConfig({ funbox: ["poetry", "mirror"] }).funbox).toEqual([
       "poetry",
       "mirror",
