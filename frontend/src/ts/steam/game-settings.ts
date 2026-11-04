@@ -1,7 +1,6 @@
 import { createEffect, createRoot, createSignal } from "solid-js";
 
-import { Config } from "../config/store";
-import { configEvent } from "../events/config";
+import "./reduced-motion.css";
 import { isRaceActive } from "../multiplayer/engine-hooks";
 import { getPlatform } from "../platform";
 import { isTestActive } from "../states/test";
@@ -72,13 +71,40 @@ export function applyUiScale(scale: number): void {
   document.documentElement.dataset["uiScale"] = String(scale);
 }
 
-async function applyMasterVolume(master: number): Promise<void> {
-  try {
-    const { Howler } = await import("howler");
-    Howler.volume(Config.soundVolume * master);
-  } catch {
-    // sounds not loaded yet; applied on the next change
+const masterGains = new Set<GainNode>();
+let masterVolume = 1;
+
+/**
+ * Master volume for every Web Audio sound: each AudioContext created after
+ * this (Howler's and the synthesized click/error tones) routes its
+ * destination through one master GainNode. HTML audio (the music) applies
+ * the master volume itself.
+ */
+export function installMasterGain(target: {
+  AudioContext?: typeof AudioContext;
+}): void {
+  const Native = target.AudioContext;
+  if (Native === undefined) return;
+  class MasterAudioContext extends Native {
+    readonly #master: GainNode;
+    constructor(options?: AudioContextOptions) {
+      super(options);
+      this.#master = this.createGain();
+      this.#master.gain.value = masterVolume;
+      this.#master.connect(super.destination);
+      masterGains.add(this.#master);
+    }
+    // oxlint-disable-next-line typescript/class-literal-property-style -- forwards to the master gain
+    override get destination(): AudioDestinationNode {
+      return this.#master as unknown as AudioDestinationNode;
+    }
   }
+  target.AudioContext = MasterAudioContext;
+}
+
+export function applyMasterVolume(volume: number): void {
+  masterVolume = volume;
+  for (const g of masterGains) g.gain.value = volume;
 }
 
 let installed = false;
@@ -93,18 +119,13 @@ export function installSteamGameSettings(): void {
   };
   document.addEventListener("pointerdown", onGesture, true);
   document.addEventListener("keydown", onGesture, true);
-  // after the sound controller's own soundVolume handler
-  configEvent.subscribe(({ key }) => {
-    if (key === "soundVolume") {
-      setTimeout(() => void applyMasterVolume(settings().masterVolume), 0);
-    }
-  });
+  installMasterGain(window);
   createRoot(() => {
     createEffect(() => {
       const s = settings();
       applyUiScale(s.uiScale);
       applyReducedMotion(s.reducedMotion);
-      void applyMasterVolume(s.masterVolume);
+      applyMasterVolume(s.masterVolume);
       steamMusic.update(s);
     });
     createEffect(() => {
