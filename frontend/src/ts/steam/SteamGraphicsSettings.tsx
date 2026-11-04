@@ -88,6 +88,8 @@ export function SteamGraphicsSettings(): JSXElement {
         inputs={
           <Choice
             id="steam-fps-cap"
+            // 5 options: 3 + (2 with "unlimited" filling the row)
+            columns={3}
             options={FPS_CAPS.map((v) => ({
               value: v,
               text: v === 0 ? "unlimited" : String(v),
@@ -105,6 +107,8 @@ export function SteamGraphicsSettings(): JSXElement {
         inputs={
           <Choice
             id="steam-ui-scale"
+            // 6 options: two even rows of 3 (QA PR30-SCALE-ORPHAN)
+            columns={3}
             options={UI_SCALES.map((v) => ({ value: v, text: pct(v) }))}
             selected={g().uiScale}
             onSelect={(uiScale) => set((s) => ({ ...s, uiScale }))}
