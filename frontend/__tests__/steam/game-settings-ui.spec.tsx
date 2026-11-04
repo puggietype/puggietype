@@ -289,7 +289,13 @@ describe("steam settings page", () => {
       </>
     )).container;
     const { focusables } = await import("../../src/ts/steam/gamepad-nav");
+    // jsdom has no layout; everything here is rendered
+    const proto = HTMLElement.prototype as unknown as {
+      checkVisibility?: () => boolean;
+    };
+    proto.checkVisibility = (): boolean => true;
     const list = focusables(root);
+    delete proto.checkVisibility;
     expect(list.length).toBeGreaterThan(25);
     for (const el of list) {
       expect(["BUTTON", "INPUT", "A"]).toContain(el.tagName);

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { actionOf, focusables, perform } from "../../src/ts/steam/gamepad-nav";
 import {
@@ -70,7 +70,60 @@ describe("resolution", () => {
   });
 });
 
+// jsdom has no layout: an element counts as rendered unless it or an
+// ancestor is display:none (what checkVisibility reports in Chromium)
+function stubVisibility(): () => void {
+  const proto = HTMLElement.prototype as unknown as {
+    checkVisibility?: (o?: unknown) => boolean;
+  };
+  const had = Object.prototype.hasOwnProperty.call(proto, "checkVisibility");
+  const prev = proto.checkVisibility;
+  proto.checkVisibility = function (this: HTMLElement): boolean {
+    for (let e: HTMLElement | null = this; e; e = e.parentElement) {
+      if (e.style.display === "none") return false;
+    }
+    return true;
+  };
+  return () => {
+    if (had) proto.checkVisibility = prev;
+    else delete proto.checkVisibility;
+  };
+}
+
 describe("controller navigation", () => {
+  let restore: () => void = () => undefined;
+  beforeEach(() => {
+    restore = stubVisibility();
+  });
+  afterEach(() => restore());
+
+  it("skips controls that are not rendered (hidden panels) and never gets stuck (QA PR30-PAD-STUCK)", () => {
+    document.body.innerHTML = `
+      <button id="a">a</button>
+      <div style="display: none"><button id="h1">x</button><button id="h2">y</button></div>
+      <button id="b">b</button>
+      <button id="top" style="display: none">scroll to top</button>`;
+    expect(focusables().map((e) => e.id)).toEqual(["a", "b"]);
+    const seen: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      perform("next");
+      seen.push(document.activeElement?.id ?? "");
+    }
+    expect(seen).toEqual(["a", "b", "a", "b", "a", "b"]);
+  });
+
+  it("moves on when a control refuses focus", () => {
+    document.body.innerHTML = `<button id="a">a</button><button id="stuck">s</button><button id="b">b</button>`;
+    const stuck = document.getElementById("stuck") as HTMLButtonElement;
+    stuck.focus = (): void => undefined;
+    perform("next");
+    expect(document.activeElement?.id).toBe("a");
+    perform("next");
+    expect(document.activeElement?.id).toBe("b");
+    perform("prev");
+    expect(document.activeElement?.id).toBe("a");
+  });
+
   const pad = (
     pressed: number[] = [],
     axes: number[] = [0, 0],

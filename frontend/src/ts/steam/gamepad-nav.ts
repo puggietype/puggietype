@@ -10,12 +10,25 @@ export type NavAction = "prev" | "next" | "left" | "right" | "press" | "back";
 const FOCUSABLE =
   'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
+/**
+ * Rendered on screen (QA PR30-PAD-STUCK): not display:none, not inside a
+ * hidden settings panel, not visibility:hidden. Uses checkVisibility where
+ * the engine has it (Chromium/Electron), else the element's layout boxes.
+ */
+export function isRendered(el: HTMLElement): boolean {
+  if (typeof el.checkVisibility === "function") {
+    return el.checkVisibility({ visibilityProperty: true });
+  }
+  return el.getClientRects().length > 0;
+}
+
 export function focusables(root: ParentNode = document): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
     (el) =>
       el.hidden !== true &&
       el.getAttribute("aria-hidden") !== "true" &&
-      el.closest("[hidden], [inert]") === null,
+      el.closest("[hidden], [inert]") === null &&
+      isRendered(el),
   );
 }
 
@@ -71,14 +84,20 @@ export function perform(action: NavAction, doc: Document = document): void {
   if (list.length === 0) return;
   const i = active === null ? -1 : list.indexOf(active);
   const forward = action === "next" || action === "right";
-  const next =
-    i === -1
-      ? forward
-        ? list[0]
-        : list[list.length - 1]
-      : list[(i + (forward ? 1 : -1) + list.length) % list.length];
-  next?.focus();
-  next?.scrollIntoView?.({ block: "nearest" });
+  const step = forward ? 1 : -1;
+  let at = i === -1 ? (forward ? -1 : list.length) : i;
+  // Advance until focus really moves: a control can still refuse focus
+  // (e.g. disabled or removed meanwhile). Each candidate is tried once.
+  for (const _ of list) {
+    at = (at + step + list.length) % list.length;
+    const candidate = list[at];
+    if (candidate === undefined || candidate === active) continue;
+    candidate.focus();
+    if (doc.activeElement === candidate) {
+      candidate.scrollIntoView?.({ block: "nearest" });
+      return;
+    }
+  }
 }
 
 const REPEAT_FIRST_MS = 400;

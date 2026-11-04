@@ -7,6 +7,8 @@ import { Choice, ON_OFF, set } from "./Choice";
 import { getSteamSettings } from "./game-settings";
 import { MUSIC_TRACKS, type SteamSettings } from "./settings-store";
 
+const pct = (v: number): string => `${Math.round(v * 100)}%`;
+
 /** Steam-only Sound settings: master volume and background music. */
 export function SteamSoundSettings(): JSXElement {
   const music = (): SteamSettings["music"] => getSteamSettings().music;
@@ -21,17 +23,19 @@ export function SteamSoundSettings(): JSXElement {
         description="Scales the music and the typing sounds together."
         fa={{ icon: "fa-volume-up" }}
         inputs={
-          <Slider
-            label="master volume"
-            min={0}
-            max={1}
-            step={0.1}
-            text={(v) => v.toFixed(1)}
-            value={getSteamSettings().masterVolume}
-            onEveryChange={(masterVolume) =>
-              set((s) => ({ ...s, masterVolume }))
-            }
-          />
+          <div data-steam-slider>
+            <Slider
+              label="master volume"
+              min={0}
+              max={1}
+              step={0.05}
+              text={pct}
+              value={getSteamSettings().masterVolume}
+              onEveryChange={(masterVolume) =>
+                set((s) => ({ ...s, masterVolume }))
+              }
+            />
+          </div>
         }
       />
       <SearchableSetting
@@ -40,15 +44,17 @@ export function SteamSoundSettings(): JSXElement {
         description="Volume of the typing and error sounds."
         fa={{ icon: "fa-keyboard" }}
         inputs={
-          <Slider
-            label="sound effects volume"
-            min={0}
-            max={1}
-            step={0.05}
-            text={(v) => `${Math.round(v * 100)}%`}
-            value={getSteamSettings().sfxVolume}
-            onEveryChange={(sfxVolume) => set((s) => ({ ...s, sfxVolume }))}
-          />
+          <div data-steam-slider>
+            <Slider
+              label="sound effects volume"
+              min={0}
+              max={1}
+              step={0.05}
+              text={pct}
+              value={getSteamSettings().sfxVolume}
+              onEveryChange={(sfxVolume) => set((s) => ({ ...s, sfxVolume }))}
+            />
+          </div>
         }
       />
       <SearchableSetting
@@ -79,15 +85,17 @@ export function SteamSoundSettings(): JSXElement {
               selected={music().enabled}
               onSelect={(enabled) => setMusic({ enabled })}
             />
-            <Slider
-              label="music volume"
-              min={0}
-              max={1}
-              step={0.05}
-              text={(v) => `${Math.round(v * 100)}%`}
-              value={music().volume}
-              onEveryChange={(volume) => setMusic({ volume })}
-            />
+            <div data-steam-slider>
+              <Slider
+                label="music volume"
+                min={0}
+                max={1}
+                step={0.05}
+                text={pct}
+                value={music().volume}
+                onEveryChange={(volume) => setMusic({ volume })}
+              />
+            </div>
           </div>
         }
       />
