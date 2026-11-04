@@ -26,11 +26,20 @@ export type SteamSignIn = {
   ownsApp: boolean;
   /** persona name if it passes the web name filter and is not hidden */
   displayName: string | null;
+  /**
+   * persona name if it passes the web name filter, before the hide setting,
+   * so the UI can re-apply the hide toggle without signing in again. Memory
+   * only; never stored.
+   */
+  personaName: string | null;
 };
 
 export type SteamSignInError =
   | "unavailable"
   | "cancelled"
+  | "timeout"
+  | "busy"
+  | "feature_off"
   | "not_verified"
   | "steam_unavailable"
   | "network";
@@ -73,8 +82,18 @@ export async function signInWithSteam(deps: {
 > {
   const steam = deps.bridge?.steam;
   if (!steam) return { ok: false, error: "unavailable" };
-  const response = await steam.signIn();
+  let response: Awaited<ReturnType<typeof steam.signIn>>;
+  try {
+    response = await steam.signIn();
+  } catch {
+    return { ok: false, error: "cancelled" };
+  }
   if (response === null) return { ok: false, error: "cancelled" };
+  if ("error" in response) {
+    if (response.error === "timeout") return { ok: false, error: "timeout" };
+    if (response.error === "busy") return { ok: false, error: "busy" };
+    return { ok: false, error: "cancelled" };
+  }
   const doFetch = deps.fetch ?? fetch;
   let status: number;
   let body: unknown;
@@ -88,6 +107,8 @@ export async function signInWithSteam(deps: {
       },
     );
     status = res.status;
+    // 404: the server runs without FEATURE_STEAM_AUTH (no /steam/auth route)
+    if (status === 404) return { ok: false, error: "feature_off" };
     body = await res.json();
   } catch {
     return { ok: false, error: "network" };
@@ -112,6 +133,10 @@ export async function signInWithSteam(deps: {
       displayName: steamDisplayName(
         typeof r.personaName === "string" ? r.personaName : null,
         isSteamNameHidden(deps.storage),
+      ),
+      personaName: steamDisplayName(
+        typeof r.personaName === "string" ? r.personaName : null,
+        false,
       ),
     },
   };
