@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createSignal } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,7 @@ import {
   BackgroundMusic,
   BG_MUSIC_SRC,
   BG_MUSIC_STORAGE_KEY,
+  BG_MUSIC_TRACKS,
   type BgMusicAudio,
   type BgMusicSettings,
   type BgMusicStore,
@@ -115,15 +116,98 @@ describe("background music preferences", () => {
     });
   });
 
-  it("ships no audio file", () => {
-    expect(BG_MUSIC_SRC).toBeNull();
-    const source = readFileSync(
-      path.resolve(__dirname, "../../src/ts/controllers/background-music.ts"),
+  it("web plays the two CC0 tracks from static/music, listed in SOURCES.md", () => {
+    expect(BG_MUSIC_TRACKS).toEqual([
+      "/music/sherwood.ogg",
+      "/music/calm-theme.ogg",
+    ]);
+    expect(BG_MUSIC_SRC).toBe("/music/sherwood.ogg");
+    const sources = readFileSync(
+      path.resolve(__dirname, "../../static/music/SOURCES.md"),
       "utf8",
     );
-    expect(source).toMatch(/TODO:/);
-    expect(source).toMatch(/Monkeytype/);
-    expect(source).not.toMatch(/fetch\(|sendBeacon|gtag\(/);
+    for (const t of BG_MUSIC_TRACKS) {
+      const file = t.replace("/music/", "");
+      expect(
+        existsSync(path.resolve(__dirname, "../../static/music", file)),
+      ).toBe(true);
+      expect(sources).toMatch(
+        new RegExp(`\\| ${file} \\|[^\\n]*\\| CC0 1\\.0 \\|`),
+      );
+    }
+  });
+
+  it("off by default on web", () => {
+    expect(DEFAULT_BG_MUSIC.enabled).toBe(false);
+    expect(readBgMusicSettings(null).enabled).toBe(false);
+  });
+
+  it("plays the tracks one after another, and fetches nothing until on and a gesture", () => {
+    let stored = { ...DEFAULT_BG_MUSIC };
+    const audios: {
+      src: string;
+      loop: boolean;
+      volume: number;
+      paused: boolean;
+      plays: number;
+      ended?: () => void;
+      play: () => Promise<void>;
+      pause: () => void;
+      addEventListener: (t: "ended", l: () => void) => void;
+    }[] = [];
+    const createAudio = vi.fn((src: string) => {
+      const a = {
+        src,
+        loop: true,
+        volume: 1,
+        paused: true,
+        plays: 0,
+        ended: undefined as (() => void) | undefined,
+        play: async function (this: { paused: boolean; plays: number }) {
+          this.paused = false;
+          this.plays++;
+        },
+        pause: function (this: { paused: boolean }) {
+          this.paused = true;
+        },
+        addEventListener: function (
+          this: { ended?: () => void },
+          _t: "ended",
+          l: () => void,
+        ) {
+          this.ended = l;
+        },
+      };
+      audios.push(a);
+      return a;
+    });
+    const player = new BackgroundMusic({
+      store: {
+        get: () => stored,
+        set: (v) => (stored = v),
+        remove: () => undefined,
+      },
+      getPathname: () => "/",
+      createAudio,
+      src: BG_MUSIC_TRACKS[0] ?? null,
+      tracks: BG_MUSIC_TRACKS,
+    });
+    player.noteUserGesture();
+    expect(createAudio).not.toHaveBeenCalled();
+    player.setEnabled(true);
+    expect(stored.enabled).toBe(true);
+    const a = audios[0];
+    if (a === undefined) throw new Error("no audio");
+    expect(a.src).toBe("/music/sherwood.ogg");
+    expect(a.loop).toBe(false);
+    a.paused = true;
+    a.ended?.();
+    expect(a.src).toBe("/music/calm-theme.ogg");
+    expect(a.paused).toBe(false);
+    a.paused = true;
+    a.ended?.();
+    expect(a.src).toBe("/music/sherwood.ogg");
+    expect(createAudio).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -558,5 +642,79 @@ describe("saved background music", () => {
     expect(gestures).toHaveLength(0);
     setBgMusicEnabled(true);
     expect(AudioSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("web music: platform and autoplay", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("the steam build gets no web tracks (it has its own player, on at 35%)", async () => {
+    vi.resetModules();
+    vi.stubGlobal("__PLATFORM__", "steam");
+    const m = await import("../../src/ts/controllers/background-music");
+    expect(m.BG_MUSIC_TRACKS).toEqual([]);
+    expect(m.BG_MUSIC_SRC).toBeNull();
+    const steam = await import("../../src/ts/steam/settings-store");
+    expect(steam.DEFAULT_STEAM_SETTINGS.music).toMatchObject({
+      enabled: true,
+      volume: 0.35,
+    });
+  });
+
+  it("a blocked play() stays silent: no console error, no throw", async () => {
+    const m = await import("../../src/ts/controllers/background-music");
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    let stored = { enabled: true, volume: 0.5 };
+    const player = new m.BackgroundMusic({
+      store: {
+        get: () => stored,
+        set: (v) => (stored = v),
+        remove: () => undefined,
+      },
+      getPathname: () => "/",
+      createAudio: (src) => ({
+        src,
+        loop: false,
+        volume: 1,
+        paused: true,
+        play: async () => {
+          throw new DOMException("not allowed", "NotAllowedError");
+        },
+        pause: () => undefined,
+      }),
+      src: m.BG_MUSIC_TRACKS[0] ?? null,
+      tracks: m.BG_MUSIC_TRACKS,
+    });
+    expect(() => player.noteUserGesture()).not.toThrow();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it("creates no audio element and fetches nothing before a gesture, even when on", async () => {
+    const m = await import("../../src/ts/controllers/background-music");
+    const createAudio = vi.fn();
+    const player = new m.BackgroundMusic({
+      store: {
+        get: () => ({ enabled: true, volume: 0.5 }),
+        set: () => undefined,
+        remove: () => undefined,
+      },
+      getPathname: () => "/",
+      createAudio,
+      src: m.BG_MUSIC_TRACKS[0] ?? null,
+      tracks: m.BG_MUSIC_TRACKS,
+    });
+    player.setPlaybackSuspended({
+      testActive: false,
+      raceActive: false,
+      documentHidden: false,
+    });
+    expect(createAudio).not.toHaveBeenCalled();
   });
 });
