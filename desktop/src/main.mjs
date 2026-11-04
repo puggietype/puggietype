@@ -544,6 +544,18 @@ async function runSettingsSmoke(win) {
       const lines = new Set([...r.getClientRects()].map((x) => Math.round(x.top)));
       return lines.size > 1 || b.scrollWidth > b.clientWidth;
     }).map((b) => b.textContent)`);
+    // every option row is full or evenly split: no lone option on the
+    // last row (QA PR30-SCALE-ORPHAN)
+    out.orphans =
+      await js(`[...document.querySelectorAll("[data-steam-choice]")].filter((g) => {
+      const rows = new Map();
+      for (const b of g.children) {
+        const top = Math.round(b.getBoundingClientRect().top);
+        rows.set(top, (rows.get(top) ?? 0) + 1);
+      }
+      const counts = [...rows.values()];
+      return counts.length > 1 && counts[counts.length - 1] === 1;
+    }).map((g) => g.dataset.testid)`);
     out.percent = await js(
       `[...document.querySelectorAll('[data-testid="steam-sound"] [data-steam-slider] > div > div:first-child')].map((d) => d.textContent)`,
     );
@@ -563,6 +575,7 @@ async function runSettingsSmoke(win) {
       out.soundInView === true &&
       out.musicDefault === "on" &&
       out.wrapped.length === 0 &&
+      out.orphans.length === 0 &&
       out.percent.length === 3 &&
       out.percent.every((t) => /^\d+%$/.test(t)) &&
       out.padSettings.stuck === 0 &&

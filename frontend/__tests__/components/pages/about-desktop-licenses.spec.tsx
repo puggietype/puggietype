@@ -94,10 +94,27 @@ describe("About: music credits (Legal, PR #30)", () => {
     expect(
       norm(el.querySelector('[data-testid="music-credits"]')?.textContent),
     ).toBe(CREDIT);
+    expect(el.querySelectorAll('[data-testid="music-credits"]')).toHaveLength(
+      1,
+    );
   });
 
-  it("web: no music credit", async () => {
+  it("web: the same music credit, once, right after the quote credits", async () => {
     const el = await renderAbout();
-    expect(el.querySelector('[data-testid="music-credits"]')).toBeNull();
+    const credits = el.querySelectorAll('[data-testid="music-credits"]');
+    expect(credits).toHaveLength(1);
+    expect(norm(credits[0]?.textContent)).toBe(CREDIT);
+    expect(
+      credits[0]?.previousElementSibling?.getAttribute("data-testid"),
+    ).toBe("quote-credits");
+  });
+
+  it("steam: right after the quote credits too", async () => {
+    vi.stubGlobal("__PLATFORM__", "steam");
+    const el = await renderAbout();
+    const credit = el.querySelector('[data-testid="music-credits"]');
+    expect(credit?.previousElementSibling?.getAttribute("data-testid")).toBe(
+      "quote-credits",
+    );
   });
 });

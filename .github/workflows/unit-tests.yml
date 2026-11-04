@@ -33,5 +33,6 @@ jobs:
       # electron 45 has no postinstall: fetch the binary explicitly, then
       # fail if it is missing
       - run: npx install-electron --no
-      - run: test -x "$(node -p 'require("electron")')"
+      # check the path without require("electron"), which would download it
+      - run: test -x "node_modules/electron/dist/$(cat node_modules/electron/path.txt)"
       - run: npm test

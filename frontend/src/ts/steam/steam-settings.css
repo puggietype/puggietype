@@ -8,6 +8,17 @@
 [data-steam-choice="wide"] {
   grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
 }
+/* fixed columns: no option left alone on the last row (QA PR30-SCALE-ORPHAN) */
+[data-steam-choice][data-steam-cols="2"] {
+  grid-template-columns: repeat(2, minmax(5.5rem, 1fr));
+}
+[data-steam-choice][data-steam-cols="3"] {
+  grid-template-columns: repeat(3, minmax(5.5rem, 1fr));
+}
+/* 3n+2 options (e.g. 5 frame-rate caps): the last one fills the row */
+[data-steam-choice][data-steam-cols="3"] > :last-child:nth-child(3n + 2) {
+  grid-column: span 2;
+}
 [data-steam-choice] > button {
   white-space: nowrap;
   padding-inline: 0.75rem;
