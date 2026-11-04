@@ -203,3 +203,39 @@ export function isPermissionAllowed(permission, requestingUrl) {
     ALLOWED_PERMISSIONS.has(permission) && isInternalUrl(requestingUrl ?? "")
   );
 }
+
+// ---------------------------------------------------------------- licenses
+// GPL-3.0 bundling: the packaged app ships the license texts and a source
+// offer under app://puggietype/legal/ (see scripts/package.mjs). The About
+// screen links there; those links open in a small read-only window.
+export const LEGAL_PATH = "/legal/";
+export const LEGAL_FILES = [
+  "LICENSE.txt",
+  "NOTICE.txt",
+  "ELECTRON-LICENSE.txt",
+  "LICENSES.chromium.html",
+  "SOURCE.txt",
+  "DLC-ASSETS-LICENSE.txt",
+];
+
+export function isLegalUrl(target) {
+  if (!isInternalUrl(target)) return false;
+  const { pathname } = new URL(target);
+  return LEGAL_FILES.some((f) => pathname === LEGAL_PATH + f);
+}
+
+/** Options for the license viewer: no preload, sandboxed, isolated. */
+export function legalWindowOptions() {
+  return {
+    width: 900,
+    height: 700,
+    autoHideMenuBar: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      spellcheck: false,
+    },
+  };
+}
