@@ -5,8 +5,9 @@
  *
  * 1. keyword: the source says "lyrics", or credits a featured artist
  *    ("ft." / "feat."), the usual "Song, Artist ft. Artist" form;
- * 2. artist: the source names a recording artist from LYRIC_ARTISTS, as
- *    "Artist - Title", "Title - Artist", "Title, Artist" or "Title by Artist";
+ * 2. artist: the source names a musical artist from LYRIC_ARTISTS, bare
+ *    ("The Beatles") or as "Artist - Title", "Title - Artist", "Title, Artist"
+ *    or "Title by Artist";
  * 3. title: the whole source (case-insensitive) is a song title from
  *    LYRIC_SOURCES, reviewed against the quote text (a source whose quotes
  *    read like a book or film line was left out).
@@ -126,6 +127,32 @@ export const LYRIC_ARTISTS: readonly string[] = [
   "watsky",
   "ween",
   "yo la tengo",
+  // bare musician/composer names used as a source (Legal: any source naming
+  // a musical artist is dropped)
+  "adam young",
+  "alan walker",
+  "billie joe armstrong",
+  "bo burnham",
+  "chet atkins",
+  "corey taylor",
+  "dolly parton",
+  "edward elgar",
+  "giuseppe tartini",
+  "igor stravinsky",
+  "john cage",
+  "julie andrews",
+  "koe wetzel",
+  "kurt cobain",
+  "leonard bernstein",
+  "leopold stokowski",
+  "maurice ravel",
+  "rick rubin",
+  "sleep token",
+  "they might be giants",
+  "tool",
+  "touche amore",
+  "wolfgang amadeus mozart",
+  "zack de la rocha",
   // vietnamese
   "đen",
   "đen vâu",
@@ -266,6 +293,7 @@ export const LYRIC_SOURCES: readonly string[] = [
   "eulogy for a rock band",
   "every breath you take",
   "every day is like sunday",
+  "every single night",
   "everlong",
   "everybody's dancing and i want to die",
   "everything stays",
@@ -594,6 +622,7 @@ export const LYRIC_SOURCES: readonly string[] = [
   "the ship song",
   "the show must go on",
   "the sign",
+  "the song of the count",
   "the sore feet song",
   "the sound of silence",
   "the spirit of radio",
@@ -695,8 +724,12 @@ export function lyricMatch(source: string | undefined): LyricMatch {
     return "keyword";
   }
   if (SOURCE_SET.has(normalized)) return "title";
+  // a bare artist name, or an artist in any credit part
   const parts = creditParts(normalized);
-  if (parts.length > 1 && parts.some((part) => ARTIST_SET.has(part))) {
+  if (
+    ARTIST_SET.has(normalized) ||
+    parts.some((part) => ARTIST_SET.has(part))
+  ) {
     return "artist";
   }
   return null;

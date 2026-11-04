@@ -27,9 +27,10 @@ field only (`src/ts/constants/lyric-quotes.ts`):
 
 1. **keyword:** the source contains "lyrics", "ft." or "feat." (a featured-artist credit).
    One book about lyric writing is excepted.
-2. **artist:** the source has a credit part ("A - B", "A, B", "A by B") equal to a listed
-   recording artist or musical (96 entries, e.g. Taylor Swift, Pink Floyd, Đen, Hamilton).
-3. **title:** the whole source matches a listed song title (531 English entries). The list
+2. **artist:** the source names a listed musical artist, either bare ("The Beatles", "Kurt Cobain")
+   or as a credit part ("A - B", "A, B", "A by B"). Legal's rule: any source naming a musical
+   artist is dropped, including musician and composer quotes that are not lyrics (120 entries).
+3. **title:** the whole source matches a listed song title (533 English entries). The list
    was built by reading every distinct English source (3,308) and, for generic titles
    ("Time", "Home", "She"), the quote text. Titles whose quotes read as prose (books, films)
    were left out.
@@ -39,8 +40,9 @@ same quote objects, so the kept quotes' `source` fields are unchanged. Steam bui
 twice: the build output's `quotes/*.json` are rewritten without lyric quotes, and
 `QuotesController` filters at load time.
 
-**Result:** 895 of 15,828 quotes are dropped (english 873, vietnamese 15, romanian 5,
-french 1, indonesian 1). By rule: title 710, artist 172, keyword 13. A test pins these numbers.
+**Result:** 929 of 15,828 quotes are dropped (english 906, vietnamese 15, romanian 5,
+french 2, indonesian 1). A test pins the total. Legal's regression sources are tested
+individually, and the kept sources containing "song" are listed for review in the PR.
 
 **Limits:** the method is biased toward dropping. A false positive only removes a quote from
 the steam pool. Song lyrics credited only by an unlisted, unusual title, or in a language other
@@ -52,6 +54,5 @@ before release. A curated or public-domain quote set stays the safer long-term o
 The About page (web and steam) adds:
 
 - "email support@puggietype.com to report a quote" (Legal's takedown wording, mailto link);
-- a quote credits line, `QUOTE_CREDITS_LINE` in `src/ts/constants/quote-credits.ts`.
-  **This is a PLACEHOLDER**: the ruling memo has no credits wording for quotes. Legal needs
-  to supply the exact line.
+- the quote credits line from Legal's PR #16 review, `QUOTE_CREDITS_LINE` in
+  `src/ts/constants/quote-credits.ts`.

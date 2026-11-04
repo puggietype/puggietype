@@ -73,6 +73,57 @@ describe("lyric quote detection", () => {
     expect(quotes).toHaveLength(2);
   });
 
+  it("drops Legal's regression sources (all present in english.json)", () => {
+    const english = new Set(loadQuotes("english").map((q) => q.source));
+    for (const source of [
+      "The End - The Beatles",
+      "Cardigan, Taylor Swift",
+      "Champagne Problems, Taylor Swift",
+      "The Beatles, Come Together",
+      "Taylor Swift - Marjorie",
+      "The Beatles - A Day in the Life",
+      "The Real Slim Shady - Eminem",
+      "Bob Dylan, John Brown",
+      "Kanye West - Violent Crimes",
+      "All Too Well, Taylor Swift",
+      "The Logical Song",
+      "The Lazy Song",
+      "Love You Like a Love Song",
+      "Fresh Prince of Bel Air (Theme Song)",
+      "Adam's Song",
+      "Kathy's Song",
+      "The Ship Song",
+      "Every Single Night",
+      "The Beatles",
+    ]) {
+      expect(english.has(source), source).toBe(true);
+      expect(isSongLyricQuote({ source }, "english"), source).toBe(true);
+    }
+  });
+
+  it("drops bare musical artist names", () => {
+    for (const source of [
+      "The Beatles",
+      "Taylor Swift",
+      "Kurt Cobain",
+      "John Lennon",
+    ]) {
+      expect(isSongLyricQuote({ source }, "english"), source).toBe(true);
+    }
+  });
+
+  it("keeps a novel and a non-lyric Swan Song", () => {
+    expect(
+      isSongLyricQuote({ source: "The Song of Achilles" }, "english"),
+    ).toBe(false);
+    const swan = loadQuotes("english").filter((q) => q.source === "Swan Song");
+    expect(swan).toHaveLength(1);
+    expect(swan[0]?.text).toMatch(/^We all start out knowing magic/);
+    expect(isSongLyricQuote({ source: swan[0]?.source }, "english")).toBe(
+      false,
+    );
+  });
+
   it("drops a known number of quotes from the shipped data", () => {
     let total = 0;
     let dropped = 0;
@@ -85,6 +136,6 @@ describe("lyric quote detection", () => {
       dropped += quotes.length - filterLyricQuotes(quotes, language).length;
     }
     // update together with docs/steam-asset-clearance.md when quotes change
-    expect({ total, dropped }).toEqual({ total: 15828, dropped: 895 });
+    expect({ total, dropped }).toEqual({ total: 15828, dropped: 929 });
   });
 });
