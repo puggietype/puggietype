@@ -29,7 +29,9 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: desktop/package-lock.json
-      # downloads the Electron binary (postinstall); fail if it is missing
       - run: npm ci
+      # electron 45 has no postinstall: fetch the binary explicitly, then
+      # fail if it is missing
+      - run: npx install-electron --no
       - run: test -x "$(node -p 'require("electron")')"
       - run: npm test
