@@ -160,16 +160,41 @@ describe("LeaderboardView", () => {
       }
       return { ...board(["RacePug"]), verified: true };
     });
-    const { findByText, getByTestId, queryByText } = render(() => (
-      <LeaderboardView variant="page" load={load} />
-    ));
+    const { findByText, getByTestId, queryByText, queryByTestId } = render(
+      () => <LeaderboardView variant="page" load={load} />,
+    );
     expect(await findByText("RacePug")).toBeTruthy();
     expect(queryByText("SoloPug")).toBeNull();
-    expect(getByTestId("lb-board-solo")).toHaveTextContent("Solo (unverified)");
+    expect(queryByTestId("lb-solo-note")).toBeNull();
+    expect(getByTestId("lb-board-solo")).toHaveTextContent(/^Solo$/);
+    expect(getByTestId("lb-board-race")).toHaveTextContent(/^Multiplayer$/);
     fireEvent.click(getByTestId("lb-board-solo"));
     expect(await findByText("SoloPug")).toBeTruthy();
     expect(queryByText("RacePug")).toBeNull();
+    expect(getByTestId("lb-solo-note")).toHaveTextContent(
+      "Solo scores are self-reported and checked for plausibility, not verified.",
+    );
     const urls = load.mock.calls.map((call) => call[1].verified);
     expect(urls).toEqual([true, false]);
+  });
+
+  it("shows the Solo note as soon as the Solo tab is open, even before the board loads", async () => {
+    setServerFeatures(featuresOn);
+    const load = vi.fn<Load>(async (_base, query) => {
+      if (query.verified) return { ...board(["RacePug"]), verified: true };
+      return new Promise(() => undefined);
+    });
+    const { findByText, getByTestId, queryByTestId } = render(() => (
+      <LeaderboardView variant="page" load={load} />
+    ));
+    expect(await findByText("RacePug")).toBeTruthy();
+    expect(queryByTestId("lb-solo-note")).toBeNull();
+    fireEvent.click(getByTestId("lb-board-solo"));
+    const note = getByTestId("lb-solo-note");
+    expect(note).toBeVisible();
+    expect(note.tagName).toBe("P");
+    expect(note).toHaveTextContent(
+      "Solo scores are self-reported and checked for plausibility, not verified.",
+    );
   });
 });

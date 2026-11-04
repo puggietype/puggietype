@@ -188,12 +188,8 @@ export function LeaderboardView(props: {
           <For
             each={
               [
-                { verified: true, label: "Race", id: "race" },
-                {
-                  verified: false,
-                  label: "Solo (unverified)",
-                  id: "solo",
-                },
+                { verified: true, label: "Multiplayer", id: "race" },
+                { verified: false, label: "Solo", id: "solo" },
               ] as const
             }
           >
@@ -429,6 +425,7 @@ export function LeaderboardView(props: {
                   <div class="overflow-x-auto rounded-lg bg-sub-alt">
                     <table class="w-full font-(--font)" data-testid="lb-table">
                       <caption class="sr-only">
+                        {board().verified === false ? "Solo" : "Multiplayer"}{" "}
                         {PERIOD_LABEL[board().period]} {board().mode}{" "}
                         {board().mode2} leaderboard
                       </caption>
@@ -526,6 +523,12 @@ export function LeaderboardView(props: {
                 </Show>
               </div>
             )}
+          </Show>
+          <Show when={!verified()}>
+            <p class="text-xs text-sub" data-testid="lb-solo-note">
+              Solo scores are self-reported and checked for plausibility, not
+              verified.
+            </p>
           </Show>
         </div>
       </section>

@@ -104,7 +104,7 @@ describe("parseLeaderboardBody", () => {
     expect(parseLeaderboardBody(rest)).toMatchObject({ endsAt: null });
   });
 
-  it("keeps a solo board off the race tab", () => {
+  it("keeps a Solo board off the Multiplayer tab", () => {
     expect(leaderboardMatchesBoard({ verified: false }, true)).toBe(false);
     expect(leaderboardMatchesBoard({ verified: false }, false)).toBe(true);
     expect(leaderboardMatchesBoard({ verified: true }, true)).toBe(true);
@@ -471,7 +471,7 @@ describe("leaderboard consent message", () => {
     expect(soloAdvanceLabel("retry", false)).toBe("Retry saving result");
   });
 
-  it("hides the race board for a kids-guide session", () => {
+  it("hides the compact Multiplayer board for a kids-guide session", () => {
     expect(
       showRaceLeaderboard({
         leaderboards: true,
