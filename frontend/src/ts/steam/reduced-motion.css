@@ -1,0 +1,94 @@
+/*
+ * Steam "reduced motion" setting: html.reduce-motion mirrors the app's
+ * prefers-reduced-motion rules (styles/media-queries.scss, test.scss,
+ * pug-fast.scss and the motion-safe/motion-reduce utilities). Loaded only
+ * by the steam game settings module, so the web CSS is unchanged.
+ * Keep in sync with those rules.
+ */
+html.reduce-motion
+  body:not(.ignore-reduced-motion)
+  *:not(
+    .fa-spin,
+    .animate-\[loader\],
+    .preloader,
+    .typed-effect-fade .word.typed
+  ),
+html.reduce-motion
+  body:not(.ignore-reduced-motion)
+  *:not(
+    .fa-spin,
+    .animate-\[loader\],
+    .preloader,
+    .typed-effect-fade .word.typed
+  )::after,
+html.reduce-motion
+  body:not(.ignore-reduced-motion)
+  *:not(
+    .fa-spin,
+    .animate-\[loader\],
+    .preloader,
+    .typed-effect-fade .word.typed
+  )::before {
+  animation: none !important;
+  transition: none !important;
+}
+
+html.reduce-motion {
+  scroll-behavior: auto !important;
+}
+
+html.reduce-motion
+  #words.typed-effect-dots:not(.joiningScript)
+  .word.typed
+  letter,
+html.reduce-motion
+  #words.typed-effect-dots.joiningScript
+  .word.broken-joining.typed
+  letter {
+  animation: none !important;
+  transform: scale(0.4);
+  color: transparent;
+}
+
+html.reduce-motion
+  #words.typed-effect-dots:not(.joiningScript)
+  .word.typed
+  letter::after,
+html.reduce-motion
+  #words.typed-effect-dots.joiningScript
+  .word.broken-joining.typed
+  letter::after {
+  animation: none !important;
+  opacity: 1;
+}
+
+html.reduce-motion .pug-fast {
+  transition: none;
+}
+
+html.reduce-motion .pug-steam {
+  display: none;
+}
+
+/* tailwind motion-safe:* / motion-reduce:* utilities */
+html.reduce-motion .motion-safe\:animate-pulse {
+  animation: none;
+}
+
+html.reduce-motion .motion-reduce\:flex {
+  display: flex;
+}
+
+/* animation quality "off": every CSS animation and transition finishes at
+   once. Near-zero durations, not "none", so animationend / transitionend
+   still fire (the test page waits for them). */
+html.anim-off *,
+html.anim-off *::before,
+html.anim-off *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}

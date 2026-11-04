@@ -223,6 +223,48 @@ describe("Steam OpenID (M3)", async () => {
   });
 });
 
+describe("smoke-only settings screenshots", () => {
+  it("are gated on !app.isPackaged and PUGGIE_SMOKE_TEST=1", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(
+      new URL("../src/main.mjs", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      src,
+      /const smokeSettingsDir =\s*!app\.isPackaged && process\.env\["PUGGIE_SMOKE_TEST"\] === "1"/,
+    );
+  });
+});
+
+describe("smoke-only music check", () => {
+  it("is gated on !app.isPackaged, PUGGIE_SMOKE_TEST=1 and PUGGIE_SMOKE_MUSIC=1", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(
+      new URL("../src/main.mjs", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      src,
+      /const smokeMusic =\s*!app\.isPackaged &&\s*process\.env\["PUGGIE_SMOKE_TEST"\] === "1" &&\s*process\.env\["PUGGIE_SMOKE_MUSIC"\] === "1"/,
+    );
+  });
+});
+
+describe("app scheme privileges", () => {
+  it("allows streaming so <audio> music can play", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(
+      new URL("../src/main.mjs", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      src,
+      /registerSchemesAsPrivileged\(\[[\s\S]*?stream: true[\s\S]*?\]\)/,
+    );
+  });
+});
+
 describe("smoke-only Steam mocks (QA P3 SMOKE-PACKAGED)", () => {
   it("are gated on !app.isPackaged and PUGGIE_SMOKE_TEST=1", async () => {
     const { readFileSync } = await import("node:fs");

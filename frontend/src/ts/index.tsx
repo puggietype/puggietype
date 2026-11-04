@@ -1,6 +1,9 @@
 // Import sorting is disabled for this file (.oxfmtrc.json): many imports run
 // side effects on load, so their order matters.
 
+// steam: master gain before any AudioContext can exist (empty on web)
+import "./steam/early-audio";
+
 // register signal tracking hook before any signals are created
 import "./dev/signal-tracker";
 
@@ -110,6 +113,13 @@ if (__FEATURE_ACCOUNTS__) {
 }
 
 installBackgroundMusic();
+// steam flavor: UI scale, reduced motion, master volume and its own music
+// player (inline define check: nothing of this is in the web build)
+if (typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") {
+  void import("./steam/game-settings").then((m) => {
+    m.installSteamGameSettings();
+  });
+}
 bindBackgroundMusicHold({
   isTestActive,
   isRaceActive,

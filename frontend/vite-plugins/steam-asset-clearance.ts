@@ -15,6 +15,7 @@ import { filterLyricQuotes, QuoteLike } from "../src/ts/constants/lyric-quotes";
  * (static/ is copied verbatim by vite's publicDir):
  * - untraced sound packs (docs/sounds-SOURCES.md)
  * - song-lyric quotes (constants/lyric-quotes.ts)
+ * and, on the web build, the steam-only background music (static/music).
  */
 export function steamAssetClearance(options: {
   platform: "web" | "steam";
@@ -27,7 +28,11 @@ export function steamAssetClearance(options: {
       outDir = path.resolve(config.root, config.build.outDir);
     },
     closeBundle() {
-      if (options.platform !== "steam") return;
+      if (options.platform !== "steam") {
+        // background music (static/music) ships with the steam build only
+        rmSync(path.join(outDir, "music"), { recursive: true, force: true });
+        return;
+      }
       const removed = stripSteamAssets(outDir);
       console.log(
         `steam asset clearance: removed ${removed.sounds} sound paths, ${removed.quotes} lyric quotes`,

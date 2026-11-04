@@ -10,6 +10,13 @@ contextBridge.exposeInMainWorld("puggieDesktop", {
   ...(steamEnabled
     ? { steam: { signIn: () => ipcRenderer.invoke("steam:signin") } }
     : {}),
+  // Steam Graphics settings: display mode + resolution (VSync at launch)
+  display: {
+    apply: (settings) => {
+      const r = ipcRenderer.sendSync("display:apply", JSON.stringify(settings));
+      return { restartRequired: r?.restartRequired === true };
+    },
+  },
   fullscreen: {
     isFullscreen: () => ipcRenderer.sendSync("fullscreen:get") === true,
     toggle: () => ipcRenderer.send("fullscreen:toggle"),

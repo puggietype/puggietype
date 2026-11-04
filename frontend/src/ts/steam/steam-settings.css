@@ -1,0 +1,20 @@
+/* Steam settings layout (steam build only: imported by the lazy steam
+   settings modules, so none of it is in the web CSS). QA PR30-VISUAL. */
+
+/* option buttons never wrap their label and keep some room at the edges */
+[data-steam-choice] {
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+}
+[data-steam-choice="wide"] {
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+}
+[data-steam-choice] > button {
+  white-space: nowrap;
+  padding-inline: 0.75rem;
+  min-width: max-content;
+}
+
+/* slider value column fits "100%" */
+[data-steam-slider] > div {
+  grid-template-columns: 5ch 1fr;
+}

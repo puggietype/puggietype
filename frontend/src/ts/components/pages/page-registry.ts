@@ -17,7 +17,12 @@ function lazyPage<T extends Record<string, unknown>>(
 }
 
 const SettingsPage = lazyPage(
-  async () => import("./settings/SettingsPage"),
+  async () =>
+    // steam flavor: the shared page plus steam-only game settings. Inline
+    // define check so the web build keeps only the shared page.
+    typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
+      ? import("./settings/SteamSettingsPage")
+      : import("./settings/SettingsPage"),
   "SettingsPage",
 );
 const AboutPage = lazyPage(async () => import("./AboutPage"), "AboutPage");
