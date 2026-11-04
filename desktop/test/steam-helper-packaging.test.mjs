@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, it } from "node:test";
+import { after, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   assertNoSteamHelper,
@@ -18,8 +18,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 
+const temps = [];
+after(() => {
+  for (const d of temps) fs.rmSync(d, { recursive: true, force: true });
+});
 function dist(extra) {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), "pt-dist-"));
+  temps.push(d);
   fs.writeFileSync(path.join(d, "index.html"), "<!doctype html>");
   if (extra) {
     fs.mkdirSync(path.join(d, path.dirname(extra)), { recursive: true });
@@ -44,8 +49,31 @@ describe("steam ticket helper is never packaged", () => {
   });
   it("a clean package passes; a helper anywhere in it fails", () => {
     const out = fs.mkdtempSync(path.join(os.tmpdir(), "pt-pkg-"));
-    stagePackage({ distDir: dist(), outDir: out, commit: COMMIT });
-    assertNoSteamHelper(out);
+    const { app } = stagePackage({
+      distDir: dist(),
+      outDir: out,
+      commit: COMMIT,
+    });
+    const webDir = path.join(app, "web");
+    assertNoSteamHelper({ appDir: app, webDir });
+    // a later depot step may add the helper next to the app, outside the check
+    const depot = path.join(out, "resources", "steam-ticket-helper");
+    fs.mkdirSync(depot, { recursive: true });
+    fs.writeFileSync(path.join(depot, "steam-ticket-helper"), "x");
+    fs.writeFileSync(path.join(out, "steam_api64.dll"), "x");
+    assertNoSteamHelper({ appDir: app, webDir });
+    // but never inside the app folder or the web build
+    fs.writeFileSync(path.join(app, "src", "steam_api64.dll"), "x");
+    assert.throws(
+      () => assertNoSteamHelper({ appDir: app, webDir }),
+      /\(app\)/,
+    );
+    fs.rmSync(path.join(app, "src", "steam_api64.dll"));
+    fs.writeFileSync(path.join(webDir, "steam-ticket-helper"), "x");
+    assert.throws(
+      () => assertNoSteamHelper({ appDir: app, webDir }),
+      /must not be packaged/,
+    );
     for (const bad of [
       "steam-ticket-helper/steam-ticket-helper",
       "x/steam_api64.dll",

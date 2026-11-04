@@ -121,10 +121,22 @@ export function tagSteamBuild({ cwd, tag, commit, remote = "origin" }) {
 export const STEAM_HELPER_FILE_RX =
   /(^|\/)(steam-ticket-helper(\.exe)?|(lib)?steam_api(64)?\.(dll|so|dylib|lib)|steam_appid\.txt)$/i;
 
-export function assertNoSteamHelper(dir) {
-  for (const f of fs.readdirSync(dir, { recursive: true })) {
-    if (STEAM_HELPER_FILE_RX.test(String(f).split(path.sep).join("/"))) {
-      throw new Error(`Steam helper file must not be packaged: ${f}`);
+// Checks exactly two places, named: the staged app folder (what goes into
+// the asar) and the web build inside it. The future Steam depot step adds
+// resources/steam-ticket-helper/ and the steam_api redistributable AFTER
+// staging, as separate depot files outside these folders, so they are
+// deliberately outside this check.
+export function assertNoSteamHelper({ appDir, webDir }) {
+  for (const [label, dir] of [
+    ["app", appDir],
+    ["web build", webDir],
+  ]) {
+    for (const f of fs.readdirSync(dir, { recursive: true })) {
+      if (STEAM_HELPER_FILE_RX.test(String(f).split(path.sep).join("/"))) {
+        throw new Error(
+          `Steam helper file must not be packaged (${label}): ${f}`,
+        );
+      }
     }
   }
 }
@@ -205,7 +217,7 @@ export function stagePackage({
     if (!fs.existsSync(path.join(app, "web", "legal", f)))
       throw new Error(`not staged: ${f}`);
   }
-  assertNoSteamHelper(outDir);
+  assertNoSteamHelper({ appDir: app, webDir: path.join(app, "web") });
   return { app, legal: path.join(outDir, "legal") };
 }
 
