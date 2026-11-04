@@ -14,6 +14,7 @@
     "dep-graph": "madge -c -i \"dep-graph.png\" ./src/ts",
     "ts-check": "tsc --noEmit",
     "build": "node ../scripts/check-placeholders.mjs && npm run madge && vite build",
+    "build:steam": "PLATFORM=steam npm run build",
     "madge": " madge --circular --extensions ts ./src",
     "start": "vite preview --port 3000",
     "dev": "vite dev",

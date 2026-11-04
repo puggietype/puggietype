@@ -408,6 +408,12 @@ function getCssOptions({
   };
 }
 
+function parsePlatform(value: string | undefined): "web" | "steam" {
+  if (value === undefined || value === "" || value === "web") return "web";
+  if (value === "steam") return "steam";
+  throw new Error(`PLATFORM must be "web" or "steam", got "${value}"`);
+}
+
 export default defineConfig(({ mode }): UserConfig => {
   const env = loadEnv(mode, process.cwd(), "");
   const isDevelopment = mode !== "production";
@@ -424,6 +430,8 @@ export default defineConfig(({ mode }): UserConfig => {
   // no BACKEND_URL => no auth/api: swap the Firebase SDK for a stub and let
   // the minifier drop backend-only code (reCAPTCHA loader) behind __STANDALONE__
   const standalone = (env["BACKEND_URL"] ?? "") === "";
+  // PLATFORM=steam selects the desktop flavor; anything unset means web
+  const platform = parsePlatform(env["PLATFORM"]);
   const firebaseStub = path.resolve(
     __dirname,
     "src/ts/standalone/firebase-stub.ts",
@@ -431,7 +439,10 @@ export default defineConfig(({ mode }): UserConfig => {
 
   return {
     plugins: getPlugins({ isDevelopment, env }),
-    define: { __STANDALONE__: JSON.stringify(standalone) },
+    define: {
+      __STANDALONE__: JSON.stringify(standalone),
+      __PLATFORM__: JSON.stringify(platform),
+    },
     resolve: {
       alias: standalone
         ? [
