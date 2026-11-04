@@ -60,7 +60,7 @@ let store;
 // sign-in UI against a mocked Steam (no browser) and a mocked /steam/auth,
 // and save screenshots to <dir>. Ignored outside the smoke test.
 const smokeSteamUiDir =
-  process.env["PUGGIE_SMOKE_TEST"] === "1"
+  !app.isPackaged && process.env["PUGGIE_SMOKE_TEST"] === "1"
     ? process.env["PUGGIE_SMOKE_STEAM_UI"] || undefined
     : undefined;
 const SMOKE_OPENID = {
@@ -364,6 +364,24 @@ async function runSteamUiSmoke(win) {
     js(
       `(() => { const el = document.querySelector(${JSON.stringify(sel)}); if (el) el.click(); return el !== null; })()`,
     );
+  // Settings content above loads late and shifts the page, so scroll until
+  // the section heading stays near the top of the viewport.
+  const showSteamSection = () =>
+    js(`new Promise((res) => {
+      let n = 0;
+      const step = () => {
+        const sec = document.getElementById("group_steamAccount");
+        if (!sec) return res(false);
+        sec.scrollIntoView({ block: "start" });
+        setTimeout(() => {
+          const top = sec.getBoundingClientRect().top;
+          const ok = top >= 0 && top < 120;
+          if (ok || ++n > 20) return res(ok);
+          step();
+        }, 250);
+      };
+      step();
+    })`);
   const out = { ok: false, shots: [] };
   try {
     fs.mkdirSync(smokeSteamUiDir, { recursive: true });
@@ -386,11 +404,10 @@ async function runSteamUiSmoke(win) {
     }
     out.button = await waitFor("#steam-signin-button", true);
     if (!out.button) return { ...out, reason: "no sign-in button" };
-    await js(
-      `document.getElementById("group_steamAccount")?.scrollIntoView({ block: "start" })`,
-    );
+    out.inView = await showSteamSection();
     out.shots.push(await shot("signed-out.png"));
     await click("#steam-signin-button");
+    await showSteamSection();
     out.hint = await js(
       `document.getElementById("steam-signin-hint-text")?.textContent ?? null`,
     );
@@ -400,6 +417,7 @@ async function runSteamUiSmoke(win) {
     out.name = await js(
       `document.querySelector('[data-testid="steam-signin-name"]')?.textContent ?? null`,
     );
+    await showSteamSection();
     out.shots.push(await shot("signed-in.png"));
     await click("#steam-name-hidden-on");
     out.hiddenWorks = await waitFor('[data-testid="steam-signin-name"]', false);
@@ -409,7 +427,8 @@ async function runSteamUiSmoke(win) {
         "Steam will show this sign-in as coming from 127.0.0.1 (your own computer)." &&
       out.signedIn === true &&
       out.name === "PugFan" &&
-      out.hiddenWorks === true;
+      out.hiddenWorks === true &&
+      out.inView === true;
     return out;
   } catch (e) {
     return { ...out, reason: String(e) };
