@@ -191,6 +191,11 @@ export function AboutPage(): JSXElement {
                 />
                 .
               </p>
+              <p data-testid="music-credits">
+                {
+                  'music: "Sherwood" by Chris Murphy (zesona) and "calm theme" by pebonius (pebonius.itch.io), from OpenGameArt.org, released under CC0 1.0.'
+                }
+              </p>
               <p data-testid="valve-non-affiliation">
                 PuggieType is not affiliated with, endorsed or sponsored by
                 Valve Corporation. Steam and the Steam logo are trademarks

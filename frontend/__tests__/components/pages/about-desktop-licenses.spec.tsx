@@ -83,3 +83,21 @@ describe("About: desktop licenses and source (GPL bundling)", () => {
     expect(shell.LEGAL_FILES.map((f) => `/legal/${f}`)).toEqual(LEGAL);
   });
 });
+
+describe("About: music credits (Legal, PR #30)", () => {
+  const CREDIT =
+    'music: "Sherwood" by Chris Murphy (zesona) and "calm theme" by pebonius (pebonius.itch.io), from OpenGameArt.org, released under CC0 1.0.';
+
+  it("steam: shows the exact credit", async () => {
+    vi.stubGlobal("__PLATFORM__", "steam");
+    const el = await renderAbout();
+    expect(
+      norm(el.querySelector('[data-testid="music-credits"]')?.textContent),
+    ).toBe(CREDIT);
+  });
+
+  it("web: no music credit", async () => {
+    const el = await renderAbout();
+    expect(el.querySelector('[data-testid="music-credits"]')).toBeNull();
+  });
+});
