@@ -139,7 +139,7 @@ export function Button(props: ButtonProps | AnchorProps): JSXElement {
         rel={
           props["router-link"] || props.href?.startsWith("#")
             ? undefined
-            : "noreferrer noopener"
+            : "noopener noreferrer"
         }
         {...balloonHtmlProps()}
         {...(props.ariaLabel !== undefined

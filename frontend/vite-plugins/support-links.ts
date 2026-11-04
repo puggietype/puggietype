@@ -2,7 +2,11 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { Plugin } from "vite";
 
-import { SUPPORT_LINKS } from "../src/ts/constants/support";
+import {
+  SUPPORT_LINKS,
+  type SupportLinkConfig,
+  supportLinksEnabled,
+} from "../src/ts/constants/support";
 
 function footerPath(): string {
   const candidates = [
@@ -36,16 +40,24 @@ export function isTypingForKidsPage(filename: string): boolean {
 }
 
 /**
- * Fills `__KOFI_URL__` and `__SPONSORS_URL__` from `SUPPORT_LINKS`.
- * Inlines the shared footer if html-inject has not run yet, then strips the
- * support block from /guide/typing-for-kids so that page has no tip prompt.
+ * Fills `__KOFI_URL__` and `__SPONSORS_URL__` from `SUPPORT_LINKS` when both
+ * are non-empty. Otherwise every support block is removed. The kids guide
+ * never keeps a block. Inlines the shared footer if html-inject has not run.
  */
-export function applySupportHtml(html: string, filename: string): string {
+export function applySupportHtml(
+  html: string,
+  filename: string,
+  links: SupportLinkConfig = SUPPORT_LINKS,
+): string {
   const footer = readFileSync(footerPath(), "utf8");
   let next = html.replace(FOOTER_LOAD, () => footer);
+  const enabled = supportLinksEnabled(links);
+
+  if (!enabled || isTypingForKidsPage(filename)) {
+    next = next.replace(SUPPORT_BLOCK, "");
+  }
 
   if (isTypingForKidsPage(filename)) {
-    next = next.replace(SUPPORT_BLOCK, "");
     const leaked = KIDS_FORBIDDEN.filter((token) => next.includes(token));
     if (leaked.length > 0) {
       throw new Error(
@@ -55,9 +67,18 @@ export function applySupportHtml(html: string, filename: string): string {
     return next;
   }
 
+  if (!enabled) {
+    if (next.includes("__KOFI_URL__") || next.includes("__SPONSORS_URL__")) {
+      throw new Error(
+        "support URL tokens left in a page while tip links are unset",
+      );
+    }
+    return next;
+  }
+
   return next
-    .replaceAll("__KOFI_URL__", SUPPORT_LINKS.KOFI_URL)
-    .replaceAll("__SPONSORS_URL__", SUPPORT_LINKS.SPONSORS_URL);
+    .replaceAll("__KOFI_URL__", links.KOFI_URL)
+    .replaceAll("__SPONSORS_URL__", links.SPONSORS_URL);
 }
 
 export function supportLinks(): Plugin {

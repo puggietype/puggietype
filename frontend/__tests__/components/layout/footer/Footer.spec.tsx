@@ -15,7 +15,6 @@ vi.mock("../../../../src/ts/components/layout/footer/ThemeIndicator", () => ({
 }));
 
 import { Footer } from "../../../../src/ts/components/layout/footer/Footer";
-import { SUPPORT_LINKS } from "../../../../src/ts/constants/support";
 import { getSourceLinks } from "../../../../vite-plugins/source-links";
 
 // vitest's envConfig plugin gets no commit hash
@@ -71,46 +70,11 @@ describe("Footer", () => {
     }
   });
 
-  it("offers Ko-fi as the primary tip link and GitHub Sponsors beside it", () => {
-    const { getByTestId } = render(() => <Footer />);
-    const nav = getByTestId("support-links");
-    expect(nav.getAttribute("aria-label")).toBe("Support PuggieType");
-    const anchors = [...nav.querySelectorAll("a")];
-    expect(
-      anchors.map((a) => [
-        a.textContent,
-        a.getAttribute("href"),
-        a.getAttribute("aria-label"),
-        a.getAttribute("target"),
-        a.getAttribute("rel"),
-      ]),
-    ).toEqual([
-      [
-        "Ko-fi",
-        SUPPORT_LINKS.KOFI_URL,
-        "Support PuggieType on Ko-fi (opens in a new tab)",
-        "_blank",
-        "noopener noreferrer",
-      ],
-      [
-        "GitHub Sponsors",
-        SUPPORT_LINKS.SPONSORS_URL,
-        "Support PuggieType on GitHub Sponsors (opens in a new tab)",
-        "_blank",
-        "noopener noreferrer",
-      ],
-    ]);
-    expect(anchors[0]?.className).toContain("font-semibold");
-    for (const a of anchors) {
-      expect(a.getAttribute("href")).not.toMatch(/[?#]/);
-    }
-  });
-
-  it("keeps the tip links in the region that fades while typing", () => {
-    const { getByTestId, container } = render(() => <Footer />);
-    const support = getByTestId("support-links");
-    const fading = support.closest(".transition-opacity");
-    expect(fading?.contains(support)).toBe(true);
-    expect(container.querySelector("[role='dialog']")).toBeNull();
+  it("renders no support links while the tip URLs are empty", () => {
+    const { queryByTestId, container } = render(() => <Footer />);
+    expect(queryByTestId("support-links")).toBeNull();
+    expect(container.textContent).not.toContain("Ko-fi");
+    expect(container.textContent).not.toContain("GitHub Sponsors");
+    expect(container.textContent).not.toContain("Support PuggieType");
   });
 });

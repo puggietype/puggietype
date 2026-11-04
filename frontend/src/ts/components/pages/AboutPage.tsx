@@ -1,5 +1,6 @@
-import { JSXElement } from "solid-js";
+import { JSXElement, Show } from "solid-js";
 
+import { supportLinksEnabled } from "../../constants/support";
 import { Button } from "../common/Button";
 import { H2, H3 } from "../common/Headers";
 import { PugHead } from "../common/PugHead";
@@ -108,15 +109,17 @@ export function AboutPage(): JSXElement {
         </div>
       </section>
       <div></div>
-      <section aria-labelledby="support-heading">
-        <H2 id="support-heading" fa={{ icon: "fa-mug-hot" }} text="support" />
-        <p>
-          puggietype is free to use. If it is useful to you, a tip helps pay for
-          hosting. Ko-fi is the main way to chip in, and GitHub Sponsors is
-          there too.
-        </p>
-        <SupportLinks variant="page" />
-      </section>
+      <Show when={supportLinksEnabled()}>
+        <section aria-labelledby="support-heading">
+          <H2 id="support-heading" fa={{ icon: "fa-mug-hot" }} text="support" />
+          <p>
+            puggietype is free to use. If it is useful to you, a tip helps pay
+            for hosting. Ko-fi is the main way to chip in, and GitHub Sponsors
+            is there too.
+          </p>
+          <SupportLinks variant="page" />
+        </section>
+      </Show>
       <section>
         <H2 fa={{ icon: "fa-users" }} text="credits" />
         <p>

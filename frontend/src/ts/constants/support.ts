@@ -1,9 +1,22 @@
 /**
- * Tip destinations. Placeholder URLs until the Ko-fi and GitHub Sponsors
- * accounts are final. Edit this object only — the app and the static pages
- * both read it (static HTML uses the `__KOFI_URL__` / `__SPONSORS_URL__` tokens).
+ * Tip destinations. Both stay empty until the Ko-fi and GitHub Sponsors
+ * accounts exist. Empty means the footer, the about sections, and the static
+ * pages render no support UI. Edit this object only — static HTML reads it
+ * through the `__KOFI_URL__` / `__SPONSORS_URL__` tokens.
  */
 export const SUPPORT_LINKS = {
-  KOFI_URL: "https://ko-fi.com/puggietype",
-  SPONSORS_URL: "https://github.com/sponsors/puggietype",
+  KOFI_URL: "",
+  SPONSORS_URL: "",
 } as const;
+
+export type SupportLinkConfig = {
+  KOFI_URL: string;
+  SPONSORS_URL: string;
+};
+
+/** Both URLs must be non-empty. A half-set pair stays hidden. */
+export function supportLinksEnabled(
+  links: SupportLinkConfig = SUPPORT_LINKS,
+): boolean {
+  return links.KOFI_URL.trim() !== "" && links.SPONSORS_URL.trim() !== "";
+}
