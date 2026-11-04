@@ -117,20 +117,61 @@ export function SteamSignIn(props: {
         fa={{ icon: "fa-user" }}
         inputs={
           <div data-testid="steam-signin" class="grid gap-2">
+            {/* SR-ANNOUNCE: one live region, mounted for the whole life of
+                the setting, so screen readers reliably announce pending,
+                signed-in and error text (a region inserted together with its
+                text is often not read). The hint is not in it: focus moves
+                to continue, which is described by the hint text. */}
+            <div
+              id="steam-signin-status"
+              data-testid="steam-signin-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <Switch>
+                <Match when={state().kind === "pending"}>
+                  <p
+                    id="steam-signin-pending"
+                    data-testid="steam-signin-pending"
+                    tabIndex={-1}
+                  >
+                    Waiting for Steam in your browser...
+                  </p>
+                </Match>
+                <Match when={state().kind === "signedIn"}>
+                  <p data-testid="steam-signin-signed-in">
+                    <Show when={shownName()} fallback="Signed in with Steam.">
+                      {(name) => (
+                        <>
+                          Signed in with Steam as{" "}
+                          <span data-testid="steam-signin-name">{name()}</span>.
+                        </>
+                      )}
+                    </Show>
+                  </p>
+                </Match>
+                <Match when={errorOf(state())}>
+                  {(error) => (
+                    <p data-testid="steam-signin-error">
+                      {STEAM_SIGNIN_ERROR_TEXT[error()]}
+                    </p>
+                  )}
+                </Match>
+              </Switch>
+            </div>
             <Switch>
               <Match when={state().kind === "hint"}>
-                <div
-                  role="status"
-                  aria-live="polite"
-                  data-testid="steam-signin-hint"
-                  class="grid gap-2"
-                >
+                <div data-testid="steam-signin-hint" class="grid gap-2">
                   <p id="steam-signin-hint-text">{STEAM_SIGNIN_HINT}</p>
                   <div class="grid grid-cols-2 gap-2">
                     <Button
                       id="steam-signin-continue"
                       onClick={() => void proceed()}
                       text="continue"
+                      // Button spreads dataset onto the element; used so the
+                      // shared Button (web output) stays unchanged.
+                      dataset={{ "aria-describedby": "steam-signin-hint-text" }}
                     />
                     <Button
                       id="steam-signin-back"
@@ -140,28 +181,8 @@ export function SteamSignIn(props: {
                   </div>
                 </div>
               </Match>
-              <Match when={state().kind === "pending"}>
-                <p
-                  id="steam-signin-pending"
-                  data-testid="steam-signin-pending"
-                  role="status"
-                  aria-live="polite"
-                  tabIndex={-1}
-                >
-                  Waiting for Steam in your browser...
-                </p>
-              </Match>
+              <Match when={state().kind === "pending"}>{null}</Match>
               <Match when={state().kind === "signedIn"}>
-                <p data-testid="steam-signin-signed-in">
-                  <Show when={shownName()} fallback="Signed in with Steam.">
-                    {(name) => (
-                      <>
-                        Signed in with Steam as{" "}
-                        <span data-testid="steam-signin-name">{name()}</span>.
-                      </>
-                    )}
-                  </Show>
-                </p>
                 <Button
                   id="steam-signout"
                   onClick={backToSignedOut}
@@ -169,13 +190,6 @@ export function SteamSignIn(props: {
                 />
               </Match>
               <Match when={true}>
-                <Show when={errorOf(state())}>
-                  {(error) => (
-                    <p data-testid="steam-signin-error" role="status">
-                      {STEAM_SIGNIN_ERROR_TEXT[error()]}
-                    </p>
-                  )}
-                </Show>
                 <Button
                   id="steam-signin-button"
                   onClick={openHint}
