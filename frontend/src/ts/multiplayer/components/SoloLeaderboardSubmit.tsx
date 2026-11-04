@@ -1,19 +1,18 @@
-import { createSignal, JSXElement, onCleanup } from "solid-js";
+import { createSignal, JSXElement, onCleanup, onMount } from "solid-js";
 
 import { readStoredSession } from "../client";
-import { showOnLeaderboard } from "../leaderboard-pref";
+import { readShowOnLeaderboard } from "../leaderboard-pref";
 import {
   currentLeaderboardBase,
   leaderboardSubmitBlocked,
   postLeaderboardScore,
+  registerSoloSubmit,
+  scoreConsentElapsed,
   type ScoreSubmission,
 } from "../leaderboards";
 import { LeaderboardConsent } from "./LeaderboardConsent";
 
-type SoloScore = Omit<
-  ScoreSubmission,
-  "showOnLeaderboard" | "playerId" | "sessionToken"
->;
+type SoloScore = Omit<ScoreSubmission, "showOnLeaderboard" | "sessionToken">;
 
 function submitBlocked(): boolean {
   return leaderboardSubmitBlocked(
@@ -24,12 +23,20 @@ function submitBlocked(): boolean {
 }
 
 /**
- * Solo results: the toggle is on screen before the POST. Next test (unmount)
- * submits too, so leaving the result still sends the choice they saw.
+ * Solo results. A score is posted only from Next, Retry, or Submit score,
+ * and only after this toggle has been visible for 2 seconds. Leaving the
+ * page, or clicking sooner, drops the score.
  */
-export function SoloLeaderboardSubmit(props: { score: SoloScore }): JSXElement {
+export function SoloLeaderboardSubmit(props: {
+  score: SoloScore;
+  /** tests inject a clock; production uses Date.now */
+  now?: () => number;
+}): JSXElement {
   const [sent, setSent] = createSignal(false);
   const [message, setMessage] = createSignal<string | undefined>();
+  const clock = (): number => props.now?.() ?? Date.now();
+  // Infinity until mount, so a click before the toggle is shown cannot send
+  let shownAt = Number.POSITIVE_INFINITY;
   let finished = false;
 
   const send = (show: boolean): void => {
@@ -37,20 +44,30 @@ export function SoloLeaderboardSubmit(props: { score: SoloScore }): JSXElement {
       finished = true;
       return;
     }
+    if (!scoreConsentElapsed(shownAt, clock())) {
+      finished = true;
+      setMessage("Score not submitted.");
+      return;
+    }
     finished = true;
     setSent(true);
-    const session = readStoredSession();
+    const token = readStoredSession()?.sessionToken;
     void postLeaderboardScore(currentLeaderboardBase(), {
       ...props.score,
       showOnLeaderboard: show,
-      ...(session ?? {}),
+      ...(token !== undefined ? { sessionToken: token } : {}),
     }).then((result) => {
       setMessage(result.ok ? "Score submitted." : result.error);
     });
   };
 
-  onCleanup(() => {
-    if (!finished) send(showOnLeaderboard());
+  const onExplicit = (): void => {
+    send(readShowOnLeaderboard());
+  };
+
+  onMount(() => {
+    shownAt = clock();
+    onCleanup(registerSoloSubmit(onExplicit));
   });
 
   return (

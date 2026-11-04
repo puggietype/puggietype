@@ -30,6 +30,13 @@ export function setShowOnLeaderboard(
 }
 
 /** test helper */
+/** current saved choice, without subscribing */
+export function readShowOnLeaderboard(
+  storage: Pick<Storage, "getItem"> = localStorage,
+): boolean {
+  return readStored(storage);
+}
+
 export function loadShowOnLeaderboard(
   storage: Pick<Storage, "getItem">,
 ): boolean {

@@ -7,10 +7,7 @@ import type {
 } from "../../../src/ts/multiplayer/leaderboards";
 
 import { LeaderboardView } from "../../../src/ts/multiplayer/components/LeaderboardView";
-import {
-  setMyName,
-  setServerFeatures,
-} from "../../../src/ts/multiplayer/store";
+import { setServerFeatures } from "../../../src/ts/multiplayer/store";
 
 type Load = (
   base: string,
@@ -54,7 +51,6 @@ describe("LeaderboardView", () => {
   afterEach(() => {
     cleanup();
     setServerFeatures(undefined);
-    setMyName(undefined);
   });
 
   it("stays hidden when the server has no leaderboards", () => {
@@ -66,7 +62,6 @@ describe("LeaderboardView", () => {
 
   it("shows loading, then rows, and highlights your nickname", async () => {
     setServerFeatures(featuresOn);
-    setMyName("ZippyPug");
     let resolve: (value: LeaderboardResult) => void = () => undefined;
     const load = vi.fn<Load>(
       async () =>
@@ -78,7 +73,10 @@ describe("LeaderboardView", () => {
       <LeaderboardView variant="page" load={load} />
     ));
     expect(getByTestId("lb-loading")).toHaveTextContent("Loading leaderboard");
-    resolve(board(["OtherPug", "ZippyPug"]));
+    const ready = board(["OtherPug", "ZippyPug"]);
+    const mine = ready.entries[1];
+    if (mine !== undefined) ready.entries[1] = { ...mine, isYou: true };
+    resolve(ready);
     await findByTestId("lb-table");
     const rows = getAllByTestId("lb-row");
     expect(rows[1]?.getAttribute("data-self")).toBe("true");

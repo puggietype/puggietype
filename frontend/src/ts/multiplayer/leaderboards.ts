@@ -35,6 +35,8 @@ export type LeaderboardEntry = {
   wpm: number;
   acc: number;
   raw: number;
+  /** set by the server for the row that belongs to this session */
+  isYou?: boolean;
 };
 
 export type LeaderboardOk = {
@@ -58,6 +60,7 @@ const EntrySchema = z.object({
   wpm: z.number(),
   acc: z.number(),
   raw: z.number(),
+  isYou: z.boolean().optional(),
 });
 
 const OkSchema = z.object({
@@ -77,6 +80,11 @@ const ErrSchema = z.object({
   error: z.string().min(1),
 });
 
+/**
+ * Solo POST body. The nickname is on the websocket session, not this request.
+ * `sessionToken` is the secret from `welcome` and the only field the server
+ * needs to resolve that nickname. The public player id is not sent.
+ */
 export type ScoreSubmission = {
   showOnLeaderboard: boolean;
   mode: LeaderboardMode;
@@ -87,9 +95,46 @@ export type ScoreSubmission = {
   wpm: number;
   acc: number;
   raw: number;
-  playerId?: string;
   sessionToken?: string;
 };
+
+/** the toggle must have been on screen this long before a click can send */
+export const SCORE_CONSENT_MS = 2000;
+
+export function scoreConsentElapsed(shownAtMs: number, nowMs: number): boolean {
+  return nowMs - shownAtMs >= SCORE_CONSENT_MS;
+}
+
+export type SoloSubmitAction = "next" | "retry" | "submit";
+
+type SoloSubmitListener = (action: SoloSubmitAction) => void;
+let soloSubmitListener: SoloSubmitListener | undefined;
+
+/** the mounted results toggle; Next and Retry call this */
+export function registerSoloSubmit(listener: SoloSubmitListener): () => void {
+  soloSubmitListener = listener;
+  return () => {
+    if (soloSubmitListener === listener) soloSubmitListener = undefined;
+  };
+}
+
+export function requestSoloSubmit(action: SoloSubmitAction): void {
+  soloSubmitListener?.(action);
+}
+
+/** fields added to race:finish. kidsGuide is how the server rejects a kids score. */
+export function finishLeaderboardFields(options: {
+  show: boolean;
+  kids: boolean;
+  leaderboards: boolean;
+}): { showOnLeaderboard?: boolean; kidsGuide?: true } {
+  return {
+    ...(options.kids ? { kidsGuide: true as const } : {}),
+    ...(options.leaderboards
+      ? { showOnLeaderboard: options.kids ? false : options.show }
+      : {}),
+  };
+}
 
 /** http(s) origin for the game server that serves GET /leaderboards */
 export function httpBaseFromWsUrl(ws: string): string {
@@ -251,9 +296,7 @@ export function scoreFromResult(result: {
   wpm: number;
   acc: number;
   rawWpm: number;
-}):
-  | Omit<ScoreSubmission, "showOnLeaderboard" | "playerId" | "sessionToken">
-  | undefined {
+}): Omit<ScoreSubmission, "showOnLeaderboard" | "sessionToken"> | undefined {
   const mode2 = leaderboardMode2(result.mode, result.mode2);
   if (mode2 === undefined) return undefined;
   if (result.mode !== "time" && result.mode !== "words") return undefined;

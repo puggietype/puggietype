@@ -1,6 +1,6 @@
 # Terms of Service
 
-_Effective date: October 18, 2026. Last updated: October 18, 2026. "We", "us" and "our" mean the PuggieType team._
+_Effective date: November 4, 2026. Last updated: November 4, 2026. "We", "us" and "our" mean the PuggieType team._
 
 ## 1. Age requirement
 PuggieType's solo typing test needs no account and collects no account data. You must be **at least 13 years old** to use multiplayer. If you are under 18, or under the age of majority where you live, use multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.
@@ -12,6 +12,9 @@ Quick Match may include computer-controlled Pug Bots. Bots are named "Pug Bot ·
 
 ## 3. Nicknames
 In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown to the other players in your lobby. If you submit a leaderboard score, that nickname is also shown on the public leaderboard, as described in the privacy policy. There is no chat, and players can't send each other messages.
+
+## Leaderboards
+Leaderboards. If you submit a score, you let us show it publicly with your random nickname on PuggieType's leaderboards for the periods described in the privacy policy. We may remove any score, or block future scores, if it looks cheated, automated or otherwise breaks these terms. Leaderboards may be reset or changed at any time.
 
 ## 4. Acceptable use
 When you use PuggieType, you agree not to:

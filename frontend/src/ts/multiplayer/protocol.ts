@@ -132,6 +132,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     ageConfirmed: z.boolean().optional(),
     /** Starting dog. Bad or unknown values fall back to "puggie" rather than erroring, for older clients. */
     character: CharacterSchema.catch(DEFAULT_CHARACTER).optional(),
+    /** This browser session started from /guide/typing-for-kids. The server refuses leaderboard scores. */
+    kidsGuide: z.literal(true).optional(),
   }),
   z.object({
     type: z.literal("room:create"),
@@ -197,6 +199,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     keyCount: z.number().int().min(0),
     /** Set from the results-screen toggle. False keeps the score off the board. */
     showOnLeaderboard: z.boolean().optional(),
+    /** This browser session started from /guide/typing-for-kids. The server refuses the score. */
+    kidsGuide: z.literal(true).optional(),
   }),
   z.object({ type: z.literal("race:rematch") }),
   z.object({ type: z.literal("ping"), t: finite }),

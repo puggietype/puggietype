@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { confirmAge } from "../../src/ts/multiplayer/age-gate";
 import { MultiplayerClient } from "../../src/ts/multiplayer/client";
+import { KIDS_FLOW_KEY } from "../../src/ts/multiplayer/leaderboards";
 import type { ServerMessage } from "../../src/ts/multiplayer/protocol";
 
 class FakeSocket {
@@ -200,5 +201,20 @@ describe("MultiplayerClient", () => {
       });
     }
     expect(client.serverNow()).toBe(Date.now() + 5000);
+  });
+
+  it("sends kidsGuide on hello for a kids-guide session", () => {
+    sessionStorage.setItem(KIDS_FLOW_KEY, "1");
+    try {
+      const { client } = setup();
+      client.connect();
+      lastSocket().open();
+      expect(lastSocket().sent.at(-1)).toMatchObject({
+        type: "hello",
+        kidsGuide: true,
+      });
+    } finally {
+      sessionStorage.removeItem(KIDS_FLOW_KEY);
+    }
   });
 });

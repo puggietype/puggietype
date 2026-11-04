@@ -4,7 +4,6 @@ import {
   createSignal,
   JSXElement,
   onCleanup,
-  onMount,
   Show,
 } from "solid-js";
 
@@ -12,7 +11,6 @@ import { usePendingConnectionsQuery } from "../../../collections/connections";
 import { restartTestEvent } from "../../../events/test";
 import { createEffectOn } from "../../../hooks/effects";
 import { useRefWithUtils } from "../../../hooks/useRefWithUtils";
-import { isAgeConfirmed } from "../../../multiplayer/age-gate";
 import { MULTIPLAYER_ENABLED } from "../../../multiplayer/flags";
 import { leaderboardsOn } from "../../../multiplayer/store";
 import { PageName } from "../../../pages/page";
@@ -139,13 +137,6 @@ export function Nav(): JSXElement {
     if (snapshot === undefined) return false;
 
     return snapshot.inboxUnreadSize > 0;
-  });
-
-  onMount(() => {
-    // learn welcome.features without pulling the race module into this chunk's
-    // static graph more than the test page already does
-    if (!isAgeConfirmed() || !MULTIPLAYER_ENABLED) return;
-    void import("../../../multiplayer/race").then(({ connect }) => connect());
   });
 
   const serverConfig = useQuery(() => getServerConfigurationQueryOptions());

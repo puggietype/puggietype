@@ -11,7 +11,9 @@ import {
   leaderboardUrl,
   LEADERBOARD_PERIODS,
   parseLeaderboardBody,
+  finishLeaderboardFields,
   postLeaderboardScore,
+  scoreConsentElapsed,
   scoreFromResult,
 } from "../../src/ts/multiplayer/leaderboards";
 import {
@@ -228,7 +230,6 @@ describe("scores", () => {
         wpm: 70,
         acc: 99,
         raw: 72,
-        playerId: "p",
         sessionToken: "t",
       },
       fetchImpl,
@@ -237,11 +238,44 @@ describe("scores", () => {
     expect(seen?.init?.method).toBe("POST");
     const raw = seen?.init?.body;
     if (typeof raw !== "string") throw new Error("expected a string body");
-    expect(JSON.parse(raw)).toMatchObject({
+    const body = JSON.parse(raw) as Record<string, unknown>;
+    expect(body).toMatchObject({
       showOnLeaderboard: false,
-      playerId: "p",
+      sessionToken: "t",
       wpm: 70,
     });
+    expect(body).not.toHaveProperty("playerId");
+  });
+});
+
+describe("score consent and kids finish fields", () => {
+  it("requires the toggle to have been visible for 2 seconds", () => {
+    expect(scoreConsentElapsed(1_000, 2_999)).toBe(false);
+    expect(scoreConsentElapsed(1_000, 3_000)).toBe(true);
+  });
+
+  it("marks a kids-guide finish and otherwise omits the flag", () => {
+    expect(
+      finishLeaderboardFields({
+        show: true,
+        kids: true,
+        leaderboards: true,
+      }),
+    ).toEqual({ kidsGuide: true, showOnLeaderboard: false });
+    expect(
+      finishLeaderboardFields({
+        show: true,
+        kids: false,
+        leaderboards: false,
+      }),
+    ).toEqual({});
+    expect(
+      finishLeaderboardFields({
+        show: false,
+        kids: false,
+        leaderboards: true,
+      }),
+    ).toEqual({ showOnLeaderboard: false });
   });
 });
 

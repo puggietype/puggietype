@@ -13,10 +13,13 @@ import { getAdProvider, noopAdProvider } from "../../../../ads/provider";
 import { getConfig } from "../../../../config/store";
 import { isAuthAvailable } from "../../../../firebase";
 import { useRefWithUtils } from "../../../../hooks/useRefWithUtils";
+import { isAgeConfirmed } from "../../../../multiplayer/age-gate";
 import { LeaderboardView } from "../../../../multiplayer/components/LeaderboardView";
 import { SoloLeaderboardSubmit } from "../../../../multiplayer/components/SoloLeaderboardSubmit";
+import { MULTIPLAYER_ENABLED } from "../../../../multiplayer/flags";
 import {
   leaderboardSubmitBlocked,
+  requestSoloSubmit,
   scoreFromResult,
 } from "../../../../multiplayer/leaderboards";
 import { leaderboardsOn } from "../../../../multiplayer/store";
@@ -60,6 +63,12 @@ export function TestResult(): JSXElement {
 
   const [resultRef, resultEl] = useRefWithUtils<HTMLDivElement>();
   onMount(() => {
+    // learn welcome.features here, not from the nav on every page
+    if (isAgeConfirmed() && MULTIPLAYER_ENABLED) {
+      void import("../../../../multiplayer/race").then(({ connect }) =>
+        connect(),
+      );
+    }
     const el = resultEl();
     if (el === undefined) return;
     // test-ui fades it out on restart
@@ -186,7 +195,10 @@ function RetrySavingButton(): JSXElement {
           type="button"
           class="mb-4 justify-self-center bg-error px-8 py-4 text-bg"
           id="retrySavingResultButton"
-          onClick={() => void retrySavingResult()}
+          onClick={() => {
+            requestSoloSubmit("retry");
+            void retrySavingResult();
+          }}
           text="Retry saving result"
           fa={{ icon: "fa-redo" }}
         />

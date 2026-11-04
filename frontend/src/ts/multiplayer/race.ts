@@ -35,7 +35,10 @@ import {
 } from "./engine-hooks";
 import { isFlagEnabled } from "./feature-flags";
 import { showOnLeaderboard } from "./leaderboard-pref";
-import { leaderboardSubmitBlocked } from "./leaderboards";
+import {
+  finishLeaderboardFields,
+  leaderboardSubmitBlocked,
+} from "./leaderboards";
 import { MULTIPLAYER_ENABLED } from "./flags";
 import {
   finishInput,
@@ -766,10 +769,13 @@ function dispatchFinish(
     testMs: data.testMs,
     input: finishInput(data.input),
     keyCount: data.keyCount,
-    // older servers reject unknown keys; only the leaderboard build reads this
-    ...(leaderboardsOn()
-      ? { showOnLeaderboard: scoreIsBlocked() ? false : show }
-      : {}),
+    // older servers reject unknown keys; only the leaderboard build reads showOnLeaderboard.
+    // kidsGuide is always sent for a kids-guide session so the server can refuse the score.
+    ...finishLeaderboardFields({
+      show,
+      kids: scoreIsBlocked(),
+      leaderboards: leaderboardsOn(),
+    }),
   });
   if (!navigate) return;
   // the test is done for us: unhook the engine and wait on the race page

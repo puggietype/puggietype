@@ -1,6 +1,7 @@
 import { isAgeConfirmed } from "./age-gate";
 import { computeClockOffset, type ClockSample } from "./clock";
 import { CONFIGURED_WS_URL } from "./flags";
+import { leaderboardSubmitBlocked } from "./leaderboards";
 import { isFlagEnabled } from "./feature-flags";
 import { wsUrl } from "./helpers";
 import type { ClientMessage, ServerMessage } from "./protocol";
@@ -118,6 +119,14 @@ export class MultiplayerClient {
       ageConfirmed: true,
       ...(isFlagEnabled("characterSelect")
         ? { character: loadCharacter() }
+        : {}),
+      // the server refuses leaderboard scores for a kids-guide session
+      ...(leaderboardSubmitBlocked(
+        window.location.pathname,
+        document.referrer,
+        sessionStorage,
+      )
+        ? { kidsGuide: true as const }
         : {}),
     };
   }

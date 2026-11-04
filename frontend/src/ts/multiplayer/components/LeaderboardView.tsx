@@ -24,7 +24,7 @@ import {
 } from "../leaderboards";
 import { DEFAULT_MODE2, TIME_MODE2, WORDS_MODE2 } from "../protocol";
 import { selfHighlight, selfPillText } from "../self-highlight";
-import { leaderboardsOn, myName } from "../store";
+import { leaderboardsOn } from "../store";
 import { LANGUAGES } from "./ui";
 
 const SELF_TINT =
@@ -76,8 +76,6 @@ function moveTab(index: number, key: string): number | undefined {
 export function LeaderboardView(props: {
   variant: "page" | "compact";
   initial?: Partial<LeaderboardQuery>;
-  /** override the signed-in nickname used to mark your row */
-  nickname?: () => string | undefined;
   load?: typeof fetchLeaderboard;
 }): JSXElement {
   const seed = defaultLeaderboardQuery(props.initial);
@@ -99,9 +97,6 @@ export function LeaderboardView(props: {
       punctuation: punctuation(),
       numbers: numbers(),
     });
-
-  const nickname = (): string | undefined =>
-    props.nickname !== undefined ? props.nickname() : myName();
 
   const lengths = (): readonly number[] =>
     mode() === "time" ? TIME_MODE2 : WORDS_MODE2;
@@ -381,9 +376,7 @@ export function LeaderboardView(props: {
                       <tbody>
                         <For each={board().entries}>
                           {(entry) => {
-                            const mine = () =>
-                              nickname() !== undefined &&
-                              entry.name === nickname();
+                            const mine = (): boolean => entry.isYou === true;
                             return (
                               <tr
                                 id={`lb-rank-${entry.rank}`}

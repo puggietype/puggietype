@@ -2,6 +2,7 @@ import { createKeyHold } from "@tanstack/solid-hotkeys";
 import { JSXElement, Show } from "solid-js";
 
 import { getConfig } from "../../../../config/store";
+import { requestSoloSubmit } from "../../../../multiplayer/leaderboards";
 import { getIsScreenshotting } from "../../../../states/core";
 import { showModal } from "../../../../states/modals";
 import { showNoticeNotification } from "../../../../states/notifications";
@@ -38,13 +39,19 @@ export function ResultButtons(props: { glarses: boolean }): JSXElement {
           class="max-sm:col-span-2"
           text="Next test"
           fa={{ icon: "fa-chevron-right" }}
-          onClick={() => void restart()}
+          onClick={() => {
+            requestSoloSubmit("next");
+            void restart();
+          }}
         />
         <ResultButton
           data-ui-element="restartTestButtonWithSameWordset"
           text="Repeat test"
           fa={{ icon: "fa-sync-alt" }}
-          onClick={repeatTest}
+          onClick={() => {
+            requestSoloSubmit("retry");
+            repeatTest();
+          }}
         />
         <ResultButton
           id="practiseWordsButton"
