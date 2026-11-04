@@ -241,6 +241,9 @@ describe("scores", () => {
         wpm: 80,
         acc: 97,
         rawWpm: 84,
+        charStats: [400, 20, 5, 2],
+        charTotal: 430,
+        testDuration: 60,
       }),
     ).toEqual({
       mode: "time",
@@ -251,6 +254,8 @@ describe("scores", () => {
       wpm: 80,
       acc: 97,
       raw: 84,
+      chars: { typed: 430, correct: 400 },
+      durationMs: 60_000,
     });
     expect(
       scoreFromResult({
@@ -260,8 +265,25 @@ describe("scores", () => {
         wpm: 1,
         acc: 100,
         rawWpm: 1,
+        charStats: [10, 0, 0, 0],
+        testDuration: 30,
       }),
     ).toBeUndefined();
+    expect(
+      scoreFromResult({
+        mode: "time",
+        mode2: 15,
+        language: "english",
+        wpm: 40,
+        acc: 90,
+        rawWpm: 44,
+        charStats: [50, 4, 1, 0],
+        testDuration: 15.5,
+      }),
+    ).toMatchObject({
+      chars: { typed: 55, correct: 50 },
+      durationMs: 15_500,
+    });
   });
 
   it("posts showOnLeaderboard with the score", async () => {
@@ -288,6 +310,8 @@ describe("scores", () => {
         wpm: 70,
         acc: 99,
         raw: 72,
+        chars: { typed: 360, correct: 350 },
+        durationMs: 30_000,
         sessionToken: "t",
       },
       fetchImpl,
@@ -301,6 +325,8 @@ describe("scores", () => {
       showOnLeaderboard: false,
       sessionToken: "t",
       wpm: 70,
+      chars: { typed: 360, correct: 350 },
+      durationMs: 30_000,
     });
     expect(body).not.toHaveProperty("playerId");
   });
