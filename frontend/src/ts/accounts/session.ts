@@ -338,11 +338,19 @@ export async function getReauthKind(): Promise<"password" | "google" | null> {
   }
 }
 
+/** client deleteUser errors meaning the server already removed the user */
+const USER_GONE_CODES = new Set([
+  "auth/user-not-found",
+  "auth/user-token-expired",
+  "auth/invalid-user-token",
+]);
+
 /**
  * Deletes the account: re-auth (password, or a Google popup), DELETE /v1/me
  * with the fresh token, then Firebase deleteUser. Signed out afterwards.
- * The client deleteUser is best-effort: the server removes a leftover
- * Firebase user itself.
+ * The server deletes the Firebase user too, so the client deleteUser usually
+ * fails with a gone-user code (USER_GONE_CODES): that's a full success.
+ * partiallyDeleted only for other client errors.
  */
 export async function deleteAccount(password?: string): Promise<ActionResult> {
   const config = getAccountsConfig();
@@ -364,10 +372,11 @@ export async function deleteAccount(password?: string): Promise<ActionResult> {
   pendingAge = undefined;
   try {
     await sdk.deleteFirebaseUser(user);
-  } catch {
+  } catch (e) {
     // the API account is gone already; drop the leftover sign-in at least
     await sdk.signOutFirebase(config.firebase).catch(() => undefined);
     setSignedIn(null);
+    if (USER_GONE_CODES.has(firebaseCode(e))) return { ok: true };
     return { ok: false, message: accountsCopy.account.partiallyDeleted };
   }
   setSignedIn(null);

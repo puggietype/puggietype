@@ -674,6 +674,26 @@ describe("accounts delete account", () => {
     });
     expect(sdk.signOutFirebase).toHaveBeenCalledTimes(1);
     expect(getAccountUser()).toBeNull();
+    expect(localStorage.getItem(SESSION_HINT_KEY)).toBeNull();
+  });
+
+  it.each([
+    "auth/user-not-found",
+    "auth/user-token-expired",
+    "auth/invalid-user-token",
+  ])("Firebase user already gone (%s): success, signed out", async (code) => {
+    sdk.deleteFirebaseUser.mockRejectedValue({ code });
+    expect(await deleteAccount("pw")).toEqual({ ok: true });
+    expect(sdk.signOutFirebase).toHaveBeenCalledTimes(1);
+    expect(getAccountUser()).toBeNull();
+    expect(localStorage.getItem(SESSION_HINT_KEY)).toBeNull();
+  });
+
+  it("user gone and sign-out failing: still success", async () => {
+    sdk.deleteFirebaseUser.mockRejectedValue({ code: "auth/user-not-found" });
+    sdk.signOutFirebase.mockRejectedValue(new Error("offline"));
+    expect(await deleteAccount("pw")).toEqual({ ok: true });
+    expect(getAccountUser()).toBeNull();
   });
 
   it("signed out: nothing to delete", async () => {
