@@ -38,6 +38,7 @@ export const signInWithEmailAndPassword = unavailable;
 export const signInWithPopup = unavailable;
 export const signOut = unavailable;
 export const createUserWithEmailAndPassword = unavailable;
+export const deleteUser = unavailable;
 export const getIdToken = unavailable;
 export const getAdditionalUserInfo = unavailable;
 export const sendEmailVerification = unavailable;

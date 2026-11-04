@@ -52,6 +52,23 @@ export const accountsCopy = {
     submit: "sign in",
     success: "Signed in",
   },
+  tabs: { signIn: "sign in", signUp: "create account" },
+  signUp: {
+    title: "create account",
+    google: "sign up with google",
+    submit: "create account",
+    success: "Account created",
+  },
+  age: {
+    // neutral on purpose: nothing here may hint at the age cutoff
+    birthYear: "birth year",
+    birthYearBlank: "select your birth year",
+    prompt: "One more step: please select your birth year.",
+    continue: "continue",
+    cancel: "cancel",
+    blocked: "Sorry, we can't create an account for you.",
+    expired: "That sign-in has expired, please start again",
+  },
   signedIn: {
     title: "signed in",
     notVerified: "Your email is not verified yet.",

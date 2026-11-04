@@ -1,18 +1,34 @@
+import type { User } from "firebase/auth";
+
+import { blockAge, isAgeBlocked } from "./age";
 import { AccountUser, createSession, getMe } from "./api";
 import { getAccountsConfig, missingAccountsConfig } from "./config";
 import { SESSION_HINT_KEY } from "./flag";
 import { setAccountUser } from "./state";
 import { accountsCopy } from "./strings";
 
-export type SignInMethod =
+export type AuthMethod =
   | { kind: "email"; email: string; password: string }
   | { kind: "google" };
 
-export type SignInResult =
-  | { ok: true; created: boolean }
-  | { ok: false; code: string; message: string };
+/**
+ * `needs-age`: Firebase is signed in but the API has no account yet and
+ * wants the age answer; finish with completeAgeCheck or cancelAgeCheck.
+ */
+export type AuthResult =
+  | { status: "signed-in"; created: boolean }
+  | { status: "needs-age" }
+  | { status: "error"; code: string; message: string };
 
-async function loadSdk(): Promise<typeof import("./firebase-sdk")> {
+/** AuthResult code after an under-13 answer (this tab is then blocked) */
+export const AGE_BLOCKED = "age_blocked";
+
+type Sdk = typeof import("./firebase-sdk");
+
+// the signed-in Firebase user waiting on the age question, never persisted
+let pendingAge: { user: User; isNew: boolean } | undefined;
+
+async function loadSdk(): Promise<Sdk> {
   return import("./firebase-sdk");
 }
 
@@ -35,43 +51,152 @@ function setSignedIn(user: AccountUser | null): void {
   else localStorage.setItem(SESSION_HINT_KEY, "1");
 }
 
-/**
- * Firebase sign-in, then POST /v1/auth/session. If the API refuses, the
- * Firebase session is dropped too so the two never disagree.
- */
-export async function signIn(
-  method: SignInMethod,
-  turnstileToken: string,
-): Promise<SignInResult> {
+function error(code: string, message: string): AuthResult {
+  return { status: "error", code, message };
+}
+
+/** drops a Firebase session the API didn't accept; `remove` deletes it */
+async function discard(sdk: Sdk, user: User, remove: boolean): Promise<void> {
+  pendingAge = undefined;
   const config = getAccountsConfig();
-  if (missingAccountsConfig(config).length > 0) {
-    return { ok: false, code: "", message: accountsCopy.notConfigured };
+  try {
+    if (remove) await sdk.deleteFirebaseUser(user);
+    else await sdk.signOutFirebase(config.firebase);
+  } catch {
+    await sdk.signOutFirebase(config.firebase).catch(() => undefined);
+  }
+  setSignedIn(null);
+}
+
+/** under 13: no account; the Firebase user (it has no API account) goes */
+async function rejectUnderage(sdk: Sdk, user: User): Promise<AuthResult> {
+  blockAge(sessionStorage);
+  await discard(sdk, user, true);
+  return error(AGE_BLOCKED, accountsCopy.age.blocked);
+}
+
+/**
+ * POST /v1/auth/session for a signed-in Firebase user. A refusal drops the
+ * Firebase session too (deleting it when this flow just created it), so the
+ * two never disagree; age_check_required parks it for the age question.
+ */
+async function establish(
+  sdk: Sdk,
+  user: User,
+  isNew: boolean,
+  turnstileToken: string,
+  ageOk?: true,
+): Promise<AuthResult> {
+  const config = getAccountsConfig();
+  let session;
+  try {
+    session = await createSession({
+      apiUrl: config.apiUrl,
+      idToken: await sdk.getUserIdToken(user),
+      turnstileToken,
+      ...(ageOk === true ? { ageOk } : {}),
+    });
+  } catch (e) {
+    await discard(sdk, user, isNew);
+    return error("", firebaseErrorMessage(e));
+  }
+  if (session.ok) {
+    pendingAge = undefined;
+    setSignedIn(session.user);
+    return { status: "signed-in", created: session.created };
+  }
+  if (session.code === "age_check_required" && ageOk !== true) {
+    if (isAgeBlocked(sessionStorage)) return rejectUnderage(sdk, user);
+    pendingAge = { user, isNew };
+    return { status: "needs-age" };
+  }
+  await discard(sdk, user, isNew);
+  return error(session.code, session.message);
+}
+
+async function firebaseSignIn(
+  sdk: Sdk,
+  method: AuthMethod,
+  create: boolean,
+): Promise<{ user: User; isNew: boolean }> {
+  const config = getAccountsConfig().firebase;
+  if (method.kind === "google") return sdk.signInGoogle(config);
+  if (create) {
+    const user = await sdk.createUserEmail(
+      config,
+      method.email,
+      method.password,
+    );
+    return { user, isNew: true };
+  }
+  const user = await sdk.signInEmail(config, method.email, method.password);
+  return { user, isNew: false };
+}
+
+async function start(
+  method: AuthMethod,
+  turnstileToken: string,
+  create: boolean,
+): Promise<AuthResult> {
+  if (missingAccountsConfig(getAccountsConfig()).length > 0) {
+    return error("", accountsCopy.notConfigured);
   }
   const sdk = await loadSdk();
-
-  let idToken: string;
+  let signedIn;
   try {
-    const user =
-      method.kind === "email"
-        ? await sdk.signInEmail(config.firebase, method.email, method.password)
-        : await sdk.signInGoogle(config.firebase);
-    idToken = await sdk.getUserIdToken(user);
+    signedIn = await firebaseSignIn(sdk, method, create);
   } catch (e) {
-    return { ok: false, code: "", message: firebaseErrorMessage(e) };
+    return error("", firebaseErrorMessage(e));
   }
-
-  const session = await createSession({
-    apiUrl: config.apiUrl,
-    idToken,
+  return establish(
+    sdk,
+    signedIn.user,
+    signedIn.isNew,
     turnstileToken,
-  });
-  if (!session.ok) {
-    await sdk.signOutFirebase(config.firebase).catch(() => undefined);
-    setSignedIn(null);
-    return { ok: false, code: session.code, message: session.message };
+    create ? true : undefined,
+  );
+}
+
+/** existing account; a first-time Google user may come back `needs-age` */
+export async function signIn(
+  method: AuthMethod,
+  turnstileToken: string,
+): Promise<AuthResult> {
+  return start(method, turnstileToken, false);
+}
+
+/**
+ * New account, after the sign-up form found the user 13+ (only that boolean
+ * goes on, as `ageOk: true`). Refuses without touching Firebase in a tab
+ * that already answered under 13.
+ */
+export async function signUp(
+  method: AuthMethod,
+  turnstileToken: string,
+): Promise<AuthResult> {
+  if (isAgeBlocked(sessionStorage)) {
+    return error(AGE_BLOCKED, accountsCopy.age.blocked);
   }
-  setSignedIn(session.user);
-  return { ok: true, created: session.created };
+  return start(method, turnstileToken, true);
+}
+
+/** answers the age question a `needs-age` result asked for */
+export async function completeAgeCheck(
+  ageOk: boolean,
+  turnstileToken: string,
+): Promise<AuthResult> {
+  const pending = pendingAge;
+  if (pending === undefined) return error("", accountsCopy.age.expired);
+  const sdk = await loadSdk();
+  if (!ageOk) return rejectUnderage(sdk, pending.user);
+  return establish(sdk, pending.user, pending.isNew, turnstileToken, true);
+}
+
+/** backs out of the age question: no account, Firebase signed out */
+export async function cancelAgeCheck(): Promise<void> {
+  const pending = pendingAge;
+  if (pending === undefined) return;
+  await discard(await loadSdk(), pending.user, pending.isNew);
 }
 
 /**

@@ -4,6 +4,9 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import {
   Auth,
+  createUserWithEmailAndPassword,
+  deleteUser,
+  getAdditionalUserInfo,
   getAuth,
   getIdToken,
   GoogleAuthProvider,
@@ -44,16 +47,44 @@ export async function signInEmail(
   return result.user;
 }
 
-export async function signInGoogle(config: FirebaseWebConfig): Promise<User> {
+/** `isNew`: this popup just created the Firebase user */
+export async function signInGoogle(
+  config: FirebaseWebConfig,
+): Promise<{ user: User; isNew: boolean }> {
   const result = await signInWithPopup(
     getAccountsAuth(config),
     new GoogleAuthProvider(),
   );
+  return {
+    user: result.user,
+    isNew: getAdditionalUserInfo(result)?.isNewUser ?? false,
+  };
+}
+
+export async function createUserEmail(
+  config: FirebaseWebConfig,
+  email: string,
+  password: string,
+): Promise<User> {
+  const result = await createUserWithEmailAndPassword(
+    getAccountsAuth(config),
+    email,
+    password,
+  );
   return result.user;
 }
 
-export async function getUserIdToken(user: User): Promise<string> {
-  return getIdToken(user);
+/** removes the Firebase user; needs a recent sign-in */
+export async function deleteFirebaseUser(user: User): Promise<void> {
+  await deleteUser(user);
+}
+
+/** `refresh` forces a new token (fresh auth_time after a re-auth) */
+export async function getUserIdToken(
+  user: User,
+  refresh = false,
+): Promise<string> {
+  return getIdToken(user, refresh);
 }
 
 /** the persisted user once Firebase has restored it, else null */
