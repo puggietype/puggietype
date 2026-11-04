@@ -14,6 +14,7 @@ import { Fonts } from "./src/ts/constants/fonts";
 import { fontawesomeSubset } from "./vite-plugins/fontawesome-subset";
 import { fontPreview } from "./vite-plugins/font-preview";
 import { envConfig } from "./vite-plugins/env-config";
+import { resolvePlatform } from "./vite-plugins/platform";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
@@ -410,12 +411,6 @@ function getCssOptions({
 
 const STEAM_DEFAULT_WS_URL = "wss://ws.puggietype.com/ws";
 
-function parsePlatform(value: string | undefined): "web" | "steam" {
-  if (value === undefined || value === "" || value === "web") return "web";
-  if (value === "steam") return "steam";
-  throw new Error(`PLATFORM must be "web" or "steam", got "${value}"`);
-}
-
 export default defineConfig(({ mode }): UserConfig => {
   const env = loadEnv(mode, process.cwd(), "");
   const isDevelopment = mode !== "production";
@@ -432,8 +427,9 @@ export default defineConfig(({ mode }): UserConfig => {
   // no BACKEND_URL => no auth/api: swap the Firebase SDK for a stub and let
   // the minifier drop backend-only code (reCAPTCHA loader) behind __STANDALONE__
   const standalone = (env["BACKEND_URL"] ?? "") === "";
-  // PLATFORM=steam selects the desktop flavor; anything unset means web
-  const platform = parsePlatform(env["PLATFORM"]);
+  // PLATFORM=steam selects the desktop flavor; unset means web. Read from the
+  // build script's shell only (process.env), never from loadEnv/.env files.
+  const platform = resolvePlatform(process.env);
   // the steam build loads from local files: no same-origin /ws, so it always
   // bakes in an absolute server URL (the runtime falls back the same way)
   if (platform === "steam" && (env["VITE_WS_URL"] ?? "") === "") {
