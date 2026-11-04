@@ -5,6 +5,7 @@ import { For, JSXElement, type JSX } from "solid-js";
 import { configMetadata } from "../../../../config/metadata";
 import { toggleFunbox } from "../../../../config/setters";
 import { getConfig } from "../../../../config/store";
+import { isFunboxAvailable } from "../../../../platform/funbox-availability";
 import { getActiveFunboxNames } from "../../../../test/funbox/list";
 import { Button } from "../../../common/Button";
 import { SearchableSetting } from "../SearchableSetting";
@@ -18,7 +19,7 @@ export function Funbox(): JSXElement {
       fa={configMetadata.funbox.fa}
       fullWidthInputs={
         <div class="grid grid-cols-[repeat(auto-fit,minmax(13.5rem,1fr))] gap-2">
-          <For each={getAllFunboxes()}>
+          <For each={getAllFunboxes().filter((f) => isFunboxAvailable(f.name))}>
             {(funbox) => {
               const active = () => getConfig.funbox.includes(funbox.name);
 

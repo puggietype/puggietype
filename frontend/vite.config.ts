@@ -410,6 +410,8 @@ function getCssOptions({
   };
 }
 
+const STEAM_DEFAULT_WS_URL = "wss://ws.puggietype.com/ws";
+
 export default defineConfig(({ mode }): UserConfig => {
   const env = loadEnv(mode, process.cwd(), "");
   const isDevelopment = mode !== "production";
@@ -429,6 +431,11 @@ export default defineConfig(({ mode }): UserConfig => {
   // PLATFORM=steam selects the desktop flavor; unset means web. Read from the
   // build script's shell only (process.env), never from loadEnv/.env files.
   const platform = resolvePlatform(process.env);
+  // the steam build loads from local files: no same-origin /ws, so it always
+  // bakes in an absolute server URL (the runtime falls back the same way)
+  if (platform === "steam" && (env["VITE_WS_URL"] ?? "") === "") {
+    process.env["VITE_WS_URL"] = STEAM_DEFAULT_WS_URL;
+  }
   const firebaseStub = path.resolve(
     __dirname,
     "src/ts/standalone/firebase-stub.ts",

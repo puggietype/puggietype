@@ -34,7 +34,17 @@ In `frontend/`: `npm run build` (web) or `npm run build:steam`.
 ## Milestones
 
 - M1 (this): build define, adapter seam, tests, docs. No Electron.
-- M2: Electron shell (offline solo, fullscreen, Steam Deck input).
+- M2: Electron shell in `desktop/` (see `desktop/README.md`): sandboxed renderer,
+  `app://` scheme, preload bridge for fullscreen and storage, true fullscreen.
+  The steam build always has an absolute ws URL (`VITE_WS_URL`, else
+  `wss://ws.puggietype.com/ws`), used by both the race socket and the
+  leaderboard base. Theme share links point at https://puggietype.com. The
+  `ads` config is forced off and blocked.
+- Protocol versioning (M2): `hello` sends `protocol`, `engine` (build id) and
+  `platform`. The client only accepts `welcome.protocol` in its supported range;
+  otherwise, or on the server's `upgrade_required` (close 4003), it stops
+  reconnecting and tells the user to update (Steam or reload).
+- Later: offline solo polish, Steam Deck input, packaging/depots.
 - M3: Steam OpenID sign-in and server-side entitlement checks.
-- Cross-play: web and steam share the same core and ws protocol; the ws
-  handshake needs a protocol version field before mixed versions ship.
+- Cross-play: web and steam share the same core and ws protocol; the server
+  accepts a protocol range and a hello without `protocol` counts as 1.

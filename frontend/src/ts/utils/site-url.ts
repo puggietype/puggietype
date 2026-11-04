@@ -5,3 +5,14 @@ export function canonicalUrl(pathname: string): string {
   const path = pathname.replace(/\/+$/, "");
   return `${SITE_ORIGIN}${path === "" ? "/" : path}`;
 }
+
+/**
+ * Origin for links people share (e.g. a custom theme). The steam build runs
+ * from local files, so its links must point at the website instead.
+ */
+export function shareOrigin(
+  platform: "web" | "steam",
+  locationOrigin: string,
+): string {
+  return platform === "steam" ? SITE_ORIGIN : locationOrigin;
+}

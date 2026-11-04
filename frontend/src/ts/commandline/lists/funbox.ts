@@ -1,3 +1,4 @@
+import { isFunboxAvailable } from "../../platform/funbox-availability";
 import * as Funbox from "../../test/funbox/funbox";
 import * as TestLogic from "../../test/test-logic";
 import { getAllFunboxes, checkCompatibility } from "@monkeytype/funbox";
@@ -19,7 +20,9 @@ const list: Command[] = [
   },
 ];
 
-for (const funbox of getAllFunboxes()) {
+for (const funbox of getAllFunboxes().filter((f) =>
+  isFunboxAvailable(f.name),
+)) {
   list.push({
     id: `changeFunbox${funbox.name}`,
     display: funbox.name.replace(/_/g, " "),

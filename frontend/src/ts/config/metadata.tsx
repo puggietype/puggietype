@@ -5,6 +5,8 @@ import { JSXElement } from "solid-js";
 
 import * as CustomThemes from "../collections/custom-themes";
 import { getDefaultConfig } from "../constants/default-config";
+import { getPlatform } from "../platform";
+import { dropUnavailableFunboxes } from "../platform/funbox-availability";
 import { isBootSettled } from "../states/boot";
 import { getUserId, isAuthenticated } from "../states/core";
 import { showNoticeNotification } from "../states/notifications";
@@ -417,6 +419,8 @@ export const configMetadata: ConfigMetadataObject = {
     group: "behavior",
     description:
       "These are special modes that change the website in some special way (by altering the word generation, behavior of the website or the looks). Give each one of them a try!",
+    // steam: quietly drop funboxes it cannot run (URL, presets, challenges)
+    overrideValue: ({ value }) => dropUnavailableFunboxes(value),
     isBlocked: ({ value, currentConfig }) => {
       if (!checkCompatibility(value)) {
         showNoticeNotification(
@@ -1308,12 +1312,16 @@ export const configMetadata: ConfigMetadataObject = {
     description: `Ads are not enabled yet. Any value other than "off" will at most show one ad on the result page.`,
     group: "ads",
     overrideValue: ({ value }) => {
-      if (isDevEnvironment()) {
+      // the steam flavor never shows ads
+      if (isDevEnvironment() || !getPlatform().adsAllowed) {
         return "off";
       }
       return value;
     },
     isBlocked: ({ value }) => {
+      if (value !== "off" && !getPlatform().adsAllowed) {
+        return true;
+      }
       if (value !== "off" && isDevEnvironment()) {
         showNoticeNotification("Ads are disabled in development mode.");
         return true;
