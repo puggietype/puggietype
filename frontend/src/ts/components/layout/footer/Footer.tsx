@@ -5,6 +5,7 @@ import { getIsScreenshotting } from "../../../states/core";
 import { getFocus } from "../../../states/test";
 import { cn } from "../../../utils/cn";
 import { Button } from "../../common/Button";
+import { SupportLinks } from "../../common/SupportLinks";
 import { Keytips } from "./Keytips";
 import { ThemeIndicator } from "./ThemeIndicator";
 import { VersionButton } from "./VersionButton";
@@ -21,78 +22,82 @@ export function Footer(): JSXElement {
       <Keytips />
 
       <div
-        class={cn("-m-2 flex justify-between gap-8 transition-opacity", {
+        class={cn("-m-2 flex flex-col transition-opacity", {
           "opacity-0": getFocus(),
         })}
       >
-        <div class="grid grid-cols-1 justify-items-start xs:grid-cols-2 sm:grid-cols-4 lg:flex">
-          <Button
-            variant="text"
-            text="terms"
-            fa={{
-              icon: "fa-file-contract",
-              fixedWidth: true,
-            }}
-            href="/terms"
-          />
-          <Button
-            href="/privacy"
-            variant="text"
-            text="privacy"
-            fa={{
-              icon: "fa-lock",
-              fixedWidth: true,
-            }}
-          />
-          <div class="flex items-center p-2" data-testid="legal-notice">
-            <span>
-              Based on{" "}
-              <a
-                class={linkClass}
-                href="https://github.com/monkeytypegame/monkeytype"
-                target="_blank"
-                rel="noopener"
-              >
-                Monkeytype
+        {/* inside the focus fade: hidden while a test is running, never a modal */}
+        <SupportLinks variant="footer" />
+        <div class="flex justify-between gap-8">
+          <div class="grid grid-cols-1 justify-items-start xs:grid-cols-2 sm:grid-cols-4 lg:flex">
+            <Button
+              variant="text"
+              text="terms"
+              fa={{
+                icon: "fa-file-contract",
+                fixedWidth: true,
+              }}
+              href="/terms"
+            />
+            <Button
+              href="/privacy"
+              variant="text"
+              text="privacy"
+              fa={{
+                icon: "fa-lock",
+                fixedWidth: true,
+              }}
+            />
+            <div class="flex items-center p-2" data-testid="legal-notice">
+              <span>
+                Based on{" "}
+                <a
+                  class={linkClass}
+                  href="https://github.com/monkeytypegame/monkeytype"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Monkeytype
+                </a>
+                ,{" "}
+                <a
+                  class={linkClass}
+                  href={envConfig.licenseUrl}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  GPL-3.0
+                </a>
+                , no warranty,{" "}
+                <a class={linkClass} href={envConfig.sourceUrl}>
+                  source
+                </a>
+              </span>
+            </div>
+            {/* plain links: the static pages need a full page load */}
+            <nav
+              class="flex items-center gap-2 p-2"
+              aria-label="guides"
+              data-testid="guide-links"
+            >
+              <a class={linkClass} href="/guide/about">
+                about
               </a>
-              ,{" "}
-              <a
-                class={linkClass}
-                href={envConfig.licenseUrl}
-                target="_blank"
-                rel="noopener"
-              >
-                GPL-3.0
+              <a class={linkClass} href="/faq">
+                faq
               </a>
-              , no warranty,{" "}
-              <a class={linkClass} href={envConfig.sourceUrl}>
-                source
+              <a class={linkClass} href="/guide/typing-tips">
+                guides
               </a>
-            </span>
+              <a class={linkClass} href="/contact">
+                contact
+              </a>
+            </nav>
           </div>
-          {/* plain links: the static pages need a full page load */}
-          <nav
-            class="flex items-center gap-2 p-2"
-            aria-label="guides"
-            data-testid="guide-links"
-          >
-            <a class={linkClass} href="/guide/about">
-              about
-            </a>
-            <a class={linkClass} href="/faq">
-              faq
-            </a>
-            <a class={linkClass} href="/guide/typing-tips">
-              guides
-            </a>
-            <a class={linkClass} href="/contact">
-              contact
-            </a>
-          </nav>
-        </div>
-        <div class="flex flex-col items-end text-right lg:flex-row">
-          <ThemeIndicator />
-          <VersionButton />
+          <div class="flex flex-col items-end text-right lg:flex-row">
+            <ThemeIndicator />
+            <VersionButton />
+          </div>
         </div>
       </div>
     </footer>
