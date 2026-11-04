@@ -1,3 +1,5 @@
+DRAFT - NOT IN EFFECT. This is not PuggieType's privacy policy; the current policy is at https://puggietype.com/privacy.
+
 # Privacy policy: Steam sign-in, variant B (NOT LIVE)
 
 Source: Legal review 2026-11-04 (Ruling 5). Use this only when the server issues a session token. Until then, `frontend/src/legal/privacy.md` carries variant A. This file isn't rendered on the site.
