@@ -23,6 +23,7 @@ vi.mock("../../../../src/ts/utils/file-storage", () => ({
 import { sectionDomId } from "../../../../src/ts/components/pages/settings/settings-tabs";
 import { SettingsPage } from "../../../../src/ts/components/pages/settings/SettingsPage";
 import { isConfigKeyHidden } from "../../../../src/ts/constants/standalone";
+import { BG_MUSIC_SRC } from "../../../../src/ts/controllers/background-music";
 import { setSettingsSearch } from "../../../../src/ts/states/settings-search";
 
 const sectionTitles = [
@@ -71,7 +72,6 @@ const settingKeys = [
   "showKeyTips",
   "showOutOfFocusWarning",
   "capsLockWarning",
-  "bgMusic",
   "soundVolume",
   "playSoundOnClick",
   "playSoundOnError",
@@ -141,10 +141,45 @@ describe("SettingsPage", () => {
         "utf8",
       ),
     ).toContain('key="showAverage"');
+  });
+
+  it("hides background music controls while no track is bundled", () => {
+    expect(BG_MUSIC_SRC).toBeNull();
+    const { container } = render(() => <SettingsPage />);
+    const soundTab = document.getElementById("settings-tab-sound");
+    if (soundTab === null) throw new Error("missing sound tab");
+    fireEvent.click(soundTab);
+    expect(container.querySelector('[data-setting-key="bgMusic"]')).toBeNull();
     expect(
       container.querySelector('[aria-label="background music volume"]'),
+    ).toBeNull();
+    expect(container.textContent?.toLowerCase()).not.toContain(
+      "background music",
+    );
+    expect(container.textContent?.toLowerCase()).not.toContain(
+      "loop a quiet track",
+    );
+    expect(container.textContent?.toLowerCase()).not.toContain("coming soon");
+    expect(
+      container.querySelector('[data-setting-key="soundVolume"]'),
     ).not.toBeNull();
-    expect(container.textContent).toContain("background music");
+
+    const input = container.querySelector<HTMLInputElement>(
+      'input[placeholder="search settings"]',
+    );
+    if (input === null) throw new Error("missing search");
+    fireEvent.input(input, { target: { value: "quiet track" } });
+    expect(container.querySelector('[data-setting-key="bgMusic"]')).toBeNull();
+    expect(container.textContent?.toLowerCase()).not.toContain(
+      "loop a quiet track",
+    );
+    fireEvent.input(input, { target: { value: "background music" } });
+    expect(
+      container.querySelector('[aria-label="background music volume"]'),
+    ).toBeNull();
+    expect(container.textContent?.toLowerCase()).not.toContain(
+      "background music",
+    );
   });
 
   it("shows one tab panel at a time and switches with the keyboard", () => {
@@ -182,9 +217,10 @@ describe("SettingsPage", () => {
       'input[placeholder="search settings"]',
     );
     if (input === null) throw new Error("missing search");
-    fireEvent.input(input, { target: { value: "background music" } });
-    const music = container.querySelector('[data-setting-key="bgMusic"]');
-    expect(music).not.toHaveClass("hidden");
+    fireEvent.input(input, { target: { value: "sound volume" } });
+    const volume = container.querySelector('[data-setting-key="soundVolume"]');
+    expect(volume).not.toHaveClass("hidden");
+    expect(container.querySelector('[data-setting-key="bgMusic"]')).toBeNull();
     expect(document.getElementById("settings-panel-sound")).not.toHaveClass(
       "hidden",
     );
