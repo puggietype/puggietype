@@ -1,4 +1,4 @@
-# Background music sources (steam build only)
+# Background music sources
 
 Every file in this folder must be listed here with a matching sha256
 (checked by `__tests__/steam/music.spec.ts`). CC0 only, no
@@ -17,6 +17,6 @@ Notes for Legal:
 - Both pages list "License(s): CC0" and link the CC0 1.0 deed above.
 - Credit is optional on both pages (Sherwood: "If you wish to credit me,
   use the name Chris Murphy."; calm theme: "if you want to credit me link
-  to https://pebonius.itch.io/"). Both are credited on the steam build's
-  About screen (`data-testid="music-credits"` in AboutPage.tsx).
+  to https://pebonius.itch.io/").
+- Both are credited on the About page in both builds (`data-testid="music-credits"` in AboutPage.tsx).
 - Files are byte-for-byte as downloaded; only renamed.
