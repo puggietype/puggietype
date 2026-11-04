@@ -2,6 +2,8 @@ import {
   createResource,
   createSignal,
   JSXElement,
+  onCleanup,
+  onMount,
   Show,
   Suspense,
 } from "solid-js";
@@ -17,18 +19,20 @@ import {
 } from "../../../controllers/sound-controller";
 import { isAuthAvailable } from "../../../firebase";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
+import { resetBackgroundMusic } from "../../../states/background-music";
 import { isAuthenticated } from "../../../states/core";
 import { showModal } from "../../../states/modals";
+import { getHighlightedSetting } from "../../../states/settings-highlight";
 import { isSettingsSearchActive } from "../../../states/settings-search";
 import { showSimpleModal } from "../../../states/simple-modal";
 import { cn } from "../../../utils/cn";
 import fileStorage from "../../../utils/file-storage";
-import { wordsToCamelCase } from "../../../utils/strings";
 import { Anime, AnimeShow } from "../../common/anime";
 import { Button } from "../../common/Button";
 import { Fa } from "../../common/Fa";
 import { CommandlineHotkey } from "../../hotkeys/CommandlineHotkey";
 import { AutoSwitchTheme } from "./custom-setting/AutoSwitchTheme";
+import { BackgroundMusic } from "./custom-setting/BackgroundMusic";
 import { CustomBackground } from "./custom-setting/CustomBackground";
 import { CustomBackgroundFilters } from "./custom-setting/CustomBackgroundFilters";
 import { CustomLayoutfluid } from "./custom-setting/CustomLayoutfluid";
@@ -49,22 +53,67 @@ import { Presets } from "./custom-setting/Presets";
 import { SoundVolume } from "./custom-setting/SoundVolume";
 import { Tags } from "./custom-setting/Tags";
 import { Theme } from "./custom-setting/Theme";
-import { QuickNav } from "./QuickNav";
 import { SearchableAutoSetting } from "./SearchableAutoSetting";
 import { SearchableSetting } from "./SearchableSetting";
+import {
+  isSettingsTabId,
+  sectionDomId,
+  settingsPanelDomId,
+  settingsTabDomId,
+  tabForHash,
+  type SettingsTabId,
+} from "./settings-tabs";
 import { SettingsSearch } from "./SettingsSearch";
+import { SettingsTabs } from "./SettingsTabs";
 
 export function SettingsPage(): JSXElement {
   const [hasLocalBg] = createResource(
     () => fileStorage.track("LocalBackgroundFile"),
     async () => fileStorage.hasFile("LocalBackgroundFile"),
   );
+  const [tab, setTab] = createSignal<SettingsTabId>(
+    tabForHash(window.location.hash) ?? "graphics",
+  );
+
+  onMount(() => {
+    const highlight = getHighlightedSetting();
+    if (highlight !== undefined) {
+      const el = document.querySelector(
+        `[data-setting-key="${CSS.escape(highlight)}"]`,
+      );
+      const owner = el
+        ?.closest("[data-settings-tab]")
+        ?.getAttribute("data-settings-tab");
+      if (isSettingsTabId(owner)) setTab(owner);
+    } else {
+      const hashed = tabForHash(window.location.hash);
+      if (hashed !== undefined) {
+        setTab(hashed);
+        const id = window.location.hash.slice(1);
+        document.getElementById(id)?.scrollIntoView({ block: "start" });
+      }
+    }
+
+    const onHashChange = (): void => {
+      const next = tabForHash(window.location.hash);
+      if (next === undefined) return;
+      setTab(next);
+      const id = window.location.hash.slice(1);
+      document.getElementById(id)?.scrollIntoView({ block: "start" });
+    };
+    window.addEventListener("hashchange", onHashChange);
+    onCleanup(() => window.removeEventListener("hashchange", onHashChange));
+  });
 
   return (
     <div class="grid gap-8">
       {/* while filtering, only the matching settings stay visible; everything
             else is hidden with css so nothing unmounts while typing */}
-      <QuickNav class={cn(isSettingsSearchActive() && "hidden")} />
+      <SettingsTabs
+        tab={tab()}
+        onChange={setTab}
+        class={cn(isSettingsSearchActive() && "hidden")}
+      />
       <Show when={getConfig.showKeyTips}>
         <div
           class={cn(
@@ -81,204 +130,214 @@ export function SettingsPage(): JSXElement {
       <SettingsSearch />
       {/* while filtering, lay the matching sections out with a uniform gap */}
       <div class={cn(isSettingsSearchActive() && "grid gap-8")}>
-        <Section title="behavior">
-          <Show when={isAuthenticated()}>
-            <Tags />
-            <Presets />
-            <SearchableAutoSetting key="resultSaving" />
-          </Show>
-          <SearchableAutoSetting key="difficulty" />
-          <SearchableAutoSetting key="quickRestart" />
-          <SearchableAutoSetting key="repeatQuotes" />
-          <SearchableAutoSetting key="blindMode" />
-          <SearchableAutoSetting key="alwaysShowWordsHistory" />
-          <SearchableAutoSetting key="singleListCommandLine" />
-          <MinSpeed />
-          <MinAcc />
-          <MinBurst />
-          <SearchableAutoSetting key="britishEnglish" />
-          <Language />
-          <Funbox />
-          <CustomLayoutfluid />
-          <CustomPolyglot />
-        </Section>
-        <Section title="input">
-          <SearchableAutoSetting key="freedomMode" />
-          <SearchableAutoSetting key="strictSpace" />
-          <SearchableAutoSetting key="oppositeShiftMode" />
-          <SearchableAutoSetting key="stopOnError" />
-          <SearchableAutoSetting key="deleteOnError" />
-          <SearchableAutoSetting key="confidenceMode" />
-          <SearchableAutoSetting key="quickEnd" />
-          <SearchableAutoSetting key="indicateTypos" />
-          <SearchableAutoSetting key="hideExtraLetters" />
-          <SearchableAutoSetting key="compositionDisplay" />
-          <SearchableAutoSetting key="lazyMode" />
-          <Layout />
-          <SearchableAutoSetting key="codeUnindentOnBackspace" />
-        </Section>
-        <Section title="sound">
-          <SoundVolume />
-          <SearchableAutoSetting
-            key="playSoundOnClick"
-            wide
-            onOptionClick={(option) => {
-              if (option === "off") return;
-              void previewClick(option);
-            }}
-          />
-          <SearchableAutoSetting
-            key="playSoundOnError"
-            wide
-            onOptionClick={(option) => {
-              if (option === "off") return;
-              void previewError(option);
-            }}
-          />
-          <SearchableAutoSetting
-            key="playTimeWarning"
-            wide
-            onOptionClick={(option) => {
-              if (option === "off") return;
-              void playTimeWarning();
-            }}
-          />
-        </Section>
-        <Section title="caret">
-          <SearchableAutoSetting key="smoothCaret" />
-          <SearchableAutoSetting key="caretStyle" wide />
-          <PaceCaret />
-          <SearchableAutoSetting key="repeatedPace" />
-          <SearchableAutoSetting key="paceCaretStyle" wide />
-        </Section>
-        <Section title="appearance">
-          <SearchableAutoSetting key="timerStyle" wide />
-          <SearchableAutoSetting key="liveSpeedStyle" />
-          <SearchableAutoSetting key="liveAccStyle" />
-          <SearchableAutoSetting key="liveBurstStyle" />
-          <SearchableAutoSetting key="timerColor" />
-          <SearchableAutoSetting key="timerOpacity" />
-          <SearchableAutoSetting key="highlightMode" wide />
-          <SearchableAutoSetting key="typedEffect" />
-          <SearchableAutoSetting key="tapeMode" />
-          <SearchableAutoSetting key="tapeMargin" />
-          <SearchableAutoSetting key="smoothLineScroll" />
-          <SearchableAutoSetting key="showAllLines" />
-          <SearchableAutoSetting key="alwaysShowDecimalPlaces" />
-          <SearchableAutoSetting key="typingSpeedUnit" />
-          <SearchableAutoSetting key="startGraphsAtZero" />
-          <SearchableAutoSetting key="monkey" />
-          <MaxLineWidth />
-          <SearchableAutoSetting key="fontSize" />
-          <FontFamily />
-          <SearchableAutoSetting key="keymapMode" />
-          <Show when={getConfig.keymapMode !== "off"}>
-            <KeymapLayout />
-            <SearchableAutoSetting key="keymapStyle" wide />
-            <SearchableAutoSetting key="keymapLegendStyle" wide />
-            <SearchableAutoSetting key="keymapKeys" wide />
-            <KeymapSize />
-          </Show>
-        </Section>
-        <Section title="theme">
-          <SearchableAutoSetting key="flipTestColors" />
-          <SearchableAutoSetting key="colorfulMode" />
-          <CustomBackground />
-          <Suspense>
-            {/* latest: a refetch keeps the old value instead of suspending */}
-            <Show when={getConfig.customBackground !== "" || hasLocalBg.latest}>
-              <CustomBackgroundFilters />
+        <TabPanel id="graphics" tab={tab()}>
+          <Section title="caret" tab="graphics">
+            <SearchableAutoSetting key="smoothCaret" />
+            <SearchableAutoSetting key="caretStyle" wide />
+            <PaceCaret />
+            <SearchableAutoSetting key="repeatedPace" />
+            <SearchableAutoSetting key="paceCaretStyle" wide />
+          </Section>
+          <Section title="appearance" tab="graphics">
+            <SearchableAutoSetting key="timerStyle" wide />
+            <SearchableAutoSetting key="liveSpeedStyle" />
+            <SearchableAutoSetting key="liveAccStyle" />
+            <SearchableAutoSetting key="liveBurstStyle" />
+            <SearchableAutoSetting key="timerColor" />
+            <SearchableAutoSetting key="timerOpacity" />
+            <SearchableAutoSetting key="highlightMode" wide />
+            <SearchableAutoSetting key="typedEffect" />
+            <SearchableAutoSetting key="tapeMode" />
+            <SearchableAutoSetting key="tapeMargin" />
+            <SearchableAutoSetting key="smoothLineScroll" />
+            <SearchableAutoSetting key="showAllLines" />
+            <SearchableAutoSetting key="alwaysShowDecimalPlaces" />
+            <SearchableAutoSetting key="typingSpeedUnit" />
+            <SearchableAutoSetting key="startGraphsAtZero" />
+            <SearchableAutoSetting key="monkey" />
+            <MaxLineWidth />
+            <SearchableAutoSetting key="fontSize" />
+            <FontFamily />
+            <SearchableAutoSetting key="keymapMode" />
+            <Show when={getConfig.keymapMode !== "off"}>
+              <KeymapLayout />
+              <SearchableAutoSetting key="keymapStyle" wide />
+              <SearchableAutoSetting key="keymapLegendStyle" wide />
+              <SearchableAutoSetting key="keymapKeys" wide />
+              <KeymapSize />
             </Show>
-          </Suspense>
-          <AutoSwitchTheme />
-          <SearchableAutoSetting key="randomTheme" wide />
-          <Theme />
-        </Section>
-        <Section title="hide elements">
-          <SearchableAutoSetting key="showKeyTips" />
-          <SearchableAutoSetting key="showOutOfFocusWarning" />
-          <SearchableAutoSetting key="capsLockWarning" />
-          <Show when={!isConfigKeyHidden("showAverage")}>
-            <SearchableAutoSetting key="showAverage" />
-          </Show>
-        </Section>
-        <Section title="danger zone">
-          <ImportExport />
-          <SearchableSetting
-            key="cookies"
-            title="update cookie preferences"
-            description="If you changed your mind about which cookies you consent to, you can change your preferences here."
-            fa={{
-              icon: "fa-cookie-bite",
-            }}
-            inputs={
-              <Button
-                class="w-full"
-                onClick={() => {
-                  showModal("Cookies");
-                }}
+          </Section>
+          <Section title="theme" tab="graphics">
+            <SearchableAutoSetting key="flipTestColors" />
+            <SearchableAutoSetting key="colorfulMode" />
+            <CustomBackground />
+            <Suspense>
+              {/* latest: a refetch keeps the old value instead of suspending */}
+              <Show
+                when={getConfig.customBackground !== "" || hasLocalBg.latest}
               >
-                open
-              </Button>
-            }
-          />
-          <SearchableSetting
-            key="theRest"
-            title="the rest"
-            description="Niche settings that only affect minor functionality. Most people will never need to touch these."
-            fa={{
-              icon: "fa-sliders-h",
-            }}
-            extraSearchKeywords="animation fps limit sarcastic result message"
-            inputs={
-              <Button
-                class="w-full"
-                onClick={() => {
-                  showModal("TheRest");
-                }}
-              >
-                open
-              </Button>
-            }
-          />
-          <SearchableSetting
-            key="resetSettings"
-            title="reset settings"
-            description={
-              <div>
-                Resets settings to the default (but doesn&apos;t touch your tags
-                and presets).
-                <br />
-                <div class="text-error">You can&apos;t undo this!</div>
-              </div>
-            }
-            fa={{
-              icon: "fa-undo",
-            }}
-            inputs={
-              <Button
-                class="w-full"
-                danger
-                onClick={() => {
-                  showSimpleModal({
-                    title: "Are you sure?",
-                    buttonText: "reset",
-                    execFn: async () => {
-                      await resetConfig();
-                      await fileStorage.deleteFile("LocalBackgroundFile");
-                      return {
-                        status: "success",
-                        message: "Settings reset",
-                      };
-                    },
-                  });
-                }}
-              >
-                reset settings
-              </Button>
-            }
-          />
-        </Section>
+                <CustomBackgroundFilters />
+              </Show>
+            </Suspense>
+            <AutoSwitchTheme />
+            <SearchableAutoSetting key="randomTheme" wide />
+            <Theme />
+          </Section>
+          <Section title="hide elements" tab="graphics">
+            <SearchableAutoSetting key="showKeyTips" />
+            <SearchableAutoSetting key="showOutOfFocusWarning" />
+            <SearchableAutoSetting key="capsLockWarning" />
+            <Show when={!isConfigKeyHidden("showAverage")}>
+              <SearchableAutoSetting key="showAverage" />
+            </Show>
+          </Section>
+        </TabPanel>
+        <TabPanel id="sound" tab={tab()}>
+          <Section title="sound" tab="sound">
+            <BackgroundMusic />
+            <SoundVolume />
+            <SearchableAutoSetting
+              key="playSoundOnClick"
+              wide
+              onOptionClick={(option) => {
+                if (option === "off") return;
+                void previewClick(option);
+              }}
+            />
+            <SearchableAutoSetting
+              key="playSoundOnError"
+              wide
+              onOptionClick={(option) => {
+                if (option === "off") return;
+                void previewError(option);
+              }}
+            />
+            <SearchableAutoSetting
+              key="playTimeWarning"
+              wide
+              onOptionClick={(option) => {
+                if (option === "off") return;
+                void playTimeWarning();
+              }}
+            />
+          </Section>
+        </TabPanel>
+        <TabPanel id="gameplay" tab={tab()}>
+          <Section title="behavior" tab="gameplay">
+            <Show when={isAuthenticated()}>
+              <Tags />
+              <Presets />
+              <SearchableAutoSetting key="resultSaving" />
+            </Show>
+            <SearchableAutoSetting key="difficulty" />
+            <SearchableAutoSetting key="quickRestart" />
+            <SearchableAutoSetting key="repeatQuotes" />
+            <SearchableAutoSetting key="blindMode" />
+            <SearchableAutoSetting key="alwaysShowWordsHistory" />
+            <SearchableAutoSetting key="singleListCommandLine" />
+            <MinSpeed />
+            <MinAcc />
+            <MinBurst />
+            <SearchableAutoSetting key="britishEnglish" />
+            <Language />
+            <Funbox />
+            <CustomLayoutfluid />
+            <CustomPolyglot />
+          </Section>
+          <Section title="input" tab="gameplay">
+            <SearchableAutoSetting key="freedomMode" />
+            <SearchableAutoSetting key="strictSpace" />
+            <SearchableAutoSetting key="oppositeShiftMode" />
+            <SearchableAutoSetting key="stopOnError" />
+            <SearchableAutoSetting key="deleteOnError" />
+            <SearchableAutoSetting key="confidenceMode" />
+            <SearchableAutoSetting key="quickEnd" />
+            <SearchableAutoSetting key="indicateTypos" />
+            <SearchableAutoSetting key="hideExtraLetters" />
+            <SearchableAutoSetting key="compositionDisplay" />
+            <SearchableAutoSetting key="lazyMode" />
+            <Layout />
+            <SearchableAutoSetting key="codeUnindentOnBackspace" />
+          </Section>
+          <Section title="danger zone" tab="gameplay">
+            <ImportExport />
+            <SearchableSetting
+              key="cookies"
+              title="update cookie preferences"
+              description="If you changed your mind about which cookies you consent to, you can change your preferences here."
+              fa={{
+                icon: "fa-cookie-bite",
+              }}
+              inputs={
+                <Button
+                  class="w-full"
+                  onClick={() => {
+                    showModal("Cookies");
+                  }}
+                >
+                  open
+                </Button>
+              }
+            />
+            <SearchableSetting
+              key="theRest"
+              title="the rest"
+              description="Niche settings that only affect minor functionality. Most people will never need to touch these."
+              fa={{
+                icon: "fa-sliders-h",
+              }}
+              extraSearchKeywords="animation fps limit sarcastic result message"
+              inputs={
+                <Button
+                  class="w-full"
+                  onClick={() => {
+                    showModal("TheRest");
+                  }}
+                >
+                  open
+                </Button>
+              }
+            />
+            <SearchableSetting
+              key="resetSettings"
+              title="reset settings"
+              description={
+                <div>
+                  Resets settings to the default (but doesn&apos;t touch your
+                  tags and presets).
+                  <br />
+                  <div class="text-error">You can&apos;t undo this!</div>
+                </div>
+              }
+              fa={{
+                icon: "fa-undo",
+              }}
+              inputs={
+                <Button
+                  class="w-full"
+                  danger
+                  onClick={() => {
+                    showSimpleModal({
+                      title: "Are you sure?",
+                      buttonText: "reset",
+                      execFn: async () => {
+                        await resetConfig();
+                        resetBackgroundMusic();
+                        await fileStorage.deleteFile("LocalBackgroundFile");
+                        return {
+                          status: "success",
+                          message: "Settings reset",
+                        };
+                      },
+                    });
+                  }}
+                >
+                  reset settings
+                </Button>
+              }
+            />
+          </Section>
+        </TabPanel>
       </div>
 
       <AccountSettingsNotice />
@@ -320,12 +379,37 @@ function AccountSettingsNotice(): JSXElement {
   );
 }
 
-function Section(props: { title: string; children: JSXElement }): JSXElement {
+function TabPanel(props: {
+  id: SettingsTabId;
+  tab: SettingsTabId;
+  children: JSXElement;
+}): JSXElement {
+  const searching = (): boolean => isSettingsSearchActive();
+  const shown = (): boolean => searching() || props.tab === props.id;
+  return (
+    <div
+      id={settingsPanelDomId(props.id)}
+      // search hides the tablist, so these regions are ordinary sections
+      role={searching() ? undefined : "tabpanel"}
+      aria-labelledby={searching() ? undefined : settingsTabDomId(props.id)}
+      class={cn(!shown() && "hidden", searching() && "grid gap-8")}
+    >
+      {props.children}
+    </div>
+  );
+}
+
+function Section(props: {
+  title: string;
+  tab: SettingsTabId;
+  children: JSXElement;
+}): JSXElement {
   const [isOpen, setIsOpen] = createSignal(true);
 
   return (
     <div
-      id={`group_${wordsToCamelCase(props.title)}`}
+      id={sectionDomId(props.title)}
+      data-settings-tab={props.tab}
       class={cn(
         // when filtering, drop sections where every setting is hidden
         isSettingsSearchActive() &&
