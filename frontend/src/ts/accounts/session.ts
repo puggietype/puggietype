@@ -37,12 +37,16 @@ export function preloadSdk(): void {
   void loadSdk().catch(() => undefined);
 }
 
+function firebaseCode(error: unknown): string {
+  return typeof error === "object" && error !== null && "code" in error
+    ? String(error.code)
+    : "";
+}
+
 export function firebaseErrorMessage(error: unknown): string {
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String(error.code)
-      : "";
-  return accountsCopy.firebase[code] ?? accountsCopy.firebaseFallback;
+  return (
+    accountsCopy.firebase[firebaseCode(error)] ?? accountsCopy.firebaseFallback
+  );
 }
 
 function setSignedIn(user: AccountUser | null): void {
@@ -148,13 +152,18 @@ async function start(
   } catch (e) {
     return error("", firebaseErrorMessage(e));
   }
-  return establish(
+  const result = await establish(
     sdk,
     signedIn.user,
     signedIn.isNew,
     turnstileToken,
     create ? true : undefined,
   );
+  // Google addresses come verified; a new email account gets the link now
+  if (result.status === "signed-in" && !signedIn.user.emailVerified) {
+    await sdk.sendVerification(signedIn.user).catch(() => undefined);
+  }
+  return result;
 }
 
 /** existing account; a first-time Google user may come back `needs-age` */
@@ -186,10 +195,20 @@ export async function completeAgeCheck(
   turnstileToken: string,
 ): Promise<AuthResult> {
   const pending = pendingAge;
-  if (pending === undefined) return error("", accountsCopy.age.expired);
+  if (pending === undefined) return error("", accountsCopy.sessionExpired);
   const sdk = await loadSdk();
   if (!ageOk) return rejectUnderage(sdk, pending.user);
-  return establish(sdk, pending.user, pending.isNew, turnstileToken, true);
+  const result = await establish(
+    sdk,
+    pending.user,
+    pending.isNew,
+    turnstileToken,
+    true,
+  );
+  if (result.status === "signed-in" && !pending.user.emailVerified) {
+    await sdk.sendVerification(pending.user).catch(() => undefined);
+  }
+  return result;
 }
 
 /** backs out of the age question: no account, Firebase signed out */
@@ -238,5 +257,68 @@ export async function signOut(): Promise<void> {
     await sdk.signOutFirebase(config.firebase);
   } finally {
     setSignedIn(null);
+  }
+}
+
+export type ActionResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Firebase password reset email. Unknown addresses count as sent, so the
+ * form never tells whether an account exists.
+ */
+export async function requestPasswordReset(
+  email: string,
+): Promise<ActionResult> {
+  const config = getAccountsConfig();
+  if (missingAccountsConfig(config).length > 0) {
+    return { ok: false, message: accountsCopy.notConfigured };
+  }
+  try {
+    const sdk = await loadSdk();
+    await sdk.sendPasswordReset(config.firebase, email);
+  } catch (e) {
+    const code = firebaseCode(e);
+    if (code !== "auth/user-not-found" && code !== "auth/invalid-credential") {
+      return { ok: false, message: firebaseErrorMessage(e) };
+    }
+  }
+  return { ok: true };
+}
+
+/** sends the verification link again to the signed-in user */
+export async function resendVerification(): Promise<ActionResult> {
+  try {
+    const sdk = await loadSdk();
+    const user = await sdk.getRestoredUser(getAccountsConfig().firebase);
+    if (user === null) {
+      return { ok: false, message: accountsCopy.sessionExpired };
+    }
+    await sdk.sendVerification(user);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: firebaseErrorMessage(e) };
+  }
+}
+
+/**
+ * After the user clicked the link: reloads the Firebase user, takes a fresh
+ * ID token (its email_verified claim) and re-reads the account.
+ * @returns whether the email now counts as verified
+ */
+export async function refreshVerification(): Promise<boolean> {
+  const config = getAccountsConfig();
+  try {
+    const sdk = await loadSdk();
+    const user = await sdk.getFreshUser(config.firebase);
+    if (user === null) return false;
+    const me = await getMe({
+      apiUrl: config.apiUrl,
+      idToken: await sdk.getUserIdToken(user, true),
+    });
+    if (!me.ok) return false;
+    setSignedIn(me.user);
+    return me.user.emailVerified;
+  } catch {
+    return false;
   }
 }

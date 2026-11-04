@@ -38,6 +38,7 @@ export const accountsCopy = {
   } as Partial<Record<string, string>>,
   firebaseFallback: "Something went wrong, please try again",
   notConfigured: "Accounts are not configured",
+  sessionExpired: "That sign-in has expired, please start again",
   nav: { signIn: "sign in", signedIn: "signed in" },
   turnstile: {
     unconfigured: "Sign-in is not available yet.",
@@ -67,11 +68,25 @@ export const accountsCopy = {
     continue: "continue",
     cancel: "cancel",
     blocked: "Sorry, we can't create an account for you.",
-    expired: "That sign-in has expired, please start again",
+  },
+  reset: {
+    link: "forgot password?",
+    title: "reset password",
+    submit: "send reset link",
+    // same text whether or not the account exists
+    sent: "If an account uses that email, we've sent it a link to reset the password.",
+    back: "back to sign in",
+  },
+  verify: {
+    notice: "Please verify your email: we sent you a link.",
+    resend: "resend email",
+    resent: "Verification email sent",
+    check: "I've verified it",
+    stillUnverified: "Your email isn't verified yet",
+    verified: "Email verified",
   },
   signedIn: {
     title: "signed in",
-    notVerified: "Your email is not verified yet.",
     signOut: "sign out",
   },
 } as const;

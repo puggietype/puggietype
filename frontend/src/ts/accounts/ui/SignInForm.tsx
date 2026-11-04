@@ -15,6 +15,7 @@ import { TurnstileControl, TurnstileWidget } from "./TurnstileWidget";
 /** email/password or Google sign-in to an existing account */
 export function SignInForm(props: {
   onResult: (result: AuthResult) => void;
+  onForgotPassword: () => void;
 }): JSXElement {
   const config = getAccountsConfig();
   const [turnstileToken, setTurnstileToken] = createSignal<string | null>(null);
@@ -105,6 +106,11 @@ export function SignInForm(props: {
           disabled={!canSubmit()}
         />
       </form>
+      <Button
+        variant="text"
+        text={accountsCopy.reset.link}
+        onClick={() => props.onForgotPassword()}
+      />
     </div>
   );
 }

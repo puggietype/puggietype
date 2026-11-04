@@ -5,6 +5,9 @@ const sdk = vi.hoisted(() => ({
   signInGoogle: vi.fn(),
   createUserEmail: vi.fn(),
   deleteFirebaseUser: vi.fn(),
+  sendVerification: vi.fn(),
+  sendPasswordReset: vi.fn(),
+  getFreshUser: vi.fn(),
   getUserIdToken: vi.fn(),
   getRestoredUser: vi.fn(),
   signOutFirebase: vi.fn(),
@@ -37,6 +40,9 @@ import {
   cancelAgeCheck,
   completeAgeCheck,
   firebaseErrorMessage,
+  refreshVerification,
+  requestPasswordReset,
+  resendVerification,
   restoreSession,
   signIn,
   signOut,
@@ -62,6 +68,8 @@ beforeEach(() => {
   sdk.signInGoogle.mockResolvedValue({ user: fbUser, isNew: false });
   sdk.createUserEmail.mockResolvedValue(fbUser);
   sdk.deleteFirebaseUser.mockResolvedValue(undefined);
+  sdk.sendVerification.mockResolvedValue(undefined);
+  sdk.sendPasswordReset.mockResolvedValue(undefined);
   sdk.getUserIdToken.mockResolvedValue("id-token");
   sdk.signOutFirebase.mockResolvedValue(undefined);
 });
@@ -321,5 +329,89 @@ describe("accounts sign-up and age check", () => {
     await cancelAgeCheck();
     expect(sdk.deleteFirebaseUser).toHaveBeenCalledTimes(1);
     expect(sdk.signOutFirebase).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("accounts email verification and password reset", () => {
+  const unverified = { uid: "u1", emailVerified: false };
+
+  it("a new email account gets the verification link", async () => {
+    sdk.createUserEmail.mockResolvedValue(unverified);
+    api.createSession.mockResolvedValue({ ok: true, user, created: true });
+    await signUp({ kind: "email", email: "a@b.test", password: "pw" }, "t");
+    expect(sdk.sendVerification).toHaveBeenCalledWith(unverified);
+  });
+
+  it("no link when sign-up fails or the address is already verified", async () => {
+    sdk.createUserEmail.mockResolvedValue(unverified);
+    api.createSession.mockResolvedValue({
+      ok: false,
+      status: 403,
+      code: "turnstile_failed",
+      message: "",
+    });
+    await signUp({ kind: "email", email: "a@b.test", password: "pw" }, "t");
+    api.createSession.mockResolvedValue({ ok: true, user, created: true });
+    await signUp({ kind: "google" }, "t");
+    expect(sdk.sendVerification).not.toHaveBeenCalled();
+  });
+
+  it("a failed send doesn't fail the sign-up", async () => {
+    sdk.createUserEmail.mockResolvedValue(unverified);
+    sdk.sendVerification.mockRejectedValue({ code: "auth/too-many-requests" });
+    api.createSession.mockResolvedValue({ ok: true, user, created: true });
+    expect(
+      await signUp({ kind: "email", email: "a@b.test", password: "pw" }, "t"),
+    ).toMatchObject({ status: "signed-in" });
+  });
+
+  it("resend goes to the restored user", async () => {
+    sdk.getRestoredUser.mockResolvedValue(unverified);
+    expect(await resendVerification()).toEqual({ ok: true });
+    expect(sdk.sendVerification).toHaveBeenCalledWith(unverified);
+
+    sdk.sendVerification.mockRejectedValue({ code: "auth/too-many-requests" });
+    expect(await resendVerification()).toEqual({
+      ok: false,
+      message: accountsCopy.firebase["auth/too-many-requests"],
+    });
+
+    sdk.getRestoredUser.mockResolvedValue(null);
+    expect(await resendVerification()).toEqual({
+      ok: false,
+      message: accountsCopy.sessionExpired,
+    });
+  });
+
+  it("refresh reloads, forces a new token and re-reads the account", async () => {
+    sdk.getFreshUser.mockResolvedValue({ uid: "u1", emailVerified: true });
+    api.getMe.mockResolvedValue({ ok: true, user });
+    expect(await refreshVerification()).toBe(true);
+    expect(sdk.getUserIdToken).toHaveBeenCalledWith(
+      { uid: "u1", emailVerified: true },
+      true,
+    );
+    expect(getAccountUser()).toEqual(user);
+
+    api.getMe.mockResolvedValue({
+      ok: true,
+      user: { ...user, emailVerified: false },
+    });
+    expect(await refreshVerification()).toBe(false);
+  });
+
+  it("password reset reads the same whether or not the account exists", async () => {
+    expect(await requestPasswordReset("a@b.test")).toEqual({ ok: true });
+    expect(sdk.sendPasswordReset).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "x" }),
+      "a@b.test",
+    );
+    sdk.sendPasswordReset.mockRejectedValue({ code: "auth/user-not-found" });
+    expect(await requestPasswordReset("x@b.test")).toEqual({ ok: true });
+    sdk.sendPasswordReset.mockRejectedValue({ code: "auth/invalid-email" });
+    expect(await requestPasswordReset("nope")).toEqual({
+      ok: false,
+      message: accountsCopy.firebase["auth/invalid-email"],
+    });
   });
 });

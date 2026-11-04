@@ -10,6 +10,8 @@ import {
   getAuth,
   getIdToken,
   GoogleAuthProvider,
+  sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -100,4 +102,24 @@ export async function signOutFirebase(
   config: FirebaseWebConfig,
 ): Promise<void> {
   await signOut(getAccountsAuth(config));
+}
+
+export async function sendPasswordReset(
+  config: FirebaseWebConfig,
+  email: string,
+): Promise<void> {
+  await sendPasswordResetEmail(getAccountsAuth(config), email);
+}
+
+export async function sendVerification(user: User): Promise<void> {
+  await sendEmailVerification(user);
+}
+
+/** the signed-in Firebase user, re-read from the server (emailVerified) */
+export async function getFreshUser(
+  config: FirebaseWebConfig,
+): Promise<User | null> {
+  const user = await getRestoredUser(config);
+  await user?.reload();
+  return user;
 }
