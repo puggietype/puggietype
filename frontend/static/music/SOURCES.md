@@ -1,10 +1,11 @@
-# Background music sources (steam build only)
+# Background music sources
 
 Every file in this folder must be listed here with a matching sha256
 (checked by `__tests__/steam/music.spec.ts`). CC0 only, no
-attribution required, nothing paid. Only light, cozy tracks. The web build
-does not ship this folder. On the steam build music is on by default at 35%
-volume, and nothing is fetched or played until the first click or key press.
+attribution required, nothing paid. Only light, cozy tracks. Both builds ship
+this folder. Steam build: music is on by default at 35% volume. Web build:
+music is off by default (Settings > Sound > background music). Either way
+nothing is fetched or played until the first click or key press.
 
 | File | Title | Author | Source URL | File URL | Licence | Licence page | Retrieved | sha256 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -16,6 +17,6 @@ Notes for Legal:
 - Both pages list "License(s): CC0" and link the CC0 1.0 deed above.
 - Credit is optional on both pages (Sherwood: "If you wish to credit me,
   use the name Chris Murphy."; calm theme: "if you want to credit me link
-  to https://pebonius.itch.io/"). Both are credited on the steam build's
-  About screen (`data-testid="music-credits"` in AboutPage.tsx).
+  to https://pebonius.itch.io/").
+- Both are credited on the About page in both builds (`data-testid="music-credits"` in AboutPage.tsx).
 - Files are byte-for-byte as downloaded; only renamed.
