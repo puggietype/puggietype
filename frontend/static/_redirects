@@ -20,7 +20,7 @@
 # /about is the old SPA shell. The crawlable about page is /guide/about.
 /about /guide/about 301
 /about/ /guide/about 301
-# old kids slug. Both this path and /guide/teaching-kids-to-type stay noindex.
+# old kids slug. 301 forever to the indexable parents/teachers guide.
 /guide/typing-for-kids /guide/teaching-kids-to-type 301
 /guide/typing-for-kids/ /guide/teaching-kids-to-type 301
 /guide/teaching-kids-to-type/ /guide/teaching-kids-to-type 301

@@ -35,13 +35,10 @@ describe("static routing", () => {
     "/guide/typing-ergonomics",
     "/guide/typing-test-math",
     "/guide/improve-accuracy",
+    "/guide/teaching-kids-to-type",
     "/contact",
     "/creators",
   ];
-
-  // built and crawlable as a file, but noindex and absent from the sitemap
-  // and the /guide/ hub until Legal clears it
-  const unlistedGuides = ["/guide/teaching-kids-to-type"];
 
   const sitemapPaths = [
     ...readFileSync(path.join(staticDir, "sitemap.xml"), "utf-8").matchAll(
@@ -77,11 +74,6 @@ describe("static routing", () => {
     expect(existsSync(path.join(srcDir, "guide/index.html"))).toBe(true);
     expect(viteConfig).toContain('"src/guide/index.html"');
     expect(rules).not.toContain("/guide/");
-    for (const p of unlistedGuides) {
-      expect(existsSync(path.join(srcDir, `${p.slice(1)}.html`)), p).toBe(true);
-      expect(viteConfig, p).toContain(`"src${p}.html"`);
-      expect(rules, p).not.toContain(p);
-    }
   });
 
   it("serves every sitemap path from an html file or a spa rewrite", () => {
@@ -131,18 +123,27 @@ describe("static routing", () => {
     expect(home).toContain('src="html/site-intro.html"');
     expect(intro).toContain("PuggieType is a free, minimalist typing test");
     expect(intro).toContain('<a href="/guide/">typing guides</a>');
-    for (const hidden of [
-      "/guide/typing-for-kids",
-      "/guide/teaching-kids-to-type",
-    ]) {
-      expect(index, hidden).not.toContain(hidden);
-      expect(footer, hidden).not.toContain(hidden);
-      expect(intro, hidden).not.toContain(hidden);
-      expect(sitemapPaths, hidden).not.toContain(hidden);
-    }
+    const oldSlug = "/guide/typing-for-kids";
+    expect(index).not.toContain(oldSlug);
+    expect(footer).not.toContain(oldSlug);
+    expect(intro).not.toContain(oldSlug);
+    expect(home).not.toContain(oldSlug);
+    expect(sitemapPaths).not.toContain(oldSlug);
+    const parentsGuide = "/guide/teaching-kids-to-type";
+    expect(index).toContain(`href="${parentsGuide}"`);
+    expect(index).toContain(
+      "Teaching kids to type: a guide for parents and teachers",
+    );
+    expect(index).toContain("<h2>For parents and teachers</h2>");
+    expect(footer).not.toContain(parentsGuide);
+    expect(intro).not.toContain(parentsGuide);
+    expect(home).not.toContain(parentsGuide);
+    expect(sitemapPaths.filter((p) => p === parentsGuide)).toEqual([
+      parentsGuide,
+    ]);
   });
 
-  it("noindexes the teaching-kids guide and redirects the old slug", () => {
+  it("indexes the teaching-kids guide and redirects the old slug", () => {
     const page = readFileSync(
       path.join(srcDir, "guide/teaching-kids-to-type.html"),
       "utf-8",
@@ -151,7 +152,8 @@ describe("static routing", () => {
       path.join(srcDir, "guide/typing-for-kids.html"),
       "utf-8",
     );
-    expect(page).toContain('<meta name="robots" content="noindex, nofollow"');
+    expect(page).not.toMatch(/<meta\b[^>]*name=["']robots["']/i);
+    expect(page.toLowerCase()).not.toContain("noindex");
     expect(oldPage).toContain(
       '<meta name="robots" content="noindex, nofollow"',
     );
@@ -181,7 +183,6 @@ describe("static routing", () => {
   it("stamps a hand-set last-updated date that matches dateModified", () => {
     const stamped = [
       ...staticPages.filter((p) => p.startsWith("/guide/")),
-      ...unlistedGuides,
       "/faq",
     ];
     for (const p of stamped) {
