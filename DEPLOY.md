@@ -27,6 +27,8 @@ Set them for **both** Production and Preview. All are optional.
 | `VITE_PUBLIC_MATCHES` | off | off shows the "public match: coming soon" card. |
 | `VITE_FLAGS` | unset (all on) | Client feature flags, all **on** by default: `characterSelect` (dog picker, dogs in lobby/podium/solo), `opponentDogs` (opponents' dogs in races). Set to a comma list to ship only those, or `none` to turn all off (build-time kill switch). Per tab: `?flags=characterSelect` limits to those, `?flags=none` turns all off, `?flags=default` clears (kept in sessionStorage). `characterSelect` also needs the WS server's `FEATURE_CHARACTER_SELECT=1`, else everyone stays Puggie (server off = picker off, safe). |
 | `BACKEND_URL` | unset | leave unset: no accounts/API (standalone build). |
+| `GA4_MEASUREMENT_ID` | empty | Optional GA4 measurement ID (`G-XXXXXXXX`). Empty: no GA4 script and no extra Google origins in the CSP. Signals, ads personalization, and Ads linking stay off. Set it only after the GA4 property exists. |
+| `GA4_CONSENT_REGIONS` | EEA, UK, CH | Extra ISO country codes (comma-separated) that must accept analytics before GA4 loads. Unknown countries are treated the same way. The US is not in the default list. |
 | `VITE_FEATURE_ACCOUNTS` | off | `true` (exactly) turns on accounts sign-in (milestone A): `/login` sign-in page (email, Google) and a nav button. Off: the build drops all of it (no Firebase, no Turnstile, CSP unchanged). Not for prod until Legal copy, privacy and QA gates pass. |
 | `VITE_ACCOUNTS_API_URL` | unset | PuggieType API base url (`https://`, required when accounts are on); sign-in calls `POST /v1/auth/session`. Its origin is added to the CSP `connect-src`. |
 | `VITE_TURNSTILE_SITE_KEY` | empty | Cloudflare Turnstile site key (public). Empty: sign-in shows "not available yet". Cloudflare's test keys work on staging. |
@@ -46,7 +48,7 @@ The WS server's Origin allowlist must include every host serving the frontend
   test checks it).
 - `_routes.json`: asset prefixes (`/js`, `/css`, `/webfonts`, `/assets`, `/images`, ...)
   are excluded so they never invoke the Pages Function (free plan quota). The
-  middleware only does www -> apex and HSTS for pages. Real static files are served as-is.
+  middleware does www -> apex, HSTS, and a first-party `pt_country` cookie (from the visitor's edge country) so the analytics consent gate can tell EEA/UK/CH from the US. Real static files are served as-is.
 - `_headers`: CSP (self, inline-script hashes, WS origin, poetrydb/wikipedia for those
   funboxes, `frame-ancestors 'none'`), `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`, `Permissions-Policy`; one-year immutable cache for hashed

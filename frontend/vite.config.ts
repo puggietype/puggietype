@@ -18,6 +18,7 @@ import { resolvePlatform } from "./vite-plugins/platform";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
+import { ga4CspSources, mergeCspSources } from "./vite-plugins/ga4-csp";
 import { firebaseStub } from "./vite-plugins/firebase-stub";
 import {
   accountsCspSources,
@@ -154,6 +155,10 @@ function getPlugins({
     Inspect(),
   ];
 
+  const extraCsp = mergeCspSources([
+    isAccountsEnabled(env) ? accountsCspSources(env) : undefined,
+    ga4CspSources(env["GA4_MEASUREMENT_ID"]),
+  ]);
   const prodPlugins: PluginOption[] = [
     fontPreview(),
     fontawesomeSubset(),
@@ -226,7 +231,7 @@ function getPlugins({
     minifyJson(),
     pagesHeaders({
       wsUrl: env["VITE_WS_URL"],
-      ...(isAccountsEnabled(env) ? { extraCsp: accountsCspSources(env) } : {}),
+      ...(extraCsp === undefined ? {} : { extraCsp }),
     }),
   ];
 

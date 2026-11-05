@@ -1,5 +1,6 @@
-// Pages middleware: www -> apex 301, HSTS on what it serves, and a backstop
-// 404 for missing assets.
+// Pages middleware: www -> apex 301, HSTS on what it serves, a first-party
+// country cookie for the analytics consent gate, and a backstop 404 for
+// missing assets.
 //
 // Missing hashed assets are handled WITHOUT this function: dist has a
 // top-level 404.html (vite-plugins/not-found-page.ts), which turns off Pages'
@@ -28,8 +29,28 @@ function isHtml(res: Response): boolean {
 
 const HSTS = "max-age=31536000; includeSubDomains";
 
+/** Must match `COUNTRY_COOKIE` in `frontend/src/ts/analytics/consent.ts`. */
+export const COUNTRY_COOKIE = "pt_country";
+
+const UNKNOWN_COUNTRY = new Set(["XX", "T1"]);
+
+type EdgeRequest = Request & { cf?: { country?: unknown } };
+
+export function normalizeEdgeCountry(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toUpperCase();
+  const code = trimmed === "UK" ? "GB" : trimmed;
+  if (!/^[A-Z]{2}$/.test(code)) return null;
+  if (UNKNOWN_COUNTRY.has(code)) return null;
+  return code;
+}
+
+export function countrySetCookie(country: string): string {
+  return `${COUNTRY_COOKIE}=${country}; Path=/; Max-Age=86400; SameSite=Lax; Secure`;
+}
+
 export const onRequest = async (ctx: {
-  request: Request;
+  request: EdgeRequest;
   next: () => Promise<Response>;
 }): Promise<Response> => {
   const url = new URL(ctx.request.url);
@@ -61,5 +82,11 @@ export const onRequest = async (ctx: {
   // copy cached without _headers can't drop it
   const out = new Response(res.body, res);
   out.headers.set("Strict-Transport-Security", HSTS);
+  if (isHtml(out)) {
+    const country = normalizeEdgeCountry(ctx.request.cf?.country);
+    if (country !== null) {
+      out.headers.append("Set-Cookie", countrySetCookie(country));
+    }
+  }
   return out;
 };

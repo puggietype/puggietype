@@ -2,8 +2,10 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { Plugin } from "vite";
 
+// static-boot: the consent script entry shares the page, so Vite names the
+// extracted stylesheet after that entry instead of static-page.
 const LINK_RE =
-  /<link\b[^>]*\brel="?stylesheet"?[^>]*\bhref="?(\/css\/static-page\.[\w-]+\.css)"?[^>]*>/g;
+  /<link\b[^>]*\brel="?stylesheet"?[^>]*\bhref="?(\/css\/(?:static-page|static-boot)\.[\w-]+\.css)"?[^>]*>/g;
 
 /** replaces the static-page stylesheet link with an inline <style> */
 export function inlineStaticCss(

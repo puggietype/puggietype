@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Effective date: November 4, 2026. Last updated: November 4, 2026._
+_Effective date: November 5, 2026. Last updated: November 5, 2026._
 
 ## Who we are
 PuggieType is run by the PuggieType team. For any privacy question or request, email support@puggietype.com.
@@ -54,12 +54,16 @@ The PuggieType desktop app on Steam can let you sign in with your Steam account.
 - **Fly.io, Inc.** hosts the game server on a single server in its San Jose, California (US) region. Fly.io processes this data on our behalf as our service provider, under a data processing agreement with us that includes the EU Standard Contractual Clauses.
 - Neon, LLC (a Databricks company), USA, database hosting for leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.
 
-These providers process IP addresses and technical request data on our behalf. Fly.io keeps our game server's log output for 7 days ([Fly.io logging overview](https://fly.io/docs/monitoring/logging-overview/)). We don't receive or store raw visitor request logs from Cloudflare; Cloudflare processes and retains its own operational data as described in [Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/). Cloudflare also asks browsers to report network errors to it (Network Error Logging), and loads a small script that protects email addresses on our pages from spam bots. If Cloudflare's bot protection is triggered, it may set strictly necessary security cookies such as `__cf_bm` or `cf_clearance`. Cloudflare also gives us aggregate traffic statistics (for example, total requests, visits and countries) generated from this request data at its network edge. We see only totals, never individual visitors or IP addresses, and no extra script runs in your browser for this. We don't use Cloudflare Web Analytics or any other analytics script.
+These providers process IP addresses and technical request data on our behalf. Fly.io keeps our game server's log output for 7 days ([Fly.io logging overview](https://fly.io/docs/monitoring/logging-overview/)). We don't receive or store raw visitor request logs from Cloudflare; Cloudflare processes and retains its own operational data as described in [Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/). Cloudflare also asks browsers to report network errors to it (Network Error Logging), and loads a small script that protects email addresses on our pages from spam bots. If Cloudflare's bot protection is triggered, it may set strictly necessary security cookies such as `__cf_bm` or `cf_clearance`. Cloudflare also gives us aggregate traffic statistics (for example, total requests, visits and countries) generated from this request data at its network edge. We see only totals, never individual visitors or IP addresses, and no extra script runs in your browser for this. We don't use Cloudflare Web Analytics.
 
 **Valve Corporation (Steam)**, USA, is not our service provider. If you sign in with Steam, Valve processes your Steam account data as an independent controller under its own [Privacy Policy](https://store.steampowered.com/privacy_agreement/). We receive only your Steam ID, your ownership of PuggieType and its supporter pack, and your Steam display name, as described in "Steam sign-in (desktop app)".
 
 ## Cookies, analytics and error reporting
-PuggieType doesn't load any analytics, error-reporting or advertising scripts, and doesn't set analytics or advertising cookies. The only traffic statistics we use are the aggregate totals Cloudflare produces from its own request data (see above). We do not sell or share personal information for cross-context behavioral advertising. If we ever add an analytics or error-reporting script, we will update this policy and ask for your consent first where the law requires it.
+PuggieType does not load advertising or error-reporting scripts, and does not set advertising cookies. We do not sell or share personal information for cross-context behavioral advertising.
+
+**Google Analytics 4.** We use Google Analytics 4 (Google LLC) to understand how people use puggietype.com (for example page views and rough geography). Google may process technical data such as IP address, device/browser type, and page URLs on our behalf. We configure GA4 with Google signals off and without using Analytics for ads personalization. Where the law requires consent for analytics cookies or similar storage, we ask before GA4 runs. See [Google's privacy policy](https://policies.google.com/privacy) and [how Google uses data when you use our partners' sites](https://policies.google.com/technologies/partner-sites). You can also use [Google Analytics opt-out](https://tools.google.com/dlpage/gaoptout) where available.
+
+Other traffic statistics we use are the aggregate totals Cloudflare produces from its own request data (see above).
 
 ## Children
 Multiplayer is only for users aged 13 and over. We do not knowingly collect personal information from children under 13. If a parent or guardian tells us at support@puggietype.com that a child under 13 used multiplayer, we will delete any information we hold. Most multiplayer session data is deleted when the session or room ends, player reports are deleted after 7 days, and leaderboard scores are kept only as described under Leaderboards.
@@ -77,6 +81,7 @@ Depending on where you live (for example under the EU or UK GDPR, or California'
 | Player reports (report ID, room code, reason, time, hashed IP address) | 7 days, then deleted automatically |
 | Game server logs | startup and error messages, 5-minute overall counts and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |
 | Cloudflare and Fly.io operational data, and Cloudflare's aggregate traffic statistics (totals only) | as described in each provider's own privacy policy |
+| Google Analytics 4 event data | per our GA4 property retention setting (we use the shortest available that still supports a 30-day traffic review, then auto-expire); deleted from our property when retention elapses or if we remove GA4 |
 | Emails you send us | as long as needed to answer you, then deleted |
 
 ## Changes

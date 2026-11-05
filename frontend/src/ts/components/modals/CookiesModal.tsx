@@ -1,5 +1,9 @@
 import { createEffect, createSignal, JSXElement } from "solid-js";
 
+import {
+  type ConsentRecord,
+  globalPrivacyControl,
+} from "../../analytics/consent";
 import { getAcceptedCookies, setAcceptedCookies } from "../../cookies";
 import { hideModal, isModalOpen } from "../../states/modals";
 import { cn } from "../../utils/cn";
@@ -9,22 +13,39 @@ import { AnimeMatch } from "../common/anime/AnimeMatch";
 import { Button } from "../common/Button";
 import { H3 } from "../common/Headers";
 
+function draftFrom(stored: ConsentRecord | null): ConsentRecord {
+  const base: ConsentRecord = stored ?? {
+    security: true,
+    analytics: false,
+    doNotSellOrShare: false,
+  };
+  if (globalPrivacyControl()) return { ...base, doNotSellOrShare: true };
+  return base;
+}
+
 export function CookiesModal(): JSXElement {
   const [showSettings, setShowSettings] = createSignal(false);
-  const [accepted, setAccepted] = createSignal(
-    getAcceptedCookies() ?? {
-      security: true,
-    },
+  const [accepted, setAccepted] = createSignal<ConsentRecord>(
+    draftFrom(getAcceptedCookies()),
   );
 
   createEffect(() => {
-    if (!isModalOpen("Cookies")) {
+    const open = isModalOpen("Cookies");
+    const stored = getAcceptedCookies();
+    if (!open) {
       setShowSettings(false);
-      setAccepted({
-        security: true,
-      });
+      setAccepted(draftFrom(stored));
     }
   });
+
+  const save = (record: ConsentRecord): void => {
+    const next = globalPrivacyControl()
+      ? { ...record, doNotSellOrShare: true }
+      : record;
+    setAccepted(next);
+    setAcceptedCookies(next);
+    hideModal("Cookies");
+  };
 
   return (
     <AnimatedModal
@@ -35,7 +56,7 @@ export function CookiesModal(): JSXElement {
       closeOnWrapperClick={false}
     >
       <H3
-        text="We use cookies by the way"
+        text="Privacy and cookie settings"
         fa={{ icon: "fa-cookie-bite" }}
         class="mb-0 pb-0 text-2xl"
       />
@@ -59,28 +80,40 @@ export function CookiesModal(): JSXElement {
         <AnimeMatch when={!showSettings()}>
           <div class="grid gap-4">
             <div>
-              Cookies enhance your experience and help us improve our website.
+              Google Analytics 4 is optional and helps us understand site
+              traffic. We do not load advertising scripts. Where consent is
+              required, Google Analytics 4 does not run until you accept.
+              Rejecting means it never loads.
             </div>
+            <SettingsSection
+              title="Do Not Sell or Share"
+              description="We do not sell or share personal information. This saves that preference for later. Advertising purposes stay off."
+              checked={accepted().doNotSellOrShare}
+              disabled={globalPrivacyControl()}
+              onChange={(checked) => {
+                setAccepted({ ...accepted(), doNotSellOrShare: checked });
+              }}
+            />
             <div class="grid gap-2">
               <Button
-                text="accept all"
+                text="accept analytics"
                 active={true}
                 onClick={() => {
-                  setAccepted({
+                  save({
                     security: true,
+                    analytics: true,
+                    doNotSellOrShare: accepted().doNotSellOrShare,
                   });
-                  setAcceptedCookies(accepted());
-                  hideModal("Cookies");
                 }}
               />
               <Button
-                text="reject non-essential"
+                text="reject analytics"
                 onClick={() => {
-                  setAccepted({
+                  save({
                     security: true,
+                    analytics: false,
+                    doNotSellOrShare: true,
                   });
-                  setAcceptedCookies(accepted());
-                  hideModal("Cookies");
                 }}
               />
               <Button
@@ -104,11 +137,27 @@ export function CookiesModal(): JSXElement {
               checked={true}
               disabled={true}
             />
+            <SettingsSection
+              title="analytics"
+              description="Google Analytics 4. Off until you accept where consent is required."
+              checked={accepted().analytics}
+              onChange={(checked) => {
+                setAccepted({ ...accepted(), analytics: checked });
+              }}
+            />
+            <SettingsSection
+              title="Do Not Sell or Share"
+              description="Advertising purposes stay off. This preference is saved for later."
+              checked={accepted().doNotSellOrShare}
+              disabled={globalPrivacyControl()}
+              onChange={(checked) => {
+                setAccepted({ ...accepted(), doNotSellOrShare: checked });
+              }}
+            />
             <Button
-              text="accept selected"
+              text="save"
               onClick={() => {
-                setAcceptedCookies(accepted());
-                hideModal("Cookies");
+                save(accepted());
               }}
             />
           </div>
