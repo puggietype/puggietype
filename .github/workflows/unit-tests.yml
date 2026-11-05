@@ -37,7 +37,8 @@ jobs:
       - run: test -x "node_modules/electron/dist/$(cat node_modules/electron/path.txt)"
       - run: npm test
   kids-flow-csp:
-    runs-on: ubuntu-latest
+    # Playwright 1.59.1 cannot install Chromium on ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
