@@ -249,14 +249,21 @@ describe("SteamMusic", () => {
     expect(MUSIC_TRACKS.map((t) => t.src)).toContain(audio.src);
   });
 
-  it("never plays on the kids guide", () => {
-    const audio = fakeAudio();
-    const music = new SteamMusic(withMusic({ enabled: true }), {
-      createAudio: () => audio,
-      getPathname: () => "/guide/typing-for-kids",
-    });
-    music.noteGesture();
-    expect(audio.plays).toBe(0);
+  it("never plays on either kids guide slug", () => {
+    for (const pathname of [
+      "/guide/typing-for-kids",
+      "/guide/typing-for-kids/",
+      "/guide/teaching-kids-to-type",
+      "/guide/teaching-kids-to-type/",
+    ]) {
+      const audio = fakeAudio();
+      const music = new SteamMusic(withMusic({ enabled: true }), {
+        createAudio: () => audio,
+        getPathname: () => pathname,
+      });
+      music.noteGesture();
+      expect(audio.plays, pathname).toBe(0);
+    }
   });
 });
 

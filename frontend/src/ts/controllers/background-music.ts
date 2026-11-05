@@ -17,7 +17,11 @@ export const BG_MUSIC_TRACKS: readonly string[] =
 /** first track, or `null` when there is none (player hidden and silent) */
 export const BG_MUSIC_SRC: string | null = BG_MUSIC_TRACKS[0] ?? null;
 
+/** Old slug 301s to TEACHING_KIDS_GUIDE_PATH. Both still block music. */
 export const KIDS_GUIDE_PATH = "/guide/typing-for-kids";
+export const TEACHING_KIDS_GUIDE_PATH = "/guide/teaching-kids-to-type";
+
+const KIDS_GUIDE_PATHS = [KIDS_GUIDE_PATH, TEACHING_KIDS_GUIDE_PATH] as const;
 
 export const DEFAULT_BG_MUSIC_VOLUME = 0.5;
 
@@ -64,7 +68,7 @@ export type GestureTarget = {
 
 export function isKidsGuidePath(pathname: string): boolean {
   const trimmed = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  return trimmed === KIDS_GUIDE_PATH;
+  return KIDS_GUIDE_PATHS.some((path) => path === trimmed);
 }
 
 export function clampBgMusicVolume(value: number): number {

@@ -209,9 +209,13 @@ describe("fetchLeaderboard", () => {
 });
 
 describe("kids guide", () => {
-  it("recognises the kids guide path", () => {
+  it("recognises both kids guide slugs, with or without a trailing slash", () => {
     expect(isKidsGuidePath("/guide/typing-for-kids")).toBe(true);
     expect(isKidsGuidePath("/guide/typing-for-kids/")).toBe(true);
+    expect(isKidsGuidePath("/guide/teaching-kids-to-type")).toBe(true);
+    expect(isKidsGuidePath("/guide/teaching-kids-to-type/")).toBe(true);
+    expect(isKidsGuidePath("/guide/teaching-kids-to-type/extra")).toBe(false);
+    expect(isKidsGuidePath("/guide/typing-tips")).toBe(false);
     expect(isKidsGuidePath("/")).toBe(false);
   });
 
@@ -224,6 +228,19 @@ describe("kids guide", () => {
       leaderboardSubmitBlocked(
         "/",
         "https://puggietype.com/guide/typing-for-kids",
+        storage(),
+      ),
+    ).toBe(true);
+    expect(
+      leaderboardSubmitBlocked("/guide/teaching-kids-to-type", "", storage()),
+    ).toBe(true);
+    expect(
+      leaderboardSubmitBlocked("/guide/teaching-kids-to-type/", "", storage()),
+    ).toBe(true);
+    expect(
+      leaderboardSubmitBlocked(
+        "/",
+        "https://puggietype.com/guide/teaching-kids-to-type/",
         storage(),
       ),
     ).toBe(true);

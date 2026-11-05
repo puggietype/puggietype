@@ -42,8 +42,9 @@ describe("not-found-page plugin", () => {
       .filter((l) => l.trim() !== "" && !l.startsWith("#"));
     const firstRewrite = lines.findIndex((l) => l.endsWith(" 200"));
     const want = [
-      "/guide / 301",
-      "/guide/ / 301",
+      "/guide /guide/ 301",
+      "/about /guide/about 301",
+      "/guide/typing-for-kids /guide/teaching-kids-to-type 301",
       "/leaderboard /leaderboards 301",
       "/race/ /race 301",
       "/settings/ /settings 301",
@@ -82,7 +83,15 @@ describe("not-found-page plugin", () => {
       .map((m) => (m[1] as string).replace(/\/:[^/]+/g, "/*"))
       .filter((p) => p !== "/");
     expect(paths.length).toBeGreaterThan(5);
+    // /about is a real static page, not an SPA rewrite
+    const static301 = new Map([["/about", "/guide/about"]]);
     for (const p of paths) {
+      const to = static301.get(p);
+      if (to !== undefined) {
+        expect(redirects).toMatch(new RegExp(`^${p} ${to} 301$`, "m"));
+        expect(redirects).not.toMatch(new RegExp(`^${p} / 200$`, "m"));
+        continue;
+      }
       expect(redirects).toMatch(
         new RegExp(`^${p.replace("*", "\\*")} / 200$`, "m"),
       );

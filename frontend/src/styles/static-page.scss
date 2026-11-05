@@ -315,6 +315,12 @@ main a:hover,
   color: var(--sub-color);
 }
 
+.last-updated {
+  color: var(--sub-color);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
 code,
 kbd,
 .formula {

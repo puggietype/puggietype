@@ -14,7 +14,10 @@ export const LEADERBOARD_PERIODS = [
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number];
 
 export const LEADERBOARD_LIMIT = 50;
-const KIDS_GUIDE_PATH = "/guide/typing-for-kids";
+const KIDS_GUIDE_PATHS = [
+  "/guide/typing-for-kids",
+  "/guide/teaching-kids-to-type",
+] as const;
 /** set for the rest of the tab when this visit came from the kids guide */
 export const KIDS_FLOW_KEY = "puggie-kids-flow";
 
@@ -254,7 +257,7 @@ export function leaderboardMode2(
 export function isKidsGuidePath(pathname: string): boolean {
   const path = pathname.split("?")[0]?.split("#")[0] ?? pathname;
   const trimmed = path.length > 1 ? path.replace(/\/+$/, "") : path;
-  return trimmed === KIDS_GUIDE_PATH;
+  return KIDS_GUIDE_PATHS.some((path) => path === trimmed);
 }
 
 function referrerPath(referrer: string): string | undefined {
@@ -267,8 +270,9 @@ function referrerPath(referrer: string): string | undefined {
 }
 
 /**
- * True on /guide/typing-for-kids and for the rest of a tab that arrived from
- * that page. Those visits never submit a leaderboard score.
+ * True on /guide/typing-for-kids and /guide/teaching-kids-to-type, with or
+ * without a trailing slash, and for the rest of a tab that arrived from
+ * either page. Those visits never submit a leaderboard score.
  */
 export function leaderboardSubmitBlocked(
   pathname: string,

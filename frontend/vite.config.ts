@@ -260,6 +260,8 @@ function getBuildOptions({
         faq: path.resolve(__dirname, "src/faq.html"),
         contact: path.resolve(__dirname, "src/contact.html"),
         creators: path.resolve(__dirname, "src/creators.html"),
+        // directory index: dist/guide/index.html is served at /guide/
+        "guide/index": path.resolve(__dirname, "src/guide/index.html"),
         "guide/about": path.resolve(__dirname, "src/guide/about.html"),
         "guide/wpm-accuracy": path.resolve(
           __dirname,
@@ -308,6 +310,10 @@ function getBuildOptions({
         "guide/typing-for-kids": path.resolve(
           __dirname,
           "src/guide/typing-for-kids.html",
+        ),
+        "guide/teaching-kids-to-type": path.resolve(
+          __dirname,
+          "src/guide/teaching-kids-to-type.html",
         ),
         // no 404.html: its absence turns on cloudflare pages' spa fallback
       },

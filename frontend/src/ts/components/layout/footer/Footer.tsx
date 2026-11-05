@@ -82,7 +82,7 @@ export function Footer(): JSXElement {
             <a class={linkClass} href="/faq">
               faq
             </a>
-            <a class={linkClass} href="/guide/typing-tips">
+            <a class={linkClass} href="/guide/">
               guides
             </a>
             <a class={linkClass} href="/contact">

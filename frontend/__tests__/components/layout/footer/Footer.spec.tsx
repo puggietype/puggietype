@@ -60,7 +60,7 @@ describe("Footer", () => {
       [
         ["about", "/guide/about"],
         ["faq", "/faq"],
-        ["guides", "/guide/typing-tips"],
+        ["guides", "/guide/"],
         ["contact", "/contact"],
         ["creators", "/creators"],
       ],

@@ -2,9 +2,31 @@
   "hosting": {
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "redirects": [
+      {
+        "source": "/about",
+        "destination": "/guide/about",
+        "type": 301
+      },
+      {
+        "source": "/about/",
+        "destination": "/guide/about",
+        "type": 301
+      },
+      {
+        "source": "/guide/typing-for-kids",
+        "destination": "/guide/teaching-kids-to-type",
+        "type": 301
+      },
+      {
+        "source": "/guide/typing-for-kids/",
+        "destination": "/guide/teaching-kids-to-type",
+        "type": 301
+      }
+    ],
     "rewrites": [
       {
-        "source": "/@(test|settings|account|about|login|profile|friends|account-settings|leaderboards|race|r){,/**}",
+        "source": "/@(test|settings|account|login|profile|friends|account-settings|leaderboards|race|r){,/**}",
         "destination": "/index.html"
       },
       {
