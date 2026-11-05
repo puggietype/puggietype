@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Effective date: November 5, 2026. Last updated: November 5, 2026._
+_Effective date: November 4, 2026. Last updated: November 4, 2026._
 
 ## Who we are
 PuggieType is run by the PuggieType team. For any privacy question or request, email support@puggietype.com.
