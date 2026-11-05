@@ -40,7 +40,10 @@ test("kids slug sets kids-flow and later pages do not load GA", async ({
   const ga = watchGa(page);
   await seedAnalyticsAccept(page);
 
-  await page.goto("/guide/teaching-kids-to-type");
+  const landing = await page.goto("/guide/teaching-kids-to-type");
+  const csp = landing?.headers()["content-security-policy"] ?? "";
+  expect(csp).toContain("script-src");
+  expect(csp).toContain("'self'");
   await expect(page.locator("h1")).toBeVisible();
   expect(
     await page.evaluate(() => sessionStorage.getItem("puggie-kids-flow")),
@@ -80,4 +83,16 @@ test("kids guide, start typing, then privacy stays free of GA", async ({
   await expect(page.locator("h1")).toBeVisible();
   await expectNoBanner(page);
   expect(ga).toEqual([]);
+});
+
+test("the cookie banner does not block starting a test", async ({ page }) => {
+  await page.goto("/");
+  const word = page.locator("#words .word").first();
+  await word.waitFor({ timeout: 60_000 });
+  const text = (await word.textContent()) ?? "";
+  await page.keyboard.type(`${text} `, { delay: 20 });
+  await expect(page.locator("#words .word").nth(1)).toHaveClass(/active/, {
+    timeout: 10_000,
+  });
+  await expect(page.locator("#CookiesModal:visible")).toHaveCount(0);
 });

@@ -280,7 +280,7 @@ describe("legal copy", () => {
       "guide/teaching-kids-to-type.html",
     ]) {
       const html = readFileSync(path.join(src, file), "utf8");
-      expect(html, file).toContain('sessionStorage.setItem("puggie-kids-flow"');
+      expect(html, file).toContain('src="/kids-flow.js"');
       expect(html, file).not.toMatch(
         /static-boot|gtag\(|googletagmanager|google-analytics/i,
       );
@@ -291,7 +291,15 @@ describe("legal copy", () => {
     );
     expect(kidsHtml).not.toContain("static-boot");
     expect(kidsHtml).not.toContain("data-consent-settings");
-    expect(kidsHtml).toContain("puggie-kids-flow");
+    expect(kidsHtml).toContain('src="/kids-flow.js"');
+    const flagScript = readFileSync(
+      path.resolve(__dirname, "../../static/kids-flow.js"),
+      "utf8",
+    );
+    expect(flagScript).toContain(
+      'sessionStorage.setItem("puggie-kids-flow", "1")',
+    );
+    expect(flagScript).not.toMatch(/gtag\(|googletagmanager|google-analytics/i);
     expect(kidsHtml).not.toMatch(/gtag\(|googletagmanager|google-analytics/i);
     const faqHtml = injectStaticConsentScript(
       "<button data-consent-settings></button>\n  </body>",

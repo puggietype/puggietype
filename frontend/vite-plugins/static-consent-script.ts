@@ -12,9 +12,8 @@ const SCRIPT_RE =
 const SETTINGS_BUTTON_RE =
   /<button\b[^>]*\bdata-consent-settings\b[^>]*>[\s\S]*?<\/button>\s*/g;
 
-/** Sets the session flag only. It does not load GA or the consent boot. */
-export const KIDS_FLOW_INLINE_SCRIPT =
-  '<script>try{sessionStorage.setItem("puggie-kids-flow","1")}catch(e){}</script>';
+/** Same-origin flag only. script-src 'self' allows it; it does not load GA. */
+export const KIDS_FLOW_SCRIPT = '<script src="/kids-flow.js"></script>';
 
 export function injectStaticConsentScript(
   html: string,
@@ -23,8 +22,8 @@ export function injectStaticConsentScript(
   const base = filename.replaceAll("\\", "/").split("/").pop() ?? "";
   if (KIDS_HTML.includes(base)) {
     let out = html.replace(SCRIPT_RE, "").replace(SETTINGS_BUTTON_RE, "");
-    if (!out.includes("puggie-kids-flow")) {
-      out = out.replace("</head>", `    ${KIDS_FLOW_INLINE_SCRIPT}\n  </head>`);
+    if (!out.includes("/kids-flow.js")) {
+      out = out.replace("</head>", `    ${KIDS_FLOW_SCRIPT}\n  </head>`);
     }
     return out;
   }

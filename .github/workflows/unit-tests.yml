@@ -36,3 +36,28 @@ jobs:
       # check the path without require("electron"), which would download it
       - run: test -x "node_modules/electron/dist/$(cat node_modules/electron/path.txt)"
       - run: npm test
+  kids-flow-csp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build-fe
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: pages dev with _headers CSP
+        run: |
+          npx --yes wrangler@4.45.0 pages dev frontend/dist --port 3300 --ip 127.0.0.1 > /tmp/wrangler-pages.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf -D - -o /dev/null http://127.0.0.1:3300/guide/teaching-kids-to-type | grep -qi 'content-security-policy:'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wrangler-pages.log
+          exit 1
+      - run: BASE_URL=http://127.0.0.1:3300 pnpm exec playwright test e2e/kids-flow-ga.spec.ts

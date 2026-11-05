@@ -50,8 +50,9 @@ export function CookiesModal(): JSXElement {
   return (
     <AnimatedModal
       id="Cookies"
-      modalClass="max-w-[500px]"
-      wrapperClass="justify-end items-end"
+      mode="dialog"
+      modalClass="max-w-[500px] pointer-events-auto"
+      wrapperClass="pointer-events-none justify-end items-end bg-transparent"
       closeOnEscape={false}
       closeOnWrapperClick={false}
       onEscape={() => {
@@ -60,9 +61,6 @@ export function CookiesModal(): JSXElement {
           analytics: false,
           doNotSellOrShare: true,
         });
-      }}
-      afterShow={() => {
-        document.getElementById("consent-accept")?.focus();
       }}
     >
       <H3
