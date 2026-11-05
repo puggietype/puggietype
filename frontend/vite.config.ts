@@ -18,6 +18,7 @@ import { resolvePlatform } from "./vite-plugins/platform";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
+import { ga4CspSources, mergeCspSources } from "./vite-plugins/ga4-csp";
 import { firebaseStub } from "./vite-plugins/firebase-stub";
 import {
   accountsCspSources,
@@ -32,6 +33,7 @@ import { inlineStaticPageCss } from "./vite-plugins/inline-static-css";
 import { steamAssetClearance } from "./vite-plugins/steam-asset-clearance";
 import { notFoundPage } from "./vite-plugins/not-found-page";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
+import { staticConsentScript } from "./vite-plugins/static-consent-script";
 import {
   getCommitHash,
   getSourceLinks,
@@ -123,6 +125,7 @@ function getPlugins({
     sourceTarball(sourceLinks),
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
+    staticConsentScript(),
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     // PLATFORM from the build script shell only, never .env (see 432d097)
     steamAssetClearance({ platform: resolvePlatform(process.env) }),
@@ -154,6 +157,10 @@ function getPlugins({
     Inspect(),
   ];
 
+  const extraCsp = mergeCspSources([
+    isAccountsEnabled(env) ? accountsCspSources(env) : undefined,
+    ga4CspSources(env["GA4_MEASUREMENT_ID"]),
+  ]);
   const prodPlugins: PluginOption[] = [
     fontPreview(),
     fontawesomeSubset(),
@@ -226,7 +233,7 @@ function getPlugins({
     minifyJson(),
     pagesHeaders({
       wsUrl: env["VITE_WS_URL"],
-      ...(isAccountsEnabled(env) ? { extraCsp: accountsCspSources(env) } : {}),
+      ...(extraCsp === undefined ? {} : { extraCsp }),
     }),
   ];
 

@@ -6,6 +6,8 @@ type EnvConfig = {
   standalone: boolean;
   backendUrl: string;
   recaptchaSiteKey: string;
+  ga4MeasurementId: string;
+  ga4ConsentRegions: string[];
 };
 
 function load(env: Record<string, string>): EnvConfig {
@@ -24,6 +26,27 @@ describe("env-config production build", () => {
     expect(cfg.standalone).toBe(true);
     expect(cfg.backendUrl).toBe("");
     expect(cfg.recaptchaSiteKey).toBe("");
+    expect(cfg.ga4MeasurementId).toBe("");
+    expect(cfg.ga4ConsentRegions).toContain("DE");
+    expect(cfg.ga4ConsentRegions).toContain("GB");
+    expect(cfg.ga4ConsentRegions).toContain("CH");
+    expect(cfg.ga4ConsentRegions).not.toContain("US");
+  });
+
+  it("keeps a valid GA4 measurement id and extra consent regions", () => {
+    const cfg = load({
+      GA4_MEASUREMENT_ID: "G-TEST1234",
+      GA4_CONSENT_REGIONS: "BR, UK",
+    });
+    expect(cfg.ga4MeasurementId).toBe("G-TEST1234");
+    expect(cfg.ga4ConsentRegions).toContain("BR");
+    expect(cfg.ga4ConsentRegions).toContain("GB");
+  });
+
+  it("rejects a malformed GA4 measurement id", () => {
+    expect(() => load({ GA4_MEASUREMENT_ID: "UA-1" })).toThrow(
+      /GA4_MEASUREMENT_ID/,
+    );
   });
 
   it("uses BACKEND_URL when set", () => {

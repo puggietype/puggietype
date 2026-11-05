@@ -1,30 +1,21 @@
-import { z } from "zod";
 import { createSignal } from "solid-js";
-import { LocalStorageWithSchema } from "./utils/local-storage-with-schema";
 
-const AcceptedCookiesSchema = z
-  .object({
-    security: z.boolean(),
-  })
-  .strict()
-  .nullable();
+import {
+  type ConsentRecord,
+  readConsentRecord,
+  writeConsentRecord,
+} from "./analytics/consent";
 
-export type AcceptedCookies = z.infer<typeof AcceptedCookiesSchema>;
+export type AcceptedCookies = ConsentRecord;
 
-const cookies = new LocalStorageWithSchema({
-  key: "acceptedCookies",
-  schema: AcceptedCookiesSchema,
-  fallback: null,
-  // no migration here, if cookies changed, we need to ask the user again
-});
-
-const [acceptedCookies, _setAcceptedCookies] = createSignal(cookies.get());
+const [acceptedCookies, _setAcceptedCookies] =
+  createSignal<ConsentRecord | null>(readConsentRecord());
 
 export function getAcceptedCookies(): AcceptedCookies | null {
   return acceptedCookies();
 }
 
 export function setAcceptedCookies(accepted: AcceptedCookies): void {
-  cookies.set(accepted);
+  writeConsentRecord(accepted);
   _setAcceptedCookies(accepted);
 }

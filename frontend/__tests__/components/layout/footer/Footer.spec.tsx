@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("../../../../src/ts/states/test", () => ({
   getFocus: () => false,
+  isTestActive: () => false,
 }));
 vi.mock("../../../../src/ts/components/layout/footer/Keytips", () => ({
   Keytips: () => null,
@@ -43,6 +44,13 @@ describe("Footer", () => {
       ["source", links.sourceUrl],
     ]);
   });
+  it("offers privacy and cookie settings", () => {
+    const { getByTestId } = render(() => <Footer />);
+    expect(getByTestId("privacy-cookie-settings").textContent).toContain(
+      "Privacy and cookie settings",
+    );
+  });
+
   it("links terms and privacy to /terms and /privacy", () => {
     const { container } = render(() => <Footer />);
     const hrefs = [...container.querySelectorAll("a")].map((a) =>

@@ -59,7 +59,9 @@
         "CF_PAGES_COMMIT_SHA",
         "VITE_WS_URL",
         "VITE_MULTIPLAYER",
-        "VITE_PUBLIC_MATCHES"
+        "VITE_PUBLIC_MATCHES",
+        "GA4_MEASUREMENT_ID",
+        "GA4_CONSENT_REGIONS"
       ],
       "outputs": ["dist/**"]
     },

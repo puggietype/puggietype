@@ -1,6 +1,7 @@
 import { JSXElement } from "solid-js";
 import { envConfig } from "virtual:env-config";
 
+import { openConsentSettings } from "../../../analytics/install";
 import { getIsScreenshotting } from "../../../states/core";
 import { getFocus } from "../../../states/test";
 import { cn } from "../../../utils/cn";
@@ -42,6 +43,18 @@ export function Footer(): JSXElement {
             fa={{
               icon: "fa-lock",
               fixedWidth: true,
+            }}
+          />
+          <Button
+            variant="text"
+            text="Privacy and cookie settings"
+            fa={{
+              icon: "fa-cookie-bite",
+              fixedWidth: true,
+            }}
+            dataset={{ "data-testid": "privacy-cookie-settings" }}
+            onClick={() => {
+              openConsentSettings();
             }}
           />
           <div class="flex items-center p-2" data-testid="legal-notice">

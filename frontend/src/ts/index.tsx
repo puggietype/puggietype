@@ -27,7 +27,7 @@ import "./test/tts";
 import { addToGlobal } from "./utils/misc";
 import * as Focus from "./test/focus";
 import { getBuildVersion } from "./utils/version";
-import * as Cookies from "./cookies";
+import { installAnalyticsConsent } from "./analytics/install";
 import "./elements/psa";
 import "./controllers/url-handler";
 import { applyEngineSettings } from "./anim";
@@ -43,7 +43,6 @@ import {
   installBackgroundMusic,
 } from "./states/background-music";
 import "./input/hotkeys";
-import { showModal } from "./states/modals";
 import { getLastEventLog, isTestActive } from "./states/test";
 import { buildEventLog } from "./test/events/data";
 
@@ -97,10 +96,11 @@ const buildVersion = getBuildVersion();
 if (buildVersion !== null) setVersion(buildVersion);
 
 Focus.set(true, true);
-const accepted = Cookies.getAcceptedCookies();
-// standalone builds have no backend, so no captcha and nothing to consent to
+// Prod puggietype.com is the standalone build (no BACKEND_URL). Analytics
+// consent still has to install so the banner stays down during a test or race.
+installAnalyticsConsent();
+// standalone builds have no backend, so no captcha
 if (!__STANDALONE__) {
-  if (accepted === null) showModal("Cookies");
   const recaptcha = document.createElement("script");
   recaptcha.src = "https://www.google.com/recaptcha/api.js?render=explicit";
   recaptcha.async = true;
