@@ -33,6 +33,7 @@ import { inlineStaticPageCss } from "./vite-plugins/inline-static-css";
 import { steamAssetClearance } from "./vite-plugins/steam-asset-clearance";
 import { notFoundPage } from "./vite-plugins/not-found-page";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
+import { staticConsentScript } from "./vite-plugins/static-consent-script";
 import {
   getCommitHash,
   getSourceLinks,
@@ -124,6 +125,7 @@ function getPlugins({
     sourceTarball(sourceLinks),
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
+    staticConsentScript(),
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     // PLATFORM from the build script shell only, never .env (see 432d097)
     steamAssetClearance({ platform: resolvePlatform(process.env) }),

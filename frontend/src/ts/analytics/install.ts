@@ -4,8 +4,20 @@ import { getAcceptedCookies } from "../cookies";
 import { isRaceActive } from "../multiplayer/engine-hooks";
 import { hideModal, isModalOpen, showModal } from "../states/modals";
 import { isTestActive } from "../states/test";
-import { consentBannerAllowed } from "./consent";
+import {
+  consentBannerAllowed,
+  kidsAnalyticsExcluded,
+  readKidsFlow,
+} from "./consent";
 import { syncGa4 } from "./ga4";
+
+function kidsBlocked(): boolean {
+  return kidsAnalyticsExcluded({
+    pathname: window.location.pathname,
+    referrer: document.referrer,
+    kidsFlow: readKidsFlow(sessionStorage),
+  });
+}
 
 /**
  * Show the cookie banner only when no typing test or race is active.
@@ -14,11 +26,16 @@ import { syncGa4 } from "./ga4";
 export function installAnalyticsConsent(): void {
   createRoot(() => {
     createEffect(() => {
+      const open = isModalOpen("Cookies");
+      if (kidsBlocked()) {
+        if (open) hideModal("Cookies");
+        syncGa4();
+        return;
+      }
       const allowed = consentBannerAllowed({
         testActive: isTestActive(),
         raceActive: isRaceActive(),
       });
-      const open = isModalOpen("Cookies");
       const consent = getAcceptedCookies();
       if (!allowed) {
         if (open) hideModal("Cookies");
@@ -32,6 +49,7 @@ export function installAnalyticsConsent(): void {
 
 /** Footer control. No-op during an active test or race. */
 export function openConsentSettings(): void {
+  if (kidsBlocked()) return;
   if (
     !consentBannerAllowed({
       testActive: isTestActive(),

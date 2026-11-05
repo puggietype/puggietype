@@ -1,9 +1,15 @@
 import { z } from "zod";
 
+import { isAdsExcludedPath } from "../ads/excluded-paths";
+import { isKidsGuidePath } from "../controllers/background-music";
+
 /** Must match `COUNTRY_COOKIE` in `functions/_middleware.ts`. */
 export const COUNTRY_COOKIE = "pt_country";
 
 export const CONSENT_STORAGE_KEY = "acceptedCookies";
+
+/** Same session flag as leaderboards `KIDS_FLOW_KEY`. Read only. */
+export const KIDS_FLOW_STORAGE_KEY = "puggie-kids-flow";
 
 /**
  * EEA, UK (Cloudflare uses GB), and Switzerland. Extra ISO codes come from
@@ -135,22 +141,55 @@ export function consentBannerAllowed(input: {
   return !input.testActive && !input.raceActive;
 }
 
+function referrerPath(referrer: string): string {
+  if (referrer === "") return "";
+  try {
+    return new URL(referrer).pathname;
+  } catch {
+    return "";
+  }
+}
+
+function kidsPath(pathname: string): boolean {
+  return isKidsGuidePath(pathname) || isAdsExcludedPath(pathname);
+}
+
+export function readKidsFlow(
+  storage: Pick<Storage, "getItem"> | undefined,
+): boolean {
+  if (storage === undefined) return false;
+  try {
+    return storage.getItem(KIDS_FLOW_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Consent regions (EEA/UK/CH, plus any configured extras) and an unknown
- * country wait for analytics accept. Elsewhere, including the US, a configured
- * measurement ID may load until the visitor rejects. Reject always blocks.
- * Advertising purposes are not an input: they stay off.
+ * Kids guide slugs (with or without a trailing slash), a visit that arrived
+ * from one, or a kids-flow session. Accepting analytics does not override this.
+ */
+export function kidsAnalyticsExcluded(input: {
+  pathname: string;
+  referrer?: string;
+  kidsFlow?: boolean;
+}): boolean {
+  if (kidsPath(input.pathname)) return true;
+  const from = referrerPath(input.referrer ?? "");
+  if (from !== "" && kidsPath(from)) return true;
+  return input.kidsFlow === true;
+}
+
+/**
+ * GA4 loads only after an explicit analytics accept, in every country.
+ * Reject, no choice yet, and kids paths never load it.
  */
 export function analyticsLoadAllowed(input: {
   measurementId: string;
-  country: string | null;
   analytics: boolean | null;
-  consentRegions: readonly string[];
+  kidsExcluded: boolean;
 }): boolean {
+  if (input.kidsExcluded) return false;
   if (!isGa4MeasurementId(input.measurementId)) return false;
-  if (input.analytics === false) return false;
-  const needsConsent =
-    input.country === null || input.consentRegions.includes(input.country);
-  if (needsConsent) return input.analytics === true;
-  return true;
+  return input.analytics === true;
 }

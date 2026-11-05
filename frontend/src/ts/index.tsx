@@ -96,9 +96,11 @@ const buildVersion = getBuildVersion();
 if (buildVersion !== null) setVersion(buildVersion);
 
 Focus.set(true, true);
-// standalone builds have no backend, so no captcha and nothing to consent to
+// Prod puggietype.com is the standalone build (no BACKEND_URL). Analytics
+// consent still has to install so the banner stays down during a test or race.
+installAnalyticsConsent();
+// standalone builds have no backend, so no captcha
 if (!__STANDALONE__) {
-  installAnalyticsConsent();
   const recaptcha = document.createElement("script");
   recaptcha.src = "https://www.google.com/recaptcha/api.js?render=explicit";
   recaptcha.async = true;

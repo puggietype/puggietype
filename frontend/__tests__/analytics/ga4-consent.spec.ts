@@ -13,16 +13,17 @@ import {
   analyticsLoadAllowed,
   consentBannerAllowed,
   COUNTRY_COOKIE,
-  DEFAULT_CONSENT_REGIONS,
+  kidsAnalyticsExcluded,
+  KIDS_FLOW_STORAGE_KEY,
   readConsentRecord,
   readCountryCookie,
   writeConsentRecord,
 } from "../../src/ts/analytics/consent";
 import { ga4CspSources } from "../../vite-plugins/ga4-csp";
+import { injectStaticConsentScript } from "../../vite-plugins/static-consent-script";
 import { COUNTRY_COOKIE as edgeCountryCookie } from "../../../functions/_middleware";
 
 const src = path.resolve(__dirname, "../../src");
-const regions = DEFAULT_CONSENT_REGIONS;
 
 const FAQ_INTERIM =
   'PuggieType may load Google Analytics 4 so we can understand site traffic. We also see aggregate traffic totals from our host, Cloudflare. Solo test data stays in your browser, except a leaderboard score you choose to submit and the average speed plus a random Quick Match ID sent when you join Quick Match. The <a href="/privacy">privacy policy</a> explains what is collected and for how long.';
@@ -39,57 +40,72 @@ describe("analytics consent gate", () => {
     expect(readCountryCookie("")).toBeNull();
   });
 
-  it("blocks GA4 without an id, on reject, and before consent in EEA/UK/CH", () => {
+  it("loads GA4 only after accept, including in the US", () => {
     expect(
       analyticsLoadAllowed({
         measurementId: "",
-        country: "US",
         analytics: true,
-        consentRegions: regions,
+        kidsExcluded: false,
       }),
     ).toBe(false);
     expect(
       analyticsLoadAllowed({
         measurementId: "G-TEST1234",
-        country: "US",
         analytics: null,
-        consentRegions: regions,
+        kidsExcluded: false,
+      }),
+    ).toBe(false);
+    expect(
+      analyticsLoadAllowed({
+        measurementId: "G-TEST1234",
+        analytics: false,
+        kidsExcluded: false,
+      }),
+    ).toBe(false);
+    expect(
+      analyticsLoadAllowed({
+        measurementId: "G-TEST1234",
+        analytics: true,
+        kidsExcluded: false,
       }),
     ).toBe(true);
-    expect(
-      analyticsLoadAllowed({
-        measurementId: "G-TEST1234",
-        country: "US",
-        analytics: false,
-        consentRegions: regions,
-      }),
-    ).toBe(false);
-    for (const country of ["DE", "GB", "CH", null]) {
-      expect(
-        analyticsLoadAllowed({
-          measurementId: "G-TEST1234",
-          country,
-          analytics: null,
-          consentRegions: regions,
-        }),
-      ).toBe(false);
-      expect(
-        analyticsLoadAllowed({
-          measurementId: "G-TEST1234",
-          country,
-          analytics: true,
-          consentRegions: regions,
-        }),
-      ).toBe(true);
+  });
+
+  it("never loads GA4 on kids paths or kids-flow, whatever the choice", () => {
+    const paths = [
+      "/guide/typing-for-kids",
+      "/guide/typing-for-kids/",
+      "/guide/teaching-kids-to-type",
+      "/guide/teaching-kids-to-type/",
+    ];
+    for (const pathname of paths) {
+      for (const analytics of [true, false, null] as const) {
+        expect(
+          analyticsLoadAllowed({
+            measurementId: "G-TEST1234",
+            analytics,
+            kidsExcluded: kidsAnalyticsExcluded({ pathname }),
+          }),
+        ).toBe(false);
+      }
     }
     expect(
-      analyticsLoadAllowed({
-        measurementId: "G-TEST1234",
-        country: "BR",
-        analytics: null,
-        consentRegions: [...regions, "BR"],
+      kidsAnalyticsExcluded({
+        pathname: "/",
+        referrer: "https://puggietype.com/guide/teaching-kids-to-type/",
       }),
-    ).toBe(false);
+    ).toBe(true);
+    expect(kidsAnalyticsExcluded({ pathname: "/faq", kidsFlow: true })).toBe(
+      true,
+    );
+    expect(kidsAnalyticsExcluded({ pathname: "/faq" })).toBe(false);
+    const leaderboards = readFileSync(
+      path.join(src, "ts/multiplayer/leaderboards.ts"),
+      "utf8",
+    );
+    expect(leaderboards).toContain(
+      `export const KIDS_FLOW_KEY = "${KIDS_FLOW_STORAGE_KEY}"`,
+    );
   });
 
   it("hides the banner during a test or race", () => {
@@ -138,6 +154,10 @@ describe("analytics consent gate", () => {
       const layer = JSON.stringify(
         (window as Window & { dataLayer?: unknown[] }).dataLayer,
       );
+      const deniedAt = layer.indexOf('"analytics_storage":"denied"');
+      const grantedAt = layer.indexOf('"analytics_storage":"granted"');
+      expect(deniedAt).toBeGreaterThan(-1);
+      expect(grantedAt).toBeGreaterThan(deniedAt);
       expect(layer).toContain('"allow_google_signals":false');
       expect(layer).toContain('"allow_ad_personalization_signals":false');
       expect(layer).toContain('"ad_personalization":"denied"');
@@ -201,8 +221,30 @@ describe("legal copy", () => {
     expect(about).toContain(ABOUT);
     expect(about).not.toMatch(/no analytics/i);
     expect(footer).toContain("Privacy and cookie settings");
-    expect(footer).toContain('src="/ts/analytics/static-boot.ts"');
-    expect(footer).not.toMatch(/gtag\(|google-analytics|adsbygoogle|mediavine/);
+    expect(footer).not.toContain("static-boot");
+    expect(footer).not.toMatch(
+      /gtag\(|google-analytics|googletagmanager|adsbygoogle|mediavine/,
+    );
+    for (const file of [
+      "guide/typing-for-kids.html",
+      "guide/teaching-kids-to-type.html",
+    ]) {
+      const html = readFileSync(path.join(src, file), "utf8");
+      expect(html, file).not.toMatch(
+        /static-boot|gtag\(|googletagmanager|google-analytics/i,
+      );
+    }
+    const kidsHtml = injectStaticConsentScript(
+      '<footer data-consent-settings></footer><script type="module" src="/ts/analytics/static-boot.ts"></script></body>',
+      "/src/guide/teaching-kids-to-type.html",
+    );
+    expect(kidsHtml).not.toContain("static-boot");
+    expect(kidsHtml).not.toMatch(/gtag\(|googletagmanager/i);
+    const faqHtml = injectStaticConsentScript(
+      "<button data-consent-settings></button>\n  </body>",
+      "/src/faq.html",
+    );
+    expect(faqHtml).toContain('src="/ts/analytics/static-boot.ts"');
     expect(privacy).not.toContain("no analytics scripts");
   });
 });

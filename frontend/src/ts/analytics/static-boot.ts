@@ -1,7 +1,9 @@
 import {
   type ConsentRecord,
   globalPrivacyControl,
+  kidsAnalyticsExcluded,
   readConsentRecord,
+  readKidsFlow,
   writeConsentRecord,
 } from "./consent";
 import { syncGa4 } from "./ga4";
@@ -17,8 +19,16 @@ function draft(): { analytics: boolean; doNotSellOrShare: boolean } {
   };
 }
 
+function onBannerKey(event: KeyboardEvent): void {
+  if (event.key !== "Escape") return;
+  if (document.getElementById(BANNER_ID) === null) return;
+  event.preventDefault();
+  save(false, true);
+}
+
 function closeBanner(): void {
   document.getElementById(BANNER_ID)?.remove();
+  document.removeEventListener("keydown", onBannerKey);
 }
 
 function save(analytics: boolean, doNotSellOrShare: boolean): void {
@@ -75,11 +85,22 @@ function openBanner(): void {
     save(false, true);
   });
   actions.append(accept, reject);
-  root.append(title, copy, sale, actions);
+  root.append(title, copy, actions, sale);
   document.body.append(root);
+  document.addEventListener("keydown", onBannerKey);
+  accept.focus();
+}
+
+function kidsPage(): boolean {
+  return kidsAnalyticsExcluded({
+    pathname: window.location.pathname,
+    referrer: document.referrer,
+    kidsFlow: readKidsFlow(sessionStorage),
+  });
 }
 
 export function bootStaticConsent(): void {
+  if (kidsPage()) return;
   const button = document.querySelector("[data-consent-settings]");
   button?.addEventListener("click", () => {
     openBanner();

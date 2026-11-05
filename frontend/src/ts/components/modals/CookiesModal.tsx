@@ -54,6 +54,16 @@ export function CookiesModal(): JSXElement {
       wrapperClass="justify-end items-end"
       closeOnEscape={false}
       closeOnWrapperClick={false}
+      onEscape={() => {
+        save({
+          security: true,
+          analytics: false,
+          doNotSellOrShare: true,
+        });
+      }}
+      afterShow={() => {
+        document.getElementById("consent-accept")?.focus();
+      }}
     >
       <H3
         text="Privacy and cookie settings"
@@ -96,6 +106,7 @@ export function CookiesModal(): JSXElement {
             />
             <div class="grid gap-2">
               <Button
+                id="consent-accept"
                 text="accept analytics"
                 active={true}
                 onClick={() => {

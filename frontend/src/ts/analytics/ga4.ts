@@ -3,10 +3,10 @@ import { envConfig } from "virtual:env-config";
 import { loadAds } from "../ads/excluded-paths";
 import {
   analyticsLoadAllowed,
-  DEFAULT_CONSENT_REGIONS,
   isGa4MeasurementId,
+  kidsAnalyticsExcluded,
   readConsentRecord,
-  readCountryCookie,
+  readKidsFlow,
 } from "./consent";
 
 /** GA4 tag origin only. No ads, Google signals, or Ads linking endpoints. */
@@ -53,10 +53,14 @@ export function loadGa4(measurementId: string): void {
   gtag("js", new Date());
   gtag("consent", "default", {
     ...ADS_DENIED,
-    analytics_storage: "granted",
+    analytics_storage: "denied",
     functionality_storage: "denied",
     personalization_storage: "denied",
     security_storage: "granted",
+  });
+  gtag("consent", "update", {
+    ...ADS_DENIED,
+    analytics_storage: "granted",
   });
   gtag("set", "allow_google_signals", false);
   gtag("config", measurementId, {
@@ -91,7 +95,7 @@ function grantAnalyticsStorage(): void {
   });
 }
 
-/** Load GA4 only when the measurement ID and the consent rules allow it. */
+/** Load GA4 only after analytics accept, and never on kids paths or kids-flow. */
 export function syncGa4(): void {
   loadAds(window.location.pathname);
   if (isSteam()) return;
@@ -99,9 +103,12 @@ export function syncGa4(): void {
   const consent = readConsentRecord();
   const allowed = analyticsLoadAllowed({
     measurementId,
-    country: readCountryCookie(document.cookie),
     analytics: consent?.analytics ?? null,
-    consentRegions: envConfig.ga4ConsentRegions ?? [...DEFAULT_CONSENT_REGIONS],
+    kidsExcluded: kidsAnalyticsExcluded({
+      pathname: window.location.pathname,
+      referrer: document.referrer,
+      kidsFlow: readKidsFlow(sessionStorage),
+    }),
   });
   if (!allowed) {
     denyAnalyticsStorage();
