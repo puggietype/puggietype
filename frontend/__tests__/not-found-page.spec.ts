@@ -42,8 +42,7 @@ describe("not-found-page plugin", () => {
       .filter((l) => l.trim() !== "" && !l.startsWith("#"));
     const firstRewrite = lines.findIndex((l) => l.endsWith(" 200"));
     const want = [
-      "/guide / 301",
-      "/guide/ / 301",
+      "/guide /guide/ 301",
       "/leaderboard /leaderboards 301",
       "/race/ /race 301",
       "/settings/ /settings 301",

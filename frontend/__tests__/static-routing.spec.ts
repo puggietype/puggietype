@@ -47,7 +47,13 @@ describe("static routing", () => {
   ].map((m) => m[1] ?? "");
 
   it("lists the launch pages in the sitemap", () => {
-    expect(sitemapPaths).toEqual(["/", ...staticPages, "/terms", "/privacy"]);
+    expect(sitemapPaths).toEqual([
+      "/",
+      "/guide/",
+      ...staticPages,
+      "/terms",
+      "/privacy",
+    ]);
   });
 
   it("builds each static content page and never shadows it with a rule", () => {
@@ -64,15 +70,55 @@ describe("static routing", () => {
       expect(viteConfig, p).toContain(`"src${p}.html"`);
       expect(rules, p).not.toContain(p);
     }
+    // /guide/ is guide/index.html. A _redirects rule would beat that file.
+    expect(existsSync(path.join(srcDir, "guide/index.html"))).toBe(true);
+    expect(viteConfig).toContain('"src/guide/index.html"');
+    expect(rules).not.toContain("/guide/");
   });
 
   it("serves every sitemap path from an html file or a spa rewrite", () => {
     for (const p of sitemapPaths) {
-      const page = p === "/" ? "index" : p.slice(1);
+      const page =
+        p === "/"
+          ? "index"
+          : p.endsWith("/")
+            ? `${p.slice(1)}index`
+            : p.slice(1);
       const servable =
         existsSync(path.join(srcDir, `${page}.html`)) || rewrites.includes(p);
       expect(servable, p).toBe(true);
     }
+  });
+
+  it("canonicalizes /guide to the index and does not send either path home", () => {
+    const lines = redirectsFile
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("/"));
+    expect(lines).toContain("/guide /guide/ 301");
+    expect(lines).not.toContain("/guide / 301");
+    expect(lines).not.toContain("/guide/ / 301");
+  });
+
+  it("links every guide from the index, with no ad or analytics scripts", () => {
+    const index = readFileSync(path.join(srcDir, "guide/index.html"), "utf-8");
+    for (const p of staticPages.filter((page) => page.startsWith("/guide/"))) {
+      expect(index, p).toContain(`href="${p}"`);
+    }
+    expect(index).toContain('href="https://puggietype.com/guide/"');
+    expect(index).not.toMatch(
+      /adsbygoogle|gtag\(|google-analytics|plausible|umami|cloudflareinsights|beacon\.min\.js/i,
+    );
+    const footer = readFileSync(
+      path.join(srcDir, "html/static-page/footer.html"),
+      "utf-8",
+    );
+    const intro = readFileSync(
+      path.join(srcDir, "html/site-intro.html"),
+      "utf-8",
+    );
+    expect(footer).toContain('href="/guide/"');
+    expect(intro).toContain('href="/guide/"');
   });
 
   it("rewrites race invite links", () => {
