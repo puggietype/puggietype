@@ -1,9 +1,8 @@
 import {
   type ConsentRecord,
   globalPrivacyControl,
-  kidsAnalyticsExcluded,
+  noteKidsFlowVisit,
   readConsentRecord,
-  readKidsFlow,
   writeConsentRecord,
 } from "./consent";
 import { syncGa4 } from "./ga4";
@@ -91,16 +90,13 @@ function openBanner(): void {
   accept.focus();
 }
 
-function kidsPage(): boolean {
-  return kidsAnalyticsExcluded({
+export function bootStaticConsent(): void {
+  const kidsFlow = noteKidsFlowVisit({
     pathname: window.location.pathname,
     referrer: document.referrer,
-    kidsFlow: readKidsFlow(sessionStorage),
+    storage: sessionStorage,
   });
-}
-
-export function bootStaticConsent(): void {
-  if (kidsPage()) return;
+  if (kidsFlow) return;
   const button = document.querySelector("[data-consent-settings]");
   button?.addEventListener("click", () => {
     openBanner();

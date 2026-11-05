@@ -4,18 +4,14 @@ import { getAcceptedCookies } from "../cookies";
 import { isRaceActive } from "../multiplayer/engine-hooks";
 import { hideModal, isModalOpen, showModal } from "../states/modals";
 import { isTestActive } from "../states/test";
-import {
-  consentBannerAllowed,
-  kidsAnalyticsExcluded,
-  readKidsFlow,
-} from "./consent";
+import { consentBannerAllowed, noteKidsFlowVisit } from "./consent";
 import { syncGa4 } from "./ga4";
 
 function kidsBlocked(): boolean {
-  return kidsAnalyticsExcluded({
+  return noteKidsFlowVisit({
     pathname: window.location.pathname,
     referrer: document.referrer,
-    kidsFlow: readKidsFlow(sessionStorage),
+    storage: sessionStorage,
   });
 }
 

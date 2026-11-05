@@ -15,7 +15,9 @@ import {
   COUNTRY_COOKIE,
   kidsAnalyticsExcluded,
   KIDS_FLOW_STORAGE_KEY,
+  noteKidsFlowVisit,
   readConsentRecord,
+  readKidsFlow,
   readCountryCookie,
   writeConsentRecord,
 } from "../../src/ts/analytics/consent";
@@ -99,6 +101,54 @@ describe("analytics consent gate", () => {
       true,
     );
     expect(kidsAnalyticsExcluded({ pathname: "/faq" })).toBe(false);
+
+    const memory = new Map<string, string>();
+    const storage = {
+      getItem: (key: string): string | null => memory.get(key) ?? null,
+      setItem: (key: string, value: string): void => {
+        memory.set(key, value);
+      },
+    };
+    expect(
+      noteKidsFlowVisit({
+        pathname: "/guide/teaching-kids-to-type/",
+        storage,
+      }),
+    ).toBe(true);
+    expect(readKidsFlow(storage)).toBe(true);
+    for (const pathname of ["/", "/privacy", "/guide/typing-tips"]) {
+      expect(
+        analyticsLoadAllowed({
+          measurementId: "G-TEST1234",
+          analytics: true,
+          kidsExcluded: kidsAnalyticsExcluded({
+            pathname,
+            kidsFlow: readKidsFlow(storage),
+          }),
+        }),
+        pathname,
+      ).toBe(false);
+    }
+    const later = new Map<string, string>();
+    const fromHome = {
+      getItem: (key: string): string | null => later.get(key) ?? null,
+      setItem: (key: string, value: string): void => {
+        later.set(key, value);
+      },
+    };
+    expect(
+      noteKidsFlowVisit({
+        pathname: "/",
+        referrer: "https://puggietype.com/guide/typing-for-kids",
+        storage: fromHome,
+      }),
+    ).toBe(true);
+    expect(
+      kidsAnalyticsExcluded({
+        pathname: "/privacy",
+        kidsFlow: readKidsFlow(fromHome),
+      }),
+    ).toBe(true);
     const leaderboards = readFileSync(
       path.join(src, "ts/multiplayer/leaderboards.ts"),
       "utf8",
@@ -230,16 +280,19 @@ describe("legal copy", () => {
       "guide/teaching-kids-to-type.html",
     ]) {
       const html = readFileSync(path.join(src, file), "utf8");
+      expect(html, file).toContain('sessionStorage.setItem("puggie-kids-flow"');
       expect(html, file).not.toMatch(
         /static-boot|gtag\(|googletagmanager|google-analytics/i,
       );
     }
     const kidsHtml = injectStaticConsentScript(
-      '<footer data-consent-settings></footer><script type="module" src="/ts/analytics/static-boot.ts"></script></body>',
-      "/src/guide/teaching-kids-to-type.html",
+      '<head></head><button type="button" data-consent-settings>Privacy and cookie settings</button><script type="module" src="/ts/analytics/static-boot.ts"></script></body>',
+      "/src/guide/typing-for-kids.html",
     );
     expect(kidsHtml).not.toContain("static-boot");
-    expect(kidsHtml).not.toMatch(/gtag\(|googletagmanager/i);
+    expect(kidsHtml).not.toContain("data-consent-settings");
+    expect(kidsHtml).toContain("puggie-kids-flow");
+    expect(kidsHtml).not.toMatch(/gtag\(|googletagmanager|google-analytics/i);
     const faqHtml = injectStaticConsentScript(
       "<button data-consent-settings></button>\n  </body>",
       "/src/faq.html",

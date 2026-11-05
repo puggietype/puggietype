@@ -4,9 +4,8 @@ import { loadAds } from "../ads/excluded-paths";
 import {
   analyticsLoadAllowed,
   isGa4MeasurementId,
-  kidsAnalyticsExcluded,
+  noteKidsFlowVisit,
   readConsentRecord,
-  readKidsFlow,
 } from "./consent";
 
 /** GA4 tag origin only. No ads, Google signals, or Ads linking endpoints. */
@@ -104,10 +103,10 @@ export function syncGa4(): void {
   const allowed = analyticsLoadAllowed({
     measurementId,
     analytics: consent?.analytics ?? null,
-    kidsExcluded: kidsAnalyticsExcluded({
+    kidsExcluded: noteKidsFlowVisit({
       pathname: window.location.pathname,
       referrer: document.referrer,
-      kidsFlow: readKidsFlow(sessionStorage),
+      storage: sessionStorage,
     }),
   });
   if (!allowed) {

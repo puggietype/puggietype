@@ -181,6 +181,29 @@ export function kidsAnalyticsExcluded(input: {
 }
 
 /**
+ * Persist kids-flow before any banner or GA decision. A kids slug, or a
+ * referrer that is one, marks the rest of the browser session.
+ */
+export function noteKidsFlowVisit(input: {
+  pathname: string;
+  referrer?: string;
+  storage: Pick<Storage, "getItem" | "setItem">;
+}): boolean {
+  const excluded = kidsAnalyticsExcluded({
+    pathname: input.pathname,
+    referrer: input.referrer,
+    kidsFlow: readKidsFlow(input.storage),
+  });
+  if (!excluded) return false;
+  try {
+    input.storage.setItem(KIDS_FLOW_STORAGE_KEY, "1");
+  } catch {
+    // storage blocked: this navigation is still excluded via path or referrer
+  }
+  return true;
+}
+
+/**
  * GA4 loads only after an explicit analytics accept, in every country.
  * Reject, no choice yet, and kids paths never load it.
  */
