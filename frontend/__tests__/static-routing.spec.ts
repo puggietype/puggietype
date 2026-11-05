@@ -35,10 +35,13 @@ describe("static routing", () => {
     "/guide/typing-ergonomics",
     "/guide/typing-test-math",
     "/guide/improve-accuracy",
-    "/guide/typing-for-kids",
     "/contact",
     "/creators",
   ];
+
+  // built and crawlable as a file, but noindex and absent from the sitemap
+  // and the /guide/ hub until Legal clears it
+  const unlistedGuides = ["/guide/teaching-kids-to-type"];
 
   const sitemapPaths = [
     ...readFileSync(path.join(staticDir, "sitemap.xml"), "utf-8").matchAll(
@@ -74,6 +77,11 @@ describe("static routing", () => {
     expect(existsSync(path.join(srcDir, "guide/index.html"))).toBe(true);
     expect(viteConfig).toContain('"src/guide/index.html"');
     expect(rules).not.toContain("/guide/");
+    for (const p of unlistedGuides) {
+      expect(existsSync(path.join(srcDir, `${p.slice(1)}.html`)), p).toBe(true);
+      expect(viteConfig, p).toContain(`"src${p}.html"`);
+      expect(rules, p).not.toContain(p);
+    }
   });
 
   it("serves every sitemap path from an html file or a spa rewrite", () => {
@@ -119,6 +127,96 @@ describe("static routing", () => {
     );
     expect(footer).toContain('href="/guide/"');
     expect(intro).toContain('href="/guide/"');
+    const home = readFileSync(path.join(srcDir, "index.html"), "utf-8");
+    expect(home).toContain('src="html/site-intro.html"');
+    expect(intro).toContain("PuggieType is a free, minimalist typing test");
+    expect(intro).toContain('<a href="/guide/">typing guides</a>');
+    for (const hidden of [
+      "/guide/typing-for-kids",
+      "/guide/teaching-kids-to-type",
+    ]) {
+      expect(index, hidden).not.toContain(hidden);
+      expect(footer, hidden).not.toContain(hidden);
+      expect(intro, hidden).not.toContain(hidden);
+      expect(sitemapPaths, hidden).not.toContain(hidden);
+    }
+  });
+
+  it("noindexes the teaching-kids guide and redirects the old slug", () => {
+    const page = readFileSync(
+      path.join(srcDir, "guide/teaching-kids-to-type.html"),
+      "utf-8",
+    );
+    const oldPage = readFileSync(
+      path.join(srcDir, "guide/typing-for-kids.html"),
+      "utf-8",
+    );
+    expect(page).toContain('<meta name="robots" content="noindex, nofollow"');
+    expect(oldPage).toContain(
+      '<meta name="robots" content="noindex, nofollow"',
+    );
+    expect(page).toContain("There are no ads during a test or race.");
+    expect(page).toContain(
+      "Teaching kids to type: a guide for parents and teachers | PuggieType",
+    );
+    expect(page).toContain(
+      "How parents and teachers can help children learn touch typing: readiness, desk setup, the home row, short sessions, and why accuracy should come before speed. PuggieType itself is for ages 13+.",
+    );
+    expect(page).not.toMatch(/child-directed|max-ad-content-rating|coppa/i);
+    const lines = redirectsFile
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("/"));
+    expect(lines).toContain(
+      "/guide/typing-for-kids /guide/teaching-kids-to-type 301",
+    );
+    expect(lines).toContain(
+      "/guide/typing-for-kids/ /guide/teaching-kids-to-type 301",
+    );
+    expect(lines).toContain("/about /guide/about 301");
+    expect(lines).toContain("/about/ /guide/about 301");
+    expect(lines).not.toContain("/about / 200");
+  });
+
+  it("stamps a hand-set last-updated date that matches dateModified", () => {
+    const stamped = [
+      ...staticPages.filter((p) => p.startsWith("/guide/")),
+      ...unlistedGuides,
+      "/faq",
+    ];
+    for (const p of stamped) {
+      const html = readFileSync(
+        path.join(srcDir, `${p.slice(1)}.html`),
+        "utf-8",
+      );
+      const visible =
+        /<p class="last-updated">Last updated <time datetime="(\d{4}-\d{2}-\d{2})">/.exec(
+          html,
+        );
+      const modified = /"dateModified": "(\d{4}-\d{2}-\d{2})"/.exec(html);
+      expect(visible, p).not.toBeNull();
+      expect(modified?.[1], p).toBe(visible?.[1]);
+    }
+    const tips = readFileSync(
+      path.join(srcDir, "guide/typing-tips.html"),
+      "utf-8",
+    );
+    for (const href of [
+      "/guide/type-faster",
+      "/guide/improve-accuracy",
+      "/guide/home-row-finger-placement",
+      "/guide/typing-ergonomics",
+      "/guide/modes-settings",
+      "/guide/multiplayer",
+    ]) {
+      expect(tips, href).toContain(`href="${href}"`);
+    }
+    expect(tips).toContain("Multiplayer is for ages 13 and over.");
+    const ergo = readFileSync(
+      path.join(srcDir, "guide/typing-ergonomics.html"),
+      "utf-8",
+    );
+    expect(ergo).toContain("The best posture is your next one.");
   });
 
   it("rewrites race invite links", () => {

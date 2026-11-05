@@ -311,6 +311,10 @@ function getBuildOptions({
           __dirname,
           "src/guide/typing-for-kids.html",
         ),
+        "guide/teaching-kids-to-type": path.resolve(
+          __dirname,
+          "src/guide/teaching-kids-to-type.html",
+        ),
         // no 404.html: its absence turns on cloudflare pages' spa fallback
       },
       output: {

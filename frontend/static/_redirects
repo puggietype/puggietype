@@ -17,7 +17,13 @@
 /leaderboard/ /leaderboards 301
 /verify/ /verify 301
 /leaderboards/ /leaderboards 301
-/about/ /about 301
+# /about is the old SPA shell. The crawlable about page is /guide/about.
+/about /guide/about 301
+/about/ /guide/about 301
+# old kids slug. Both this path and /guide/teaching-kids-to-type stay noindex.
+/guide/typing-for-kids /guide/teaching-kids-to-type 301
+/guide/typing-for-kids/ /guide/teaching-kids-to-type 301
+/guide/teaching-kids-to-type/ /guide/teaching-kids-to-type 301
 /settings/ /settings 301
 /login/ /login 301
 /account/ /account 301
@@ -27,7 +33,6 @@
 /friends/ /friends 301
 /verify / 200
 /leaderboards / 200
-/about / 200
 /settings / 200
 /login / 200
 /account / 200

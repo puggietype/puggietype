@@ -223,6 +223,7 @@ describe("kids guide", () => {
   it("has no music, prompt, or analytics on the kids page", () => {
     const files = [
       "src/guide/typing-for-kids.html",
+      "src/guide/teaching-kids-to-type.html",
       "src/html/static-page/header.html",
       "src/html/static-page/footer.html",
     ];
