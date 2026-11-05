@@ -146,7 +146,7 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     ageConfirmed: z.boolean().optional(),
     /** Starting dog. Bad or unknown values fall back to "puggie" rather than erroring, for older clients. */
     character: CharacterSchema.catch(DEFAULT_CHARACTER).optional(),
-    /** This browser session started from /guide/typing-for-kids. The server refuses leaderboard scores. */
+    /** This browser session started from /guide/typing-for-kids or /guide/teaching-kids-to-type. The server refuses leaderboard scores. */
     kidsGuide: z.literal(true).optional(),
     /** Client wire protocol (servers treat a missing value as 1). */
     protocol: z.number().int().min(0).optional(),

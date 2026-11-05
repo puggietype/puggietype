@@ -17,6 +17,7 @@ import {
   DEFAULT_BG_MUSIC,
   isKidsGuidePath,
   KIDS_GUIDE_PATH,
+  TEACHING_KIDS_GUIDE_PATH,
   readBgMusicSettings,
   shouldSuspendBackgroundMusic,
 } from "../../src/ts/controllers/background-music";
@@ -212,10 +213,13 @@ describe("background music preferences", () => {
 });
 
 describe("kids guide", () => {
-  it("matches only the kids guide path", () => {
+  it("matches both kids guide slugs, with or without a trailing slash", () => {
     expect(isKidsGuidePath(KIDS_GUIDE_PATH)).toBe(true);
     expect(isKidsGuidePath("/guide/typing-for-kids/")).toBe(true);
+    expect(isKidsGuidePath(TEACHING_KIDS_GUIDE_PATH)).toBe(true);
+    expect(isKidsGuidePath("/guide/teaching-kids-to-type/")).toBe(true);
     expect(isKidsGuidePath("/guide/typing-for-kids/extra")).toBe(false);
+    expect(isKidsGuidePath("/guide/teaching-kids-to-type/extra")).toBe(false);
     expect(isKidsGuidePath("/guide/typing-tips")).toBe(false);
     expect(isKidsGuidePath("/")).toBe(false);
   });
@@ -267,6 +271,18 @@ describe("canPlayBackgroundMusic", () => {
       canPlayBackgroundMusic({
         ...ready,
         pathname: "/guide/typing-for-kids/",
+      }),
+    ).toBe(false);
+    expect(
+      canPlayBackgroundMusic({
+        ...ready,
+        pathname: "/guide/teaching-kids-to-type",
+      }),
+    ).toBe(false);
+    expect(
+      canPlayBackgroundMusic({
+        ...ready,
+        pathname: "/guide/teaching-kids-to-type/",
       }),
     ).toBe(false);
     expect(canPlayBackgroundMusic({ ...ready, suspended: true })).toBe(false);
