@@ -207,12 +207,23 @@ describe("static routing", () => {
       "/guide/improve-accuracy",
       "/guide/home-row-finger-placement",
       "/guide/typing-ergonomics",
+      "/guide/keyboard-layouts",
       "/guide/modes-settings",
       "/guide/multiplayer",
     ]) {
       expect(tips, href).toContain(`href="${href}"`);
     }
+    expect(tips).toContain(
+      '<a href="/guide/keyboard-layouts">keyboard layouts guide</a>',
+    );
     expect(tips).toContain("Multiplayer is for ages 13 and over.");
+    const faster = readFileSync(
+      path.join(srcDir, "guide/type-faster.html"),
+      "utf-8",
+    );
+    expect(faster).toContain(
+      '<a href="/guide/keyboard-layouts">keyboard layouts guide</a>',
+    );
     const ergo = readFileSync(
       path.join(srcDir, "guide/typing-ergonomics.html"),
       "utf-8",
