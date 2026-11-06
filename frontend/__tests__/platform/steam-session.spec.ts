@@ -6,6 +6,7 @@ import {
   hasSteamSession,
   resumeSteamSession,
   signInWithSteam,
+  signInWithSteamTicket,
   signOutSteam,
 } from "../../src/ts/platform/steam-identity";
 import type { PlatformStorage } from "../../src/ts/platform/types";
@@ -366,5 +367,109 @@ describe("startSilentSteamSignIn (at launch)", () => {
     const resume = vi.fn();
     await startSilentSteamSignIn(resume);
     expect(resume).not.toHaveBeenCalled();
+  });
+});
+
+describe("signInWithSteamTicket (optional helper)", () => {
+  const TICKET = `14000000${"ab".repeat(120)}`;
+  const withTicket = (
+    t: () => Promise<{ ticket: string } | null>,
+  ): DesktopBridge => {
+    const b = bridge();
+    if (b.steam) b.steam.ticket = t;
+    return b;
+  };
+  it("posts the hex ticket to /steam/ticket and keeps the issued token", async () => {
+    const f = server({
+      status: 200,
+      body: { ok: true, steamId: STEAM_ID, ownsApp: true, sessionToken: T1 },
+    });
+    const r = await signInWithSteamTicket(
+      deps(
+        withTicket(async () => ({ ticket: TICKET })),
+        f,
+      ),
+    );
+    expect(r).toMatchObject({ ok: true, value: { steamId: STEAM_ID } });
+    expect(f.mock.calls[0]?.[0]).toBe("https://ws.example/steam/ticket");
+    expect(JSON.parse(f.mock.calls[0]?.[1].body ?? "")).toEqual({
+      ticket: TICKET,
+    });
+    expect(secure).toBe(T1);
+  });
+  it("any failure is 'none' (no helper, null, bad output, throw, 401, 404, offline)", async () => {
+    const ok = async (): Promise<{ ticket: string }> => ({ ticket: TICKET });
+    const cases: [DesktopBridge, FakeFetch][] = [
+      [bridge(), server()],
+      [withTicket(async () => null), server()],
+      [withTicket(async () => ({ ticket: "nothex" })), server()],
+      [withTicket(async () => Promise.reject(new Error("x"))), server()],
+      [withTicket(ok), server({ status: 401, body: { ok: false } })],
+      [withTicket(ok), server({ status: 404 })],
+      [withTicket(ok), server("throw")],
+    ];
+    for (const [b, f] of cases) {
+      expect(await signInWithSteamTicket(deps(b, f))).toEqual({
+        ok: false,
+        error: "none",
+      });
+    }
+  });
+});
+
+describe("launch order (Legal C37-1): kept token, then ticket, then OpenID", () => {
+  afterEach(() => {
+    __resetSteamSessionForTests();
+    vi.unstubAllGlobals();
+  });
+  const value = {
+    steamId: STEAM_ID,
+    ownsApp: true,
+    displayName: null,
+    personaName: null,
+  };
+  const none = async (): Promise<{ ok: false; error: "none" }> => ({
+    ok: false,
+    error: "none",
+  });
+  function withHelper(): ReturnType<typeof vi.fn> {
+    const b = bridge();
+    const helper = vi.fn(async () => ({
+      ticket: `14000000${"ab".repeat(120)}`,
+    }));
+    if (b.steam) b.steam.ticket = helper;
+    vi.stubGlobal("puggieDesktop", b);
+    return helper;
+  }
+  it("a kept token that works: the helper is never spawned", async () => {
+    const helper = withHelper();
+    secure = T1;
+    const resume = vi.fn(async () => ({ ok: true as const, value }));
+    await startSilentSteamSignIn(resume); // the real ticket step
+    expect(resume).toHaveBeenCalledTimes(1);
+    expect(helper).not.toHaveBeenCalled();
+    expect(steamLaunchState()).toEqual({ kind: "signedIn", value });
+  });
+  it("a token still kept after a failed resume (server unreachable): no ticket, no new token family", async () => {
+    const helper = withHelper();
+    secure = T1;
+    await startSilentSteamSignIn(none);
+    expect(helper).not.toHaveBeenCalled();
+    expect(secure).toBe(T1);
+    expect(steamLaunchState()).toEqual({ kind: "idle" });
+  });
+  it("no kept token (or one the server rejected and resume cleared): the ticket", async () => {
+    withHelper();
+    secure = null;
+    const ticket = vi.fn(async () => ({ ok: true as const, value }));
+    await startSilentSteamSignIn(none, ticket);
+    expect(ticket).toHaveBeenCalledTimes(1);
+    expect(steamLaunchState()).toEqual({ kind: "signedIn", value });
+  });
+  it("both fail: idle (the OpenID button)", async () => {
+    withHelper();
+    secure = null;
+    await startSilentSteamSignIn(none, none);
+    expect(steamLaunchState()).toEqual({ kind: "idle" });
   });
 });
