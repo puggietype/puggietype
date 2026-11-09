@@ -564,16 +564,6 @@
   grid-template-rows: 1fr auto 1fr;
 }
 
-// Corner cookie banner is position:fixed. Keep word glyphs above it.
-body[data-consent-banner] #pageTest {
-  padding-bottom: calc(var(--consent-banner-block, 20rem) + 1rem);
-}
-
-body[data-consent-banner] #wordsWrapper {
-  max-height: calc(100dvh - var(--consent-banner-block, 20rem) - 13rem);
-  overflow: hidden;
-}
-
 .pageTest {
   #wordsWrapper {
     position: relative;

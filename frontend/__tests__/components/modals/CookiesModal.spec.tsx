@@ -35,14 +35,14 @@ describe("CookiesModal", () => {
     return { dialog, input };
   }
 
-  it("is a corner banner, not a full-viewport cover", () => {
+  it("is a bottom bar, not a full-viewport cover", () => {
     const { dialog } = renderModal();
     const classes = dialog.className.split(/\s+/);
-    expect(classes).toContain("bottom-4");
+    expect(classes).toContain("bottom-0");
+    expect(classes).toContain("w-full");
     expect(classes).toContain("bg-transparent");
     expect(classes).toContain("h-auto");
     expect(classes).not.toContain("h-full");
-    expect(classes).not.toContain("w-full");
     expect(classes).not.toContain("top-0");
     expect(classes).not.toContain("bg-[rgba(0,0,0,0.5)]");
     expect(dialog.getAttribute("aria-modal")).toBe("false");
@@ -76,6 +76,20 @@ describe("CookiesModal", () => {
       doNotSellOrShare: true,
     });
     expect(document.activeElement).toBe(input);
+  });
+
+  it("Escape from the words input rejects without entering the banner", () => {
+    const { input } = renderModal();
+    expect(document.activeElement).toBe(input);
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(readConsentRecord()).toEqual({
+      security: true,
+      analytics: false,
+      doNotSellOrShare: true,
+    });
+    expect(document.activeElement).toBe(input);
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(readConsentRecord()?.analytics).toBe(false);
     expect(
       [...document.scripts].some((script) =>
         /googletagmanager|google-analytics/i.test(script.src),

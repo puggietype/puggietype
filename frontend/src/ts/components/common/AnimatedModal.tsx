@@ -372,7 +372,7 @@ export function AnimatedModal(props: AnimatedModalProps): JSXElement {
   const dialogClass = (): string =>
     props.shell === "banner"
       ? cn(
-          "pointer-events-none fixed right-4 bottom-4 left-4 z-1000 m-0 h-auto w-auto border-none bg-transparent p-0 sm:left-auto sm:w-[28rem]",
+          "pointer-events-none fixed inset-x-0 bottom-0 z-1000 m-0 h-auto w-full max-w-none border-none bg-transparent p-0",
           props.wrapperClass,
         )
       : cn(

@@ -27,9 +27,22 @@ function onBannerKey(event: KeyboardEvent): void {
   save(false, true);
 }
 
+function fitStaticBanner(): void {
+  const banner = document.getElementById(BANNER_ID);
+  if (banner === null) return;
+  const height = Math.ceil(banner.getBoundingClientRect().height);
+  if (height <= 0) return;
+  document.documentElement.style.setProperty(
+    "--consent-banner-block",
+    `${height}px`,
+  );
+}
+
 function closeBanner(): void {
   document.getElementById(BANNER_ID)?.remove();
   document.removeEventListener("keydown", onBannerKey);
+  window.removeEventListener("resize", fitStaticBanner);
+  document.documentElement.style.removeProperty("--consent-banner-block");
   const back = restoreFocus;
   restoreFocus = null;
   if (back?.isConnected) back.focus();
@@ -99,6 +112,8 @@ function openBanner(): void {
   root.append(title, copy, actions, sale);
   document.body.append(root);
   document.addEventListener("keydown", onBannerKey);
+  window.addEventListener("resize", fitStaticBanner);
+  fitStaticBanner();
   accept.focus();
 }
 

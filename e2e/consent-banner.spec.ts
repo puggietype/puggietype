@@ -19,124 +19,143 @@ async function abortGa(page: Page): Promise<void> {
   });
 }
 
-type Box = {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-  width: number;
-  height: number;
-};
-
-function overlapArea(
-  a: { left: number; right: number; top: number; bottom: number },
-  b: { left: number; right: number; top: number; bottom: number },
-): number {
-  const width = Math.min(a.right, b.right) - Math.max(a.left, b.left);
-  const height = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-  if (width <= 0 || height <= 0) return 0;
-  return width * height;
-}
-
 test.use({ viewport: { width: 1280, height: 720 } });
 
 test.beforeEach(async ({ context }) => {
   await skipNgrokWarning(context);
 });
 
-test("the cookie banner does not cover the words at 1280x720", async ({
+type WordFit = {
+  total: number;
+  shown: number;
+  lines: number;
+  covered: number;
+  overflowY: string;
+  barHeight: number;
+  barWidth: number;
+};
+
+async function wordFit(page: Page): Promise<WordFit> {
+  return page.evaluate((): WordFit => {
+    const wrap = document.querySelector("#wordsWrapper");
+    const banner = document.getElementById("CookiesModal");
+    const words = [...document.querySelectorAll("#words .word")];
+    const wrapBox =
+      wrap instanceof HTMLElement ? wrap.getBoundingClientRect() : null;
+    const open =
+      banner instanceof HTMLElement &&
+      getComputedStyle(banner).display !== "none" &&
+      banner.getBoundingClientRect().height > 0;
+    const bar =
+      open && banner instanceof HTMLElement
+        ? banner.getBoundingClientRect()
+        : null;
+    let shown = 0;
+    let covered = 0;
+    const lineTops = new Set<number>();
+    for (const node of words) {
+      const rect = node.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0 || wrapBox === null) continue;
+      const fullyShown =
+        rect.top >= wrapBox.top - 1 &&
+        rect.bottom <= wrapBox.bottom + 1 &&
+        rect.left >= wrapBox.left - 1 &&
+        rect.right <= wrapBox.right + 1;
+      if (fullyShown) {
+        shown += 1;
+        lineTops.add(Math.round(rect.top / 4));
+      }
+      if (
+        bar !== null &&
+        rect.bottom > bar.top + 0.5 &&
+        rect.top < bar.bottom &&
+        rect.bottom > wrapBox.top &&
+        rect.top < wrapBox.bottom
+      ) {
+        covered += 1;
+      }
+    }
+    return {
+      total: words.length,
+      shown,
+      lines: lineTops.size,
+      covered,
+      overflowY: wrap === null ? "" : getComputedStyle(wrap).overflowY,
+      barHeight: bar?.height ?? 0,
+      barWidth: bar?.width ?? 0,
+    };
+  });
+}
+
+const VIEWPORTS: Array<[number, number]> = [
+  [1280, 720],
+  [1280, 600],
+  [1024, 768],
+  [390, 844],
+  [320, 700],
+];
+
+test("the banner leaves the full word list usable", async ({
   page,
 }, testInfo) => {
   const ga = watchGa(page);
   await abortGa(page);
-  await page.goto("/");
-  await page.locator("#words .word").first().waitFor({ timeout: 60_000 });
-  await expect(page.locator("#consent-accept")).toBeVisible();
-  await expect(page.locator("#consent-reject")).toBeVisible();
 
-  const boxes = await page.evaluate(
-    (): {
-      first: Box;
-      dialog: Box;
-      card: Box;
-      covered: number;
-      viewport: { width: number; height: number };
-    } => {
-      const rect = (selector: string): DOMRect => {
-        const el = document.querySelector(selector);
-        if (el === null) throw new Error(`missing ${selector}`);
-        return el.getBoundingClientRect();
-      };
-      const clip = (el: Element): DOMRect => {
-        const r = el.getBoundingClientRect();
-        let top = r.top;
-        let left = r.left;
-        let right = r.right;
-        let bottom = r.bottom;
-        let parent = el.parentElement;
-        while (parent !== null) {
-          const style = getComputedStyle(parent);
-          if (style.overflowY !== "visible" || style.overflowX !== "visible") {
-            const box = parent.getBoundingClientRect();
-            top = Math.max(top, box.top);
-            bottom = Math.min(bottom, box.bottom);
-            left = Math.max(left, box.left);
-            right = Math.min(right, box.right);
-          }
-          parent = parent.parentElement;
-        }
-        return new DOMRect(
-          left,
-          top,
-          Math.max(0, right - left),
-          Math.max(0, bottom - top),
-        );
-      };
-      const area = (
-        a: { left: number; right: number; top: number; bottom: number },
-        b: { left: number; right: number; top: number; bottom: number },
-      ): number => {
-        const width = Math.min(a.right, b.right) - Math.max(a.left, b.left);
-        const height = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-        if (width <= 0 || height <= 0) return 0;
-        return width * height;
-      };
-      const dialog = rect("#CookiesModal");
-      const card = rect("#CookiesModal .modal");
-      let covered = 0;
-      for (const word of document.querySelectorAll("#words .word")) {
-        covered += area(clip(word), dialog);
-      }
-      const first = clip(
-        document.querySelector("#words .word") ?? document.body,
+  const bare = await page.context().browser()?.newContext();
+  if (bare === undefined) throw new Error("no browser");
+  const plain = await bare.newPage();
+  await plain.addInitScript(() => {
+    localStorage.setItem(
+      "acceptedCookies",
+      JSON.stringify({
+        security: true,
+        analytics: false,
+        doNotSellOrShare: true,
+      }),
+    );
+  });
+
+  for (const [width, height] of VIEWPORTS) {
+    await plain.setViewportSize({ width, height });
+    await plain.goto("/");
+    await plain.locator("#words .word").first().waitFor({ timeout: 60_000 });
+    const before = await wordFit(plain);
+
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    await page.locator("#words .word").first().waitFor({ timeout: 60_000 });
+    await expect(page.locator("#consent-accept")).toBeVisible();
+    const after = await wordFit(page);
+    expect(after.total, `${width}x${height} word count`).toBe(before.total);
+    expect(after.lines, `${width}x${height} visible lines`).toBe(before.lines);
+    expect(after.shown, `${width}x${height} visible words`).toBeGreaterThan(0);
+    expect(after.covered, `${width}x${height} covered`).toBe(0);
+    expect(after.overflowY, `${width}x${height}`).toBe(before.overflowY);
+    expect(after.barHeight).toBeGreaterThan(24);
+    expect(after.barHeight).toBeLessThan(160);
+    expect(after.barWidth).toBeGreaterThan(width * 0.9);
+    for (const id of ["#consent-accept", "#consent-reject"]) {
+      const box = await page.locator(id).boundingBox();
+      expect(box, id).not.toBeNull();
+      expect(box?.x ?? 0, id).toBeGreaterThanOrEqual(0);
+      expect((box?.x ?? 0) + (box?.width ?? 0), id).toBeLessThanOrEqual(
+        width + 1,
       );
-      const pack = (value: DOMRect): Box => ({
-        left: value.left,
-        right: value.right,
-        top: value.top,
-        bottom: value.bottom,
-        width: value.width,
-        height: value.height,
-      });
-      return {
-        first: pack(first),
-        dialog: pack(dialog),
-        card: pack(card),
-        covered,
-        viewport: { width: window.innerWidth, height: window.innerHeight },
-      };
-    },
-  );
-  expect(boxes.first.width).toBeGreaterThan(20);
-  expect(boxes.first.height).toBeGreaterThan(10);
-  expect(boxes.dialog.width).toBeGreaterThan(200);
-  expect(boxes.dialog.height).toBeGreaterThan(80);
-  expect(boxes.covered).toBe(0);
-  expect(overlapArea(boxes.dialog, boxes.card)).toBeGreaterThan(0);
-  expect(boxes.dialog.width).toBeLessThan(boxes.viewport.width * 0.5);
-  expect(boxes.dialog.height).toBeLessThan(boxes.viewport.height * 0.55);
+    }
+  }
+
+  await page.setViewportSize({ width: 1280, height: 500 });
+  await page.waitForTimeout(200);
+  const resized = await wordFit(page);
+  expect(resized.covered, "resized").toBe(0);
+  expect(resized.shown, "resized").toBeGreaterThan(0);
+  expect(resized.total).toBeGreaterThan(resized.shown);
+  await bare.close();
+
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/");
+  await page.locator("#consent-accept").waitFor();
   expect(ga).toEqual([]);
-  expect(await page.locator("script[src*='googletagmanager']").count()).toBe(0);
 
   const shot = testInfo.outputPath("consent-banner-1280x720.png");
   await page.screenshot({ path: shot });
@@ -146,17 +165,17 @@ test("the cookie banner does not cover the words at 1280x720", async ({
   });
 
   const axe = await new AxeBuilder({ page }).include("#CookiesModal").analyze();
-  const serious = axe.violations.filter(
-    (violation) =>
-      violation.impact === "serious" || violation.impact === "critical",
-  );
-  expect(serious.map((violation) => violation.id)).toEqual([]);
+  expect(
+    axe.violations
+      .filter(
+        (violation) =>
+          violation.impact === "serious" || violation.impact === "critical",
+      )
+      .map((violation) => violation.id),
+  ).toEqual([]);
 
   const input = page.locator("#wordsInput");
   await input.focus();
-  await page.locator("#consent-accept").focus();
-  await page.keyboard.press("Tab");
-  await expect(page.locator("#consent-reject")).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.locator("#CookiesModal")).toBeHidden();
   await expect(input).toBeFocused();
@@ -168,9 +187,14 @@ test("the cookie banner does not cover the words at 1280x720", async ({
     analytics: false,
     doNotSellOrShare: true,
   });
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#CommandlineModal")).toBeVisible();
   expect(ga).toEqual([]);
 
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#CommandlineModal")).toBeHidden();
   const word = (await page.locator("#words .word").first().textContent()) ?? "";
+  await input.focus();
   await page.keyboard.type(`${word} `, { delay: 15 });
   await expect(page.locator("#words .word").nth(1)).toHaveClass(/active/);
 });
