@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { readConsentRecord } from "../../src/ts/analytics/consent";
+import {
+  CONSENT_ESSENTIAL_COPY,
+  readConsentRecord,
+} from "../../src/ts/analytics/consent";
 
 function gaScripts(): HTMLScriptElement[] {
   return [...document.scripts].filter((script) =>
@@ -34,7 +37,7 @@ describe("static consent banner", () => {
     document.body.innerHTML = "";
   });
 
-  it("focuses accept, gives reject the same button, and does not load GA", async () => {
+  it("focuses the banner, gives reject the same button, and does not load GA", async () => {
     await bootAt("/privacy");
     const banner = document.getElementById("pt-consent-banner");
     const actions = banner?.querySelector(".consentActions");
@@ -45,7 +48,14 @@ describe("static consent banner", () => {
     expect(buttons?.[0]?.textContent).toBe("Accept analytics");
     expect(buttons?.[1]?.textContent).toBe("Reject analytics");
     expect(buttons?.[0]?.className).toBe(buttons?.[1]?.className);
-    expect(document.activeElement).toBe(buttons?.[0]);
+    expect(
+      document
+        .getElementById("pt-consent-copy")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim(),
+    ).toContain(CONSENT_ESSENTIAL_COPY);
+    expect(document.activeElement).toBe(banner);
+    expect(document.activeElement).not.toBe(buttons?.[0]);
     expect(gaScripts()).toEqual([]);
     expect(readConsentRecord()).toBeNull();
     document.dispatchEvent(

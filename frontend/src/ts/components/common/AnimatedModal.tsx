@@ -79,6 +79,70 @@ export function AnimatedModal(props: AnimatedModalProps): JSXElement {
   // Animations started by the current show, kept so that a hide arriving
   // mid-animation can cancel them instead of queueing behind them.
   let showAnimations: JSAnimation[] = [];
+  let releaseBannerFocus: (() => void) | undefined;
+
+  const holdBannerFocus = (
+    dialog: HTMLDialogElement,
+    prior: Element | null,
+  ): void => {
+    releaseBannerFocus?.();
+    let userInside = false;
+    let restoring = false;
+    const restore = (): void => {
+      if (userInside || restoring) {
+        return;
+      }
+      const active = document.activeElement;
+      if (!(active instanceof HTMLElement)) {
+        return;
+      }
+      if (active !== dialog && !dialog.contains(active)) {
+        return;
+      }
+      const outside =
+        prior instanceof HTMLElement &&
+        prior.isConnected &&
+        !dialog.contains(prior) &&
+        prior !== document.body &&
+        prior !== document.documentElement
+          ? prior
+          : null;
+      const words = document.getElementById("wordsInput");
+      const next =
+        outside ??
+        (words instanceof HTMLElement && words.isConnected ? words : null);
+      restoring = true;
+      if (next !== null) {
+        next.focus({ preventScroll: true });
+      } else if (active !== dialog) {
+        dialog.focus({ preventScroll: true });
+      }
+      restoring = false;
+    };
+    const onFocusIn = (): void => {
+      restore();
+    };
+    const onPointerDown = (event: Event): void => {
+      if (event.target instanceof Node && dialog.contains(event.target)) {
+        userInside = true;
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Tab") {
+        userInside = true;
+      }
+    };
+    dialog.addEventListener("focusin", onFocusIn);
+    dialog.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    releaseBannerFocus = () => {
+      dialog.removeEventListener("focusin", onFocusIn);
+      dialog.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+    };
+    restore();
+    requestAnimationFrame(restore);
+  };
 
   // Drives `display` on the dialog. This has to be a signal rather than a class
   // toggle: the class is built with `cn`, and twMerge would drop a `hidden`
@@ -121,7 +185,15 @@ export function AnimatedModal(props: AnimatedModalProps): JSXElement {
     // clear the opacity left behind by the previous hide animation
     dialogEl()?.setStyle({ opacity: "" });
     if (props.mode === "dialog") {
-      dialogEl()?.native.show();
+      const prior = document.activeElement;
+      const dialog = dialogEl()?.native;
+      if (props.shell === "banner" && dialog) {
+        dialog.tabIndex = -1;
+        // Attach before show(). Chrome focuses the dialog (or its first
+        // control) from show(), and a later words focus is an order race.
+        holdBannerFocus(dialog, prior);
+      }
+      dialog?.show();
     } else {
       dialogEl()?.native?.showModal();
     }
@@ -234,6 +306,8 @@ export function AnimatedModal(props: AnimatedModalProps): JSXElement {
 
   const hideModal = async (isChained: boolean): Promise<void> => {
     if (dialogEl() === undefined || modalEl() === undefined) return;
+    releaseBannerFocus?.();
+    releaseBannerFocus = undefined;
 
     // interrupt the show animation, so hiding never waits for it to finish
     for (const animation of showAnimations) {
@@ -364,6 +438,8 @@ export function AnimatedModal(props: AnimatedModalProps): JSXElement {
   };
 
   onCleanup(() => {
+    releaseBannerFocus?.();
+    releaseBannerFocus = undefined;
     if (dialogEl()?.native.open) {
       dialogEl()?.native.close();
     }
@@ -372,7 +448,7 @@ export function AnimatedModal(props: AnimatedModalProps): JSXElement {
   const dialogClass = (): string =>
     props.shell === "banner"
       ? cn(
-          "pointer-events-none fixed inset-x-0 bottom-0 z-1000 m-0 h-auto w-full max-w-none border-none bg-transparent p-0",
+          "pointer-events-none fixed inset-x-0 bottom-0 z-1000 m-0 h-auto max-h-dvh w-full max-w-none overflow-y-auto border-none bg-transparent p-0",
           props.wrapperClass,
         )
       : cn(
@@ -389,6 +465,7 @@ export function AnimatedModal(props: AnimatedModalProps): JSXElement {
       aria-modal={props.shell === "banner" ? "false" : undefined}
       aria-labelledby={props.labelledBy}
       aria-describedby={props.describedBy}
+      tabIndex={props.shell === "banner" ? -1 : undefined}
       style={{
         display: isDisplayed() ? undefined : "none",
       }}

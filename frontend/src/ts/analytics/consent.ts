@@ -8,6 +8,56 @@ export const COUNTRY_COOKIE = "pt_country";
 
 export const CONSENT_STORAGE_KEY = "acceptedCookies";
 
+/**
+ * First-layer disclosure. Sighted users must be able to read all of it.
+ * Extra detail stays behind more options.
+ */
+export const CONSENT_ESSENTIAL_COPY =
+  "Optional Google Analytics 4 measures site use. It loads only if you accept; rejecting keeps it off.";
+
+function finite(value: number | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function cssZoom(): number {
+  const raw = Number.parseFloat(
+    getComputedStyle(document.documentElement).zoom,
+  );
+  if (!finite(raw) || raw <= 0) {
+    return 1;
+  }
+  return raw;
+}
+
+/**
+ * Layout pixels that still fit in the visible viewport.
+ * CSS zoom scales the box after max-height, so the cap is divided by that zoom.
+ */
+export function visibleViewportHeight(): number {
+  const viewport = window.visualViewport;
+  const rawHeight = viewport?.height;
+  const rawOffset = viewport?.offsetTop;
+  const height = finite(rawHeight) ? rawHeight : window.innerHeight;
+  const offset = finite(rawOffset) ? rawOffset : 0;
+  return Math.max(1, Math.floor((height - Math.max(0, offset)) / cssZoom()));
+}
+
+/** Keep a bottom-fixed bar on the visual viewport while pinch-zoomed. */
+export function pinToVisualBottom(el: HTMLElement): void {
+  const viewport = window.visualViewport;
+  const rawTop = viewport?.offsetTop;
+  const rawHeight = viewport?.height;
+  if (!finite(rawTop) || !finite(rawHeight)) {
+    el.style.bottom = "";
+    return;
+  }
+  const inset = Math.max(
+    0,
+    Math.round(window.innerHeight - rawTop - rawHeight),
+  );
+  el.style.bottom = inset > 0 ? `${inset}px` : "";
+}
+
 /** Same session flag as leaderboards `KIDS_FLOW_KEY`. Read only. */
 export const KIDS_FLOW_STORAGE_KEY = "puggie-kids-flow";
 

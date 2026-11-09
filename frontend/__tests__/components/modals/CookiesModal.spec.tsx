@@ -1,7 +1,10 @@
 import { fireEvent, render } from "@solidjs/testing-library";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { readConsentRecord } from "../../../src/ts/analytics/consent";
+import {
+  CONSENT_ESSENTIAL_COPY,
+  readConsentRecord,
+} from "../../../src/ts/analytics/consent";
 import { CookiesModal } from "../../../src/ts/components/modals/CookiesModal";
 import { hideModal, showModal } from "../../../src/ts/states/modals";
 
@@ -60,6 +63,11 @@ describe("CookiesModal", () => {
     expect(accept?.className).toBe(reject?.className);
     expect(accept?.parentElement).toBe(reject?.parentElement);
     expect(accept?.parentElement?.className).toContain("grid-cols-2");
+    const copy = document.getElementById("consent-copy");
+    expect(copy?.textContent?.replace(/\s+/g, " ").trim()).toContain(
+      CONSENT_ESSENTIAL_COPY,
+    );
+    expect(copy?.className ?? "").not.toMatch(/truncate/);
   });
 
   it("Escape inside the banner rejects, closes, and restores focus", () => {

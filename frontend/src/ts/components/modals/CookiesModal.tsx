@@ -7,8 +7,11 @@ import {
 } from "solid-js";
 
 import {
+  CONSENT_ESSENTIAL_COPY,
   type ConsentRecord,
   globalPrivacyControl,
+  pinToVisualBottom,
+  visibleViewportHeight,
 } from "../../analytics/consent";
 import { getAcceptedCookies, setAcceptedCookies } from "../../cookies";
 import { hideModal, isModalOpen } from "../../states/modals";
@@ -31,19 +34,72 @@ function draftFrom(stored: ConsentRecord | null): ConsentRecord {
 }
 
 function clearBannerShift(): void {
+  for (const selector of ["#pageTest", "#pageRace"]) {
+    const el = document.querySelector(selector);
+    if (el instanceof HTMLElement) el.style.transform = "";
+  }
+  const dialog = document.getElementById("CookiesModal");
+  if (dialog instanceof HTMLElement) {
+    dialog.style.maxHeight = "";
+    dialog.style.overflowY = "";
+    dialog.style.bottom = "";
+    const panel = dialog.querySelector(":scope > .modal");
+    if (panel instanceof HTMLElement) {
+      panel.style.maxHeight = "";
+      panel.style.overflowY = "";
+    }
+  }
   document.documentElement.style.removeProperty("--consent-banner-block");
 }
 
-/** Publish the bar height so the page scrolls above it instead of under it. */
+/**
+ * Slide the page up into the gap under the header when the bar would cover
+ * the word window or a race control. The word list itself is not clipped.
+ */
 function fitConsentBanner(): void {
   const dialog = document.getElementById("CookiesModal");
-  if (!(dialog instanceof HTMLElement)) return;
-  const height = Math.ceil(dialog.getBoundingClientRect().height);
-  if (height <= 0) return;
+  const page =
+    document.querySelector("#pageTest") ?? document.querySelector("#pageRace");
+  if (!(dialog instanceof HTMLElement) || !(page instanceof HTMLElement)) {
+    return;
+  }
+  page.style.transform = "";
+  const panel = dialog.querySelector(":scope > .modal");
+  const limit = visibleViewportHeight();
+  dialog.style.maxHeight = `${limit}px`;
+  dialog.style.overflowY = "auto";
+  pinToVisualBottom(dialog);
+  if (panel instanceof HTMLElement) {
+    panel.style.maxHeight = `${limit}px`;
+    panel.style.overflowY = "auto";
+  }
+  const bar = dialog.getBoundingClientRect();
+  if (bar.height <= 0) {
+    return;
+  }
   document.documentElement.style.setProperty(
     "--consent-banner-block",
-    `${height}px`,
+    `${Math.ceil(Math.min(bar.height, limit))}px`,
   );
+  let overlap = 0;
+  for (const node of document.querySelectorAll(
+    "#wordsWrapper, [data-testid='mp-create'], [data-testid='mp-start'], [data-testid='mp-lobby']",
+  )) {
+    const rect = node.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) continue;
+    if (rect.bottom > bar.top && rect.top < bar.bottom) {
+      overlap = Math.max(overlap, rect.bottom - bar.top);
+    }
+  }
+  const header = document.querySelector("header");
+  const headerBottom =
+    header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
+  const maxShift = Math.max(
+    0,
+    page.getBoundingClientRect().top - headerBottom - 4,
+  );
+  const shift = Math.min(Math.ceil(overlap + 8), maxShift);
+  page.style.transform = shift > 0 ? `translateY(-${shift}px)` : "";
 }
 
 export function CookiesModal(): JSXElement {
@@ -91,6 +147,8 @@ export function CookiesModal(): JSXElement {
     dialog?.addEventListener("focusin", onFocusIn);
     document.addEventListener("keydown", onEscape, true);
     window.addEventListener("resize", fitConsentBanner);
+    window.visualViewport?.addEventListener("resize", fitConsentBanner);
+    window.visualViewport?.addEventListener("scroll", fitConsentBanner);
     void document.fonts?.ready.then(() => fitConsentBanner());
     requestAnimationFrame(fitConsentBanner);
     onCleanup(() => {
@@ -98,6 +156,8 @@ export function CookiesModal(): JSXElement {
       dialog?.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("keydown", onEscape, true);
       window.removeEventListener("resize", fitConsentBanner);
+      window.visualViewport?.removeEventListener("resize", fitConsentBanner);
+      window.visualViewport?.removeEventListener("scroll", fitConsentBanner);
       document.body.removeAttribute("data-consent-banner");
       clearBannerShift();
     });
@@ -122,7 +182,7 @@ export function CookiesModal(): JSXElement {
       shell="banner"
       labelledBy={TITLE_ID}
       describedBy={COPY_ID}
-      modalClass="flex h-auto max-h-none w-full max-w-none flex-wrap items-center gap-2 rounded-none px-3 py-1 ring-1 sm:flex-nowrap sm:px-3 sm:py-1"
+      modalClass="flex h-auto max-h-full min-h-0 w-full max-w-none flex-col items-stretch gap-2 overflow-x-hidden overflow-y-auto rounded-none px-3 py-2 ring-1 sm:px-3 sm:py-2"
       closeOnEscape={false}
       closeOnWrapperClick={false}
       afterShow={fitConsentBanner}
@@ -140,6 +200,15 @@ export function CookiesModal(): JSXElement {
         fa={{ icon: "fa-cookie-bite" }}
         class="mb-0 shrink-0 pb-0 text-sm"
       />
+      <p
+        id={COPY_ID}
+        class="m-0 w-full text-sm leading-snug break-words whitespace-normal"
+      >
+        {CONSENT_ESSENTIAL_COPY}{" "}
+        <a href="/privacy" class="text-main underline">
+          Privacy policy
+        </a>
+      </p>
       <Show
         when={!showSettings()}
         fallback={
@@ -152,14 +221,7 @@ export function CookiesModal(): JSXElement {
         }
       >
         <div class="contents">
-          <p
-            id={COPY_ID}
-            class="m-0 w-full min-w-0 flex-1 truncate text-sm sm:w-auto"
-          >
-            Google Analytics 4 is optional. It does not run until you accept.
-            Rejecting means it never loads.
-          </p>
-          <div class="grid w-full shrink-0 grid-cols-2 gap-2 sm:w-auto">
+          <div class="grid w-full shrink-0 grid-cols-2 gap-2">
             <Button
               id="consent-accept"
               text="accept analytics"
@@ -227,6 +289,7 @@ function ConsentDetails(props: {
         }}
       />
       <Button
+        id="consent-save"
         text="save"
         class="shrink-0"
         onClick={() => props.save(props.accepted)}
