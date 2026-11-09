@@ -53,6 +53,13 @@ type AnimatedModalProps = ParentProps<{
   title?: string;
   modalClass?: string;
   wrapperClass?: string;
+  /**
+   * `banner` is a corner dialog, not the full-viewport shell. The page behind
+   * it stays usable. `viewport` is the dimmed full-screen shell.
+   */
+  shell?: "viewport" | "banner";
+  labelledBy?: string;
+  describedBy?: string;
 }>;
 
 const DEFAULT_ANIMATION_DURATION = 125;
@@ -362,15 +369,26 @@ export function AnimatedModal(props: AnimatedModalProps): JSXElement {
     }
   });
 
+  const dialogClass = (): string =>
+    props.shell === "banner"
+      ? cn(
+          "pointer-events-none fixed right-4 bottom-4 left-4 z-1000 m-0 h-auto w-auto border-none bg-transparent p-0 sm:left-auto sm:w-[28rem]",
+          props.wrapperClass,
+        )
+      : cn(
+          "fixed top-0 left-0 z-1000 m-0 max-h-screen max-w-screen border-none bg-[rgba(0,0,0,0.5)] p-8 backdrop:bg-transparent",
+          "flex h-full w-full items-center justify-center",
+          props.wrapperClass,
+        );
+
   return (
     <dialog
       id={`${props.id as string}Modal`}
       ref={dialogRef}
-      class={cn(
-        "fixed top-0 left-0 z-1000 m-0 max-h-screen max-w-screen border-none bg-[rgba(0,0,0,0.5)] p-8 backdrop:bg-transparent",
-        "flex h-full w-full items-center justify-center",
-        props.wrapperClass,
-      )}
+      class={dialogClass()}
+      aria-modal={props.shell === "banner" ? "false" : undefined}
+      aria-labelledby={props.labelledBy}
+      aria-describedby={props.describedBy}
       style={{
         display: isDisplayed() ? undefined : "none",
       }}

@@ -1,4 +1,4 @@
-import { createEffect, createSignal, JSXElement } from "solid-js";
+import { createEffect, createSignal, JSXElement, onCleanup } from "solid-js";
 
 import {
   type ConsentRecord,
@@ -13,6 +13,9 @@ import { AnimeMatch } from "../common/anime/AnimeMatch";
 import { Button } from "../common/Button";
 import { H3 } from "../common/Headers";
 
+const TITLE_ID = "consent-title";
+const COPY_ID = "consent-copy";
+
 function draftFrom(stored: ConsentRecord | null): ConsentRecord {
   const base: ConsentRecord = stored ?? {
     security: true,
@@ -23,19 +26,50 @@ function draftFrom(stored: ConsentRecord | null): ConsentRecord {
   return base;
 }
 
+function publishBannerBlock(): void {
+  const dialog = document.getElementById("CookiesModal");
+  const height = dialog?.getBoundingClientRect().height ?? 0;
+  if (height <= 0) return;
+  document.documentElement.style.setProperty(
+    "--consent-banner-block",
+    `${Math.ceil(height)}px`,
+  );
+}
+
 export function CookiesModal(): JSXElement {
   const [showSettings, setShowSettings] = createSignal(false);
   const [accepted, setAccepted] = createSignal<ConsentRecord>(
     draftFrom(getAcceptedCookies()),
   );
+  let restoreFocus: HTMLElement | undefined;
 
   createEffect(() => {
     const open = isModalOpen("Cookies");
     const stored = getAcceptedCookies();
+    document.body.toggleAttribute("data-consent-banner", open);
     if (!open) {
       setShowSettings(false);
       setAccepted(draftFrom(stored));
+      document.documentElement.style.removeProperty("--consent-banner-block");
+      return;
     }
+    const dialog = document.getElementById("CookiesModal");
+    const onFocusIn = (event: FocusEvent): void => {
+      const from = event.relatedTarget;
+      if (
+        dialog !== null &&
+        from instanceof HTMLElement &&
+        !dialog.contains(from)
+      ) {
+        restoreFocus = from;
+      }
+    };
+    dialog?.addEventListener("focusin", onFocusIn);
+    requestAnimationFrame(publishBannerBlock);
+    onCleanup(() => {
+      dialog?.removeEventListener("focusin", onFocusIn);
+      document.body.removeAttribute("data-consent-banner");
+    });
   });
 
   const save = (record: ConsentRecord): void => {
@@ -44,17 +78,23 @@ export function CookiesModal(): JSXElement {
       : record;
     setAccepted(next);
     setAcceptedCookies(next);
+    const back = restoreFocus;
+    restoreFocus = undefined;
     hideModal("Cookies");
+    if (back?.isConnected) back.focus();
   };
 
   return (
     <AnimatedModal
       id="Cookies"
       mode="dialog"
-      modalClass="max-w-[500px] pointer-events-auto"
-      wrapperClass="pointer-events-none justify-end items-end bg-transparent"
+      shell="banner"
+      labelledBy={TITLE_ID}
+      describedBy={COPY_ID}
+      modalClass="max-h-[min(20rem,calc(100dvh-2rem))] max-w-none gap-3 overflow-auto p-4 sm:p-4"
       closeOnEscape={false}
       closeOnWrapperClick={false}
+      afterShow={publishBannerBlock}
       onEscape={() => {
         save({
           security: true,
@@ -64,9 +104,10 @@ export function CookiesModal(): JSXElement {
       }}
     >
       <H3
+        id={TITLE_ID}
         text="Privacy and cookie settings"
         fa={{ icon: "fa-cookie-bite" }}
-        class="mb-0 pb-0 text-2xl"
+        class="mb-0 pb-0 text-lg"
       />
       <AnimeSwitch
         exitBeforeEnter
@@ -86,27 +127,17 @@ export function CookiesModal(): JSXElement {
         }}
       >
         <AnimeMatch when={!showSettings()}>
-          <div class="grid gap-4">
-            <div>
-              Google Analytics 4 is optional and helps us understand site
-              traffic. We do not load advertising scripts. Where consent is
-              required, Google Analytics 4 does not run until you accept.
-              Rejecting means it never loads.
-            </div>
-            <SettingsSection
-              title="Do Not Sell or Share"
-              description="We do not sell or share personal information. This saves that preference for later. Advertising purposes stay off."
-              checked={accepted().doNotSellOrShare}
-              disabled={globalPrivacyControl()}
-              onChange={(checked) => {
-                setAccepted({ ...accepted(), doNotSellOrShare: checked });
-              }}
-            />
-            <div class="grid gap-2">
+          <div class="grid gap-3">
+            <p id={COPY_ID} class="m-0">
+              Google Analytics 4 is optional. It does not run until you accept.
+              Rejecting means it never loads. We do not load advertising
+              scripts.
+            </p>
+            <div class="grid grid-cols-2 gap-2">
               <Button
                 id="consent-accept"
                 text="accept analytics"
-                active={true}
+                class="w-full"
                 onClick={() => {
                   save({
                     security: true,
@@ -116,7 +147,9 @@ export function CookiesModal(): JSXElement {
                 }}
               />
               <Button
+                id="consent-reject"
                 text="reject analytics"
+                class="w-full"
                 onClick={() => {
                   save({
                     security: true,
@@ -125,15 +158,25 @@ export function CookiesModal(): JSXElement {
                   });
                 }}
               />
-              <Button
-                text="more options"
-                onClick={() => setShowSettings(true)}
-              />
             </div>
+            <SettingsSection
+              title="Do Not Sell or Share"
+              description="Advertising purposes stay off. This preference is saved for later."
+              checked={accepted().doNotSellOrShare}
+              disabled={globalPrivacyControl()}
+              onChange={(checked) => {
+                setAccepted({ ...accepted(), doNotSellOrShare: checked });
+              }}
+            />
+            <Button
+              text="more options"
+              variant="text"
+              onClick={() => setShowSettings(true)}
+            />
           </div>
         </AnimeMatch>
         <AnimeMatch when={showSettings()}>
-          <div class="grid gap-4">
+          <div class="grid gap-3">
             <SettingsSection
               title="security"
               description={
@@ -165,6 +208,7 @@ export function CookiesModal(): JSXElement {
             />
             <Button
               text="save"
+              class="w-full"
               onClick={() => {
                 save(accepted());
               }}

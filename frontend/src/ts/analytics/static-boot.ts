@@ -9,6 +9,8 @@ import { syncGa4 } from "./ga4";
 
 const BANNER_ID = "pt-consent-banner";
 
+let restoreFocus: HTMLElement | null = null;
+
 function draft(): { analytics: boolean; doNotSellOrShare: boolean } {
   const stored = readConsentRecord();
   const gpc = globalPrivacyControl();
@@ -28,6 +30,9 @@ function onBannerKey(event: KeyboardEvent): void {
 function closeBanner(): void {
   document.getElementById(BANNER_ID)?.remove();
   document.removeEventListener("keydown", onBannerKey);
+  const back = restoreFocus;
+  restoreFocus = null;
+  if (back?.isConnected) back.focus();
 }
 
 function save(analytics: boolean, doNotSellOrShare: boolean): void {
@@ -43,18 +48,26 @@ function save(analytics: boolean, doNotSellOrShare: boolean): void {
 
 function openBanner(): void {
   if (document.getElementById(BANNER_ID) !== null) return;
+  const previous = document.activeElement;
+  restoreFocus =
+    previous instanceof HTMLElement && previous !== document.body
+      ? previous
+      : null;
   const initial = draft();
   const root = document.createElement("div");
   root.id = BANNER_ID;
   root.className = "consentBanner";
   root.setAttribute("role", "dialog");
+  root.setAttribute("aria-modal", "false");
   root.setAttribute("aria-labelledby", "pt-consent-title");
+  root.setAttribute("aria-describedby", "pt-consent-copy");
 
   const title = document.createElement("h2");
   title.id = "pt-consent-title";
   title.textContent = "Privacy and cookie settings";
 
   const copy = document.createElement("p");
+  copy.id = "pt-consent-copy";
   copy.textContent =
     "Google Analytics 4 is optional and helps us understand site traffic. We do not load advertising scripts. Where consent is required, Google Analytics 4 does not run until you accept. Rejecting means it never loads.";
 
@@ -78,7 +91,6 @@ function openBanner(): void {
   });
   const reject = document.createElement("button");
   reject.type = "button";
-  reject.className = "consentReject";
   reject.textContent = "Reject analytics";
   reject.addEventListener("click", () => {
     save(false, true);
@@ -97,7 +109,11 @@ export function bootStaticConsent(): void {
     storage: sessionStorage,
   });
   if (kidsFlow) return;
-  const button = document.querySelector("[data-consent-settings]");
+  // querySelector is wrong in happy-dom for this attribute (returns a detached
+  // div). querySelectorAll finds the real footer button in browsers and tests.
+  const button = [...document.querySelectorAll("[data-consent-settings]")].find(
+    (node) => node.tagName === "BUTTON",
+  );
   button?.addEventListener("click", () => {
     openBanner();
   });
