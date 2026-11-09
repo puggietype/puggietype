@@ -86,6 +86,40 @@ describe("CookiesModal", () => {
     expect(document.activeElement).toBe(input);
   });
 
+  it("Escape still rejects and restores focus when ResizeObserver is unavailable", () => {
+    const hadObserver = "ResizeObserver" in globalThis;
+    const previous = globalThis.ResizeObserver;
+    Reflect.deleteProperty(globalThis, "ResizeObserver");
+    try {
+      expect(typeof ResizeObserver).toBe("undefined");
+      const { dialog, input } = renderModal();
+      const reject = document.getElementById("consent-reject");
+      if (!(reject instanceof HTMLButtonElement)) {
+        throw new Error("consent controls missing");
+      }
+      expect(document.body.hasAttribute("data-consent-banner")).toBe(true);
+      expect(document.activeElement).toBe(input);
+      reject.focus();
+      fireEvent.keyDown(dialog, { key: "Escape" });
+      expect(readConsentRecord()).toEqual({
+        security: true,
+        analytics: false,
+        doNotSellOrShare: true,
+      });
+      expect(document.activeElement).toBe(input);
+      localStorage.clear();
+      showModal("Cookies");
+      input.focus();
+      fireEvent.keyDown(input, { key: "Escape" });
+      expect(readConsentRecord()?.analytics).toBe(false);
+      expect(document.activeElement).toBe(input);
+    } finally {
+      if (hadObserver) {
+        globalThis.ResizeObserver = previous;
+      }
+    }
+  });
+
   it("Escape from the words input rejects without entering the banner", () => {
     const { input } = renderModal();
     expect(document.activeElement).toBe(input);
