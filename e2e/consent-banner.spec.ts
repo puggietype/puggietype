@@ -1,5 +1,5 @@
 import { AxeBuilder } from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { skipNgrokWarning } from "./tunnel";
 
@@ -631,47 +631,296 @@ test("more options keeps the disclosure and can reach save at 320px", async ({
   await expectEssentialVisible(page, "#consent-copy", 320, 500);
 });
 
-test("race create stays usable beside the banner", async ({
+const RACE_VIEWPORTS: Array<[number, number]> = [
+  [1280, 720],
+  [1280, 600],
+  [1280, 500],
+  [1024, 768],
+  [390, 844],
+  [320, 700],
+];
+
+async function installRaceFixture(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const frames: string[] = [];
+    Object.assign(window, { __mpFrames: frames });
+    localStorage.setItem("puggie-mp-age-confirmed", "true");
+    sessionStorage.removeItem("puggie-mp-room");
+    const Native = WebSocket;
+    const progress = {
+      wordIndex: 0,
+      charIndex: 0,
+      testMs: 0,
+      wpm: 0,
+    };
+    const settings = {
+      mode: "time",
+      mode2: 30,
+      punctuation: false,
+      numbers: false,
+      language: "english",
+    };
+    const player = (id: string, name: string, ready: boolean): object => ({
+      id,
+      name,
+      isBot: false,
+      color: "opp1",
+      ready,
+      inLobby: false,
+      connected: true,
+      character: "puggie",
+      progress,
+      finished: false,
+    });
+    const room = (count: number): object => ({
+      type: "room:state",
+      code: "ABCD2345",
+      hostId: "p1",
+      phase: "lobby",
+      settings,
+      settingsVersion: 1,
+      open: false,
+      quickMatch: false,
+      players: [
+        player("p1", "Host Pug", true),
+        ...Array.from({ length: count - 1 }, (_, index) =>
+          player(`p${index + 2}`, `Pug ${index + 2}`, true),
+        ),
+      ],
+    });
+
+    class FakeSocket {
+      url: string;
+      readyState = 0;
+      private listeners: Record<string, Array<(event: unknown) => void>> = {};
+
+      constructor(url: string) {
+        this.url = url;
+        setTimeout(() => {
+          this.readyState = 1;
+          this.emit("open", {});
+        }, 0);
+      }
+
+      addEventListener(type: string, fn: (event: unknown) => void): void {
+        (this.listeners[type] ??= []).push(fn);
+      }
+
+      removeEventListener(type: string, fn: (event: unknown) => void): void {
+        this.listeners[type] = (this.listeners[type] ?? []).filter(
+          (listener) => listener !== fn,
+        );
+      }
+
+      send(raw: string): void {
+        const msg = JSON.parse(raw) as { type?: string; t?: number };
+        if (msg.type !== undefined) frames.push(msg.type);
+        if (msg.type === "ping") {
+          this.emit("message", {
+            data: JSON.stringify({
+              type: "pong",
+              t: msg.t,
+              serverNow: Date.now(),
+            }),
+          });
+        }
+        if (msg.type === "hello") {
+          this.emit("message", {
+            data: JSON.stringify({
+              type: "welcome",
+              playerId: "p1",
+              sessionToken: "local-fixture",
+              name: "Host Pug",
+              protocol: 1,
+              features: {
+                characterSelect: false,
+                openRooms: false,
+                quickMatch: false,
+                report: false,
+              },
+            }),
+          });
+        }
+        if (msg.type === "room:create") {
+          const fixtureMode = new URLSearchParams(location.search).get(
+            "mpFixture",
+          );
+          const count = fixtureMode === "full" ? 8 : 2;
+          this.emit("message", { data: JSON.stringify(room(count)) });
+        }
+      }
+
+      close(): void {
+        this.readyState = 3;
+        this.emit("close", { code: 1000 });
+      }
+
+      private emit(type: string, event: unknown): void {
+        for (const listener of this.listeners[type] ?? []) listener(event);
+      }
+    }
+    Object.assign(FakeSocket, {
+      CONNECTING: 0,
+      OPEN: 1,
+      CLOSING: 2,
+      CLOSED: 3,
+    });
+
+    function SocketShim(url: string | URL): WebSocket {
+      if (!String(url).includes("/ws")) return new Native(url);
+      return new FakeSocket(String(url)) as unknown as WebSocket;
+    }
+    SocketShim.CONNECTING = 0;
+    SocketShim.OPEN = 1;
+    SocketShim.CLOSING = 2;
+    SocketShim.CLOSED = 3;
+    window.WebSocket = SocketShim as unknown as typeof WebSocket;
+  });
+}
+
+async function raceFrames(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const frames = (window as unknown as { __mpFrames?: string[] }).__mpFrames;
+    return frames ?? [];
+  });
+}
+
+async function assertHitClear(
+  page: Page,
+  control: Locator,
+  testId: string,
+): Promise<void> {
+  await page.evaluate(async () => document.fonts.ready);
+  await control.evaluate((el) => {
+    el.scrollIntoView({ block: "center", inline: "nearest" });
+  });
+  const box = await control.boundingBox();
+  const bar = await page.locator("#CookiesModal .modal").boundingBox();
+  if (box === null || bar === null) {
+    throw new Error(`${testId} or banner box missing`);
+  }
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(bar.y + 1);
+  const enabled = await control.isEnabled();
+  const hit = await page.evaluate(
+    ({ testId: id, x, y, bottom }) => {
+      const at = (pointY: number): string => {
+        const el = document.elementFromPoint(x, pointY);
+        if (!(el instanceof Element)) return "";
+        if (el.closest("#CookiesModal") !== null) return "banner";
+        return el.closest(`[data-testid="${id}"]`) === null ? "other" : id;
+      };
+      return { center: at(y), bottom: at(bottom) };
+    },
+    {
+      testId,
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+      bottom: Math.min(box.y + box.height - 2, bar.y - 1),
+    },
+  );
+  if (enabled) {
+    expect(hit.center).toBe(testId);
+    expect(hit.bottom).toBe(testId);
+    return;
+  }
+  expect(hit.center).not.toBe("banner");
+  expect(hit.bottom).not.toBe("banner");
+}
+
+test("race controls stay clickable above the banner", async ({ page }) => {
+  await abortGa(page);
+  await installRaceFixture(page);
+  test.setTimeout(120_000);
+  for (const [width, height] of RACE_VIEWPORTS) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/race?mpFixture=home");
+    await page.getByTestId("mp-create").waitFor();
+    await expect(page.locator("#CookiesModal")).toBeVisible();
+    await assertHitClear(page, page.getByTestId("mp-create"), "mp-create");
+    await assertHitClear(page, page.getByTestId("mp-join"), "mp-join");
+    await page.getByTestId("mp-create").click();
+    await expect.poll(async () => raceFrames(page)).toContain("room:create");
+    expectNotOptedIn(await storedConsent(page));
+    expect(await page.locator("script[src*='googletagmanager']").count()).toBe(
+      0,
+    );
+  }
+});
+
+test("a lobby and a full lobby stay usable without consent", async ({
   page,
-  browser,
 }) => {
   await abortGa(page);
-  const age = "puggie-mp-age-confirmed";
-  await page.addInitScript((key) => {
-    localStorage.setItem(key, "true");
-  }, age);
-  const plainCtx = await browser.newContext({
-    viewport: { width: 1280, height: 720 },
-  });
-  await plainCtx.addInitScript((key) => {
-    localStorage.setItem(key, "true");
-    localStorage.setItem(
-      "acceptedCookies",
-      JSON.stringify({
-        security: true,
-        analytics: false,
-        doNotSellOrShare: true,
-      }),
-    );
-  }, age);
-  const plain = await plainCtx.newPage();
-  await plain.goto("/race");
-  const plainCreate = plain.getByTestId("mp-create");
-  await plainCreate.waitFor({ timeout: 60_000 });
-  const before = await plainCreate.boundingBox();
-  await plainCtx.close();
-
-  await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto("/race");
-  const create = page.getByTestId("mp-create");
-  await create.waitFor({ timeout: 60_000 });
-  await expect(create).toBeVisible();
-  const after = await create.boundingBox();
-  const bar = await page.locator("#CookiesModal").boundingBox();
-  if (before === null || after === null || bar === null) {
-    throw new Error("race create or banner box missing");
+  await installRaceFixture(page);
+  test.setTimeout(120_000);
+  for (const mode of ["lobby", "full"] as const) {
+    for (const [width, height] of RACE_VIEWPORTS) {
+      await page.setViewportSize({ width, height });
+      await page.goto(`/race?mpFixture=${mode}`);
+      await page.getByTestId("mp-create").waitFor();
+      await assertHitClear(page, page.getByTestId("mp-create"), "mp-create");
+      await page.getByTestId("mp-create").click();
+      const start = page.getByTestId("mp-start");
+      await expect(start).toBeEnabled();
+      await expect(page.getByTestId("mp-player")).toHaveCount(
+        mode === "full" ? 8 : 2,
+      );
+      for (const id of ["mp-copy-invite", "mp-leave", "mp-start"]) {
+        await assertHitClear(page, page.getByTestId(id), id);
+      }
+      const players = page.getByTestId("mp-player");
+      const playerCount = await players.count();
+      for (let index = 0; index < playerCount; index++) {
+        await assertHitClear(page, players.nth(index), "mp-player");
+      }
+      await start.click();
+      await expect.poll(async () => raceFrames(page)).toContain("race:start");
+      expectNotOptedIn(await storedConsent(page));
+    }
   }
-  expect(after.y).toBeGreaterThan(0);
-  expect(after.y + after.height).toBeLessThanOrEqual(bar.y + 1);
-  expect(Math.abs(after.y - before.y)).toBeLessThan(120);
+});
+
+test("keyboard reaches Create without opting in", async ({ page }) => {
+  await abortGa(page);
+  await page.setViewportSize({ width: 1280, height: 500 });
+  await installRaceFixture(page);
+  await page.goto("/race?mpFixture=home");
+  await page.getByTestId("mp-create").waitFor();
+  let reached = false;
+  for (let step = 0; step < 40; step++) {
+    const id = await page.evaluate(
+      () => document.activeElement?.getAttribute("data-testid") ?? "",
+    );
+    if (id === "mp-create") {
+      reached = true;
+      break;
+    }
+    await page.keyboard.press("Tab");
+  }
+  expect(reached).toBe(true);
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => raceFrames(page)).toContain("room:create");
+  expectNotOptedIn(await storedConsent(page));
+});
+
+test("zoomed race Create stays above the banner", async ({ page }) => {
+  await abortGa(page);
+  await page.setViewportSize({ width: 320, height: 700 });
+  await installRaceFixture(page);
+  await page.goto("/race?mpFixture=home");
+  await page.getByTestId("mp-create").waitFor();
+  await page.evaluate(() => {
+    document.documentElement.style.zoom = "2";
+    window.dispatchEvent(new Event("resize"));
+  });
+  await page.waitForTimeout(200);
+  await assertHitClear(page, page.getByTestId("mp-create"), "mp-create");
+  await page.evaluate(() => {
+    document.documentElement.style.zoom = "";
+  });
+  await page.setViewportSize({ width: 160, height: 350 });
+  await page.evaluate(() => window.dispatchEvent(new Event("resize")));
+  await page.waitForTimeout(200);
+  await assertHitClear(page, page.getByTestId("mp-create"), "mp-create");
 });

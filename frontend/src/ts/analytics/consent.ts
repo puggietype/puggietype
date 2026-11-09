@@ -19,7 +19,7 @@ function finite(value: number | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function cssZoom(): number {
+export function cssZoom(): number {
   const raw = Number.parseFloat(
     getComputedStyle(document.documentElement).zoom,
   );

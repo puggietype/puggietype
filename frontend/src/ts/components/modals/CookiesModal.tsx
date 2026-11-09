@@ -9,6 +9,7 @@ import {
 import {
   CONSENT_ESSENTIAL_COPY,
   type ConsentRecord,
+  cssZoom,
   globalPrivacyControl,
   pinToVisualBottom,
   visibleViewportHeight,
@@ -36,7 +37,11 @@ function draftFrom(stored: ConsentRecord | null): ConsentRecord {
 function clearBannerShift(): void {
   for (const selector of ["#pageTest", "#pageRace"]) {
     const el = document.querySelector(selector);
-    if (el instanceof HTMLElement) el.style.transform = "";
+    if (!(el instanceof HTMLElement)) continue;
+    el.style.transform = "";
+    el.style.maxHeight = "";
+    el.style.overflowY = "";
+    el.style.scrollPaddingBottom = "";
   }
   const dialog = document.getElementById("CookiesModal");
   if (dialog instanceof HTMLElement) {
@@ -53,8 +58,10 @@ function clearBannerShift(): void {
 }
 
 /**
- * Slide the page up into the gap under the header when the bar would cover
- * the word window or a race control. The word list itself is not clipped.
+ * Slide the test up into the gap under the header when the bar would cover
+ * the word window. The word list itself is not clipped. The race page is a
+ * scrollport that ends at the bar, so Create, Start and the lobby can scroll
+ * into the clear area instead of sitting under the choices.
  */
 function fitConsentBanner(): void {
   const dialog = document.getElementById("CookiesModal");
@@ -64,6 +71,8 @@ function fitConsentBanner(): void {
     return;
   }
   page.style.transform = "";
+  page.style.maxHeight = "";
+  page.style.overflowY = "";
   const panel = dialog.querySelector(":scope > .modal");
   const limit = visibleViewportHeight();
   dialog.style.maxHeight = `${limit}px`;
@@ -77,18 +86,32 @@ function fitConsentBanner(): void {
   if (bar.height <= 0) {
     return;
   }
+  const cover =
+    panel instanceof HTMLElement ? panel.getBoundingClientRect() : bar;
   document.documentElement.style.setProperty(
     "--consent-banner-block",
     `${Math.ceil(Math.min(bar.height, limit))}px`,
   );
+  if (page.id === "pageRace") {
+    const laneTop = reserveRaceLane(
+      page,
+      dialog,
+      panel instanceof HTMLElement ? panel : null,
+    );
+    fitRaceScrollport(page, laneTop);
+    return;
+  }
   let overlap = 0;
-  for (const node of document.querySelectorAll(
-    "#wordsWrapper, [data-testid='mp-create'], [data-testid='mp-start'], [data-testid='mp-lobby']",
-  )) {
-    const rect = node.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) continue;
-    if (rect.bottom > bar.top && rect.top < bar.bottom) {
-      overlap = Math.max(overlap, rect.bottom - bar.top);
+  const words = document.querySelector("#wordsWrapper");
+  if (words instanceof HTMLElement) {
+    const rect = words.getBoundingClientRect();
+    if (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      rect.bottom > cover.top &&
+      rect.top < cover.bottom
+    ) {
+      overlap = rect.bottom - cover.top;
     }
   }
   const header = document.querySelector("header");
@@ -98,8 +121,57 @@ function fitConsentBanner(): void {
     0,
     page.getBoundingClientRect().top - headerBottom - 4,
   );
-  const shift = Math.min(Math.ceil(overlap + 8), maxShift);
+  const zoom = cssZoom();
+  const shift = Math.min(
+    Math.ceil((overlap + 8) / zoom),
+    Math.floor(maxShift / zoom),
+  );
   page.style.transform = shift > 0 ? `translateY(-${shift}px)` : "";
+}
+
+/** Leave a lane tall enough for a race control; the bar scrolls inside itself. */
+function reserveRaceLane(
+  page: HTMLElement,
+  dialog: HTMLElement,
+  panel: HTMLElement | null,
+): number {
+  const zoom = cssZoom();
+  const minLane = 120 * zoom;
+  const pageTop = page.getBoundingClientRect().top;
+  const coverOf = (): DOMRect => (panel ?? dialog).getBoundingClientRect();
+  if (coverOf().top >= pageTop + minLane) {
+    return coverOf().top;
+  }
+  const nextHeight = Math.max(
+    72,
+    Math.floor((window.innerHeight - pageTop - minLane) / zoom),
+  );
+  dialog.style.maxHeight = `${nextHeight}px`;
+  if (panel !== null) {
+    panel.style.maxHeight = `${nextHeight}px`;
+  }
+  return coverOf().top;
+}
+
+function fitRaceScrollport(page: HTMLElement, coverTop: number): void {
+  const zoom = cssZoom();
+  const header = document.querySelector("header");
+  const headerBottom =
+    header instanceof HTMLElement ? header.getBoundingClientRect().bottom : 0;
+  const gap = Math.max(
+    0,
+    (page.getBoundingClientRect().top - headerBottom - 4) / zoom,
+  );
+  page.style.transform = gap > 0 ? `translateY(-${Math.floor(gap)}px)` : "";
+  const room = Math.floor(
+    (coverTop - page.getBoundingClientRect().top - 4) / zoom,
+  );
+  if (room <= 0) {
+    return;
+  }
+  page.style.maxHeight = `${room}px`;
+  page.style.overflowY = "auto";
+  page.style.scrollPaddingBottom = "0.5rem";
 }
 
 export function CookiesModal(): JSXElement {
@@ -142,8 +214,20 @@ export function CookiesModal(): JSXElement {
       });
     };
     const words = document.querySelector("#words");
-    const onWords = new MutationObserver(() => fitConsentBanner());
-    if (words !== null) onWords.observe(words, { childList: true });
+    const race = document.querySelector("#pageRace");
+    const onLayout = new MutationObserver(() => fitConsentBanner());
+    const onBox = new ResizeObserver(() => fitConsentBanner());
+    if (words !== null) {
+      onLayout.observe(words, { childList: true });
+    }
+    if (race !== null) {
+      onLayout.observe(race, { childList: true, subtree: true });
+      onBox.observe(race);
+    }
+    if (dialog !== null) {
+      onBox.observe(dialog);
+    }
+    document.fonts?.addEventListener("loadingdone", fitConsentBanner);
     dialog?.addEventListener("focusin", onFocusIn);
     document.addEventListener("keydown", onEscape, true);
     window.addEventListener("resize", fitConsentBanner);
@@ -152,7 +236,9 @@ export function CookiesModal(): JSXElement {
     void document.fonts?.ready.then(() => fitConsentBanner());
     requestAnimationFrame(fitConsentBanner);
     onCleanup(() => {
-      onWords.disconnect();
+      onLayout.disconnect();
+      onBox.disconnect();
+      document.fonts?.removeEventListener("loadingdone", fitConsentBanner);
       dialog?.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("keydown", onEscape, true);
       window.removeEventListener("resize", fitConsentBanner);
