@@ -476,9 +476,9 @@ function ConsentDetails(props: {
         description={
           <>
             Always on. Your settings and privacy choice are saved in this
-            browser, not in cookies. Our host, Cloudflare, processes network
-            data to deliver and protect the site and may set security cookies if
-            its bot protection runs. See{" "}
+            browser (not cookies). Our host, Cloudflare, processes network data
+            to deliver and protect the site and may set security cookies if its
+            bot protection runs. See{" "}
             <a href="/privacy" class="text-main underline">
               Privacy policy
             </a>
@@ -490,7 +490,7 @@ function ConsentDetails(props: {
       />
       <SettingsSection
         title="analytics"
-        description="Google Analytics 4. Off until you accept."
+        description="Google Analytics 4. Uses cookies. Off until you accept."
         checked={props.accepted.analytics}
         onChange={(checked) => {
           props.setAccepted({ ...props.accepted, analytics: checked });

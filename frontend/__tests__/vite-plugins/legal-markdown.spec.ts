@@ -100,10 +100,13 @@ describe("legal-markdown", () => {
   it("includes Legal's GA4 paragraph and retention row verbatim", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     expect(md).toContain(
-      "**Google Analytics 4.** We use Google Analytics 4 (Google LLC) to understand how people use puggietype.com (for example page views and rough geography). Google may process technical data such as IP address, device/browser type, and page URLs on our behalf. We configure GA4 with Google signals off and without using Analytics for ads personalization. We ask before GA4 runs, wherever you are. If you reject or don't choose, it doesn't load. See [Google's privacy policy](https://policies.google.com/privacy) and [how Google uses data when you use our partners' sites](https://policies.google.com/technologies/partner-sites). You can also use [Google Analytics opt-out](https://tools.google.com/dlpage/gaoptout) where available.",
+      "**Google Analytics 4.** We use Google Analytics 4 (Google LLC) to understand how people use puggietype.com (for example page views and rough geography). Google may process technical data such as IP address, device/browser type, and page URLs on our behalf. We configure GA4 with Google signals off and without using Analytics for ads personalization. We ask before GA4 runs, wherever you are. If you reject or don't choose, it doesn't load. Google Analytics 4 sets first-party cookies `_ga` and `_ga_<ID>` only after you accept; they are used to tell browsers and visits apart; they last up to 13 months after your last visit with analytics on. To withdraw, open Privacy and cookie settings and turn analytics off. GA stops right away in that tab, and in other open PuggieType tabs when they reload. PuggieType deletes its GA cookies, and you can also clear cookies in your browser. See [Google's privacy policy](https://policies.google.com/privacy) and [how Google uses data when you use our partners' sites](https://policies.google.com/technologies/partner-sites). You can also use [Google Analytics opt-out](https://tools.google.com/dlpage/gaoptout) where available.",
     );
     expect(md).toContain(
       "| Google Analytics 4 event data | per our GA4 property retention setting (we use the shortest available that still supports a 30-day traffic review, then auto-expire); deleted from our property when retention elapses or if we remove GA4 |",
+    );
+    expect(md).toContain(
+      "| Google Analytics 4 cookies (`_ga`, `_ga_<ID>`) | Set only after you accept; tell browsers and visits apart; up to 13 months after your last visit with analytics on. Withdraw in Privacy and cookie settings (analytics off); we delete them, or clear cookies in your browser. |",
     );
     expect(md).toContain(
       'Your analytics choice is saved in this browser (localStorage "acceptedCookies") until you change it or clear site data.',

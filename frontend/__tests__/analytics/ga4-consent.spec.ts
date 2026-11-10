@@ -1,17 +1,34 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const env = vi.hoisted(() => ({
+  ga4MeasurementId: "",
+}));
+
+vi.mock("virtual:env-config", () => ({
+  envConfig: env,
+}));
 
 import {
   adsAllowedOnPath,
   adsEnabled,
   isAdsExcludedPath,
 } from "../../src/ts/ads/excluded-paths";
-import { GA4_SCRIPT_URL, loadGa4, syncGa4 } from "../../src/ts/analytics/ga4";
+import {
+  GA4_COOKIE_EXPIRES_SECONDS,
+  GA4_SCRIPT_URL,
+  gaDisableKey,
+  loadGa4,
+  onSpaRouteChange,
+  syncGa4,
+} from "../../src/ts/analytics/ga4";
 import {
   analyticsLoadAllowed,
   consentBannerAllowed,
+  deleteGaCookies,
+  gaCookieExpiryLines,
   kidsAnalyticsExcluded,
   KIDS_FLOW_STORAGE_KEY,
   noteKidsFlowVisit,
@@ -249,6 +266,8 @@ describe("analytics consent gate", () => {
       expect(layer).toContain('"allow_google_signals":false');
       expect(layer).toContain('"allow_ad_personalization_signals":false');
       expect(layer).toContain('"ad_personalization":"denied"');
+      expect(layer).toContain(`"cookie_expires":${GA4_COOKIE_EXPIRES_SECONDS}`);
+      expect(GA4_COOKIE_EXPIRES_SECONDS).toBe(34128000);
       expect(layer).not.toMatch(
         /adsbygoogle|mediavine|doubleclick|fundingchoices/i,
       );
@@ -345,5 +364,477 @@ describe("legal copy", () => {
     );
     expect(faqHtml).toContain('src="/ts/analytics/static-boot.ts"');
     expect(privacy).not.toContain("no analytics scripts");
+  });
+});
+
+const GA_JAR =
+  "_ga=GA1.1.111.222; _ga_B8GK1C9T6T=GS1.1.1; __cf_bm=keep; theme=keep";
+
+const ACCEPTED = {
+  security: true,
+  analytics: true,
+  doNotSellOrShare: false,
+} as const;
+
+const REJECTED = {
+  security: true,
+  analytics: false,
+  doNotSellOrShare: true,
+} as const;
+
+describe("GA cookie withdrawal", () => {
+  it("expires _ga and _ga_* on the current host and on .puggietype.com", () => {
+    for (const hostname of ["puggietype.com", "www.puggietype.com"]) {
+      const writes: string[] = [];
+      deleteGaCookies({
+        cookieHeader: GA_JAR,
+        hostname,
+        protocol: "https:",
+        write: (value) => {
+          writes.push(value);
+        },
+      });
+      expect(writes, hostname).toHaveLength(4);
+      for (const name of ["_ga", "_ga_B8GK1C9T6T"]) {
+        const lines = writes.filter((line) => line.startsWith(`${name}=`));
+        expect(lines, `${hostname} ${name}`).toEqual([
+          `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; path=/; SameSite=Lax; Secure`,
+          `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; path=/; SameSite=Lax; Secure; domain=.puggietype.com`,
+        ]);
+      }
+      expect(writes.join("\n")).not.toMatch(/__cf_bm|theme/);
+    }
+  });
+
+  it("does not write cookies when analytics was never accepted", () => {
+    const writes: string[] = [];
+    vi.spyOn(document, "cookie", "get").mockReturnValue(GA_JAR);
+    vi.spyOn(document, "cookie", "set").mockImplementation((value) => {
+      writes.push(value);
+    });
+    try {
+      writeConsentRecord(REJECTED);
+      expect(readConsentRecord()).toEqual(REJECTED);
+      expect(writes).toEqual([]);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("deletes GA cookies only when a prior accept is withdrawn", () => {
+    const writes: string[] = [];
+    vi.spyOn(document, "cookie", "get").mockReturnValue(GA_JAR);
+    vi.spyOn(document, "cookie", "set").mockImplementation((value) => {
+      writes.push(value);
+    });
+    try {
+      writeConsentRecord(ACCEPTED);
+      expect(writes).toEqual([]);
+      writeConsentRecord(ACCEPTED);
+      expect(writes).toEqual([]);
+      writeConsentRecord(REJECTED);
+      expect(readConsentRecord()?.analytics).toBe(false);
+      expect(writes).toEqual(
+        ["_ga", "_ga_B8GK1C9T6T"].flatMap((name) =>
+          gaCookieExpiryLines(name, location.hostname, location.protocol),
+        ),
+      );
+      writes.length = 0;
+      writeConsentRecord(REJECTED);
+      expect(writes).toEqual([]);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("does not load GA4 on the next page load after analytics is withdrawn", async () => {
+    env.ga4MeasurementId = "G-TEST1234";
+    window.history.pushState({}, "", "/");
+    sessionStorage.removeItem("puggie-kids-flow");
+    writeConsentRecord(ACCEPTED);
+    const scripts: HTMLScriptElement[] = [];
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
+      if (node instanceof HTMLScriptElement) scripts.push(node);
+      return node;
+    });
+    try {
+      vi.resetModules();
+      const accepted = await import("../../src/ts/analytics/ga4");
+      scripts.length = 0;
+      accepted.syncGa4();
+      expect(scripts).toHaveLength(1);
+      expect(scripts[0]?.getAttribute("src")).toBe(
+        `${GA4_SCRIPT_URL}?id=G-TEST1234`,
+      );
+
+      writeConsentRecord(REJECTED);
+      vi.resetModules();
+      const withdrawn = await import("../../src/ts/analytics/ga4");
+      withdrawn.syncGa4();
+      expect(scripts).toHaveLength(1);
+    } finally {
+      env.ga4MeasurementId = "";
+      vi.restoreAllMocks();
+    }
+  });
+});
+
+describe("in-session GA withdrawal", () => {
+  const id = "G-TEST1234";
+
+  function bootAccepted(): void {
+    env.ga4MeasurementId = id;
+    window.history.pushState({}, "", "/");
+    sessionStorage.removeItem("puggie-kids-flow");
+    writeConsentRecord(ACCEPTED);
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => node);
+    loadGa4(id);
+  }
+
+  function flag(): unknown {
+    return Reflect.get(window, gaDisableKey(id));
+  }
+
+  function finish(): void {
+    env.ga4MeasurementId = "";
+    Reflect.set(window, gaDisableKey(id), false);
+    window.history.pushState({}, "", "/");
+    vi.restoreAllMocks();
+  }
+
+  it("sets the ga-disable flag before consent deny and before cookie deletion", () => {
+    bootAccepted();
+    const layer =
+      (window as Window & { dataLayer?: unknown[] }).dataLayer ?? [];
+    let consentWhileDisabled = false;
+    const push = layer.push.bind(layer);
+    vi.spyOn(layer, "push").mockImplementation((entry: unknown) => {
+      const text = JSON.stringify(entry);
+      if (
+        text.includes('"consent"') &&
+        text.includes('"analytics_storage":"denied"')
+      ) {
+        consentWhileDisabled = flag() === true;
+      }
+      return push(entry);
+    });
+    const cookieOrder: string[] = [];
+    vi.spyOn(document, "cookie", "get").mockReturnValue(
+      "_ga=GA1.1.1.1; _ga_TEST=GS1.1",
+    );
+    vi.spyOn(document, "cookie", "set").mockImplementation(() => {
+      cookieOrder.push(
+        consentWhileDisabled && flag() === true ? "after" : "before",
+      );
+    });
+    try {
+      expect(flag()).not.toBe(true);
+      writeConsentRecord(REJECTED);
+      expect(flag()).toBe(true);
+      expect(consentWhileDisabled).toBe(true);
+      expect(cookieOrder.length).toBeGreaterThan(0);
+      expect(cookieOrder.every((mark) => mark === "after")).toBe(true);
+    } finally {
+      finish();
+    }
+  });
+
+  it("drops page_view and other events on later route changes", () => {
+    bootAccepted();
+    const page = window as Window & {
+      dataLayer?: unknown[];
+      gtag?: (...args: unknown[]) => void;
+    };
+    const layer = page.dataLayer ?? [];
+    const router = readFileSync(
+      path.join(src, "ts/controllers/route-controller.ts"),
+      "utf8",
+    );
+    try {
+      expect(router.match(/onSpaRouteChange\(\)/g)).toHaveLength(1);
+      const sent = layer.length;
+      window.history.pushState({}, "", "/faq");
+      onSpaRouteChange();
+      expect(JSON.stringify(layer.slice(sent))).toContain('"page_view"');
+
+      writeConsentRecord(REJECTED);
+      const sets: string[] = [];
+      vi.spyOn(document, "cookie", "set").mockImplementation(
+        (value: string) => {
+          sets.push(value);
+        },
+      );
+      const frozen = layer.length;
+      for (const next of ["/about", "/privacy", "/settings"]) {
+        window.history.pushState({}, "", next);
+        onSpaRouteChange();
+        page.gtag?.("event", "page_view", { page_path: next });
+        page.gtag?.("event", "scroll", { page_path: next });
+      }
+      expect(layer.length).toBe(frozen);
+      expect(JSON.stringify(layer.slice(frozen))).not.toContain('"page_view"');
+      expect(sets).toEqual([]);
+    } finally {
+      finish();
+    }
+  });
+
+  it("re-accepts in the same tab by clearing the disable flag", () => {
+    bootAccepted();
+    const layer =
+      (window as Window & { dataLayer?: unknown[] }).dataLayer ?? [];
+    try {
+      writeConsentRecord(REJECTED);
+      expect(flag()).toBe(true);
+      window.history.pushState({}, "", "/about");
+      onSpaRouteChange();
+
+      writeConsentRecord(ACCEPTED);
+      expect(flag()).toBe(false);
+      syncGa4();
+      const at = layer.length;
+      window.history.pushState({}, "", "/settings");
+      onSpaRouteChange();
+      const added = JSON.stringify(layer.slice(at));
+      expect(added).toContain('"page_view"');
+      expect(added).toContain("/settings");
+      expect(flag()).toBe(false);
+    } finally {
+      finish();
+    }
+  });
+});
+
+const PAGE_SECRETS = [
+  "ada@example.com",
+  "sekret",
+  "invite-9",
+  "discord-token",
+  "access_token",
+];
+
+function dataLayer(): unknown[] {
+  return (window as Window & { dataLayer?: unknown[] }).dataLayer ?? [];
+}
+
+/** gtag.js reads indexed fields of an Arguments object, not a plain Array. */
+function isGtagArguments(entry: unknown): entry is IArguments {
+  return Object.prototype.toString.call(entry) === "[object Arguments]";
+}
+
+function isCommand(entry: unknown, command: string): entry is IArguments {
+  return isGtagArguments(entry) && entry[0] === command;
+}
+
+function pageViews(layer: unknown[]): IArguments[] {
+  return layer.filter((entry): entry is IArguments => {
+    return isCommand(entry, "event") && entry[1] === "page_view";
+  });
+}
+
+function assertCleanPagePayloads(layer: unknown[]): void {
+  const tracked = layer.filter(
+    (entry) => isCommand(entry, "config") || isCommand(entry, "event"),
+  );
+  const text = JSON.stringify(tracked);
+  for (const secret of PAGE_SECRETS) {
+    expect(text).not.toContain(secret);
+  }
+  for (const entry of tracked) {
+    if (!isCommand(entry, "config") && !isCommand(entry, "event")) continue;
+    const payload = entry[2];
+    if (payload === null || typeof payload !== "object") continue;
+    const fields = payload as { page_path?: string; page_location?: string };
+    if (typeof fields.page_path === "string") {
+      expect(fields.page_path).not.toMatch(/[?#]/);
+    }
+    if (typeof fields.page_location === "string") {
+      expect(fields.page_location).not.toMatch(/[?#]/);
+    }
+  }
+}
+
+describe("sanitized single page view", () => {
+  const id = "G-PRIV1234";
+
+  async function freshGa(): Promise<
+    typeof import("../../src/ts/analytics/ga4")
+  > {
+    const page = window as Window & { dataLayer?: unknown[]; gtag?: unknown };
+    page.dataLayer = [];
+    Reflect.deleteProperty(page, "gtag");
+    vi.resetModules();
+    return import("../../src/ts/analytics/ga4");
+  }
+
+  function show(relative: string): void {
+    const url = new URL(relative, location.origin);
+    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  beforeEach(() => {
+    env.ga4MeasurementId = id;
+    sessionStorage.removeItem("puggie-kids-flow");
+    writeConsentRecord(ACCEPTED);
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => node);
+  });
+
+  afterEach(() => {
+    env.ga4MeasurementId = "";
+    window.history.pushState({}, "", "/");
+    vi.restoreAllMocks();
+  });
+
+  it("first load sends one page_view and drops query and Discord hash", async () => {
+    show(
+      "/login?email=ada@example.com&token=sekret&code=invite-9&reset=now#access_token=discord-token",
+    );
+    expect(location.search).toContain("token=sekret");
+    expect(location.hash).toContain("access_token=discord-token");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    const layer = dataLayer();
+    assertCleanPagePayloads(layer);
+    const views = pageViews(layer);
+    expect(views).toHaveLength(1);
+    expect(views[0]?.[2]).toMatchObject({
+      page_path: "/login",
+      page_location: `${location.origin}/login`,
+    });
+    const config = layer.find((entry) => isCommand(entry, "config"));
+    expect(config?.[2]).toMatchObject({
+      send_page_view: false,
+      page_path: "/login",
+      page_location: `${location.origin}/login`,
+    });
+  });
+
+  it("sends one page_view for the first load, /about, and a repeated path", async () => {
+    show("/");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    const layer = dataLayer();
+    expect(pageViews(layer)).toHaveLength(1);
+
+    show("/faq?email=ada@example.com");
+    ga.onSpaRouteChange();
+    expect(pageViews(layer)).toHaveLength(2);
+
+    show("/about?token=sekret&code=invite-9#access_token=discord-token");
+    expect(location.search).toContain("token=sekret");
+    expect(location.hash).toContain("access_token");
+    ga.onSpaRouteChange();
+    ga.onSpaRouteChange();
+    const views = pageViews(layer);
+    expect(views).toHaveLength(3);
+    const about = views.filter((entry) => {
+      const payload = entry[2] as { page_path?: string };
+      return payload.page_path === "/about";
+    });
+    expect(about).toHaveLength(1);
+    expect(about[0]?.[2]).toMatchObject({
+      page_path: "/about",
+      page_location: `${location.origin}/about`,
+    });
+    assertCleanPagePayloads(layer);
+  });
+
+  it("pushes Arguments objects for consent, set, config, and event", async () => {
+    show("/");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    writeConsentRecord(REJECTED);
+    const layer = dataLayer();
+    expect(layer.length).toBeGreaterThan(0);
+    for (const entry of layer) {
+      expect(Object.prototype.toString.call(entry)).toBe("[object Arguments]");
+      expect(Array.isArray(entry)).toBe(false);
+    }
+    const commands = layer as IArguments[];
+    const third = (entry: IArguments): Record<string, unknown> | undefined => {
+      const value: unknown = entry[2];
+      if (value === null || typeof value !== "object") return undefined;
+      return value as Record<string, unknown>;
+    };
+    expect(
+      commands.some(
+        (entry) =>
+          entry[0] === "consent" &&
+          entry[1] === "default" &&
+          third(entry)?.["analytics_storage"] === "denied",
+      ),
+    ).toBe(true);
+    expect(
+      commands.some(
+        (entry) =>
+          entry[0] === "consent" &&
+          entry[1] === "update" &&
+          third(entry)?.["analytics_storage"] === "granted",
+      ),
+    ).toBe(true);
+    expect(
+      commands.some(
+        (entry) =>
+          entry[0] === "consent" &&
+          entry[1] === "update" &&
+          third(entry)?.["analytics_storage"] === "denied",
+      ),
+    ).toBe(true);
+    expect(
+      commands.some(
+        (entry) => entry[0] === "set" && entry[1] === "allow_google_signals",
+      ),
+    ).toBe(true);
+    expect(
+      commands.some((entry) => entry[0] === "config" && entry[1] === id),
+    ).toBe(true);
+    expect(
+      commands.some(
+        (entry) => entry[0] === "event" && entry[1] === "page_view",
+      ),
+    ).toBe(true);
+  });
+
+  it("sends /about again after withdraw and re-accept on that path", async () => {
+    show("/about");
+    const page = window as Window & { dataLayer?: unknown[]; gtag?: unknown };
+    page.dataLayer = [];
+    Reflect.deleteProperty(page, "gtag");
+    vi.resetModules();
+    const ga = await import("../../src/ts/analytics/ga4");
+    const consent = await import("../../src/ts/analytics/consent");
+    ga.loadGa4(id);
+    expect(pageViews(dataLayer())).toHaveLength(1);
+    expect(pageViews(dataLayer())[0]?.[2]).toMatchObject({
+      page_path: "/about",
+    });
+
+    consent.writeConsentRecord(REJECTED);
+    expect(Reflect.get(window, ga.gaDisableKey(id))).toBe(true);
+    expect(pageViews(dataLayer())).toHaveLength(1);
+
+    consent.writeConsentRecord(ACCEPTED);
+    expect(Reflect.get(window, ga.gaDisableKey(id))).toBe(false);
+    ga.syncGa4();
+    ga.onSpaRouteChange();
+    const views = pageViews(dataLayer());
+    expect(views).toHaveLength(2);
+    expect(views[1]?.[2]).toMatchObject({ page_path: "/about" });
+    expect(Reflect.get(window, ga.gaDisableKey(id))).toBe(false);
+  });
+
+  it("sends again when /about is visited after another route", async () => {
+    show("/about");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    show("/settings");
+    ga.onSpaRouteChange();
+    show("/about");
+    ga.onSpaRouteChange();
+    const views = pageViews(dataLayer());
+    expect(views).toHaveLength(3);
+    expect(
+      views.map((entry) => (entry[2] as { page_path?: string }).page_path),
+    ).toEqual(["/about", "/settings", "/about"]);
   });
 });

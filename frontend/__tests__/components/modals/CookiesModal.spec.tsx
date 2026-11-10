@@ -6,6 +6,7 @@ import {
   readConsentRecord,
 } from "../../../src/ts/analytics/consent";
 import { CookiesModal } from "../../../src/ts/components/modals/CookiesModal";
+import { setAcceptedCookies } from "../../../src/ts/cookies";
 import { hideModal, showModal } from "../../../src/ts/states/modals";
 
 describe("CookiesModal", () => {
@@ -149,8 +150,17 @@ describe("CookiesModal", () => {
         ?.textContent?.replace(/\s+/g, " ")
         .trim(),
     ).toBe(
-      "Always on. Your settings and privacy choice are saved in this browser, not in cookies. Our host, Cloudflare, processes network data to deliver and protect the site and may set security cookies if its bot protection runs. See Privacy policy.",
+      "Always on. Your settings and privacy choice are saved in this browser (not cookies). Our host, Cloudflare, processes network data to deliver and protect the site and may set security cookies if its bot protection runs. See Privacy policy.",
     );
+    const analytics = [...document.querySelectorAll("label")].find(
+      (el) => el.querySelector(".text-sub")?.textContent === "analytics",
+    );
+    expect(
+      analytics
+        ?.querySelector(".text-text")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim(),
+    ).toBe("Google Analytics 4. Uses cookies. Off until you accept.");
     expect(note.querySelector("input")).toBeNull();
     expect(note.querySelector("a")?.getAttribute("href")).toBe("/privacy");
     const boxes = [
@@ -190,5 +200,107 @@ describe("CookiesModal", () => {
         /googletagmanager|google-analytics/i.test(script.src),
       ),
     ).toBe(false);
+  });
+
+  function trackCookieWrites(): string[] {
+    const writes: string[] = [];
+    vi.spyOn(document, "cookie", "get").mockReturnValue(
+      "_ga=GA1.1.111.222; _ga_TEST=GS1.1; theme=keep",
+    );
+    vi.spyOn(document, "cookie", "set").mockImplementation((value) => {
+      writes.push(value);
+    });
+    return writes;
+  }
+
+  it("reject after an earlier accept expires GA cookies", () => {
+    const writes = trackCookieWrites();
+    try {
+      setAcceptedCookies({
+        security: true,
+        analytics: true,
+        doNotSellOrShare: false,
+      });
+      expect(writes).toEqual([]);
+      renderModal();
+      const reject = document.getElementById("consent-reject");
+      if (!(reject instanceof HTMLButtonElement)) {
+        throw new Error("reject missing");
+      }
+      fireEvent.click(reject);
+      expect(readConsentRecord()?.analytics).toBe(false);
+      expect(
+        writes.some(
+          (line) => line.startsWith("_ga=") && line.includes("path=/"),
+        ),
+      ).toBe(true);
+      expect(
+        writes.some(
+          (line) => line.startsWith("_ga_TEST=") && line.includes("path=/"),
+        ),
+      ).toBe(true);
+      expect(writes.join("\n")).not.toMatch(/theme/);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("turning analytics off in privacy settings expires GA cookies", () => {
+    const writes = trackCookieWrites();
+    try {
+      setAcceptedCookies({
+        security: true,
+        analytics: true,
+        doNotSellOrShare: false,
+      });
+      writes.length = 0;
+      renderModal();
+      const more = [...document.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "more options",
+      );
+      if (!(more instanceof HTMLButtonElement)) {
+        throw new Error("more options missing");
+      }
+      fireEvent.click(more);
+      const analytics = [...document.querySelectorAll("label")].find(
+        (el) => el.querySelector(".text-sub")?.textContent === "analytics",
+      );
+      const box = analytics?.querySelector("input");
+      if (!(box instanceof HTMLInputElement)) {
+        throw new Error("analytics checkbox missing");
+      }
+      expect(box.checked).toBe(true);
+      fireEvent.click(box);
+      const save = document.getElementById("consent-save");
+      if (!(save instanceof HTMLButtonElement)) {
+        throw new Error("save missing");
+      }
+      fireEvent.click(save);
+      expect(readConsentRecord()?.analytics).toBe(false);
+      expect(
+        writes.some(
+          (line) => line.startsWith("_ga=") && line.includes("path=/"),
+        ),
+      ).toBe(true);
+      expect(writes.join("\n")).not.toMatch(/theme/);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("does not delete cookies when analytics was never accepted", () => {
+    const writes = trackCookieWrites();
+    try {
+      renderModal();
+      const reject = document.getElementById("consent-reject");
+      if (!(reject instanceof HTMLButtonElement)) {
+        throw new Error("reject missing");
+      }
+      fireEvent.click(reject);
+      expect(readConsentRecord()?.analytics).toBe(false);
+      expect(writes).toEqual([]);
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });

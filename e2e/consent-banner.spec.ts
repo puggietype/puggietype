@@ -6,7 +6,7 @@ import { skipNgrokWarning } from "./tunnel";
 const GA_REQUEST = /google-analytics|googletagmanager|analytics\.google/i;
 
 const ESSENTIAL =
-  "Optional Google Analytics 4 measures site use. It loads only if you accept; rejecting keeps it off.";
+  "Optional Google Analytics 4 uses analytics cookies. It loads only if you accept; rejecting keeps it off.";
 
 function watchGa(page: Page): string[] {
   const hits: string[] = [];
@@ -614,7 +614,13 @@ test("more options keeps the disclosure and can reach save at 320px", async ({
   await page.getByRole("button", { name: "more options" }).click();
   const note = page.locator("[data-consent-note='saved in this browser']");
   await expect(note).toContainText("saved in this browser");
-  await expect(note).toContainText("not in cookies");
+  await expect(note).toContainText("(not cookies)");
+  await expect(note).toContainText(
+    "Our host, Cloudflare, processes network data to deliver and protect the site and may set security cookies if its bot protection runs.",
+  );
+  await expect(page.locator("#CookiesModal")).toContainText(
+    "Google Analytics 4. Uses cookies. Off until you accept.",
+  );
   await expect(note.locator("input")).toHaveCount(0);
   await expect(
     note.getByRole("link", { name: "Privacy policy" }),

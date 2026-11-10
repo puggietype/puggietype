@@ -120,4 +120,69 @@ describe("static consent banner", () => {
     expect(document.getElementById("pt-consent-banner")).not.toBeNull();
     expect(readConsentRecord()).toBeNull();
   });
+
+  function clickLabeled(label: string): void {
+    const button = [...document.querySelectorAll("button")].find(
+      (node) => node.textContent === label,
+    );
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new Error(`${label} missing`);
+    }
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  }
+
+  it("reject after accept expires GA cookies and the next load stays off", async () => {
+    const writes: string[] = [];
+    vi.spyOn(document, "cookie", "get").mockReturnValue(
+      "_ga=GA1.1.111.222; _ga_TEST=GS1.1; theme=keep",
+    );
+    vi.spyOn(document, "cookie", "set").mockImplementation((value) => {
+      writes.push(value);
+    });
+    try {
+      await bootAt("/privacy");
+      clickLabeled("Accept analytics");
+      expect(readConsentRecord()?.analytics).toBe(true);
+      expect(writes).toEqual([]);
+      clickLabeled("Privacy and cookie settings");
+      clickLabeled("Reject analytics");
+      expect(readConsentRecord()?.analytics).toBe(false);
+      expect(
+        writes.some(
+          (line) => line.startsWith("_ga=") && line.includes("path=/"),
+        ),
+      ).toBe(true);
+      expect(
+        writes.some(
+          (line) => line.startsWith("_ga_TEST=") && line.includes("path=/"),
+        ),
+      ).toBe(true);
+      expect(writes.join("\n")).not.toMatch(/theme/);
+      for (const script of gaScripts()) script.remove();
+      await bootAt("/faq");
+      expect(gaScripts()).toEqual([]);
+      expect(readConsentRecord()?.analytics).toBe(false);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("does not delete cookies when analytics was never accepted", async () => {
+    const writes: string[] = [];
+    vi.spyOn(document, "cookie", "get").mockReturnValue(
+      "_ga=GA1.1.111.222; theme=keep",
+    );
+    vi.spyOn(document, "cookie", "set").mockImplementation((value) => {
+      writes.push(value);
+    });
+    try {
+      await bootAt("/privacy");
+      clickLabeled("Reject analytics");
+      expect(readConsentRecord()?.analytics).toBe(false);
+      expect(writes).toEqual([]);
+      expect(gaScripts()).toEqual([]);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
 });
