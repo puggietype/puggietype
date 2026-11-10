@@ -376,6 +376,31 @@ function cleanPage(): { page_path: string; page_location: string } {
   };
 }
 
+/** Referrer with the query and hash removed. Empty when the browser has none. */
+function cleanReferrer(): string {
+  if (document.referrer === "") return "";
+  try {
+    const url = new URL(document.referrer);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * The real gtag.js sends its own page_view when it handles `js`, from the
+ * document URL, before a later config is applied. `send_page_view: false`
+ * and a query-free page_location have to already be on the model.
+ */
+function publishCleanPage(gtagFn: Gtag): void {
+  const fields = cleanPage();
+  gtagFn("set", {
+    send_page_view: false,
+    page_location: fields.page_location,
+    page_referrer: cleanReferrer(),
+  });
+}
+
 function sendPageView(id: string): void {
   if (!isGa4MeasurementId(id) || isGaCollectionDisabled(id)) return;
   const fields = cleanPage();
@@ -383,8 +408,10 @@ function sendPageView(id: string): void {
   const gtagFn = pageWindow().gtag;
   if (gtagFn === undefined) return;
   lastSentPath = fields.page_path;
+  publishCleanPage(gtagFn);
   gtagFn("event", "page_view", {
     ...fields,
+    page_referrer: cleanReferrer(),
     send_to: id,
   });
 }
@@ -398,7 +425,6 @@ export function loadGa4(measurementId: string): void {
   const page = pageWindow();
   page.dataLayer = page.dataLayer ?? [];
   page.gtag = gtag;
-  gtag("js", new Date());
   gtag("consent", "default", {
     ...ADS_DENIED,
     analytics_storage: "denied",
@@ -411,6 +437,7 @@ export function loadGa4(measurementId: string): void {
     analytics_storage: "granted",
   });
   gtag("set", "allow_google_signals", false);
+  publishCleanPage(gtag);
   const pageFields = cleanPage();
   gtag("config", measurementId, {
     allow_google_signals: false,
@@ -419,7 +446,9 @@ export function loadGa4(measurementId: string): void {
     send_page_view: false,
     cookie_expires: GA4_COOKIE_EXPIRES_SECONDS,
     ...pageFields,
+    page_referrer: cleanReferrer(),
   });
+  gtag("js", new Date());
   const script = document.createElement("script");
   script.async = true;
   script.src = `${GA4_SCRIPT_URL}?id=${encodeURIComponent(measurementId)}`;

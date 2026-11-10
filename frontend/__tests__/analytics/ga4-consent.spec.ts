@@ -893,24 +893,43 @@ function pageViews(layer: unknown[]): IArguments[] {
   });
 }
 
+function commandPayload(
+  entry: IArguments,
+): Record<string, unknown> | undefined {
+  const value: unknown = entry[0] === "set" ? entry[1] : entry[2];
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
+}
+
 function assertCleanPagePayloads(layer: unknown[]): void {
   const tracked = layer.filter(
-    (entry) => isCommand(entry, "config") || isCommand(entry, "event"),
+    (entry) =>
+      isCommand(entry, "config") ||
+      isCommand(entry, "event") ||
+      isCommand(entry, "set"),
   );
   const text = JSON.stringify(tracked);
   for (const secret of PAGE_SECRETS) {
     expect(text).not.toContain(secret);
   }
   for (const entry of tracked) {
-    if (!isCommand(entry, "config") && !isCommand(entry, "event")) continue;
-    const payload = entry[2];
-    if (payload === null || typeof payload !== "object") continue;
-    const fields = payload as { page_path?: string; page_location?: string };
+    if (!isGtagArguments(entry)) continue;
+    const fields = commandPayload(entry) as {
+      page_path?: string;
+      page_location?: string;
+      page_referrer?: string;
+    };
+    if (fields === undefined) continue;
     if (typeof fields.page_path === "string") {
       expect(fields.page_path).not.toMatch(/[?#]/);
     }
     if (typeof fields.page_location === "string") {
       expect(fields.page_location).not.toMatch(/[?#]/);
+    }
+    if (typeof fields.page_referrer === "string") {
+      expect(fields.page_referrer).not.toMatch(/[?#]/);
     }
   }
 }
@@ -968,6 +987,44 @@ describe("sanitized single page view", () => {
       page_path: "/login",
       page_location: `${location.origin}/login`,
     });
+    const commands = layer as IArguments[];
+    const jsAt = commands.findIndex((entry) => entry[0] === "js");
+    const defaultAt = commands.findIndex(
+      (entry) => entry[0] === "consent" && entry[1] === "default",
+    );
+    const blockAt = commands.findIndex((entry) => {
+      return commandPayload(entry)?.["send_page_view"] === false;
+    });
+    expect(defaultAt).toBeGreaterThan(-1);
+    expect(blockAt).toBeGreaterThan(defaultAt);
+    expect(jsAt).toBeGreaterThan(blockAt);
+  });
+
+  it("strips the referrer query before the tag starts", async () => {
+    const previous = Object.getOwnPropertyDescriptor(document, "referrer");
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      get: () =>
+        "https://news.example/story?token=sekret#access_token=discord-token",
+    });
+    try {
+      show("/");
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      assertCleanPagePayloads(dataLayer());
+      const set = (dataLayer() as IArguments[]).find((entry) => {
+        return commandPayload(entry)?.["page_referrer"] !== undefined;
+      });
+      expect(commandPayload(set as IArguments)?.["page_referrer"]).toBe(
+        "https://news.example/story",
+      );
+    } finally {
+      if (previous === undefined) {
+        Reflect.deleteProperty(document, "referrer");
+      } else {
+        Object.defineProperty(document, "referrer", previous);
+      }
+    }
   });
 
   it("sends one page_view for the first load, /about, and a repeated path", async () => {
