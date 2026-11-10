@@ -57,6 +57,128 @@ function setGaCollectionDisabled(id: string, disabled: boolean): void {
   flagMap()[gaDisableKey(id)] = disabled;
 }
 
+/**
+ * Hosts gtag.js uses for collect and ad pixels, plus www.google.com and
+ * google.<tld>. A hit matches only when the path is a collect or ad path.
+ */
+const GA_COLLECT_ROOTS = [
+  "google-analytics.com",
+  "analytics.google.com",
+  "googletagmanager.com",
+  "doubleclick.net",
+  "googleadservices.com",
+  "googlesyndication.com",
+];
+
+let gaTransportBlocked = false;
+let gaTransportInstalled = false;
+const xhrUrl = new WeakMap<XMLHttpRequest, string>();
+
+export function isGaTransportBlocked(): boolean {
+  return gaTransportBlocked;
+}
+
+function hostUnder(host: string, root: string): boolean {
+  return host === root || host.endsWith(`.${root}`);
+}
+
+function isGoogleSiteHost(host: string): boolean {
+  return /^(?:www\.)?google\.(?:com|[a-z]{2}|[a-z]{2}\.[a-z]{2}|com\.[a-z]{2})$/i.test(
+    host,
+  );
+}
+
+function isGaCollectUrl(raw: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(raw, location.href);
+  } catch {
+    return false;
+  }
+  const host = url.hostname.toLowerCase();
+  const listed = GA_COLLECT_ROOTS.some((root) => hostUnder(host, root));
+  if (!listed && !isGoogleSiteHost(host)) return false;
+  const path = url.pathname;
+  return (
+    path === "/g/collect" ||
+    path.startsWith("/g/collect/") ||
+    path.startsWith("/ccm/") ||
+    path.startsWith("/pagead/") ||
+    path.startsWith("/ads/")
+  );
+}
+
+function urlOf(input: unknown): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    return input.url;
+  }
+  return "";
+}
+
+function blockGaTransport(): void {
+  gaTransportBlocked = true;
+  if (gaTransportInstalled) return;
+  gaTransportInstalled = true;
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (gaTransportBlocked && isGaCollectUrl(urlOf(input))) {
+      return new Response(null, { status: 200 });
+    }
+    return origFetch(input, init);
+  };
+  if (typeof navigator.sendBeacon === "function") {
+    const origBeacon = navigator.sendBeacon.bind(navigator);
+    navigator.sendBeacon = ((url: string | URL, data?: BodyInit | null) => {
+      if (gaTransportBlocked && isGaCollectUrl(urlOf(url))) return true;
+      return origBeacon(url, data);
+    }) as typeof navigator.sendBeacon;
+  }
+  const src = Object.getOwnPropertyDescriptor(
+    HTMLImageElement.prototype,
+    "src",
+  );
+  if (src?.get !== undefined && src.set !== undefined) {
+    const getSrc = src.get;
+    const setSrc = src.set;
+    Object.defineProperty(HTMLImageElement.prototype, "src", {
+      configurable: true,
+      enumerable: src.enumerable,
+      get(): string {
+        return String(getSrc.call(this));
+      },
+      set(value: string) {
+        if (gaTransportBlocked && isGaCollectUrl(value)) return;
+        setSrc.call(this, value);
+      },
+    });
+  }
+  const origOpen = XMLHttpRequest.prototype.open;
+  const origSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function (
+    this: XMLHttpRequest,
+    method: string,
+    url: string | URL,
+    async?: boolean,
+    username?: string | null,
+    password?: string | null,
+  ): void {
+    xhrUrl.set(this, urlOf(url));
+    origOpen.call(this, method, url, async ?? true, username, password);
+  };
+  XMLHttpRequest.prototype.send = function (
+    this: XMLHttpRequest,
+    body?: Document | XMLHttpRequestBodyInit | null,
+  ): void {
+    const url = xhrUrl.get(this);
+    if (gaTransportBlocked && url !== undefined && isGaCollectUrl(url)) {
+      return;
+    }
+    origSend.call(this, body);
+  };
+}
+
 function gtag(...args: GtagValue[]): void;
 // gtag.js only processes an Arguments object in dataLayer. A plain Array is ignored,
 // so config, event, consent, and set would never reach the real library.
@@ -217,6 +339,7 @@ export function onSpaRouteChange(): void {
 setGaWithdrawalHooks({
   beforeCookieDelete: () => {
     const id = configuredMeasurementId();
+    blockGaTransport();
     setGaCollectionDisabled(id, true);
     lastSentPath = null;
     const gtagFn = pageWindow().gtag;
@@ -224,6 +347,7 @@ setGaWithdrawalHooks({
     gtagFn("consent", "update", { analytics_storage: "denied" });
   },
   onReaccept: () => {
+    gaTransportBlocked = false;
     setGaCollectionDisabled(configuredMeasurementId(), false);
   },
 });

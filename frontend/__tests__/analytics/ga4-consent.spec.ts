@@ -1,7 +1,15 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 const env = vi.hoisted(() => ({
   ga4MeasurementId: "",
@@ -20,6 +28,7 @@ import {
   GA4_COOKIE_EXPIRES_SECONDS,
   GA4_SCRIPT_URL,
   gaDisableKey,
+  isGaTransportBlocked,
   loadGa4,
   onSpaRouteChange,
   syncGa4,
@@ -46,6 +55,164 @@ const FAQ_INTERIM =
 
 const ABOUT =
   "We use privacy-preserving aggregate traffic tools from our host (Cloudflare) and, when enabled, Google Analytics 4. Details are in our";
+
+function requestUrl(input: unknown): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    return input.url;
+  }
+  return "";
+}
+
+describe("GA collect transport gate", () => {
+  const id = "G-TEST1234";
+  const calls: string[] = [];
+  let happyOpen: typeof XMLHttpRequest.prototype.open;
+  const xhrSends: string[] = [];
+
+  beforeAll(() => {
+    window.fetch = async (input: RequestInfo | URL, _init?: RequestInit) => {
+      calls.push(requestUrl(input));
+      return new Response(null, { status: 204 });
+    };
+    navigator.sendBeacon = ((url: string | URL, _data?: BodyInit | null) => {
+      calls.push(`beacon:${requestUrl(url)}`);
+      return true;
+    }) as typeof navigator.sendBeacon;
+    happyOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (
+      this: XMLHttpRequest,
+      method: string,
+      url: string | URL,
+      async?: boolean,
+      username?: string | null,
+      password?: string | null,
+    ): void {
+      happyOpen.call(this, method, url, async ?? true, username, password);
+    };
+    XMLHttpRequest.prototype.send = function (
+      this: XMLHttpRequest,
+      body?: Document | XMLHttpRequestBodyInit | null,
+    ): void {
+      xhrSends.push("sent");
+      void body;
+    };
+  });
+
+  beforeEach(() => {
+    env.ga4MeasurementId = id;
+    calls.length = 0;
+    xhrSends.length = 0;
+    writeConsentRecord(ACCEPTED);
+  });
+
+  afterEach(() => {
+    writeConsentRecord(ACCEPTED);
+    env.ga4MeasurementId = "";
+  });
+
+  function withdraw(): void {
+    writeConsentRecord(REJECTED);
+  }
+
+  async function expectBlocked(url: string): Promise<void> {
+    calls.length = 0;
+    await window.fetch(url);
+    await window.fetch(new URL(url));
+    await window.fetch(new Request(url));
+    expect(calls, url).toEqual([]);
+    expect(navigator.sendBeacon(url)).toBe(true);
+    expect(calls, url).toEqual([]);
+    const img = new Image();
+    img.src = url;
+    expect(img.src).not.toContain("/g/collect");
+    expect(img.src).not.toContain("/ccm/");
+    expect(img.src).not.toContain("/pagead/");
+    expect(img.src).not.toContain("/ads/");
+    const xhr = new XMLHttpRequest();
+    const before = xhrSends.length;
+    xhr.open("POST", url);
+    xhr.send();
+    expect(xhrSends.length).toBe(before);
+  }
+
+  async function expectPassed(url: string): Promise<void> {
+    calls.length = 0;
+    xhrSends.length = 0;
+    await window.fetch(url);
+    await window.fetch(new URL(url));
+    await window.fetch(new Request(url));
+    expect(calls).toEqual([url, url, url]);
+    navigator.sendBeacon(url);
+    expect(calls).toContain(`beacon:${url}`);
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+    xhr.send();
+    expect(xhrSends).toEqual(["sent"]);
+  }
+
+  it("drops queued collect transports after withdraw and lets them through again", async () => {
+    withdraw();
+    expect(isGaTransportBlocked()).toBe(true);
+    await expectBlocked("https://www.google-analytics.com/g/collect?cid=GA1.1");
+    await expectBlocked("https://region1.google-analytics.com/g/collect?v=2");
+    await expectBlocked("https://region1.analytics.google.com/g/collect");
+    await expectBlocked("https://www.googletagmanager.com/g/collect");
+    await expectBlocked("https://stats.g.doubleclick.net/g/collect");
+    await expectBlocked("https://www.googleadservices.com/pagead/conversion");
+    await expectBlocked(
+      "https://pagead2.googlesyndication.com/pagead/viewthroughconversion",
+    );
+    await expectBlocked("https://www.google.com/g/collect");
+    await expectBlocked("https://www.google.com/ccm/collect");
+    await expectBlocked("https://www.google.co.uk/pagead/1p-conversion");
+    await expectBlocked("https://google.de/ads/ga-audiences");
+    writeConsentRecord(ACCEPTED);
+    expect(isGaTransportBlocked()).toBe(false);
+    await expectPassed("https://www.google-analytics.com/g/collect?cid=1");
+  });
+
+  it("does not throw when sendBeacon is missing", async () => {
+    const desc = Object.getOwnPropertyDescriptor(navigator, "sendBeacon");
+    Object.defineProperty(navigator, "sendBeacon", {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
+    vi.resetModules();
+    const consent = await import("../../src/ts/analytics/consent");
+    await import("../../src/ts/analytics/ga4");
+    expect(() => {
+      consent.writeConsentRecord(ACCEPTED);
+    }).not.toThrow();
+    expect(() => {
+      consent.writeConsentRecord(REJECTED);
+    }).not.toThrow();
+    consent.writeConsentRecord(ACCEPTED);
+    if (desc !== undefined) {
+      Object.defineProperty(navigator, "sendBeacon", desc);
+    }
+  });
+
+  it("lets unrelated hosts and non-collect google URLs through while withdrawn", async () => {
+    withdraw();
+    const allowed = [
+      "https://fonts.gstatic.com/s/roboto/v30/roboto.woff2",
+      "https://www.googleapis.com/discovery/v1/apis",
+      "https://poetrydb.org/random",
+      "https://en.wikipedia.org/api/rest_v1/page/summary/Pug",
+      "https://de.wikipedia.org/wiki/Mops",
+      "https://cdn.example.com/walls/custom-background.jpg",
+      "https://www.google.com/search?q=puggietype",
+      "https://www.google.com/images/branding/googlelogo.png",
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234",
+    ];
+    for (const url of allowed) {
+      await expectPassed(url);
+    }
+  });
+});
 
 describe("analytics consent gate", () => {
   it("does not keep a country-cookie reader", () => {
@@ -515,6 +682,7 @@ describe("in-session GA withdrawal", () => {
         text.includes('"analytics_storage":"denied"')
       ) {
         consentWhileDisabled = flag() === true;
+        expect(isGaTransportBlocked()).toBe(true);
       }
       return push(entry);
     });
@@ -529,6 +697,7 @@ describe("in-session GA withdrawal", () => {
     });
     try {
       expect(flag()).not.toBe(true);
+      expect(isGaTransportBlocked()).toBe(false);
       writeConsentRecord(REJECTED);
       expect(flag()).toBe(true);
       expect(consentWhileDisabled).toBe(true);
