@@ -58,10 +58,12 @@ function setGaCollectionDisabled(id: string, disabled: boolean): void {
 }
 
 /**
- * Hosts gtag.js uses for collect and ad pixels, plus www.google.com and
- * google.<tld>. A hit matches only when the path is a collect or ad path.
+ * Analytics and ads hosts, plus google.<tld> and every subdomain of these.
+ * While withdrawn, every path on these hosts is blocked. The only exception
+ * is a GET of /gtag/js on googletagmanager.com, so a later accept can load
+ * the tag.
  */
-const GA_COLLECT_ROOTS = [
+const GOOGLE_HOST_ROOTS = [
   "google-analytics.com",
   "analytics.google.com",
   "googletagmanager.com",
@@ -72,7 +74,10 @@ const GA_COLLECT_ROOTS = [
 
 let gaTransportBlocked = false;
 let gaTransportInstalled = false;
-const xhrUrl = new WeakMap<XMLHttpRequest, string>();
+const xhrRequest = new WeakMap<
+  XMLHttpRequest,
+  { url: string; method: string }
+>();
 
 export function isGaTransportBlocked(): boolean {
   return gaTransportBlocked;
@@ -82,30 +87,59 @@ function hostUnder(host: string, root: string): boolean {
   return host === root || host.endsWith(`.${root}`);
 }
 
-function isGoogleSiteHost(host: string): boolean {
-  return /^(?:www\.)?google\.(?:com|[a-z]{2}|[a-z]{2}\.[a-z]{2}|com\.[a-z]{2})$/i.test(
+function isGoogleHost(host: string): boolean {
+  if (GOOGLE_HOST_ROOTS.some((root) => hostUnder(host, root))) return true;
+  return /(?:^|\.)google\.(?:com|[a-z]{2}|[a-z]{2}\.[a-z]{2}|com\.[a-z]{2})$/i.test(
     host,
   );
 }
 
-function isGaCollectUrl(raw: string): boolean {
+function isGtagScript(url: URL): boolean {
+  const host = url.hostname.toLowerCase().replace(/\.$/, "");
+  const path = url.pathname.replace(/\/{2,}/g, "/");
+  return (
+    hostUnder(host, "googletagmanager.com") &&
+    (path === "/gtag/js" || path.startsWith("/gtag/js/"))
+  );
+}
+
+/**
+ * While withdrawn, block every Google host. GET /gtag/js stays open.
+ *
+ * A native fetch, sendBeacon, or setAttribute copied before this module
+ * runs, or taken from another window, is not wrapped. sendBeacon added
+ * only after this one-time install is not wrapped either. Markup parsed
+ * from innerHTML, CSS url(), and link href do not go through these setters.
+ */
+function shouldBlockGaRequest(
+  raw: string,
+  channel: { method?: string; script?: boolean; allowGtagGet?: boolean },
+): boolean {
+  if (!gaTransportBlocked || raw === "") return false;
   let url: URL;
   try {
     url = new URL(raw, location.href);
   } catch {
     return false;
   }
-  const host = url.hostname.toLowerCase();
-  const listed = GA_COLLECT_ROOTS.some((root) => hostUnder(host, root));
-  if (!listed && !isGoogleSiteHost(host)) return false;
-  const path = url.pathname;
-  return (
-    path === "/g/collect" ||
-    path.startsWith("/g/collect/") ||
-    path.startsWith("/ccm/") ||
-    path.startsWith("/pagead/") ||
-    path.startsWith("/ads/")
-  );
+  const protocol = url.protocol;
+  const http =
+    protocol === "http:" ||
+    protocol === "https:" ||
+    protocol === "ws:" ||
+    protocol === "wss:";
+  if (!http) return false;
+  const host = url.hostname.toLowerCase().replace(/\.$/, "");
+  const method = (channel.method ?? "GET").toUpperCase();
+  if (
+    (protocol === "http:" || protocol === "https:") &&
+    method === "GET" &&
+    isGtagScript(url) &&
+    (channel.script === true || channel.allowGtagGet === true)
+  ) {
+    return false;
+  }
+  return isGoogleHost(host);
 }
 
 function urlOf(input: unknown): string {
@@ -117,13 +151,122 @@ function urlOf(input: unknown): string {
   return "";
 }
 
-function blockGaTransport(): void {
-  gaTransportBlocked = true;
-  if (gaTransportInstalled) return;
+function requestMethod(input: unknown, init?: RequestInit): string {
+  if (typeof init?.method === "string" && init.method !== "") {
+    return init.method.toUpperCase();
+  }
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    return input.method.toUpperCase();
+  }
+  return "GET";
+}
+
+function srcsetBlocked(value: string): boolean {
+  return value.split(",").some((part) => {
+    const candidate = part.trim().split(/\s+/)[0] ?? "";
+    return (
+      candidate !== "" && shouldBlockGaRequest(candidate, { method: "GET" })
+    );
+  });
+}
+
+function attributeBlocked(
+  element: Element,
+  name: string,
+  value: string,
+): boolean {
+  const attr = name.toLowerCase();
+  if (attr === "srcset") return srcsetBlocked(value);
+  if (attr !== "src") return false;
+  return shouldBlockGaRequest(value, {
+    method: "GET",
+    script: element instanceof HTMLScriptElement,
+  });
+}
+
+function guardUrlProperty(
+  prototype: object,
+  property: "src" | "srcset",
+  script: boolean,
+): void {
+  const desc = Object.getOwnPropertyDescriptor(prototype, property);
+  if (desc?.get === undefined || desc.set === undefined) return;
+  const getValue = desc.get;
+  const setValue = desc.set;
+  Object.defineProperty(prototype, property, {
+    configurable: true,
+    enumerable: desc.enumerable,
+    get(): string {
+      return String(getValue.call(this));
+    },
+    set(value: string) {
+      const blocked =
+        property === "srcset"
+          ? srcsetBlocked(value)
+          : shouldBlockGaRequest(value, { method: "GET", script });
+      if (blocked) return;
+      setValue.call(this, value);
+    },
+  });
+}
+
+function prototypesWith(property: "src" | "srcset"): object[] {
+  const names = [
+    "HTMLImageElement",
+    "HTMLScriptElement",
+    "HTMLIFrameElement",
+    "HTMLSourceElement",
+    "HTMLAudioElement",
+    "HTMLVideoElement",
+    "HTMLEmbedElement",
+    "HTMLInputElement",
+    "HTMLTrackElement",
+    "HTMLMediaElement",
+  ];
+  const windowRecord = window as unknown as Record<
+    string,
+    { prototype?: object } | undefined
+  >;
+  const found: object[] = [];
+  for (const name of names) {
+    const proto = windowRecord[name]?.prototype;
+    if (proto === undefined || found.includes(proto)) continue;
+    const desc = Object.getOwnPropertyDescriptor(proto, property);
+    if (desc?.get !== undefined && desc.set !== undefined) found.push(proto);
+  }
+  return found;
+}
+
+function guardWebSocket(): void {
+  const Orig = window.WebSocket;
+  if (typeof Orig !== "function") return;
+  function GuardingWebSocket(
+    url: string | URL,
+    protocols?: string | string[],
+  ): WebSocket {
+    if (shouldBlockGaRequest(urlOf(url), {})) {
+      return Object.create(Orig.prototype) as WebSocket;
+    }
+    if (protocols === undefined) return new Orig(url);
+    return new Orig(url, protocols);
+  }
+  GuardingWebSocket.prototype = Orig.prototype;
+  Object.setPrototypeOf(GuardingWebSocket, Orig);
+  window.WebSocket = GuardingWebSocket as unknown as typeof WebSocket;
+}
+
+/** Install once. Later withdraws only flip `gaTransportBlocked`. */
+function installGaTransportGuards(): void {
+  if (gaTransportInstalled || typeof window === "undefined") return;
   gaTransportInstalled = true;
   const origFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    if (gaTransportBlocked && isGaCollectUrl(urlOf(input))) {
+    if (
+      shouldBlockGaRequest(urlOf(input), {
+        method: requestMethod(input, init),
+        allowGtagGet: true,
+      })
+    ) {
       return new Response(null, { status: 200 });
     }
     return origFetch(input, init);
@@ -131,29 +274,35 @@ function blockGaTransport(): void {
   if (typeof navigator.sendBeacon === "function") {
     const origBeacon = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = ((url: string | URL, data?: BodyInit | null) => {
-      if (gaTransportBlocked && isGaCollectUrl(urlOf(url))) return true;
+      if (shouldBlockGaRequest(urlOf(url), { method: "POST" })) return true;
       return origBeacon(url, data);
     }) as typeof navigator.sendBeacon;
   }
-  const src = Object.getOwnPropertyDescriptor(
-    HTMLImageElement.prototype,
-    "src",
-  );
-  if (src?.get !== undefined && src.set !== undefined) {
-    const getSrc = src.get;
-    const setSrc = src.set;
-    Object.defineProperty(HTMLImageElement.prototype, "src", {
-      configurable: true,
-      enumerable: src.enumerable,
-      get(): string {
-        return String(getSrc.call(this));
-      },
-      set(value: string) {
-        if (gaTransportBlocked && isGaCollectUrl(value)) return;
-        setSrc.call(this, value);
-      },
-    });
+  for (const proto of prototypesWith("src")) {
+    guardUrlProperty(proto, "src", proto === HTMLScriptElement.prototype);
   }
+  for (const proto of prototypesWith("srcset")) {
+    guardUrlProperty(proto, "srcset", false);
+  }
+  const origSetAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function (
+    this: Element,
+    name: string,
+    value: string,
+  ): void {
+    if (attributeBlocked(this, name, value)) return;
+    origSetAttribute.call(this, name, value);
+  };
+  const origSetAttributeNS = Element.prototype.setAttributeNS;
+  Element.prototype.setAttributeNS = function (
+    this: Element,
+    namespace: string | null,
+    name: string,
+    value: string,
+  ): void {
+    if (attributeBlocked(this, name, value)) return;
+    origSetAttributeNS.call(this, namespace, name, value);
+  };
   const origOpen = XMLHttpRequest.prototype.open;
   const origSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function (
@@ -164,19 +313,31 @@ function blockGaTransport(): void {
     username?: string | null,
     password?: string | null,
   ): void {
-    xhrUrl.set(this, urlOf(url));
+    xhrRequest.set(this, { url: urlOf(url), method });
     origOpen.call(this, method, url, async ?? true, username, password);
   };
   XMLHttpRequest.prototype.send = function (
     this: XMLHttpRequest,
     body?: Document | XMLHttpRequestBodyInit | null,
   ): void {
-    const url = xhrUrl.get(this);
-    if (gaTransportBlocked && url !== undefined && isGaCollectUrl(url)) {
+    const pending = xhrRequest.get(this);
+    if (
+      pending !== undefined &&
+      shouldBlockGaRequest(pending.url, {
+        method: pending.method,
+        allowGtagGet: true,
+      })
+    ) {
       return;
     }
     origSend.call(this, body);
   };
+  guardWebSocket();
+}
+
+function blockGaTransport(): void {
+  installGaTransportGuards();
+  gaTransportBlocked = true;
 }
 
 function gtag(...args: GtagValue[]): void;
@@ -351,3 +512,5 @@ setGaWithdrawalHooks({
     setGaCollectionDisabled(configuredMeasurementId(), false);
   },
 });
+
+installGaTransportGuards();
