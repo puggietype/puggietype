@@ -734,4 +734,47 @@ describe("sanitized single page view", () => {
     });
     assertCleanPagePayloads(layer);
   });
+
+  it("sends /about again after withdraw and re-accept on that path", async () => {
+    show("/about");
+    const page = window as Window & { dataLayer?: unknown[]; gtag?: unknown };
+    page.dataLayer = [];
+    Reflect.deleteProperty(page, "gtag");
+    vi.resetModules();
+    const ga = await import("../../src/ts/analytics/ga4");
+    const consent = await import("../../src/ts/analytics/consent");
+    ga.loadGa4(id);
+    expect(pageViews(dataLayer())).toHaveLength(1);
+    expect(pageViews(dataLayer())[0]?.[2]).toMatchObject({
+      page_path: "/about",
+    });
+
+    consent.writeConsentRecord(REJECTED);
+    expect(Reflect.get(window, ga.gaDisableKey(id))).toBe(true);
+    expect(pageViews(dataLayer())).toHaveLength(1);
+
+    consent.writeConsentRecord(ACCEPTED);
+    expect(Reflect.get(window, ga.gaDisableKey(id))).toBe(false);
+    ga.syncGa4();
+    ga.onSpaRouteChange();
+    const views = pageViews(dataLayer());
+    expect(views).toHaveLength(2);
+    expect(views[1]?.[2]).toMatchObject({ page_path: "/about" });
+    expect(Reflect.get(window, ga.gaDisableKey(id))).toBe(false);
+  });
+
+  it("sends again when /about is visited after another route", async () => {
+    show("/about");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    show("/settings");
+    ga.onSpaRouteChange();
+    show("/about");
+    ga.onSpaRouteChange();
+    const views = pageViews(dataLayer());
+    expect(views).toHaveLength(3);
+    expect(
+      views.map((entry) => (entry[2] as { page_path?: string }).page_path),
+    ).toEqual(["/about", "/settings", "/about"]);
+  });
 });

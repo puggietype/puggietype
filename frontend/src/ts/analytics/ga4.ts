@@ -211,6 +211,7 @@ setGaWithdrawalHooks({
   beforeCookieDelete: () => {
     const id = configuredMeasurementId();
     setGaCollectionDisabled(id, true);
+    lastSentPath = null;
     const gtagFn = pageWindow().gtag;
     if (gtagFn === undefined) return;
     gtagFn("consent", "update", { analytics_storage: "denied" });
