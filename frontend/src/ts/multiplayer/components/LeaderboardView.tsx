@@ -1,10 +1,12 @@
 import {
   createEffect,
+  createMemo,
   createSignal,
   For,
   JSXElement,
   onCleanup,
   Show,
+  untrack,
 } from "solid-js";
 
 import { Button } from "../../components/common/Button";
@@ -19,6 +21,7 @@ import {
   fetchLeaderboard,
   leaderboardMatchesBoard,
   LEADERBOARD_PERIODS,
+  ranksQueryFromSearch,
   type LeaderboardMode,
   type LeaderboardOk,
   type LeaderboardPeriod,
@@ -74,10 +77,25 @@ function moveRadio(
 export function LeaderboardView(props: {
   variant: "page" | "compact";
   initial?: Partial<LeaderboardQuery>;
+  /** page URL, including a leading `?`. Tests pass this; the ranks page reads location. */
+  search?: string;
   load?: typeof fetchLeaderboard;
 }): JSXElement {
-  const seed = defaultLeaderboardQuery(props.initial);
-  const [verified, setVerified] = createSignal(seed.verified);
+  const parsed = createMemo(() => {
+    const urlState = ranksQueryFromSearch(
+      props.search ?? (props.variant === "page" ? window.location.search : ""),
+    );
+    return {
+      removedMultiplayer:
+        urlState.removedMultiplayer || props.initial?.verified === true,
+      seed: defaultLeaderboardQuery({
+        ...urlState.query,
+        ...props.initial,
+        verified: false,
+      }),
+    };
+  });
+  const seed = untrack(() => parsed().seed);
   const [period, setPeriod] = createSignal<LeaderboardPeriod>(seed.period);
   const [mode, setMode] = createSignal<LeaderboardMode>(seed.mode);
   const [mode2, setMode2] = createSignal(seed.mode2);
@@ -95,7 +113,7 @@ export function LeaderboardView(props: {
       language: language(),
       punctuation: punctuation(),
       numbers: numbers(),
-      verified: verified(),
+      verified: false,
     });
 
   const lengths = (): readonly number[] =>
@@ -169,46 +187,18 @@ export function LeaderboardView(props: {
           id="lb-heading"
           class={cn(compact() ? "text-lg text-text" : "text-3xl text-text")}
         >
-          leaderboard
+          solo ranks
         </h2>
-        <div role="radiogroup" aria-label="Leaderboard kind" class="flex gap-1">
-          <For
-            each={
-              [
-                { verified: true, label: "Multiplayer", id: "race" },
-                { verified: false, label: "Solo", id: "solo" },
-              ] as const
-            }
-          >
-            {(item, index) => (
-              <button
-                type="button"
-                role="radio"
-                id={`lb-board-${item.id}`}
-                data-testid={`lb-board-${item.id}`}
-                aria-checked={verified() === item.verified}
-                tabIndex={verified() === item.verified ? 0 : -1}
-                class={cn(
-                  "rounded px-3 py-1.5 text-sm",
-                  verified() === item.verified
-                    ? "bg-main text-bg"
-                    : "bg-sub-alt text-sub hover:text-text",
-                )}
-                onClick={() => setVerified(item.verified)}
-                onKeyDown={(e) => {
-                  const next = moveRadio(index(), e.key, 2);
-                  if (next === undefined) return;
-                  e.preventDefault();
-                  const boardNext = next === 0;
-                  setVerified(boardNext);
-                  focusId(boardNext ? "lb-board-race" : "lb-board-solo");
-                }}
-              >
-                {item.label}
-              </button>
-            )}
-          </For>
-        </div>
+        <p class="text-sm text-sub" data-testid="lb-solo-note">
+          Solo scores are self-reported and checked for plausibility, not
+          verified.
+        </p>
+        <Show when={parsed().removedMultiplayer}>
+          <p class="text-sm text-sub" role="status" data-testid="lb-mp-removed">
+            Multiplayer ranks are not shown. Casual races are not submitted.
+            These are solo scores.
+          </p>
+        </Show>
         <div
           role="radiogroup"
           aria-label="Leaderboard period"
@@ -410,13 +400,12 @@ export function LeaderboardView(props: {
                     class="overflow-x-auto rounded-lg bg-sub-alt"
                     tabIndex={0}
                     role="region"
-                    aria-label={`${verified() ? "Multiplayer" : "Solo"} ${PERIOD_LABEL[board().period]} leaderboard`}
+                    aria-label={`Solo ${PERIOD_LABEL[board().period]} leaderboard`}
                     data-testid="lb-scroll"
                   >
                     <table class="w-full font-(--font)" data-testid="lb-table">
                       <caption class="sr-only">
-                        {board().verified === false ? "Solo" : "Multiplayer"}{" "}
-                        {PERIOD_LABEL[board().period]} {board().mode}{" "}
+                        Solo {PERIOD_LABEL[board().period]} {board().mode}{" "}
                         {board().mode2} leaderboard
                       </caption>
                       <thead>
@@ -522,12 +511,6 @@ export function LeaderboardView(props: {
                 </Show>
               </div>
             )}
-          </Show>
-          <Show when={!verified()}>
-            <p class="text-xs text-sub" data-testid="lb-solo-note">
-              Solo scores are self-reported and checked for plausibility, not
-              verified.
-            </p>
           </Show>
         </div>
       </section>

@@ -20,7 +20,7 @@ const commands: Command[] = [
   },
   {
     id: "viewLeaderboards",
-    display: "View Leaderboards",
+    display: "View ranks",
     alias: "navigate go to",
     icon: "fa-crown",
     available: (): boolean => !isStandalone() || leaderboardsOn(),

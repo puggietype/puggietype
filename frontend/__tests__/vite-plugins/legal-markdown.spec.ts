@@ -38,7 +38,7 @@ describe("legal-markdown", () => {
   it("includes the leaderboards privacy section verbatim", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     expect(md).toContain(
-      "The 'Show my score on the leaderboard' setting defaults on, but a score is posted only when you press a Submit score button (Submit score to leaderboard, or Submit score & next test, & repeat or & retry saving). We then save your randomly assigned nickname and your speed (wpm), accuracy and raw speed. Solo scores are lightly checked by our server for impossible speeds, but they aren't verified like multiplayer scores, so they appear on a separate 'Solo' board. We save these scores in our database, which is hosted for us by Neon on Amazon Web Services servers in Oregon, USA.",
+      "After a completed solo test, a score is posted only when you press Submit score. Finishing a test, starting the next one, or leaving the results page doesn't post it. You can turn 'Show my score on the leaderboard' off before you press Submit score. We then save your randomly assigned nickname, your speed (wpm), accuracy and raw speed, and that test's settings (mode, length, language, punctuation and numbers). Solo scores are lightly checked by our server for impossible speeds, but they aren't otherwise verified. We save these scores in our database, which is hosted for us by Neon on Amazon Web Services servers in Oregon, USA.",
     );
     expect(md).toContain(
       "We may remove scores that look cheated or that break our rules.",
@@ -47,6 +47,24 @@ describe("legal-markdown", () => {
     expect(md).toContain(
       "email us your nickname, board, and the approximate date and score, and we'll find and remove it.",
     );
+    expect(md).toContain(
+      "Multiplayer race results are no longer submitted to Ranks from the site.",
+    );
+    expect(md).toContain(
+      "Multiplayer scores submitted earlier may stay in our database, and remain available from our game server",
+    );
+    expect(md).toContain(
+      "Leaderboard score (random nickname, wpm, accuracy, raw speed, test settings), including earlier multiplayer scores",
+    );
+    expect(md).not.toContain("server rejects");
+    expect(md).not.toContain("no longer accepted");
+    expect(md).not.toContain("separate 'Solo' board");
+    expect(md).toContain("Last updated: November 4, 2026.");
+    const faq = readFileSync(path.join(srcDir, "faq.html"), "utf8");
+    const faqAnswer =
+      "Your settings stay in your browser. Ranks shows solo test scores that players chose to submit: after a completed solo test, a score is posted only when you press Submit score. A posted score shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends; all-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
+    expect(faq.split(faqAnswer).length - 1).toBe(2);
+    expect(faq).toContain('datetime="2026-11-04"');
     expect(md).toContain(
       "Neon, LLC (a Databricks company), USA, database hosting for leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.",
     );

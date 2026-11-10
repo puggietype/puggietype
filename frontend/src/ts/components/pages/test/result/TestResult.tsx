@@ -14,17 +14,20 @@ import { getConfig } from "../../../../config/store";
 import { isAuthAvailable } from "../../../../firebase";
 import { useRefWithUtils } from "../../../../hooks/useRefWithUtils";
 import { isAgeConfirmed } from "../../../../multiplayer/age-gate";
-import { LeaderboardView } from "../../../../multiplayer/components/LeaderboardView";
-import { SoloLeaderboardSubmit } from "../../../../multiplayer/components/SoloLeaderboardSubmit";
+import {
+  SoloLeaderboardSubmit,
+  type SoloSubmitAvailability,
+} from "../../../../multiplayer/components/SoloLeaderboardSubmit";
 import { MULTIPLAYER_ENABLED } from "../../../../multiplayer/flags";
 import {
   leaderboardSubmitBlocked,
-  requestSoloSubmit,
   scoreFromResult,
-  soloAdvanceLabel,
-  soloScoreWillPost,
 } from "../../../../multiplayer/leaderboards";
-import { leaderboardsOn } from "../../../../multiplayer/store";
+import {
+  connectionStatus,
+  leaderboardsOn,
+  serverFeatures,
+} from "../../../../multiplayer/store";
 import { getIsScreenshotting, isAuthenticated } from "../../../../states/core";
 import { getGlarsesMode } from "../../../../states/glarses-mode";
 import { resultState } from "../../../../states/result";
@@ -143,33 +146,36 @@ function InGameLeaderboard(props: {
   result: Parameters<typeof scoreFromResult>[0];
 }): JSXElement {
   const score = createMemo(() => scoreFromResult(props.result));
-  const blocked = (): boolean =>
+  const kids = (): boolean =>
     leaderboardSubmitBlocked(
       window.location.pathname,
       document.referrer,
       sessionStorage,
     );
+  const availability = (): SoloSubmitAvailability | "hidden" => {
+    if (leaderboardsOn()) return "on";
+    // Same 13+ gate as before: the client only learns that ranks are on
+    // after the existing confirmation. No separate solo age prompt.
+    if (!MULTIPLAYER_ENABLED || !isAgeConfirmed()) return "hidden";
+    if (serverFeatures() === undefined) return "checking";
+    if (
+      connectionStatus() === "connecting" ||
+      connectionStatus() === "reconnecting"
+    ) {
+      return "checking";
+    }
+    return "off";
+  };
+  const state = availability();
   return (
-    <Show
-      when={
-        leaderboardsOn() && !isTestInvalid() && !blocked() ? score() : undefined
-      }
-    >
+    <Show when={state === "hidden" ? undefined : state}>
       {(ready) => (
-        <div class="mb-8 grid gap-4" data-testid="lb-ingame">
-          <LeaderboardView
-            variant="compact"
-            initial={{
-              mode: ready().mode,
-              mode2: ready().mode2,
-              language: ready().language,
-              punctuation: ready().punctuation,
-              numbers: ready().numbers,
-              verified: false,
-            }}
-          />
-          <SoloLeaderboardSubmit score={ready()} />
-        </div>
+        <SoloLeaderboardSubmit
+          score={score()}
+          invalid={isTestInvalid()}
+          kids={kids()}
+          availability={ready()}
+        />
       )}
     </Show>
   );
@@ -199,10 +205,9 @@ function RetrySavingButton(): JSXElement {
           class="mb-4 justify-self-center bg-error px-8 py-4 text-bg"
           id="retrySavingResultButton"
           onClick={() => {
-            requestSoloSubmit("retry");
             void retrySavingResult();
           }}
-          text={soloAdvanceLabel("retry", soloScoreWillPost())}
+          text="Retry saving result"
           fa={{ icon: "fa-redo" }}
         />
       </div>
