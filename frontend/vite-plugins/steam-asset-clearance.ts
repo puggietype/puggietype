@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { Plugin } from "vite";
 import path from "node:path";
 import {
@@ -20,13 +21,23 @@ import { filterLyricQuotes, QuoteLike } from "../src/ts/constants/lyric-quotes";
  * - song-lyric quotes (constants/lyric-quotes.ts)
  * - AdSense account metadata (ads.txt and google-adsense-account meta).
  *   The website build does not run this.
- * Font Awesome subset woff2 files stay (the UI uses them). Their upstream
- * LICENSE.txt is copied beside the other webfont licenses.
+ * Font Awesome subset woff2 files stay (the UI uses them). The steam web
+ * root gets the upstream LICENSE.txt summary plus the OFL and MIT notices
+ * in vite-plugins/notices. The website build does not copy those files.
  */
 
-/** Stable path inside the steam web root. Byte copy of the dependency license. */
+/** Stable paths inside the steam web root. */
 export const FONT_AWESOME_LICENSE_REL =
   "webfonts/licenses/FontAwesome-Free-LICENSE.txt";
+export const FONT_AWESOME_OFL_REL =
+  "webfonts/licenses/FontAwesome-Free-OFL.txt";
+export const FONT_AWESOME_MIT_REL =
+  "webfonts/licenses/FontAwesome-Free-MIT.txt";
+
+const NOTICES_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "notices",
+);
 
 const FONT_AWESOME_FONT = /^fa-(?:solid|regular|brands)-.+\.woff2$/;
 const AD_ACCOUNT_META =
@@ -47,7 +58,7 @@ export function steamAssetClearance(options: {
       if (options.platform !== "steam") return;
       const removed = stripSteamAssets(outDir);
       console.log(
-        `steam asset clearance: removed ${removed.sounds} sound paths, ${removed.quotes} lyric quotes, ${removed.adMetaTags} ad account meta tags${removed.adsTxt ? ", ads.txt" : ""}${removed.fontAwesomeLicense ? "; bundled Font Awesome Free license" : ""}`,
+        `steam asset clearance: removed ${removed.sounds} sound paths, ${removed.quotes} lyric quotes, ${removed.adMetaTags} ad account meta tags${removed.adsTxt ? ", ads.txt" : ""}${removed.fontAwesomeLicense ? "; bundled Font Awesome Free license and notices" : ""}`,
       );
     },
   };
@@ -131,9 +142,25 @@ export function stripSteamAssets(outDir: string): {
     if (!existsSync(src)) {
       throw new Error(`Font Awesome Free license missing: ${src}`);
     }
-    const dest = path.join(outDir, FONT_AWESOME_LICENSE_REL);
-    mkdirSync(path.dirname(dest), { recursive: true });
-    copyFileSync(src, dest);
+    const copies: ReadonlyArray<readonly [string, string]> = [
+      [src, FONT_AWESOME_LICENSE_REL],
+      [
+        path.join(NOTICES_DIR, "FontAwesome-Free-OFL.txt"),
+        FONT_AWESOME_OFL_REL,
+      ],
+      [
+        path.join(NOTICES_DIR, "FontAwesome-Free-MIT.txt"),
+        FONT_AWESOME_MIT_REL,
+      ],
+    ];
+    for (const [from, rel] of copies) {
+      if (!existsSync(from)) {
+        throw new Error(`Font Awesome notice missing: ${from}`);
+      }
+      const dest = path.join(outDir, rel);
+      mkdirSync(path.dirname(dest), { recursive: true });
+      copyFileSync(from, dest);
+    }
     fontAwesomeLicense = true;
   }
 
