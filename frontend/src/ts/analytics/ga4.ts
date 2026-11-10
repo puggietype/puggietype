@@ -27,7 +27,11 @@ function pageWindow(): AnalyticsWindow {
 }
 
 let loadedId: string | null = null;
-/** Last pathname we actually sent. A repeat call for that path is not another hit. */
+/**
+ * Last raw pathname we sent a page_view for. A repeat of that path is not
+ * another hit. The hit itself uses the redacted path, so two rooms still
+ * count as two views.
+ */
 let lastSentPath: string | null = null;
 
 function isSteam(): boolean {
@@ -368,11 +372,23 @@ const ADS_DENIED = {
   ad_personalization: "denied",
 } as const;
 
+/**
+ * The router captures the rest of the path for these two segments
+ * (`/r/:code`, `/profile/:uidOrName`). Nothing else in the route table
+ * carries a user id, name, or code. Query and hash never reach this.
+ */
+function redactAnalyticsPath(pathname: string): string {
+  return pathname
+    .replace(/^\/r\/.+/, "/r/:code")
+    .replace(/^\/profile\/.+/, "/profile/:id");
+}
+
 /** Path only. Query and hash can carry tokens (email, reset, Discord access_token). */
 function cleanPage(): { page_path: string; page_location: string } {
+  const pagePath = redactAnalyticsPath(location.pathname);
   return {
-    page_path: location.pathname,
-    page_location: `${location.origin}${location.pathname}`,
+    page_path: pagePath,
+    page_location: `${location.origin}${pagePath}`,
   };
 }
 
@@ -397,12 +413,16 @@ function lockHistoryMethods(): void {
   }
 }
 
-/** Referrer with the query and hash removed. Empty when the browser has none. */
+/**
+ * Same-origin referrer: path only, with room codes and profile names
+ * replaced. Another site: origin only. Empty when the browser has none.
+ */
 function cleanReferrer(): string {
   if (document.referrer === "") return "";
   try {
     const url = new URL(document.referrer);
-    return `${url.origin}${url.pathname}`;
+    if (url.origin !== location.origin) return url.origin;
+    return `${url.origin}${redactAnalyticsPath(url.pathname)}`;
   } catch {
     return "";
   }
@@ -429,11 +449,12 @@ function publishCleanPage(gtagFn: Gtag): void {
 
 function sendPageView(id: string): void {
   if (!isGa4MeasurementId(id) || isGaCollectionDisabled(id)) return;
-  const fields = cleanPage();
-  if (fields.page_path === lastSentPath) return;
+  const rawPath = location.pathname;
+  if (rawPath === lastSentPath) return;
   const gtagFn = pageWindow().gtag;
   if (gtagFn === undefined) return;
-  lastSentPath = fields.page_path;
+  const fields = cleanPage();
+  lastSentPath = rawPath;
   publishCleanPage(gtagFn);
   gtagFn("event", "page_view", {
     ...fields,

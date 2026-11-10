@@ -1005,7 +1005,7 @@ describe("sanitized single page view", () => {
     );
   });
 
-  it("strips the referrer query before the tag starts", async () => {
+  it("sends another site's referrer as its origin only", async () => {
     const previous = Object.getOwnPropertyDescriptor(document, "referrer");
     Object.defineProperty(document, "referrer", {
       configurable: true,
@@ -1021,8 +1021,64 @@ describe("sanitized single page view", () => {
         return commandPayload(entry)?.["page_referrer"] !== undefined;
       });
       expect(commandPayload(set as IArguments)?.["page_referrer"]).toBe(
-        "https://news.example/story",
+        "https://news.example",
       );
+    } finally {
+      if (previous === undefined) {
+        Reflect.deleteProperty(document, "referrer");
+      } else {
+        Object.defineProperty(document, "referrer", previous);
+      }
+    }
+  });
+
+  it("normalises room codes, profile ids, and referrers", async () => {
+    let referrer = `${location.origin}/r/ABCD?token=sekret#access_token=discord-token`;
+    const previous = Object.getOwnPropertyDescriptor(document, "referrer");
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      get: () => referrer,
+    });
+    try {
+      show("/profile/x?email=ada@example.com#access_token=discord-token");
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      const layer = dataLayer();
+      assertCleanPagePayloads(layer);
+      const profile = {
+        page_path: "/profile/:id",
+        page_location: `${location.origin}/profile/:id`,
+        page_referrer: `${location.origin}/r/:code`,
+      };
+      expect(pageViews(layer)[0]?.[2]).toMatchObject(profile);
+      const config = layer.find((entry) => isCommand(entry, "config"));
+      expect(config?.[2]).toMatchObject(profile);
+      const firstSet = (layer as IArguments[]).find((entry) => {
+        return commandPayload(entry)?.["page_path"] === "/profile/:id";
+      });
+      expect(commandPayload(firstSet as IArguments)).toMatchObject(profile);
+
+      referrer =
+        "https://news.example/story?token=sekret#access_token=discord-token";
+      show("/r/ABCD?code=invite-9#access_token=discord-token");
+      ga.onSpaRouteChange();
+      const room = {
+        page_path: "/r/:code",
+        page_location: `${location.origin}/r/:code`,
+        page_referrer: "https://news.example",
+      };
+      const views = pageViews(layer);
+      expect(views).toHaveLength(2);
+      expect(views[1]?.[2]).toMatchObject(room);
+      const sets = (layer as IArguments[]).filter((entry) => {
+        return commandPayload(entry)?.["page_path"] === "/r/:code";
+      });
+      expect(sets.length).toBeGreaterThan(0);
+      expect(commandPayload(sets.at(-1) as IArguments)).toMatchObject(room);
+      assertCleanPagePayloads(layer);
+      const text = JSON.stringify(layer);
+      expect(text).not.toContain("ABCD");
+      expect(text).not.toContain("/profile/x");
     } finally {
       if (previous === undefined) {
         Reflect.deleteProperty(document, "referrer");
