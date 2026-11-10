@@ -34,6 +34,7 @@ function board(names: string[]): Extract<LeaderboardResult, { ok: true }> {
     mode: "time" as const,
     mode2: 30,
     accuracyFloor: 75,
+    verified: false,
     entries: names.map((name, i) => ({
       rank: i + 1,
       name,
@@ -94,9 +95,7 @@ describe("LeaderboardView", () => {
     const scroll = getByTestId("lb-scroll");
     expect(scroll).toHaveAttribute("role", "region");
     expect(scroll).toHaveAttribute("tabindex", "0");
-    expect(scroll.getAttribute("aria-label")).toMatch(
-      /^Multiplayer .+ leaderboard$/,
-    );
+    expect(scroll.getAttribute("aria-label")).toMatch(/^Solo .+ leaderboard$/);
     // narrow screens: tighter cells, and long names truncate instead of widening the table
     expect(getAllByTestId("lb-name")[0]?.closest("td")).toHaveClass("max-w-0");
   });
@@ -162,55 +161,91 @@ describe("LeaderboardView", () => {
         period: "monthly",
         mode: "words",
         mode2: 50,
-        verified: true,
+        verified: false,
       });
     });
   });
 
-  it("shows solo scores on their own tab and does not merge them", async () => {
+  it("loads the solo board and does not offer a multiplayer tab", async () => {
     setServerFeatures(featuresOn);
-    const load = vi.fn<Load>(async (_base, query) => {
-      if (!query.verified) {
-        return { ...board(["SoloPug"]), verified: false };
-      }
-      return { ...board(["RacePug"]), verified: true };
-    });
-    const { findByText, getByTestId, queryByText, queryByTestId } = render(
-      () => <LeaderboardView variant="page" load={load} />,
-    );
-    expect(await findByText("RacePug")).toBeTruthy();
-    expect(queryByText("SoloPug")).toBeNull();
-    expect(queryByTestId("lb-solo-note")).toBeNull();
-    expect(getByTestId("lb-board-solo")).toHaveTextContent(/^Solo$/);
-    expect(getByTestId("lb-board-race")).toHaveTextContent(/^Multiplayer$/);
-    fireEvent.click(getByTestId("lb-board-solo"));
+    const load = vi.fn<Load>(async () => board(["SoloPug"]));
+    const { findByText, getByRole, getByTestId, queryByTestId } = render(() => (
+      <LeaderboardView variant="page" search="" load={load} />
+    ));
     expect(await findByText("SoloPug")).toBeTruthy();
-    expect(queryByText("RacePug")).toBeNull();
+    expect(getByRole("heading", { name: "solo ranks" })).toBeTruthy();
+    expect(queryByTestId("lb-board-race")).toBeNull();
+    expect(queryByTestId("lb-board-solo")).toBeNull();
+    expect(queryByTestId("lb-mp-removed")).toBeNull();
     expect(getByTestId("lb-solo-note")).toHaveTextContent(
       "Solo scores are self-reported and checked for plausibility, not verified.",
     );
-    const urls = load.mock.calls.map((call) => call[1].verified);
-    expect(urls).toEqual([true, false]);
+    expect(load.mock.calls.map((call) => call[1].verified)).toEqual([false]);
   });
 
-  it("shows the Solo note as soon as the Solo tab is open, even before the board loads", async () => {
+  it("shows the solo note while the board is still loading", () => {
     setServerFeatures(featuresOn);
-    const load = vi.fn<Load>(async (_base, query) => {
-      if (query.verified) return { ...board(["RacePug"]), verified: true };
-      return new Promise(() => undefined);
-    });
-    const { findByText, getByTestId, queryByTestId } = render(() => (
-      <LeaderboardView variant="page" load={load} />
+    const load = vi.fn<Load>(async () => new Promise(() => undefined));
+    const { getByTestId } = render(() => (
+      <LeaderboardView variant="page" search="" load={load} />
     ));
-    expect(await findByText("RacePug")).toBeTruthy();
-    expect(queryByTestId("lb-solo-note")).toBeNull();
-    fireEvent.click(getByTestId("lb-board-solo"));
     const note = getByTestId("lb-solo-note");
     expect(note).toBeVisible();
     expect(note.tagName).toBe("P");
     expect(note).toHaveTextContent(
       "Solo scores are self-reported and checked for plausibility, not verified.",
     );
+  });
+
+  it("keeps an old multiplayer link on the solo board", async () => {
+    setServerFeatures(featuresOn);
+    const load = vi.fn<Load>(async (_base, query) => {
+      if (query.verified) return { ...board(["RacePug"]), verified: true };
+      return {
+        ...board(["SoloPug"]),
+        verified: false,
+        period: query.period,
+        mode: query.mode,
+        mode2: query.mode2,
+      };
+    });
+    const { findByText, getByTestId, queryByText } = render(() => (
+      <LeaderboardView
+        variant="page"
+        search="?verified=true&board=race&period=weekly&mode=words&mode2=25"
+        load={load}
+      />
+    ));
+    expect(await findByText("SoloPug")).toBeTruthy();
+    expect(queryByText("RacePug")).toBeNull();
+    expect(getByTestId("lb-mp-removed")).toHaveTextContent(
+      "Casual races are not submitted",
+    );
+    expect(getByTestId("lb-tab-weekly")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    const seen = load.mock.calls.map((call) => call[1]);
+    expect(seen.every((query) => !query.verified)).toBe(true);
+    expect(seen.at(-1)).toMatchObject({
+      period: "weekly",
+      mode: "words",
+      mode2: 25,
+      verified: false,
+    });
+  });
+
+  it("does not show a multiplayer payload as solo ranks", async () => {
+    setServerFeatures(featuresOn);
+    const load = vi.fn<Load>(async () => ({
+      ...board(["RacePug"]),
+      verified: true,
+    }));
+    const { findByTestId, queryByText } = render(() => (
+      <LeaderboardView variant="page" search="" load={load} />
+    ));
+    expect(await findByTestId("lb-error")).toBeTruthy();
+    expect(queryByText("RacePug")).toBeNull();
   });
 
   it("shows the all-time header since the earliest record", async () => {

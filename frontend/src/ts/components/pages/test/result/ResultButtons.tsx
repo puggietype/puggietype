@@ -2,11 +2,6 @@ import { createKeyHold } from "@tanstack/solid-hotkeys";
 import { JSXElement, Show } from "solid-js";
 
 import { getConfig } from "../../../../config/store";
-import {
-  requestSoloSubmit,
-  soloAdvanceLabel,
-  soloScoreWillPost,
-} from "../../../../multiplayer/leaderboards";
 import { getIsScreenshotting } from "../../../../states/core";
 import { showModal } from "../../../../states/modals";
 import { showNoticeNotification } from "../../../../states/notifications";
@@ -41,19 +36,17 @@ export function ResultButtons(props: { glarses: boolean }): JSXElement {
         <ResultButton
           data-ui-element="restartTestButton"
           class="max-sm:col-span-2"
-          text={soloAdvanceLabel("next", soloScoreWillPost())}
+          text="Next test"
           fa={{ icon: "fa-chevron-right" }}
           onClick={() => {
-            requestSoloSubmit("next");
             void restart();
           }}
         />
         <ResultButton
           data-ui-element="restartTestButtonWithSameWordset"
-          text={soloAdvanceLabel("repeat", soloScoreWillPost())}
+          text="Repeat test"
           fa={{ icon: "fa-sync-alt" }}
           onClick={() => {
-            requestSoloSubmit("retry");
             repeatTest();
           }}
         />
@@ -115,9 +108,6 @@ function ResultButton(props: {
   onClick: (event: MouseEvent) => void;
   "data-ui-element"?: string;
 }): JSXElement {
-  // Next / Repeat post the score once the toggle has been up for 2s.
-  // That label has to be on the button, not only a tooltip.
-  const postsScore = (): boolean => props.text.startsWith("Submit score");
   return (
     <button
       type="button"
@@ -127,17 +117,14 @@ function ResultButton(props: {
       )}
       id={props.id}
       data-ui-element={props["data-ui-element"]}
-      {...(postsScore()
-        ? { "aria-label": props.text }
-        : buildBalloonHtmlProperties({
-            text: props.text,
-            position: "down",
-            break: props.text.includes("\n"),
-          }))}
+      {...buildBalloonHtmlProperties({
+        text: props.text,
+        position: "down",
+        break: props.text.includes("\n"),
+      })}
       onClick={(event) => props.onClick(event)}
     >
       <Fa {...props.fa} fixedWidth />
-      <Show when={postsScore()}>{props.text}</Show>
     </button>
   );
 }

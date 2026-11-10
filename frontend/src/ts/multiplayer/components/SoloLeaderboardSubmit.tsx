@@ -1,84 +1,251 @@
-import { createSignal, JSXElement, onCleanup, onMount } from "solid-js";
+import { createSignal, JSXElement, onCleanup, onMount, Show } from "solid-js";
 
+import { Button } from "../../components/common/Button";
+import { cn } from "../../utils/cn";
 import { readStoredSession } from "../client";
-import { readShowOnLeaderboard } from "../leaderboard-pref";
+import {
+  readShowOnLeaderboard,
+  setShowOnLeaderboard,
+  showOnLeaderboard,
+} from "../leaderboard-pref";
 import {
   currentLeaderboardBase,
   leaderboardSubmitBlocked,
   postLeaderboardScore,
-  registerSoloSubmit,
   SCORE_CONSENT_MS,
   scoreConsentElapsed,
-  setSoloScoreWillPost,
+  soloRanksHref,
   type ScoreSubmission,
 } from "../leaderboards";
-import { LeaderboardConsent } from "./LeaderboardConsent";
+import { settingsSummary, PRIMARY_BUTTON } from "./ui";
 
 type SoloScore = Omit<ScoreSubmission, "showOnLeaderboard" | "sessionToken">;
 
-function submitBlocked(): boolean {
-  return leaderboardSubmitBlocked(
-    window.location.pathname,
-    document.referrer,
-    sessionStorage,
-  );
+export type SoloSubmitAvailability = "checking" | "off" | "on";
+
+const SUBMIT_RETRY = "Couldn't submit your score. Try again.";
+
+function freezeScore(score: SoloScore): SoloScore {
+  return {
+    mode: score.mode,
+    mode2: score.mode2,
+    language: score.language,
+    punctuation: score.punctuation,
+    numbers: score.numbers,
+    wpm: score.wpm,
+    acc: score.acc,
+    raw: score.raw,
+    chars: score.chars,
+    durationMs: score.durationMs,
+  };
 }
 
 /**
- * Solo results. A score is posted only from Next, Retry, or Submit score,
- * and only after this toggle has been visible for 2 seconds. Leaving the
- * page drops the score. Submit stays disabled for the first 2 seconds, and
- * an early Next or Retry does not use up the later submit.
+ * Submit the finished solo test. The bucket is copied once and does not follow
+ * ranks filters. A remembered checkbox never posts by itself.
  */
 export function SoloLeaderboardSubmit(props: {
-  score: SoloScore;
+  score?: SoloScore;
+  invalid?: boolean;
+  kids?: boolean;
+  availability?: SoloSubmitAvailability;
   /** tests inject a clock; production uses Date.now */
   now?: () => number;
 }): JSXElement {
-  const [sent, setSent] = createSignal(false);
+  const [unlocked, setUnlocked] = createSignal(false);
+  const [phase, setPhase] = createSignal<
+    "idle" | "sending" | "done" | "rejected"
+  >("idle");
   const [message, setMessage] = createSignal<string | undefined>();
   const clock = (): number => props.now?.() ?? Date.now();
-  // Infinity until mount, so a click before the toggle is shown cannot send
   let shownAt = Number.POSITIVE_INFINITY;
-  let finished = false;
+  let frozen: SoloScore | undefined;
+  let inflight = false;
 
-  const send = (show: boolean): void => {
-    if (finished || submitBlocked()) {
-      finished = true;
-      return;
+  const snapshot = (): SoloScore | undefined => {
+    if (frozen !== undefined) return frozen;
+    if (props.score === undefined) return undefined;
+    frozen = freezeScore(props.score);
+    return frozen;
+  };
+
+  const kidsBlocked = (): boolean => {
+    if (props.kids === true) return true;
+    return leaderboardSubmitBlocked(
+      window.location.pathname,
+      document.referrer,
+      sessionStorage,
+    );
+  };
+
+  const availability = (): SoloSubmitAvailability => props.availability ?? "on";
+
+  const blockReason = (): string | undefined => {
+    if (availability() === "checking") return "Checking whether ranks are on…";
+    if (availability() === "off") {
+      return "Ranks aren't available on this server.";
     }
+    if (kidsBlocked()) return "Scores from the kids guides aren't submitted.";
+    if (props.invalid === true) return "This result can't be submitted.";
+    if (snapshot() === undefined) {
+      return "This test can't be submitted to ranks.";
+    }
+    if (phase() === "done") return undefined;
+    if (!unlocked()) return "You can submit this score in a moment.";
+    return undefined;
+  };
+
+  const canSend = (): boolean =>
+    blockReason() === undefined &&
+    phase() === "idle" &&
+    snapshot() !== undefined;
+
+  const send = (): void => {
+    const score = snapshot();
+    if (score === undefined || !canSend() || inflight) return;
     if (!scoreConsentElapsed(shownAt, clock())) return;
-    finished = true;
-    setSent(true);
-    setSoloScoreWillPost(false);
+    inflight = true;
+    setPhase("sending");
+    setMessage(undefined);
     const token = readStoredSession()?.sessionToken;
     void postLeaderboardScore(currentLeaderboardBase(), {
-      ...props.score,
-      showOnLeaderboard: show,
+      ...score,
+      showOnLeaderboard: readShowOnLeaderboard(),
       ...(token !== undefined ? { sessionToken: token } : {}),
     }).then((result) => {
-      setMessage(result.ok ? "Score submitted." : result.error);
+      inflight = false;
+      if (result.ok && result.recorded !== false) {
+        setPhase("done");
+        setMessage("Score submitted.");
+        return;
+      }
+      if (result.ok) {
+        setPhase("idle");
+        setMessage("This score was not added to the board.");
+        return;
+      }
+      if (result.retry) {
+        setPhase("idle");
+        setMessage(SUBMIT_RETRY);
+        return;
+      }
+      // 400 will fail again with the same body. 429 means stop, not try again.
+      setPhase("rejected");
+      setMessage(result.error);
     });
   };
 
-  const onExplicit = (): void => {
-    send(readShowOnLeaderboard());
+  const statusText = (): string => {
+    if (phase() === "sending") return "Submitting…";
+    return message() ?? "";
+  };
+
+  const keepFocus = (event: MouseEvent): void => {
+    if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus();
   };
 
   onMount(() => {
     shownAt = clock();
-    const unregister = registerSoloSubmit(onExplicit);
-    const arm = setTimeout(() => {
-      if (!finished) setSoloScoreWillPost(true);
-    }, SCORE_CONSENT_MS);
-    onCleanup(() => {
-      clearTimeout(arm);
-      setSoloScoreWillPost(false);
-      unregister();
-    });
+    const arm = setTimeout(() => setUnlocked(true), SCORE_CONSENT_MS);
+    onCleanup(() => clearTimeout(arm));
   });
 
+  const reason = (): string | undefined => blockReason();
+  const choiceDisabled = (): boolean =>
+    kidsBlocked() ||
+    props.invalid === true ||
+    availability() !== "on" ||
+    snapshot() === undefined ||
+    phase() !== "idle";
+  const browseHref = (): string => {
+    const score = snapshot();
+    return score === undefined ? "/leaderboards" : soloRanksHref(score);
+  };
+
   return (
-    <LeaderboardConsent disabled={sent()} message={message()} onSubmit={send} />
+    <section
+      class="mb-8 grid gap-3 rounded-lg bg-sub-alt p-4"
+      data-testid="lb-submit-card"
+      aria-label="Submit your score"
+    >
+      <h2 class="text-lg text-text">Submit score</h2>
+      <Show when={snapshot()}>
+        {(score) => (
+          <p class="text-sm text-sub" data-testid="lb-settings">
+            This test · {settingsSummary(score())}
+          </p>
+        )}
+      </Show>
+      <p class="text-sm text-sub" data-testid="lb-solo-note">
+        Solo scores are self-reported and checked for plausibility, not
+        verified.
+      </p>
+      <div class="flex flex-wrap items-center gap-3">
+        <label
+          class={cn("flex items-center gap-3 text-text", {
+            "cursor-pointer": !choiceDisabled(),
+            "cursor-not-allowed opacity-60": choiceDisabled(),
+          })}
+        >
+          <input
+            type="checkbox"
+            name="showOnLeaderboard"
+            class="size-4 shrink-0 accent-main"
+            data-testid="lb-show-score"
+            checked={showOnLeaderboard()}
+            disabled={choiceDisabled()}
+            onChange={(e) => setShowOnLeaderboard(e.currentTarget.checked)}
+          />
+          Show my score on the leaderboard
+        </label>
+        <Button
+          type="button"
+          text={phase() === "sending" ? "Submitting…" : "Submit score"}
+          fa={{ icon: "fa-crown" }}
+          class={cn(PRIMARY_BUTTON, "px-5 py-3", {
+            // !opacity-100 beats a leftover opacity-[0.33] utility, which is
+            // later in the stylesheet and otherwise keeps the button dim.
+            "cursor-not-allowed opacity-[0.33]": !canSend(),
+            "!opacity-100": canSend(),
+          })}
+          ariaLabel={
+            reason() !== undefined ? `Submit score. ${reason()}` : undefined
+          }
+          dataset={{
+            "data-testid": "lb-submit",
+            "aria-disabled": canSend() ? "false" : "true",
+          }}
+          onClick={(event) => {
+            if (!canSend()) return;
+            send();
+            keepFocus(event);
+          }}
+        />
+      </div>
+      <Show when={reason()}>
+        {(text) => (
+          <p class="text-sm text-sub" data-testid="lb-submit-reason">
+            {text()}
+          </p>
+        )}
+      </Show>
+      <p
+        class={cn("text-sm text-text", { "sr-only": statusText() === "" })}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="lb-submit-status"
+      >
+        {statusText()}
+      </p>
+      <a
+        href={browseHref()}
+        router-link
+        class="w-max text-sm text-sub underline"
+        data-testid="lb-browse"
+      >
+        Browse solo ranks
+      </a>
+    </section>
   );
 }

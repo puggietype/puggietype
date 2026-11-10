@@ -16,10 +16,11 @@ import {
   leaderboardConsentMessage,
   leaderboardMatchesBoard,
   postLeaderboardScore,
+  ranksQueryFromSearch,
   showRaceLeaderboard,
+  soloRanksHref,
   scoreConsentElapsed,
   scoreFromResult,
-  soloAdvanceLabel,
 } from "../../src/ts/multiplayer/leaderboards";
 import {
   loadShowOnLeaderboard,
@@ -451,6 +452,60 @@ describe("scores", () => {
     });
     expect(body).not.toHaveProperty("playerId");
   });
+
+  it("keeps recorded:false distinct from an accepted score", async () => {
+    const fetchImpl = vi.fn(async () => {
+      return new Response(JSON.stringify({ ok: true, recorded: false }), {
+        status: 200,
+      });
+    });
+    await expect(
+      postLeaderboardScore(
+        "https://ws.puggietype.com",
+        {
+          showOnLeaderboard: false,
+          mode: "words",
+          mode2: 10,
+          language: "english",
+          punctuation: false,
+          numbers: false,
+          wpm: 196,
+          acc: 100,
+          raw: 196,
+          chars: 50,
+          durationMs: 2949,
+        },
+        fetchImpl,
+      ),
+    ).resolves.toEqual({ ok: true, recorded: false });
+  });
+
+  it("reports recorded:true when the server added the score", async () => {
+    const fetchImpl = vi.fn(async () => {
+      return new Response(JSON.stringify({ ok: true, recorded: true }), {
+        status: 200,
+      });
+    });
+    await expect(
+      postLeaderboardScore(
+        "https://ws.puggietype.com",
+        {
+          showOnLeaderboard: true,
+          mode: "words",
+          mode2: 10,
+          language: "english",
+          punctuation: false,
+          numbers: false,
+          wpm: 196,
+          acc: 100,
+          raw: 196,
+          chars: 50,
+          durationMs: 2949,
+        },
+        fetchImpl,
+      ),
+    ).resolves.toEqual({ ok: true, recorded: true });
+  });
 });
 
 describe("score consent and kids finish fields", () => {
@@ -490,15 +545,14 @@ describe("leaderboard consent message", () => {
     });
   });
 
-  it("names a button that posts and advances", () => {
-    expect(soloAdvanceLabel("next", false)).toBe("Next test");
-    expect(soloAdvanceLabel("next", true)).toBe("Submit score & next test");
-    expect(soloAdvanceLabel("repeat", true)).toBe("Submit score & repeat");
-    expect(soloAdvanceLabel("retry", true)).toBe("Submit score & retry saving");
-    expect(soloAdvanceLabel("retry", false)).toBe("Retry saving result");
-  });
-
-  it("hides the compact Multiplayer board for a kids-guide session", () => {
+  it("never shows a casual multiplayer board", () => {
+    expect(
+      showRaceLeaderboard({
+        leaderboards: true,
+        kids: false,
+        inRaceOrResults: true,
+      }),
+    ).toBe(false);
     expect(
       showRaceLeaderboard({
         leaderboards: true,
@@ -506,13 +560,56 @@ describe("leaderboard consent message", () => {
         inRaceOrResults: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("ranks links", () => {
+  it("defaults to the solo board", () => {
+    expect(ranksQueryFromSearch("")).toEqual({
+      query: { verified: false },
+      removedMultiplayer: false,
+    });
+    expect(ranksQueryFromSearch("?board=solo&period=weekly")).toEqual({
+      query: { verified: false, period: "weekly" },
+      removedMultiplayer: false,
+    });
+  });
+
+  it("keeps old multiplayer links on the solo board", () => {
+    expect(ranksQueryFromSearch("?verified=true&period=daily")).toMatchObject({
+      query: { verified: false, period: "daily" },
+      removedMultiplayer: true,
+    });
+    expect(ranksQueryFromSearch("?board=race&mode=words&mode2=50")).toEqual({
+      query: { verified: false, mode: "words", mode2: 50 },
+      removedMultiplayer: true,
+    });
     expect(
-      showRaceLeaderboard({
-        leaderboards: true,
-        kids: false,
-        inRaceOrResults: true,
+      ranksQueryFromSearch("?kind=multiplayer&type=allTime&language=english"),
+    ).toMatchObject({
+      query: { verified: false, period: "all-time", language: "english" },
+      removedMultiplayer: true,
+    });
+  });
+
+  it("drops a mode2 the server would reject", () => {
+    expect(ranksQueryFromSearch("?mode=time&mode2=99").query.mode2).toBe(
+      undefined,
+    );
+  });
+
+  it("builds a browse link from the finished test, without verified=true", () => {
+    expect(
+      soloRanksHref({
+        mode: "time",
+        mode2: 15,
+        language: "english",
+        punctuation: true,
+        numbers: false,
       }),
-    ).toBe(true);
+    ).toBe(
+      "/leaderboards?period=daily&mode=time&mode2=15&language=english&punctuation=true&numbers=false",
+    );
   });
 });
 

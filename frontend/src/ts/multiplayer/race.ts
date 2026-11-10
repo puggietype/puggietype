@@ -1,5 +1,5 @@
 import { terminatedMessage } from "./terminated";
-import { batch, createSignal } from "solid-js";
+import { batch } from "solid-js";
 
 import { setConfig } from "../config/setters";
 import { Config } from "../config/store";
@@ -36,11 +36,8 @@ import {
 } from "./engine-hooks";
 import { isFlagEnabled } from "./feature-flags";
 import {
-  CONSENT_AFTER_RESULTS_MS,
   finishLeaderboardFields,
-  leaderboardConsentMessage,
   leaderboardSubmitBlocked,
-  scoreConsentElapsed,
 } from "./leaderboards";
 import { MULTIPLAYER_ENABLED } from "./flags";
 import {
@@ -740,24 +737,8 @@ function sendProgress(): void {
   client.send({ type: "race:progress", ...next });
 }
 
-const [leaderboardConsentOpen, setLeaderboardConsentOpen] = createSignal(false);
-const [leaderboardConsentWpm, setLeaderboardConsentWpm] = createSignal<
-  number | undefined
->();
-export { leaderboardConsentOpen, leaderboardConsentWpm };
-
-/** when the results-screen toggle was shown */
-let consentShownAt: number | undefined;
-/** from race:countdown or race:results; required on leaderboard:consent */
+/** from race:countdown or race:results. Casual races do not submit it. */
 let consentRaceId: string | undefined;
-/** race id for the next race, held while an earlier Submit is still in flight */
-let nextConsentRaceId: string | undefined;
-/** when race:results arrived; the server accepts consent for 60s after that */
-let consentResultsAt: number | undefined;
-/** explicit Submit with the toggle on, possibly waiting for results */
-let consentArmed = false;
-let consentClosed = false;
-let consentTimer: ReturnType<typeof setTimeout> | undefined;
 
 function scoreIsBlocked(): boolean {
   return leaderboardSubmitBlocked(
@@ -769,78 +750,33 @@ function scoreIsBlocked(): boolean {
 
 /** leave, kick, or the room ending: do not send leaderboard:consent */
 function cancelLeaderboardConsent(): void {
-  clearTimeout(consentTimer);
-  consentTimer = undefined;
-  consentShownAt = undefined;
-  consentResultsAt = undefined;
   consentRaceId = undefined;
-  nextConsentRaceId = undefined;
-  consentArmed = false;
-  consentClosed = true;
-  setLeaderboardConsentOpen(false);
 }
 
 /**
- * A new countdown. Do not carry the previous race's submit window forward.
- * "start next race" and rematch do not post; the score stays off the board
- * unless Submit already happened.
+ * A new countdown. Do not carry a previous race forward. Rematch and the
+ * next race do not post a score.
  */
 function openConsentForRace(raceId: string | undefined): void {
-  if (consentArmed && !consentClosed) {
-    nextConsentRaceId = raceId;
-    return;
-  }
   cancelLeaderboardConsent();
   consentRaceId = raceId;
 }
 
 function flushLeaderboardConsent(): void {
-  if (!consentArmed || consentClosed) return;
-  if (!leaderboardsOn() || scoreIsBlocked()) return;
-  if (consentResultsAt === undefined || consentRaceId === undefined) return;
-  if (Date.now() - consentResultsAt > CONSENT_AFTER_RESULTS_MS) {
-    cancelLeaderboardConsent();
-    return;
-  }
-  client.send(leaderboardConsentMessage(consentRaceId));
-  consentArmed = false;
-  consentClosed = true;
-  clearTimeout(consentTimer);
-  consentTimer = undefined;
-  setLeaderboardConsentOpen(false);
-  if (nextConsentRaceId !== undefined) {
-    consentRaceId = nextConsentRaceId;
-    nextConsentRaceId = undefined;
-    consentResultsAt = undefined;
-  }
+  // Casual races are not submitted. This never sends leaderboard:consent.
 }
 
-/** race:results opened the 60s window. A Submit from before results goes out now. */
+/** race:results is not a submit. */
 function noteConsentResults(): void {
-  consentResultsAt = Date.now();
-  clearTimeout(consentTimer);
-  consentTimer = setTimeout(() => {
-    cancelLeaderboardConsent();
-  }, CONSENT_AFTER_RESULTS_MS);
   flushLeaderboardConsent();
 }
 
 /**
- * Explicit Submit. Before the toggle has been visible for 2s this does not
- * send, so the player can still submit once the button unlocks. No message
- * means the server leaves the score off the board. show:true is sent only
- * after race:results, and only when this server has leaderboards.
+ * Casual multiplayer has no score submission. Ranked play is not in this
+ * build. Calling this does not send leaderboard:consent.
  */
-export function submitLeaderboardConsent(show: boolean): void {
-  if (consentClosed || consentShownAt === undefined) return;
-  if (!scoreConsentElapsed(consentShownAt, Date.now())) return;
-  if (scoreIsBlocked() || !show) {
-    cancelLeaderboardConsent();
-    return;
-  }
-  consentArmed = true;
-  flushLeaderboardConsent();
-  if (!consentClosed) setLeaderboardConsentOpen(false);
+export function submitLeaderboardConsent(_show: boolean): void {
+  return;
 }
 
 function sendFinish(data: RaceFinishData): void {
@@ -865,13 +801,6 @@ function sendFinish(data: RaceFinishData): void {
   // finish is not held for consent; one idle player must not stall the room.
   releaseEngine({ finished: true });
   goTo(`/r/${room()?.code ?? ""}`);
-  if (leaderboardsOn() && !scoreIsBlocked()) {
-    consentShownAt = Date.now();
-    consentArmed = false;
-    consentClosed = false;
-    setLeaderboardConsentWpm(data.wpm);
-    setLeaderboardConsentOpen(true);
-  }
 }
 
 // ---------------------------------------------------------------- config

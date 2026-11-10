@@ -14,17 +14,7 @@ import { getConfig } from "../../../../config/store";
 import { isAuthAvailable } from "../../../../firebase";
 import { useRefWithUtils } from "../../../../hooks/useRefWithUtils";
 import { isAgeConfirmed } from "../../../../multiplayer/age-gate";
-import { LeaderboardView } from "../../../../multiplayer/components/LeaderboardView";
-import { SoloLeaderboardSubmit } from "../../../../multiplayer/components/SoloLeaderboardSubmit";
 import { MULTIPLAYER_ENABLED } from "../../../../multiplayer/flags";
-import {
-  leaderboardSubmitBlocked,
-  requestSoloSubmit,
-  scoreFromResult,
-  soloAdvanceLabel,
-  soloScoreWillPost,
-} from "../../../../multiplayer/leaderboards";
-import { leaderboardsOn } from "../../../../multiplayer/store";
 import { getIsScreenshotting, isAuthenticated } from "../../../../states/core";
 import { getGlarsesMode } from "../../../../states/glarses-mode";
 import { resultState } from "../../../../states/result";
@@ -50,6 +40,7 @@ import { ResultMainStats } from "./ResultMainStats";
 import { ResultReplay } from "./ResultReplay";
 import { ResultSecondaryStats } from "./ResultSecondaryStats";
 import { ResultWordsHistory } from "./ResultWordsHistory";
+import { InGameLeaderboard } from "./SoloResultScore";
 
 // chart.js (~85 KB gzip) is only needed once a result is shown
 const ResultChart = lazy(async () =>
@@ -120,7 +111,10 @@ export function TestResult(): JSXElement {
                   />
                 </Suspense>
               </div>
-              <InGameLeaderboard result={test().result} />
+              <InGameLeaderboard
+                result={test().result}
+                invalid={isTestInvalid()}
+              />
               <ResultSecondaryStats result={test().result} />
               <ResultWordsHistory eventLog={test().eventLog} />
               <ResultReplay />
@@ -136,42 +130,6 @@ export function TestResult(): JSXElement {
       </Show>
       <ResultAds />
     </div>
-  );
-}
-
-function InGameLeaderboard(props: {
-  result: Parameters<typeof scoreFromResult>[0];
-}): JSXElement {
-  const score = createMemo(() => scoreFromResult(props.result));
-  const blocked = (): boolean =>
-    leaderboardSubmitBlocked(
-      window.location.pathname,
-      document.referrer,
-      sessionStorage,
-    );
-  return (
-    <Show
-      when={
-        leaderboardsOn() && !isTestInvalid() && !blocked() ? score() : undefined
-      }
-    >
-      {(ready) => (
-        <div class="mb-8 grid gap-4" data-testid="lb-ingame">
-          <LeaderboardView
-            variant="compact"
-            initial={{
-              mode: ready().mode,
-              mode2: ready().mode2,
-              language: ready().language,
-              punctuation: ready().punctuation,
-              numbers: ready().numbers,
-              verified: false,
-            }}
-          />
-          <SoloLeaderboardSubmit score={ready()} />
-        </div>
-      )}
-    </Show>
   );
 }
 
@@ -199,10 +157,9 @@ function RetrySavingButton(): JSXElement {
           class="mb-4 justify-self-center bg-error px-8 py-4 text-bg"
           id="retrySavingResultButton"
           onClick={() => {
-            requestSoloSubmit("retry");
             void retrySavingResult();
           }}
-          text={soloAdvanceLabel("retry", soloScoreWillPost())}
+          text="Retry saving result"
           fa={{ icon: "fa-redo" }}
         />
       </div>

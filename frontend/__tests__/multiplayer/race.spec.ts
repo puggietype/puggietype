@@ -480,29 +480,21 @@ describe("race lifecycle", () => {
     });
   }
 
-  it("sends race:finish immediately and consents only after Submit and results", async () => {
+  it("sends race:finish and never leaderboard:consent", async () => {
     await finishWithLeaderboards("race-1");
     const finish = fakeClient.sent.find((m) => m.type === "race:finish");
     expect(finish).toMatchObject({ type: "race:finish", wpm: 80 });
     expect(finish).not.toHaveProperty("showOnLeaderboard");
-    expect(fakeClient.sent.some((m) => m.type === "leaderboard:consent")).toBe(
-      false,
-    );
     Race.submitLeaderboardConsent(true);
-    expect(fakeClient.sent.some((m) => m.type === "leaderboard:consent")).toBe(
-      false,
-    );
     vi.advanceTimersByTime(2000);
     Race.submitLeaderboardConsent(true);
+    receive({ type: "race:results", results: [], raceId: "race-1" });
+    vi.advanceTimersByTime(60_000);
+    Race.submitLeaderboardConsent(false);
+    Race.submitLeaderboardConsent(true);
     expect(fakeClient.sent.some((m) => m.type === "leaderboard:consent")).toBe(
       false,
     );
-    receive({ type: "race:results", results: [], raceId: "race-1" });
-    expect(fakeClient.sent.at(-1)).toEqual({
-      type: "leaderboard:consent",
-      raceId: "race-1",
-      show: true,
-    });
   });
 
   it("does not post when the next race starts without Submit", async () => {
