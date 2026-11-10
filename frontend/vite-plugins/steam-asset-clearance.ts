@@ -1,7 +1,11 @@
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { Plugin } from "vite";
 import path from "node:path";
 import {
+  copyFileSync,
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -15,7 +19,29 @@ import { filterLyricQuotes, QuoteLike } from "../src/ts/constants/lyric-quotes";
  * (static/ is copied verbatim by vite's publicDir):
  * - untraced sound packs (docs/sounds-SOURCES.md)
  * - song-lyric quotes (constants/lyric-quotes.ts)
+ * - AdSense account metadata (ads.txt and google-adsense-account meta).
+ *   The website build does not run this.
+ * Font Awesome subset woff2 files stay (the UI uses them). The steam web
+ * root gets the upstream LICENSE.txt summary plus the OFL and MIT notices
+ * in vite-plugins/notices. The website build does not copy those files.
  */
+
+/** Stable paths inside the steam web root. */
+export const FONT_AWESOME_LICENSE_REL =
+  "webfonts/licenses/FontAwesome-Free-LICENSE.txt";
+export const FONT_AWESOME_OFL_REL =
+  "webfonts/licenses/FontAwesome-Free-OFL.txt";
+export const FONT_AWESOME_MIT_REL =
+  "webfonts/licenses/FontAwesome-Free-MIT.txt";
+
+const NOTICES_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "notices",
+);
+
+const FONT_AWESOME_FONT = /^fa-(?:solid|regular|brands)-.+\.woff2$/;
+const AD_ACCOUNT_META =
+  /<meta\b[^>]*\bname\s*=\s*["']google-adsense-account["'][^>]*>/gi;
 export function steamAssetClearance(options: {
   platform: "web" | "steam";
 }): Plugin {
@@ -32,15 +58,35 @@ export function steamAssetClearance(options: {
       if (options.platform !== "steam") return;
       const removed = stripSteamAssets(outDir);
       console.log(
-        `steam asset clearance: removed ${removed.sounds} sound paths, ${removed.quotes} lyric quotes`,
+        `steam asset clearance: removed ${removed.sounds} sound paths, ${removed.quotes} lyric quotes, ${removed.adMetaTags} ad account meta tags${removed.adsTxt ? ", ads.txt" : ""}${removed.fontAwesomeLicense ? "; bundled Font Awesome Free license and notices" : ""}`,
       );
     },
   };
 }
 
+function walkHtml(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const ent of readdirSync(dir, { withFileTypes: true })) {
+    const child = path.join(dir, ent.name);
+    if (ent.isDirectory()) out.push(...walkHtml(child));
+    else if (ent.isFile() && ent.name.endsWith(".html")) out.push(child);
+  }
+  return out;
+}
+
+function fontAwesomeUpstreamLicense(): string {
+  const require = createRequire(import.meta.url);
+  const pkg = require.resolve("@fortawesome/fontawesome-free/package.json");
+  return path.join(path.dirname(pkg), "LICENSE.txt");
+}
+
 export function stripSteamAssets(outDir: string): {
   sounds: number;
   quotes: number;
+  adsTxt: boolean;
+  adMetaTags: number;
+  fontAwesomeLicense: boolean;
 } {
   let sounds = 0;
   for (const rel of steamExcludedSoundPaths()) {
@@ -70,5 +116,53 @@ export function stripSteamAssets(outDir: string): {
       writeFileSync(filePath, JSON.stringify({ ...data, quotes: kept }));
     }
   }
-  return { sounds, quotes };
+
+  const adsPath = path.join(outDir, "ads.txt");
+  const adsTxt = existsSync(adsPath);
+  if (adsTxt) rmSync(adsPath);
+
+  let adMetaTags = 0;
+  for (const file of walkHtml(outDir)) {
+    const html = readFileSync(file, "utf8");
+    AD_ACCOUNT_META.lastIndex = 0;
+    const next = html.replace(AD_ACCOUNT_META, () => {
+      adMetaTags += 1;
+      return "";
+    });
+    if (next !== html) writeFileSync(file, next);
+  }
+
+  const webfonts = path.join(outDir, "webfonts");
+  const fontAwesomeFonts = existsSync(webfonts)
+    ? readdirSync(webfonts).filter((name) => FONT_AWESOME_FONT.test(name))
+    : [];
+  let fontAwesomeLicense = false;
+  if (fontAwesomeFonts.length > 0) {
+    const src = fontAwesomeUpstreamLicense();
+    if (!existsSync(src)) {
+      throw new Error(`Font Awesome Free license missing: ${src}`);
+    }
+    const copies: ReadonlyArray<readonly [string, string]> = [
+      [src, FONT_AWESOME_LICENSE_REL],
+      [
+        path.join(NOTICES_DIR, "FontAwesome-Free-OFL.txt"),
+        FONT_AWESOME_OFL_REL,
+      ],
+      [
+        path.join(NOTICES_DIR, "FontAwesome-Free-MIT.txt"),
+        FONT_AWESOME_MIT_REL,
+      ],
+    ];
+    for (const [from, rel] of copies) {
+      if (!existsSync(from)) {
+        throw new Error(`Font Awesome notice missing: ${from}`);
+      }
+      const dest = path.join(outDir, rel);
+      mkdirSync(path.dirname(dest), { recursive: true });
+      copyFileSync(from, dest);
+    }
+    fontAwesomeLicense = true;
+  }
+
+  return { sounds, quotes, adsTxt, adMetaTags, fontAwesomeLicense };
 }
