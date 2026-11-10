@@ -1,4 +1,4 @@
-Copied SCSS from @fortawesome/fontawesome-free 5.15.4 (scss/fontawesome.scss).
+SCSS from @fortawesome/fontawesome-free 5.15.4, compiled into this app's CSS. Attribution below reproduced from upstream scss/fontawesome.scss:
 
  * Font Awesome Free 5.15.4 by @fontawesome - https://fontawesome.com
  * License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)

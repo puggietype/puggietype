@@ -56,6 +56,18 @@ const scssLines = readFileSync(
   "utf8",
 ).split(/\r?\n/);
 const upstreamByline = `${scssLines[1]}\n${scssLines[2]}\n`;
+const MIT_FIRST_LINE =
+  "SCSS from @fortawesome/fontawesome-free 5.15.4, compiled into this app's CSS. Attribution below reproduced from upstream scss/fontawesome.scss:";
+/** Bytes after the first newline of FontAwesome-Free-MIT.txt at 59f34a8. */
+const MIT_REST_SHA256 =
+  "5fb8b0c36e0aef94d977da88d6df56e2331149ad78dcc49613f67f54eb0fa1e5";
+
+function expectMitWording(bytes: Buffer): void {
+  const nl = bytes.indexOf(0x0a);
+  expect(nl).toBeGreaterThan(0);
+  expect(bytes.subarray(0, nl).toString("utf8")).toBe(MIT_FIRST_LINE);
+  expect(sha256(bytes.subarray(nl + 1))).toBe(MIT_REST_SHA256);
+}
 
 /** Minified shape vite actually writes (no slash, no extra space). */
 const MINIFIED_PAGE = [
@@ -166,6 +178,18 @@ describe("steam payload ad inventory and Font Awesome license", () => {
     expect(existsSync(path.join(dir, "webfonts/licenses/README.md"))).toBe(
       false,
     );
+  });
+
+  it("uses the compiled-SCSS first line and leaves the rest of the MIT notice unchanged", () => {
+    expectMitWording(mitNotice);
+    dir = mkdtempSync(path.join(os.tmpdir(), "steam-payload-"));
+    mkdirSync(path.join(dir, "webfonts"), { recursive: true });
+    writeFileSync(
+      path.join(dir, "webfonts/fa-regular-400-CPEIu2bx.woff2"),
+      upstreamFont,
+    );
+    stripSteamAssets(dir);
+    expectMitWording(readFileSync(path.join(dir, FONT_AWESOME_MIT_REL)));
   });
 
   it("does not add a Font Awesome license when no Font Awesome font was emitted", () => {
