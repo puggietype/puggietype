@@ -23,6 +23,8 @@ type SoloScore = Omit<ScoreSubmission, "showOnLeaderboard" | "sessionToken">;
 
 export type SoloSubmitAvailability = "checking" | "off" | "on";
 
+const SUBMIT_RETRY = "Couldn't submit your score. Try again.";
+
 function freezeScore(score: SoloScore): SoloScore {
   return {
     mode: score.mode,
@@ -86,7 +88,6 @@ export function SoloLeaderboardSubmit(props: {
     if (snapshot() === undefined) {
       return "This test can't be submitted to ranks.";
     }
-    if (phase() === "sending") return "Submitting…";
     if (phase() === "done") return undefined;
     if (!unlocked()) return "You can submit this score in a moment.";
     return undefined;
@@ -122,8 +123,17 @@ export function SoloLeaderboardSubmit(props: {
         return;
       }
       setPhase("idle");
-      setMessage(result.error);
+      setMessage(SUBMIT_RETRY);
     });
+  };
+
+  const statusText = (): string => {
+    if (phase() === "sending") return "Submitting…";
+    return message() ?? "";
+  };
+
+  const keepFocus = (event: MouseEvent): void => {
+    if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus();
   };
 
   onMount(() => {
@@ -184,13 +194,22 @@ export function SoloLeaderboardSubmit(props: {
           type="button"
           text={phase() === "sending" ? "Submitting…" : "Submit score"}
           fa={{ icon: "fa-crown" }}
-          class={cn(PRIMARY_BUTTON, "px-5 py-3")}
-          disabled={!canSend()}
+          class={cn(PRIMARY_BUTTON, "px-5 py-3", {
+            "cursor-not-allowed opacity-[0.33]": !canSend(),
+            "opacity-100": canSend(),
+          })}
           ariaLabel={
             reason() !== undefined ? `Submit score. ${reason()}` : undefined
           }
-          dataset={{ "data-testid": "lb-submit" }}
-          onClick={() => send()}
+          dataset={{
+            "data-testid": "lb-submit",
+            "aria-disabled": canSend() ? "false" : "true",
+          }}
+          onClick={(event) => {
+            if (!canSend()) return;
+            send();
+            keepFocus(event);
+          }}
         />
       </div>
       <Show when={reason()}>
@@ -200,17 +219,15 @@ export function SoloLeaderboardSubmit(props: {
           </p>
         )}
       </Show>
-      <Show when={message()}>
-        {(text) => (
-          <p
-            class="text-sm text-text"
-            role="status"
-            data-testid="lb-submit-status"
-          >
-            {text()}
-          </p>
-        )}
-      </Show>
+      <p
+        class={cn("text-sm text-text", { "sr-only": statusText() === "" })}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="lb-submit-status"
+      >
+        {statusText()}
+      </p>
       <a
         href={browseHref()}
         router-link

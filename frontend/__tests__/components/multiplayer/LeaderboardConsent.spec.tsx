@@ -26,6 +26,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function expectSubmitBlocked(button: HTMLElement): void {
+  expect(button).toHaveAttribute("aria-disabled", "true");
+  expect(button).not.toHaveAttribute("disabled");
+}
+
+function expectSubmitReady(button: HTMLElement): void {
+  expect(button).toHaveAttribute("aria-disabled", "false");
+  expect(button).not.toHaveAttribute("disabled");
+}
+
 function postedBody(call = 0): Record<string, unknown> | undefined {
   const init = vi.mocked(fetch).mock.calls[call]?.[1];
   if (init === undefined || !isRecord(init)) return undefined;
@@ -77,7 +87,7 @@ describe("SoloLeaderboardSubmit", () => {
 
     const button = getByTestId("lb-submit");
     expect(button).toHaveAttribute("type", "button");
-    expect(button).toBeDisabled();
+    expectSubmitBlocked(button);
     expect(button).toHaveTextContent("Submit score");
     expect(getByTestId("lb-submit-reason")).toHaveTextContent(
       "You can submit this score in a moment.",
@@ -86,7 +96,7 @@ describe("SoloLeaderboardSubmit", () => {
     expect(fetch).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(2000);
-    expect(button).not.toBeDisabled();
+    expectSubmitReady(button);
     fireEvent.click(button);
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     const body = postedBody();
@@ -105,7 +115,7 @@ describe("SoloLeaderboardSubmit", () => {
         "Score submitted.",
       ),
     );
-    expect(button).toBeDisabled();
+    expectSubmitBlocked(button);
   });
 
   it("keeps the finished test when a later score object changes", async () => {
@@ -179,7 +189,7 @@ describe("SoloLeaderboardSubmit", () => {
     fireEvent.click(button);
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(button).toHaveTextContent("Submitting…");
-    expect(button).toBeDisabled();
+    expectSubmitBlocked(button);
     resolve(new Response("{}", { status: 200 }));
     await vi.waitFor(() =>
       expect(getByTestId("lb-submit-status")).toHaveTextContent(
@@ -199,17 +209,21 @@ describe("SoloLeaderboardSubmit", () => {
         });
       }),
     );
-    const { getByTestId, findByTestId } = renderSubmit();
+    const { getByTestId } = renderSubmit();
     const box = getByTestId<HTMLInputElement>("lb-show-score");
     fireEvent.click(box);
     vi.advanceTimersByTime(2000);
     expect(fetch).not.toHaveBeenCalled();
     fireEvent.click(getByTestId("lb-submit"));
-    const status = await findByTestId("lb-submit-status");
-    expect(status).toHaveTextContent("This score was not added to the board.");
+    const status = getByTestId("lb-submit-status");
+    await vi.waitFor(() =>
+      expect(status).toHaveTextContent(
+        "This score was not added to the board.",
+      ),
+    );
     expect(status).not.toHaveTextContent("Score submitted.");
     expect(postedBody()).toMatchObject({ showOnLeaderboard: false, wpm: 88 });
-    expect(getByTestId("lb-submit")).not.toBeDisabled();
+    expectSubmitReady(getByTestId("lb-submit"));
     expect(getByTestId("lb-submit")).toHaveTextContent("Submit score");
   });
 
@@ -225,11 +239,15 @@ describe("SoloLeaderboardSubmit", () => {
         )
         .mockResolvedValueOnce(new Response("{}", { status: 200 })),
     );
-    const { getByTestId, findByTestId } = renderSubmit();
+    const { getByTestId } = renderSubmit();
     vi.advanceTimersByTime(2000);
     fireEvent.click(getByTestId("lb-submit"));
-    expect(await findByTestId("lb-submit-status")).toHaveTextContent("closed");
-    expect(getByTestId("lb-submit")).not.toBeDisabled();
+    await vi.waitFor(() =>
+      expect(getByTestId("lb-submit-status")).toHaveTextContent(
+        "Couldn't submit your score. Try again.",
+      ),
+    );
+    expectSubmitReady(getByTestId("lb-submit"));
     fireEvent.click(getByTestId("lb-submit"));
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     await vi.waitFor(() =>
@@ -244,7 +262,7 @@ describe("SoloLeaderboardSubmit", () => {
     const { getByTestId } = renderSubmit();
     vi.advanceTimersByTime(2000);
     const button = getByTestId("lb-submit");
-    expect(button).toBeDisabled();
+    expectSubmitBlocked(button);
     expect(getByTestId("lb-submit-reason")).toHaveTextContent(
       "kids guides aren't submitted",
     );
@@ -258,7 +276,7 @@ describe("SoloLeaderboardSubmit", () => {
       <SoloLeaderboardSubmit availability="on" />
     ));
     vi.advanceTimersByTime(2000);
-    expect(getByTestId("lb-submit")).toBeDisabled();
+    expectSubmitBlocked(getByTestId("lb-submit"));
     expect(getByTestId("lb-submit-reason")).toHaveTextContent(
       "can't be submitted to ranks",
     );
@@ -266,5 +284,108 @@ describe("SoloLeaderboardSubmit", () => {
     fireEvent.click(getByTestId("lb-submit"));
     expect(fetch).not.toHaveBeenCalled();
     expect(getByTestId("lb-browse")).toHaveAttribute("href", "/leaderboards");
+  });
+
+  it("keeps Submit focusable and focused while sending and posts once", async () => {
+    let resolve: (value: Response) => void = () => undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return await new Promise<Response>((done) => {
+          resolve = done;
+        });
+      }),
+    );
+    const { getByTestId } = renderSubmit();
+    vi.advanceTimersByTime(2000);
+    const button = getByTestId<HTMLButtonElement>("lb-submit");
+    button.focus();
+    expect(document.activeElement).toBe(button);
+
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(button.disabled).toBe(false);
+    expect(button).not.toHaveAttribute("disabled");
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button.className).toContain("opacity-[0.33]");
+    expect(document.activeElement).toBe(button);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(getByTestId("lb-submit-status").textContent).toBe("Submitting…");
+
+    resolve(new Response("{}", { status: 200 }));
+    await vi.waitFor(() =>
+      expect(getByTestId("lb-submit-status").textContent).toBe(
+        "Score submitted.",
+      ),
+    );
+    expect(button.disabled).toBe(false);
+    expect(document.activeElement).toBe(button);
+    fireEvent.click(button);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("announces from one persistent status live region", async () => {
+    let resolve: (value: Response) => void = () => undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return await new Promise<Response>((done) => {
+          resolve = done;
+        });
+      }),
+    );
+    const { getByTestId, getAllByRole, queryByTestId } = renderSubmit();
+    const status = getByTestId("lb-submit-status");
+    expect(getAllByRole("status")).toEqual([status]);
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status.textContent).toBe("");
+    expect(queryByTestId("lb-submit-reason")).not.toHaveAttribute("aria-live");
+
+    vi.advanceTimersByTime(2000);
+    fireEvent.click(getByTestId("lb-submit"));
+    expect(status.textContent).toBe("Submitting…");
+    expect(queryByTestId("lb-submit-reason")).toBeNull();
+    expect(getAllByRole("status")).toHaveLength(1);
+
+    resolve(new Response("{}", { status: 200 }));
+    await vi.waitFor(() => expect(status.textContent).toBe("Score submitted."));
+    expect(getAllByRole("status")).toEqual([status]);
+  });
+
+  it("shows a retry cue after an error and a later retry posts once", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: false, error: "closed" }), {
+            status: 503,
+          }),
+        )
+        .mockResolvedValueOnce(new Response("{}", { status: 200 })),
+    );
+    const { getByTestId } = renderSubmit();
+    const status = getByTestId("lb-submit-status");
+    expect(status.textContent).toBe("");
+    vi.advanceTimersByTime(2000);
+    const button = getByTestId<HTMLButtonElement>("lb-submit");
+    fireEvent.click(button);
+    expect(status.textContent).toBe("Submitting…");
+    await vi.waitFor(() =>
+      expect(status.textContent).toBe("Couldn't submit your score. Try again."),
+    );
+    expect(button).toHaveAttribute("aria-disabled", "false");
+    expect(button.disabled).toBe(false);
+    expect(button.className).toContain("opacity-100");
+    expect(button.className).not.toContain("opacity-[0.33]");
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(status.textContent).toBe("Score submitted."));
+    fireEvent.click(button);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });

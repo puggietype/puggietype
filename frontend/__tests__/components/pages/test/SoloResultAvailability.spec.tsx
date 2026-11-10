@@ -29,6 +29,16 @@ const valid = {
   testDuration: 2.949,
 };
 
+function expectSubmitBlocked(button: HTMLElement): void {
+  expect(button).toHaveAttribute("aria-disabled", "true");
+  expect(button).not.toHaveAttribute("disabled");
+}
+
+function expectSubmitReady(button: HTMLElement): void {
+  expect(button).toHaveAttribute("aria-disabled", "false");
+  expect(button).not.toHaveAttribute("disabled");
+}
+
 describe("first solo result availability", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -54,7 +64,7 @@ describe("first solo result availability", () => {
     const { getByTestId, queryByTestId } = render(() => (
       <InGameLeaderboard result={valid} invalid={false} />
     ));
-    expect(getByTestId("lb-submit")).toBeDisabled();
+    expectSubmitBlocked(getByTestId("lb-submit"));
     expect(getByTestId("lb-submit-reason")).toHaveTextContent(
       "Checking whether ranks are on…",
     );
@@ -69,7 +79,7 @@ describe("first solo result availability", () => {
     expect(queryByTestId("lb-submit-reason")?.textContent ?? "").not.toMatch(
       /Checking/,
     );
-    expect(getByTestId("lb-submit")).not.toBeDisabled();
+    expectSubmitReady(getByTestId("lb-submit"));
     fireEvent.click(getByTestId("lb-submit"));
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     const init = vi.mocked(fetch).mock.calls[0]?.[1];
@@ -96,7 +106,7 @@ describe("first solo result availability", () => {
     expect(getByTestId("lb-submit-reason")).toHaveTextContent(
       "You can submit this score in a moment.",
     );
-    expect(getByTestId("lb-submit")).toBeDisabled();
+    expectSubmitBlocked(getByTestId("lb-submit"));
     fireEvent.click(getByTestId("lb-submit"));
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -114,7 +124,7 @@ describe("first solo result availability", () => {
     expect(getByTestId("lb-submit-reason")).toHaveTextContent(
       "This result can't be submitted.",
     );
-    expect(getByTestId("lb-submit")).toBeDisabled();
+    expectSubmitBlocked(getByTestId("lb-submit"));
     fireEvent.click(getByTestId("lb-submit"));
     expect(fetch).not.toHaveBeenCalled();
   });
