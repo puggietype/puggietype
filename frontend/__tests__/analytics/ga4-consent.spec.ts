@@ -1,19 +1,42 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
   ga4MeasurementId: "",
 }));
+
+const recorded = vi.hoisted(() => {
+  const calls: string[] = [];
+  const xhrSends: string[] = [];
+  const urlOf = (input: unknown): string => {
+    if (typeof input === "string") return input;
+    if (typeof URL !== "undefined" && input instanceof URL) return input.href;
+    if (typeof Request !== "undefined" && input instanceof Request) {
+      return input.url;
+    }
+    return "";
+  };
+  if (typeof window !== "undefined") {
+    window.fetch = async (input: RequestInfo | URL) => {
+      calls.push(urlOf(input));
+      return new Response(null, { status: 204 });
+    };
+    navigator.sendBeacon = (url: string | URL) => {
+      calls.push(`beacon:${urlOf(url)}`);
+      return true;
+    };
+    XMLHttpRequest.prototype.send = function (): void {
+      xhrSends.push("sent");
+    };
+    const FakeWebSocket = function FakeWebSocket(url: string | URL): void {
+      calls.push(`ws:${urlOf(url)}`);
+    };
+    window.WebSocket = FakeWebSocket as unknown as typeof WebSocket;
+  }
+  return { calls, xhrSends };
+});
 
 vi.mock("virtual:env-config", () => ({
   envConfig: env,
@@ -56,54 +79,15 @@ const FAQ_INTERIM =
 const ABOUT =
   "We use privacy-preserving aggregate traffic tools from our host (Cloudflare) and, when enabled, Google Analytics 4. Details are in our";
 
-function requestUrl(input: unknown): string {
-  if (typeof input === "string") return input;
-  if (input instanceof URL) return input.href;
-  if (typeof Request !== "undefined" && input instanceof Request) {
-    return input.url;
-  }
-  return "";
-}
-
 describe("GA collect transport gate", () => {
   const id = "G-TEST1234";
-  const calls: string[] = [];
-  let happyOpen: typeof XMLHttpRequest.prototype.open;
-  const xhrSends: string[] = [];
-
-  beforeAll(() => {
-    window.fetch = async (input: RequestInfo | URL, _init?: RequestInit) => {
-      calls.push(requestUrl(input));
-      return new Response(null, { status: 204 });
-    };
-    navigator.sendBeacon = ((url: string | URL, _data?: BodyInit | null) => {
-      calls.push(`beacon:${requestUrl(url)}`);
-      return true;
-    }) as typeof navigator.sendBeacon;
-    happyOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function (
-      this: XMLHttpRequest,
-      method: string,
-      url: string | URL,
-      async?: boolean,
-      username?: string | null,
-      password?: string | null,
-    ): void {
-      happyOpen.call(this, method, url, async ?? true, username, password);
-    };
-    XMLHttpRequest.prototype.send = function (
-      this: XMLHttpRequest,
-      body?: Document | XMLHttpRequestBodyInit | null,
-    ): void {
-      xhrSends.push("sent");
-      void body;
-    };
-  });
+  const savedFetch = window.fetch;
+  const savedBeacon = navigator.sendBeacon.bind(navigator);
 
   beforeEach(() => {
     env.ga4MeasurementId = id;
-    calls.length = 0;
-    xhrSends.length = 0;
+    recorded.calls.length = 0;
+    recorded.xhrSends.length = 0;
     writeConsentRecord(ACCEPTED);
   });
 
@@ -117,39 +101,40 @@ describe("GA collect transport gate", () => {
   }
 
   async function expectBlocked(url: string): Promise<void> {
-    calls.length = 0;
+    const absolute = new URL(url, location.href);
+    const before = recorded.calls.length;
+    const xhrBefore = recorded.xhrSends.length;
     await window.fetch(url);
-    await window.fetch(new URL(url));
-    await window.fetch(new Request(url));
-    expect(calls, url).toEqual([]);
+    await window.fetch(absolute);
+    await window.fetch(new Request(absolute.href));
     expect(navigator.sendBeacon(url)).toBe(true);
-    expect(calls, url).toEqual([]);
     const img = new Image();
     img.src = url;
-    expect(img.src).not.toContain("/g/collect");
-    expect(img.src).not.toContain("/ccm/");
-    expect(img.src).not.toContain("/pagead/");
-    expect(img.src).not.toContain("/ads/");
+    expect(img.getAttribute("src")).toBeNull();
+    expect(img.src).not.toContain(absolute.hostname);
     const xhr = new XMLHttpRequest();
-    const before = xhrSends.length;
     xhr.open("POST", url);
     xhr.send();
-    expect(xhrSends.length).toBe(before);
+    expect(recorded.calls.length, url).toBe(before);
+    expect(recorded.xhrSends.length, url).toBe(xhrBefore);
   }
 
   async function expectPassed(url: string): Promise<void> {
-    calls.length = 0;
-    xhrSends.length = 0;
+    recorded.calls.length = 0;
+    recorded.xhrSends.length = 0;
     await window.fetch(url);
     await window.fetch(new URL(url));
     await window.fetch(new Request(url));
-    expect(calls).toEqual([url, url, url]);
+    expect(recorded.calls).toEqual([url, url, url]);
     navigator.sendBeacon(url);
-    expect(calls).toContain(`beacon:${url}`);
+    expect(recorded.calls).toContain(`beacon:${url}`);
+    const img = new Image();
+    img.src = url;
+    expect(img.src).toContain(new URL(url).hostname);
     const xhr = new XMLHttpRequest();
     xhr.open("GET", url);
     xhr.send();
-    expect(xhrSends).toEqual(["sent"]);
+    expect(recorded.xhrSends).toEqual(["sent"]);
   }
 
   it("drops queued collect transports after withdraw and lets them through again", async () => {
@@ -193,9 +178,10 @@ describe("GA collect transport gate", () => {
     if (desc !== undefined) {
       Object.defineProperty(navigator, "sendBeacon", desc);
     }
+    window.fetch = savedFetch;
   });
 
-  it("lets unrelated hosts and non-collect google URLs through while withdrawn", async () => {
+  it("lets non-Google hosts through while withdrawn", async () => {
     withdraw();
     const allowed = [
       "https://fonts.gstatic.com/s/roboto/v30/roboto.woff2",
@@ -204,13 +190,119 @@ describe("GA collect transport gate", () => {
       "https://en.wikipedia.org/api/rest_v1/page/summary/Pug",
       "https://de.wikipedia.org/wiki/Mops",
       "https://cdn.example.com/walls/custom-background.jpg",
-      "https://www.google.com/search?q=puggietype",
-      "https://www.google.com/images/branding/googlelogo.png",
-      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234",
     ];
     for (const url of allowed) {
       await expectPassed(url);
     }
+  });
+
+  it("does not block Google hosts before withdraw", async () => {
+    expect(isGaTransportBlocked()).toBe(false);
+    await expectPassed("https://www.google-analytics.com/g/collect?cid=1");
+    await expectPassed("https://www.google.com/search?q=puggietype");
+  });
+
+  it("blocks every path on a Google host, not only collect paths", async () => {
+    withdraw();
+    await expectBlocked("https://www.google-analytics.com/favicon.ico");
+    await expectBlocked("https://www.google.com/search?q=puggietype");
+    await expectBlocked(
+      "https://www.google.com/images/branding/googlelogo.png",
+    );
+    await expectBlocked("https://maps.google.com/maps");
+    await expectBlocked("https://foo.bar.google.co.uk/anything");
+    await expectBlocked("https://www.googletagmanager.com/gtm.js?id=GTM-TEST");
+  });
+
+  it("blocks protocol-relative, mp, legacy collect, and td URLs", async () => {
+    withdraw();
+    await expectBlocked("//www.google-analytics.com/g/collect");
+    await expectBlocked("//www.google-analytics.com//g/collect");
+    await expectBlocked("https://www.google-analytics.com/mp/collect");
+    await expectBlocked("https://www.google-analytics.com/collect");
+    await expectBlocked("https://www.google-analytics.com/td");
+    await expectBlocked("https://www.google.com//g/collect");
+    await expectBlocked("https://www.google.com/mp/collect");
+    await expectBlocked("https://www.google.com/collect");
+    await expectBlocked("https://www.google.com/td");
+  });
+
+  it("blocks img setAttribute src and srcset, and non-gtag script src", () => {
+    withdraw();
+    const collect = "https://www.google-analytics.com/g/collect";
+    const img = document.createElement("img");
+    img.setAttribute("src", collect);
+    img.setAttribute("SRC", collect);
+    img.setAttributeNS(null, "src", collect);
+    img.srcset = `${collect} 1x, https://cdn.example.com/ok.png 2x`;
+    img.setAttribute("srcset", `${collect} 1x`);
+    expect(img.getAttribute("src")).toBeNull();
+    expect(img.getAttribute("srcset")).toBeNull();
+
+    const plain = document.createElement("img");
+    plain.setAttribute(
+      "src",
+      "https://cdn.example.com/walls/custom-background.jpg",
+    );
+    plain.srcset = "https://cdn.example.com/walls/custom-background.jpg 1x";
+    expect(plain.getAttribute("src")).toContain("cdn.example.com");
+    expect(plain.getAttribute("srcset")).toContain("cdn.example.com");
+
+    const script = document.createElement("script");
+    script.src = collect;
+    script.setAttribute("src", collect);
+    expect(script.getAttribute("src")).toBeNull();
+    const gtag = "https://www.googletagmanager.com/gtag/js?id=G-TEST1234";
+    script.src = gtag;
+    expect(script.src).toContain("/gtag/js");
+    script.setAttribute("src", gtag);
+    expect(script.getAttribute("src")).toContain("/gtag/js");
+  });
+
+  it("still allows a GET of /gtag/js and blocks other uses of that URL", async () => {
+    withdraw();
+    const gtag = "https://www.googletagmanager.com/gtag/js?id=G-TEST1234";
+    recorded.calls.length = 0;
+    await window.fetch(gtag);
+    expect(recorded.calls).toEqual([gtag]);
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", gtag);
+    xhr.send();
+    expect(recorded.xhrSends).toEqual(["sent"]);
+    const before = recorded.calls.length;
+    const xhrBefore = recorded.xhrSends.length;
+    expect(navigator.sendBeacon(gtag)).toBe(true);
+    const img = new Image();
+    img.src = gtag;
+    const posted = new XMLHttpRequest();
+    posted.open("POST", gtag);
+    posted.send();
+    expect(img.getAttribute("src")).toBeNull();
+    expect(recorded.calls.length).toBe(before);
+    expect(recorded.xhrSends.length).toBe(xhrBefore);
+  });
+
+  it("blocks fetch and sendBeacon saved before withdraw and does not replay them", async () => {
+    const before = recorded.calls.length;
+    withdraw();
+    await savedFetch("https://www.google-analytics.com/g/collect");
+    expect(savedBeacon("https://www.google-analytics.com/td")).toBe(true);
+    expect(recorded.calls.length).toBe(before);
+    writeConsentRecord(ACCEPTED);
+    expect(isGaTransportBlocked()).toBe(false);
+    expect(recorded.calls.length).toBe(before);
+    await expectPassed("https://www.google-analytics.com/g/collect");
+  });
+
+  it("blocks a Google websocket and lets another host through", () => {
+    withdraw();
+    const before = recorded.calls.length;
+    new WebSocket("wss://region1.google-analytics.com/g/collect");
+    expect(recorded.calls.length).toBe(before);
+    new WebSocket("wss://ws.example.com/ws");
+    expect(recorded.calls.slice(before)).toContain(
+      "ws:wss://ws.example.com/ws",
+    );
   });
 });
 
