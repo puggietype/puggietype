@@ -376,6 +376,27 @@ function cleanPage(): { page_path: string; page_location: string } {
   };
 }
 
+/**
+ * Keep gtag from seeing route changes. Its history listener sends a second
+ * page_view and copies the raw URL, query included, into the hit.
+ */
+function lockHistoryMethods(): void {
+  for (const name of ["pushState", "replaceState"] as const) {
+    const native = history[name].bind(history);
+    try {
+      Object.defineProperty(history, name, {
+        configurable: false,
+        writable: false,
+        value: (...args: Parameters<History["pushState"]>): void => {
+          native(...args);
+        },
+      });
+    } catch {
+      // A previous load already locked the method.
+    }
+  }
+}
+
 /** Referrer with the query and hash removed. Empty when the browser has none. */
 function cleanReferrer(): string {
   if (document.referrer === "") return "";
@@ -444,6 +465,8 @@ export function loadGa4(measurementId: string): void {
   gtag("set", "allow_google_signals", false);
   publishCleanPage(gtag);
   gtag("js", new Date());
+  // gtag.js wraps history and sends another page_view from the raw URL.
+  lockHistoryMethods();
   const pageFields = cleanPage();
   gtag("config", measurementId, {
     allow_google_signals: false,

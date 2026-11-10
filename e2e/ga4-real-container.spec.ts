@@ -9,9 +9,18 @@ import { expect, test, type Request } from "@playwright/test";
  * Saved GET of https://www.googletagmanager.com/gtag/js?id=G-B8GK1C9T6T.
  * Collects are answered here and are not forwarded.
  */
-const FIXTURE = path.resolve("e2e/fixtures/gtag-G-B8GK1C9T6T.js.bin");
-const FIXTURE_SHA256 =
-  "91a205abf80be3803f09fa6cb7faf9d2763fbecd9061a410230eb9e695dd8644";
+const FIXTURES = [
+  {
+    file: "e2e/fixtures/gtag-G-B8GK1C9T6T-em-on.js.bin",
+    sha256: "b09bcf0fac8f774f11df5a451be886c1edc60d1e46484b77973d0c8da3b524e7",
+    emPageView: true,
+  },
+  {
+    file: "e2e/fixtures/gtag-G-B8GK1C9T6T.js.bin",
+    sha256: "91a205abf80be3803f09fa6cb7faf9d2763fbecd9061a410230eb9e695dd8644",
+    emPageView: false,
+  },
+] as const;
 const ID = "G-B8GK1C9T6T";
 
 const chromePath = process.env["CHROME_PATH"];
@@ -102,6 +111,13 @@ async function servePage(): Promise<{ url: string; close: () => void }> {
       cookie_expires: 34128000
     }, fields));
     gtag("event", "page_view", Object.assign({ send_to: id }, fields));
+    const nativePush = history.pushState.bind(history);
+    const nativeReplace = history.replaceState.bind(history);
+    function lock(name, fn) {
+      Object.defineProperty(history, name, { configurable: false, writable: false, value: fn });
+    }
+    lock("pushState", function (state, title, url) { return nativePush(state, title, url); });
+    lock("replaceState", function (state, title, url) { return nativeReplace(state, title, url); });
     const script = document.createElement("script");
     script.src = "https://www.googletagmanager.com/gtag/js?id=" + id;
     document.head.appendChild(script);
@@ -126,13 +142,7 @@ async function servePage(): Promise<{ url: string; close: () => void }> {
 test("real GA4 container sends one consented page view per route", async ({
   page,
 }) => {
-  const bytes = readFileSync(FIXTURE);
-  expect(createHash("sha256").update(bytes).digest("hex")).toBe(FIXTURE_SHA256);
-  expect(bytes.includes(Buffer.from("__ccd_em_page_view"))).toBe(false);
-  expect(bytes.includes(Buffer.from('vtp_enableHistoryEvents":true'))).toBe(
-    true,
-  );
-
+  let bytes = Buffer.alloc(0);
   const hits: Hit[] = [];
   let servedFixture = false;
   await page.route("**/*", async (route) => {
@@ -158,39 +168,51 @@ test("real GA4 container sends one consented page view per route", async ({
     await route.continue();
   });
 
-  const served = await servePage();
-  try {
-    await page.goto(served.url, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(7000);
-    const afterLoad = hits.filter((hit) => hit.en === "page_view").length;
-    await page.evaluate(() => {
-      history.pushState({}, "", "/next?q=1#hash");
-      const fields = {
-        page_path: location.pathname,
-        page_location: `${location.origin}${location.pathname}`,
-        page_referrer: `${location.origin}/login`,
-      };
-      const gtag = (window as Window & { gtag?: (...args: unknown[]) => void })
-        .gtag;
-      gtag?.("set", fields);
-      gtag?.("event", "page_view", { ...fields, send_to: "G-B8GK1C9T6T" });
-    });
-    await page.waitForTimeout(6000);
-    expect(servedFixture).toBe(true);
-    expect(afterLoad).toBe(1);
-    const views = hits.filter((hit) => hit.en === "page_view");
-    expect(views).toHaveLength(2);
-    for (const hit of hits) {
-      expect(hit.gcs, hit.en).toBe("G101");
-      expect(hit.npa, hit.en).toBe("1");
-      expect(hit.dl, hit.en).not.toMatch(/[?#]/);
-      expect(hit.dr, hit.en).not.toMatch(/[?#]/);
+  for (const fixture of FIXTURES) {
+    bytes = readFileSync(path.resolve(fixture.file));
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+      fixture.sha256,
+    );
+    expect(bytes.includes(Buffer.from("__ccd_em_page_view"))).toBe(
+      fixture.emPageView,
+    );
+    hits.length = 0;
+    servedFixture = false;
+    const served = await servePage();
+    try {
+      await page.goto(served.url, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(7000);
+      const afterLoad = hits.filter((hit) => hit.en === "page_view").length;
+      await page.evaluate(() => {
+        history.pushState({}, "", "/next?q=1#hash");
+        const fields = {
+          page_path: location.pathname,
+          page_location: `${location.origin}${location.pathname}`,
+          page_referrer: `${location.origin}/login`,
+        };
+        const gtag = (
+          window as Window & { gtag?: (...args: unknown[]) => void }
+        ).gtag;
+        gtag?.("set", fields);
+        gtag?.("event", "page_view", { ...fields, send_to: "G-B8GK1C9T6T" });
+      });
+      await page.waitForTimeout(6000);
+      expect(servedFixture).toBe(true);
+      expect(afterLoad).toBe(1);
+      const views = hits.filter((hit) => hit.en === "page_view");
+      expect(views).toHaveLength(2);
+      for (const hit of hits) {
+        expect(hit.gcs, hit.en).toBe("G101");
+        expect(hit.npa, hit.en).toBe("1");
+        expect(hit.dl, hit.en).not.toMatch(/[?#]/);
+        expect(hit.dr, hit.en).not.toMatch(/[?#]/);
+      }
+      expect(views.map((hit) => new URL(hit.dl).pathname)).toEqual([
+        "/login",
+        "/next",
+      ]);
+    } finally {
+      served.close();
     }
-    expect(views.map((hit) => new URL(hit.dl).pathname)).toEqual([
-      "/login",
-      "/next",
-    ]);
-  } finally {
-    served.close();
   }
 });
