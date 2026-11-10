@@ -61,4 +61,4 @@ jobs:
           done
           cat /tmp/wrangler-pages.log
           exit 1
-      - run: BASE_URL=http://127.0.0.1:3300 pnpm exec playwright test e2e/kids-flow-ga.spec.ts
+      - run: BASE_URL=http://127.0.0.1:3300 pnpm exec playwright test e2e/kids-flow-ga.spec.ts e2e/ga4-real-container.spec.ts

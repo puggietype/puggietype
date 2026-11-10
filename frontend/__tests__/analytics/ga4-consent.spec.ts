@@ -998,6 +998,11 @@ describe("sanitized single page view", () => {
     expect(defaultAt).toBeGreaterThan(-1);
     expect(blockAt).toBeGreaterThan(defaultAt);
     expect(jsAt).toBeGreaterThan(blockAt);
+    const configAt = commands.findIndex((entry) => entry[0] === "config");
+    expect(configAt).toBeGreaterThan(jsAt);
+    expect(commandPayload(commands[blockAt] as IArguments)?.["page_path"]).toBe(
+      "/login",
+    );
   });
 
   it("strips the referrer query before the tag starts", async () => {

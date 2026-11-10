@@ -388,16 +388,21 @@ function cleanReferrer(): string {
 }
 
 /**
- * The real gtag.js sends its own page_view when it handles `js`, from the
- * document URL, before a later config is applied. `send_page_view: false`
- * and a query-free page_location have to already be on the model.
+ * The real gtag.js for this property sends its own page_view when it handles
+ * `js`. Consent and this set have to be queued first. `page_location` alone
+ * still leaves that extra hit; `send_page_view: false` in the same set drops it.
+ * Route changes repeat the set so later automatic events keep the clean URL.
  */
 function publishCleanPage(gtagFn: Gtag): void {
   const fields = cleanPage();
   gtagFn("set", {
     send_page_view: false,
+    page_path: fields.page_path,
     page_location: fields.page_location,
     page_referrer: cleanReferrer(),
+    ads_data_redaction: true,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false,
   });
 }
 
@@ -438,6 +443,7 @@ export function loadGa4(measurementId: string): void {
   });
   gtag("set", "allow_google_signals", false);
   publishCleanPage(gtag);
+  gtag("js", new Date());
   const pageFields = cleanPage();
   gtag("config", measurementId, {
     allow_google_signals: false,
@@ -448,7 +454,6 @@ export function loadGa4(measurementId: string): void {
     ...pageFields,
     page_referrer: cleanReferrer(),
   });
-  gtag("js", new Date());
   const script = document.createElement("script");
   script.async = true;
   script.src = `${GA4_SCRIPT_URL}?id=${encodeURIComponent(measurementId)}`;
