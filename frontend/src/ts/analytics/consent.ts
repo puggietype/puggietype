@@ -10,7 +10,7 @@ export const CONSENT_STORAGE_KEY = "acceptedCookies";
  * Extra detail stays behind more options.
  */
 export const CONSENT_ESSENTIAL_COPY =
-  "Optional Google Analytics 4 measures site use. It loads only if you accept; rejecting keeps it off.";
+  "Optional Google Analytics 4 uses analytics cookies. It loads only if you accept; rejecting keeps it off.";
 
 function finite(value: number | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -99,11 +99,114 @@ export function readConsentRecord(): ConsentRecord | null {
   }
 }
 
+const GA_COOKIE_EXPIRED = "Thu, 01 Jan 1970 00:00:00 GMT";
+
+/** `_ga` and `_ga_*` only. Other first-party names stay put. */
+export function gaCookieNames(cookieHeader: string): string[] {
+  const names: string[] = [];
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    const name = (eq === -1 ? part : part.slice(0, eq)).trim();
+    if (name === "_ga" || name.startsWith("_ga_")) names.push(name);
+  }
+  return names;
+}
+
+/**
+ * Leading-dot registrable domain (`www.puggietype.com` → `.puggietype.com`).
+ * Host-only names (localhost, IPs) have none.
+ */
+export function registrableCookieDomain(hostname: string): string | null {
+  const host = hostname.trim().toLowerCase().replace(/\.+$/, "");
+  if (host === "" || host === "localhost" || host.endsWith(".localhost")) {
+    return null;
+  }
+  if (host.startsWith("[") || host.includes(":")) return null;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return null;
+  const labels = host.split(".");
+  if (labels.length < 2 || labels.some((label) => label === "")) return null;
+  return `.${labels.slice(-2).join(".")}`;
+}
+
+/** Host-only expiry, plus the registrable domain when the host has one. */
+export function gaCookieExpiryLines(
+  name: string,
+  hostname: string,
+  protocol: string,
+): string[] {
+  const secure = protocol === "https:" ? "; Secure" : "";
+  const hostOnly = `${name}=; expires=${GA_COOKIE_EXPIRED}; Max-Age=0; path=/; SameSite=Lax${secure}`;
+  const domain = registrableCookieDomain(hostname);
+  if (domain === null) return [hostOnly];
+  return [hostOnly, `${hostOnly}; domain=${domain}`];
+}
+
+function readCookieHeader(): string {
+  try {
+    return document.cookie;
+  } catch {
+    return "";
+  }
+}
+
+function readHostname(): string {
+  try {
+    return location.hostname;
+  } catch {
+    return "";
+  }
+}
+
+function readProtocol(): string {
+  try {
+    return location.protocol;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Best-effort delete of first-party `_ga` and `_ga_*` cookies.
+ * Expires each one on the current host and, when there is one, on the
+ * registrable domain (for example `.puggietype.com`), path `/`.
+ */
+export function deleteGaCookies(input?: {
+  cookieHeader?: string;
+  hostname?: string;
+  protocol?: string;
+  write?: (value: string) => void;
+}): void {
+  const header = input?.cookieHeader ?? readCookieHeader();
+  const hostname = input?.hostname ?? readHostname();
+  const protocol = input?.protocol ?? readProtocol();
+  const write =
+    input?.write ??
+    ((value: string): void => {
+      document.cookie = value;
+    });
+  for (const name of gaCookieNames(header)) {
+    for (const line of gaCookieExpiryLines(name, hostname, protocol)) {
+      try {
+        write(line);
+      } catch {
+        // best effort: a blocked cookie jar still leaves consent withdrawn
+      }
+    }
+  }
+}
+
+function analyticsConsentWithdrawn(
+  previous: ConsentRecord | null,
+  next: ConsentRecord,
+): boolean {
+  return previous?.analytics === true && !next.analytics;
+}
+
 export function writeConsentRecord(record: ConsentRecord): void {
-  localStorage.setItem(
-    CONSENT_STORAGE_KEY,
-    JSON.stringify(ConsentRecordSchema.parse(record)),
-  );
+  const previous = readConsentRecord();
+  const next = ConsentRecordSchema.parse(record);
+  localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(next));
+  if (analyticsConsentWithdrawn(previous, next)) deleteGaCookies();
 }
 
 export function globalPrivacyControl(): boolean {

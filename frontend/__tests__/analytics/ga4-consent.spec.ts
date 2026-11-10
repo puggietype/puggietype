@@ -3,15 +3,30 @@ import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
+const env = vi.hoisted(() => ({
+  ga4MeasurementId: "",
+}));
+
+vi.mock("virtual:env-config", () => ({
+  envConfig: env,
+}));
+
 import {
   adsAllowedOnPath,
   adsEnabled,
   isAdsExcludedPath,
 } from "../../src/ts/ads/excluded-paths";
-import { GA4_SCRIPT_URL, loadGa4, syncGa4 } from "../../src/ts/analytics/ga4";
+import {
+  GA4_COOKIE_EXPIRES_SECONDS,
+  GA4_SCRIPT_URL,
+  loadGa4,
+  syncGa4,
+} from "../../src/ts/analytics/ga4";
 import {
   analyticsLoadAllowed,
   consentBannerAllowed,
+  deleteGaCookies,
+  gaCookieExpiryLines,
   kidsAnalyticsExcluded,
   KIDS_FLOW_STORAGE_KEY,
   noteKidsFlowVisit,
@@ -249,6 +264,8 @@ describe("analytics consent gate", () => {
       expect(layer).toContain('"allow_google_signals":false');
       expect(layer).toContain('"allow_ad_personalization_signals":false');
       expect(layer).toContain('"ad_personalization":"denied"');
+      expect(layer).toContain(`"cookie_expires":${GA4_COOKIE_EXPIRES_SECONDS}`);
+      expect(GA4_COOKIE_EXPIRES_SECONDS).toBe(34128000);
       expect(layer).not.toMatch(
         /adsbygoogle|mediavine|doubleclick|fundingchoices/i,
       );
@@ -345,5 +362,117 @@ describe("legal copy", () => {
     );
     expect(faqHtml).toContain('src="/ts/analytics/static-boot.ts"');
     expect(privacy).not.toContain("no analytics scripts");
+  });
+});
+
+const GA_JAR =
+  "_ga=GA1.1.111.222; _ga_B8GK1C9T6T=GS1.1.1; __cf_bm=keep; theme=keep";
+
+const ACCEPTED = {
+  security: true,
+  analytics: true,
+  doNotSellOrShare: false,
+} as const;
+
+const REJECTED = {
+  security: true,
+  analytics: false,
+  doNotSellOrShare: true,
+} as const;
+
+describe("GA cookie withdrawal", () => {
+  it("expires _ga and _ga_* on the current host and on .puggietype.com", () => {
+    for (const hostname of ["puggietype.com", "www.puggietype.com"]) {
+      const writes: string[] = [];
+      deleteGaCookies({
+        cookieHeader: GA_JAR,
+        hostname,
+        protocol: "https:",
+        write: (value) => {
+          writes.push(value);
+        },
+      });
+      expect(writes, hostname).toHaveLength(4);
+      for (const name of ["_ga", "_ga_B8GK1C9T6T"]) {
+        const lines = writes.filter((line) => line.startsWith(`${name}=`));
+        expect(lines, `${hostname} ${name}`).toEqual([
+          `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; path=/; SameSite=Lax; Secure`,
+          `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; path=/; SameSite=Lax; Secure; domain=.puggietype.com`,
+        ]);
+      }
+      expect(writes.join("\n")).not.toMatch(/__cf_bm|theme/);
+    }
+  });
+
+  it("does not write cookies when analytics was never accepted", () => {
+    const writes: string[] = [];
+    vi.spyOn(document, "cookie", "get").mockReturnValue(GA_JAR);
+    vi.spyOn(document, "cookie", "set").mockImplementation((value) => {
+      writes.push(value);
+    });
+    try {
+      writeConsentRecord(REJECTED);
+      expect(readConsentRecord()).toEqual(REJECTED);
+      expect(writes).toEqual([]);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("deletes GA cookies only when a prior accept is withdrawn", () => {
+    const writes: string[] = [];
+    vi.spyOn(document, "cookie", "get").mockReturnValue(GA_JAR);
+    vi.spyOn(document, "cookie", "set").mockImplementation((value) => {
+      writes.push(value);
+    });
+    try {
+      writeConsentRecord(ACCEPTED);
+      expect(writes).toEqual([]);
+      writeConsentRecord(ACCEPTED);
+      expect(writes).toEqual([]);
+      writeConsentRecord(REJECTED);
+      expect(readConsentRecord()?.analytics).toBe(false);
+      expect(writes).toEqual(
+        ["_ga", "_ga_B8GK1C9T6T"].flatMap((name) =>
+          gaCookieExpiryLines(name, location.hostname, location.protocol),
+        ),
+      );
+      writes.length = 0;
+      writeConsentRecord(REJECTED);
+      expect(writes).toEqual([]);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("does not load GA4 on the next page load after analytics is withdrawn", async () => {
+    env.ga4MeasurementId = "G-TEST1234";
+    window.history.pushState({}, "", "/");
+    sessionStorage.removeItem("puggie-kids-flow");
+    writeConsentRecord(ACCEPTED);
+    const scripts: HTMLScriptElement[] = [];
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
+      if (node instanceof HTMLScriptElement) scripts.push(node);
+      return node;
+    });
+    try {
+      vi.resetModules();
+      const accepted = await import("../../src/ts/analytics/ga4");
+      scripts.length = 0;
+      accepted.syncGa4();
+      expect(scripts).toHaveLength(1);
+      expect(scripts[0]?.getAttribute("src")).toBe(
+        `${GA4_SCRIPT_URL}?id=G-TEST1234`,
+      );
+
+      writeConsentRecord(REJECTED);
+      vi.resetModules();
+      const withdrawn = await import("../../src/ts/analytics/ga4");
+      withdrawn.syncGa4();
+      expect(scripts).toHaveLength(1);
+    } finally {
+      env.ga4MeasurementId = "";
+      vi.restoreAllMocks();
+    }
   });
 });

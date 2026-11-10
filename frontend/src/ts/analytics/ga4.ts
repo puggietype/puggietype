@@ -11,6 +11,9 @@ import {
 /** GA4 tag origin only. No ads, Google signals, or Ads linking endpoints. */
 export const GA4_SCRIPT_URL = "https://www.googletagmanager.com/gtag/js";
 
+/** 395 days, about 13 months. GA4 cookie lifetime after accept. */
+export const GA4_COOKIE_EXPIRES_SECONDS = 34128000;
+
 type GtagValue = string | number | boolean | Date | Record<string, unknown>;
 type Gtag = (...args: GtagValue[]) => void;
 type AnalyticsWindow = Window & {
@@ -67,6 +70,7 @@ export function loadGa4(measurementId: string): void {
     allow_ad_personalization_signals: false,
     ads_data_redaction: true,
     send_page_view: true,
+    cookie_expires: GA4_COOKIE_EXPIRES_SECONDS,
   });
   const script = document.createElement("script");
   script.async = true;
