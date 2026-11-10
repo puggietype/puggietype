@@ -12,8 +12,6 @@ export type EnvConfig = {
   quickLoginPassword: string | undefined;
   /** Empty until a GA4 property exists. No tag is loaded while this is empty. */
   ga4MeasurementId: string;
-  /** ISO countries that require analytics consent before GA4 loads. */
-  ga4ConsentRegions: string[];
 };
 
 declare module "virtual:env-config" {

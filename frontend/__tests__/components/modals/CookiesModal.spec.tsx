@@ -120,6 +120,59 @@ describe("CookiesModal", () => {
     }
   });
 
+  it("describes browser storage without a security checkbox", () => {
+    localStorage.setItem("config", JSON.stringify({ mode: "time" }));
+    localStorage.setItem("lastSeenVersion", JSON.stringify("keep-me"));
+    const cookieBefore = document.cookie;
+    renderModal();
+    const more = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "more options",
+    );
+    if (!(more instanceof HTMLButtonElement)) {
+      throw new Error("more options missing");
+    }
+    fireEvent.click(more);
+    const note = [...document.querySelectorAll("div")].find(
+      (el) =>
+        el.querySelector(":scope > .text-sub")?.textContent ===
+        "saved in this browser",
+    );
+    if (!(note instanceof HTMLElement)) {
+      throw new Error("storage note missing");
+    }
+    expect(note.getAttribute("data-consent-note")).toBe(
+      "saved in this browser",
+    );
+    expect(
+      note
+        .querySelector(".text-text")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim(),
+    ).toBe(
+      "Always on. Your settings and privacy choice are saved in this browser, not in cookies. Our host, Cloudflare, processes network data to deliver and protect the site and may set security cookies if its bot protection runs. See Privacy policy.",
+    );
+    expect(note.querySelector("input")).toBeNull();
+    expect(note.querySelector("a")?.getAttribute("href")).toBe("/privacy");
+    const boxes = [
+      ...document.querySelectorAll("#CookiesModal input[type='checkbox']"),
+    ];
+    expect(boxes.length).toBe(2);
+    expect(
+      boxes.every(
+        (box) => box instanceof HTMLInputElement && box.tabIndex !== -1,
+      ),
+    ).toBe(true);
+    expect(note.tabIndex).toBe(-1);
+    expect(localStorage.getItem("config")).toBe(
+      JSON.stringify({ mode: "time" }),
+    );
+    expect(localStorage.getItem("lastSeenVersion")).toBe(
+      JSON.stringify("keep-me"),
+    );
+    expect(localStorage.getItem("acceptedCookies")).toBeNull();
+    expect(document.cookie).toBe(cookieBefore);
+  });
+
   it("Escape from the words input rejects without entering the banner", () => {
     const { input } = renderModal();
     expect(document.activeElement).toBe(input);

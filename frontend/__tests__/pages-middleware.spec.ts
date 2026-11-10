@@ -3,9 +3,6 @@ import {
   onRequest,
   isAssetPath,
   ASSET_PREFIXES,
-  COUNTRY_COOKIE,
-  countrySetCookie,
-  normalizeEdgeCountry,
 } from "../../functions/_middleware";
 import routes from "../static/_routes.json";
 
@@ -130,36 +127,20 @@ describe("pages middleware", () => {
     expect(r.headers.get("Cache-Control")).toBe("no-store");
   });
 
-  it("sets pt_country on html from the edge country", async () => {
-    const request = new Request("https://puggietype.com/privacy");
-    Object.assign(request, { cf: { country: "de" } });
-    const r = await onRequest({
-      request,
-      next: async () => html(),
-    });
-    expect(r.headers.get("set-cookie")).toBe(countrySetCookie("DE"));
-    expect(normalizeEdgeCountry("uk")).toBe("GB");
-    expect(normalizeEdgeCountry("XX")).toBeNull();
-    expect(normalizeEdgeCountry("T1")).toBeNull();
-  });
-
-  it("does not set a country cookie on assets or when the country is unknown", async () => {
-    const asset = new Request("https://puggietype.com/js/a.js");
-    Object.assign(asset, { cf: { country: "US" } });
-    const assetRes = await onRequest({
-      request: asset,
-      next: async () => js(),
-    });
-    expect(assetRes.headers.get("set-cookie")).toBeNull();
-
-    const page = new Request("https://puggietype.com/faq");
-    Object.assign(page, { cf: { country: "XX" } });
-    const pageRes = await onRequest({
-      request: page,
-      next: async () => html(),
-    });
-    expect(pageRes.headers.get("set-cookie")).toBeNull();
-    expect(COUNTRY_COOKIE).toBe("pt_country");
+  it("does not set or clear pt_country on html", async () => {
+    for (const path of ["/", "/privacy", "/faq", "/race"]) {
+      const request = new Request(`https://puggietype.com${path}`, {
+        headers: { Cookie: "pt_country=US" },
+      });
+      Object.assign(request, { cf: { country: "DE" } });
+      const r = await onRequest({
+        request,
+        next: async () => html(),
+      });
+      const setCookie = r.headers.get("set-cookie");
+      expect(setCookie).toBeNull();
+      expect(setCookie ?? "").not.toMatch(/pt_country|Max-Age=0/i);
+    }
   });
 
   it("real asset with a query string and Origin passes through", async () => {

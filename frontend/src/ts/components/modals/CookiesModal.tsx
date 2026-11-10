@@ -16,7 +16,6 @@ import {
 } from "../../analytics/consent";
 import { getAcceptedCookies, setAcceptedCookies } from "../../cookies";
 import { hideModal, isModalOpen } from "../../states/modals";
-import { cn } from "../../utils/cn";
 import { AnimatedModal } from "../common/AnimatedModal";
 import { Button } from "../common/Button";
 import { H3 } from "../common/Headers";
@@ -473,10 +472,21 @@ function ConsentDetails(props: {
   return (
     <>
       <SettingsSection
-        title="security"
-        description="Required Cloudflare cookies. They store no personal information."
+        title="saved in this browser"
+        description={
+          <>
+            Always on. Your settings and privacy choice are saved in this
+            browser, not in cookies. Our host, Cloudflare, processes network
+            data to deliver and protect the site and may set security cookies if
+            its bot protection runs. See{" "}
+            <a href="/privacy" class="text-main underline">
+              Privacy policy
+            </a>
+            .
+          </>
+        }
         checked={true}
-        disabled={true}
+        hideCheckbox
       />
       <SettingsSection
         title="analytics"
@@ -520,24 +530,28 @@ function SettingsSection(props: {
   onChange?: (checked: boolean) => void;
 }): JSXElement {
   return (
-    <label
-      class={cn(
-        "grid grid-cols-[auto_1fr] items-center gap-2",
-        props.hideCheckbox && "grid-cols-1",
-      )}
+    <Show
+      when={!props.hideCheckbox}
+      fallback={
+        <div class="grid gap-1" data-consent-note={props.title}>
+          <div class="text-sub">{props.title}</div>
+          <div class="text-text">{props.description}</div>
+        </div>
+      }
     >
-      <div class="grid gap-1">
-        <div class="text-sub">{props.title}</div>
-        <div class="text-text">{props.description}</div>
-      </div>
-      <input
-        type="checkbox"
-        class="text-2xl"
-        checked={props.checked}
-        disabled={props.disabled}
-        hidden={props.hideCheckbox}
-        onChange={(e) => props.onChange?.(e.currentTarget.checked)}
-      />
-    </label>
+      <label class="grid grid-cols-[auto_1fr] items-center gap-2">
+        <div class="grid gap-1">
+          <div class="text-sub">{props.title}</div>
+          <div class="text-text">{props.description}</div>
+        </div>
+        <input
+          type="checkbox"
+          class="text-2xl"
+          checked={props.checked}
+          disabled={props.disabled}
+          onChange={(e) => props.onChange?.(e.currentTarget.checked)}
+        />
+      </label>
+    </Show>
   );
 }

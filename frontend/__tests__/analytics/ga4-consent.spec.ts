@@ -12,18 +12,15 @@ import { GA4_SCRIPT_URL, loadGa4, syncGa4 } from "../../src/ts/analytics/ga4";
 import {
   analyticsLoadAllowed,
   consentBannerAllowed,
-  COUNTRY_COOKIE,
   kidsAnalyticsExcluded,
   KIDS_FLOW_STORAGE_KEY,
   noteKidsFlowVisit,
   readConsentRecord,
   readKidsFlow,
-  readCountryCookie,
   writeConsentRecord,
 } from "../../src/ts/analytics/consent";
 import { ga4CspSources } from "../../vite-plugins/ga4-csp";
 import { injectStaticConsentScript } from "../../vite-plugins/static-consent-script";
-import { COUNTRY_COOKIE as edgeCountryCookie } from "../../../functions/_middleware";
 
 const src = path.resolve(__dirname, "../../src");
 
@@ -34,12 +31,20 @@ const ABOUT =
   "We use privacy-preserving aggregate traffic tools from our host (Cloudflare) and, when enabled, Google Analytics 4. Details are in our";
 
 describe("analytics consent gate", () => {
-  it("matches the edge country cookie name", () => {
-    expect(COUNTRY_COOKIE).toBe(edgeCountryCookie);
-    expect(readCountryCookie("pt_country=us; other=1")).toBe("US");
-    expect(readCountryCookie("pt_country=UK")).toBe("GB");
-    expect(readCountryCookie("pt_country=XX")).toBeNull();
-    expect(readCountryCookie("")).toBeNull();
+  it("does not keep a country-cookie reader", () => {
+    const consent = readFileSync(
+      path.join(src, "ts/analytics/consent.ts"),
+      "utf8",
+    );
+    const middleware = readFileSync(
+      path.resolve(__dirname, "../../../functions/_middleware.ts"),
+      "utf8",
+    );
+    expect(consent).not.toContain("pt_country");
+    expect(consent).not.toContain("readCountryCookie");
+    expect(consent).not.toContain("DEFAULT_CONSENT_REGIONS");
+    expect(middleware).not.toContain("pt_country");
+    expect(middleware).not.toContain("Set-Cookie");
   });
 
   it("loads GA4 only after accept, including in the US", () => {

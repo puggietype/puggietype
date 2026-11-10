@@ -60,8 +60,7 @@
         "VITE_WS_URL",
         "VITE_MULTIPLAYER",
         "VITE_PUBLIC_MATCHES",
-        "GA4_MEASUREMENT_ID",
-        "GA4_CONSENT_REGIONS"
+        "GA4_MEASUREMENT_ID"
       ],
       "outputs": ["dist/**"]
     },
