@@ -53,7 +53,9 @@ export function SoloLeaderboardSubmit(props: {
   now?: () => number;
 }): JSXElement {
   const [unlocked, setUnlocked] = createSignal(false);
-  const [phase, setPhase] = createSignal<"idle" | "sending" | "done">("idle");
+  const [phase, setPhase] = createSignal<
+    "idle" | "sending" | "done" | "rejected"
+  >("idle");
   const [message, setMessage] = createSignal<string | undefined>();
   const clock = (): number => props.now?.() ?? Date.now();
   let shownAt = Number.POSITIVE_INFINITY;
@@ -122,8 +124,14 @@ export function SoloLeaderboardSubmit(props: {
         setMessage("This score was not added to the board.");
         return;
       }
-      setPhase("idle");
-      setMessage(SUBMIT_RETRY);
+      if (result.retry) {
+        setPhase("idle");
+        setMessage(SUBMIT_RETRY);
+        return;
+      }
+      // 400 will fail again with the same body. 429 means stop, not try again.
+      setPhase("rejected");
+      setMessage(result.error);
     });
   };
 
@@ -195,8 +203,10 @@ export function SoloLeaderboardSubmit(props: {
           text={phase() === "sending" ? "Submitting…" : "Submit score"}
           fa={{ icon: "fa-crown" }}
           class={cn(PRIMARY_BUTTON, "px-5 py-3", {
+            // !opacity-100 beats a leftover opacity-[0.33] utility, which is
+            // later in the stylesheet and otherwise keeps the button dim.
             "cursor-not-allowed opacity-[0.33]": !canSend(),
-            "opacity-100": canSend(),
+            "!opacity-100": canSend(),
           })}
           ariaLabel={
             reason() !== undefined ? `Submit score. ${reason()}` : undefined

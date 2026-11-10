@@ -45,11 +45,27 @@ function postedBody(call = 0): Record<string, unknown> | undefined {
   return isRecord(parsed) ? parsed : undefined;
 }
 
+function installButtonOpacityCss(): HTMLStyleElement {
+  const style = document.createElement("style");
+  // Same conflict the app has: the dim utility is declared after opacity-100,
+  // and button[disabled] also sets 0.33. !opacity-100 must still compute to 1.
+  style.textContent = `
+    button[disabled], button.disabled { opacity: 0.33; }
+    .opacity-100 { opacity: 1; }
+    .opacity-\\[0\\.33\\] { opacity: 0.33; }
+    .\\!opacity-100 { opacity: 1 !important; }
+  `;
+  document.head.appendChild(style);
+  return style;
+}
+
 describe("SoloLeaderboardSubmit", () => {
+  let opacityCss: HTMLStyleElement | undefined;
   beforeEach(() => {
     vi.useFakeTimers();
     setShowOnLeaderboard(true);
     sessionStorage.removeItem(KIDS_FLOW_KEY);
+    opacityCss = installButtonOpacityCss();
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("{}", { status: 200 })),
@@ -57,6 +73,7 @@ describe("SoloLeaderboardSubmit", () => {
   });
   afterEach(() => {
     cleanup();
+    opacityCss?.remove();
     vi.useRealTimers();
     vi.unstubAllGlobals();
     sessionStorage.removeItem(KIDS_FLOW_KEY);
@@ -377,8 +394,9 @@ describe("SoloLeaderboardSubmit", () => {
     );
     expect(button).toHaveAttribute("aria-disabled", "false");
     expect(button.disabled).toBe(false);
-    expect(button.className).toContain("opacity-100");
+    expect(button.className).toContain("!opacity-100");
     expect(button.className).not.toContain("opacity-[0.33]");
+    expect(getComputedStyle(button).opacity).toBe("1");
     expect(fetch).toHaveBeenCalledTimes(1);
 
     fireEvent.click(button);
@@ -387,5 +405,113 @@ describe("SoloLeaderboardSubmit", () => {
     await vi.waitFor(() => expect(status.textContent).toBe("Score submitted."));
     fireEvent.click(button);
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses retry copy for a 500 and server text for 429 and 400", async () => {
+    const cases = [
+      {
+        status: 500,
+        error: "database unavailable",
+        text: "Couldn't submit your score. Try again.",
+        retry: true,
+      },
+      {
+        status: 429,
+        error: "Too many scores. Slow down.",
+        text: "Too many scores. Slow down.",
+        retry: false,
+      },
+      {
+        status: 400,
+        error: "wpm is invalid",
+        text: "wpm is invalid",
+        retry: false,
+      },
+    ] as const;
+    for (const next of cases) {
+      cleanup();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response(JSON.stringify({ ok: false, error: next.error }), {
+              status: next.status,
+            }),
+        ),
+      );
+      const { getByTestId } = renderSubmit();
+      vi.advanceTimersByTime(2000);
+      const button = getByTestId<HTMLButtonElement>("lb-submit");
+      const status = getByTestId("lb-submit-status");
+      fireEvent.click(button);
+      await vi.waitFor(() => expect(status.textContent).toBe(next.text));
+      expect(status.textContent).not.toContain(
+        next.retry ? "database" : "Try again",
+      );
+      expect(button).toHaveAttribute(
+        "aria-disabled",
+        next.retry ? "false" : "true",
+      );
+      expect(button.disabled).toBe(false);
+      expect(getComputedStyle(button).opacity).toBe(next.retry ? "1" : "0.33");
+      fireEvent.click(button);
+      expect(fetch).toHaveBeenCalledTimes(next.retry ? 2 : 1);
+    }
+  });
+
+  it("uses retry copy when the network throws and posts once more", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockResolvedValueOnce(new Response("{}", { status: 200 })),
+    );
+    const { getByTestId } = renderSubmit();
+    vi.advanceTimersByTime(2000);
+    const button = getByTestId<HTMLButtonElement>("lb-submit");
+    const status = getByTestId("lb-submit-status");
+    fireEvent.click(button);
+    await vi.waitFor(() =>
+      expect(status.textContent).toBe("Couldn't submit your score. Try again."),
+    );
+    expect(button).toHaveAttribute("aria-disabled", "false");
+    expect(getComputedStyle(button).opacity).toBe("1");
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(status.textContent).toBe("Score submitted."));
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("reaches Score submitted after a delayed response and extra activations", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 1500);
+        });
+        return new Response("{}", { status: 200 });
+      }),
+    );
+    const { getByTestId } = renderSubmit();
+    vi.advanceTimersByTime(2000);
+    const button = getByTestId<HTMLButtonElement>("lb-submit");
+    const status = getByTestId("lb-submit-status");
+    fireEvent.click(button);
+    fireEvent.keyDown(button, { key: "Enter" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    fireEvent.keyDown(button, { key: "Enter" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(status.textContent).toBe("Submitting…");
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.waitFor(() => expect(status.textContent).toBe("Score submitted."));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(status.textContent).toBe("Score submitted.");
   });
 });

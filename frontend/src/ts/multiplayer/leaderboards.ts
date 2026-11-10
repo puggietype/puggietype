@@ -473,6 +473,18 @@ export function scoreFromResult(result: {
 
 export type ScorePostOk = { ok: true; recorded?: boolean };
 
+/** `retry` is false only for a 4xx body that matched ErrSchema. */
+export type ScorePostErr = { ok: false; error: string; retry: boolean };
+
+const SCORE_POST_FAILED = "Couldn't submit your score.";
+
+function scorePostFailed(
+  retry: boolean,
+  error = SCORE_POST_FAILED,
+): ScorePostErr {
+  return { ok: false, error, retry };
+}
+
 function recordedFlag(body: unknown): boolean | undefined {
   if (typeof body !== "object" || body === null || !("recorded" in body)) {
     return undefined;
@@ -485,7 +497,7 @@ export async function postLeaderboardScore(
   base: string,
   submission: ScoreSubmission,
   fetchImpl: typeof fetch = fetch,
-): Promise<LeaderboardErr | ScorePostOk> {
+): Promise<ScorePostErr | ScorePostOk> {
   try {
     const response = await fetchImpl(
       new URL("/leaderboards", `${base}/`).toString(),
@@ -500,27 +512,27 @@ export async function postLeaderboardScore(
     );
     const text = await response.text();
     if (text === "") {
-      return response.ok
-        ? { ok: true }
-        : { ok: false, error: "Couldn't submit your score." };
+      return response.ok ? { ok: true } : scorePostFailed(true);
     }
     let json: unknown;
     try {
       json = JSON.parse(text) as unknown;
     } catch {
-      return response.ok
-        ? { ok: true }
-        : { ok: false, error: "Couldn't submit your score." };
+      return response.ok ? { ok: true } : scorePostFailed(true);
     }
     const err = ErrSchema.safeParse(json);
-    if (err.success) return { ok: false, error: err.data.error };
-    if (!response.ok) {
-      return { ok: false, error: "Couldn't submit your score." };
+    if (err.success) {
+      // 4xx is the server's own sentence (rate limit, validation). 5xx is retried.
+      if (response.status >= 400 && response.status < 500) {
+        return scorePostFailed(false, err.data.error);
+      }
+      return scorePostFailed(true);
     }
+    if (!response.ok) return scorePostFailed(true);
     const recorded = recordedFlag(json);
     return recorded === undefined ? { ok: true } : { ok: true, recorded };
   } catch {
-    return { ok: false, error: "Couldn't submit your score." };
+    return scorePostFailed(true);
   }
 }
 
