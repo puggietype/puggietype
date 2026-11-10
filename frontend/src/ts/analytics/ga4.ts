@@ -27,6 +27,8 @@ function pageWindow(): AnalyticsWindow {
 }
 
 let loadedId: string | null = null;
+/** Last pathname we actually sent. A repeat call for that path is not another hit. */
+let lastSentPath: string | null = null;
 
 function isSteam(): boolean {
   return typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam";
@@ -76,6 +78,27 @@ const ADS_DENIED = {
   ad_personalization: "denied",
 } as const;
 
+/** Path only. Query and hash can carry tokens (email, reset, Discord access_token). */
+function cleanPage(): { page_path: string; page_location: string } {
+  return {
+    page_path: location.pathname,
+    page_location: `${location.origin}${location.pathname}`,
+  };
+}
+
+function sendPageView(id: string): void {
+  if (!isGa4MeasurementId(id) || isGaCollectionDisabled(id)) return;
+  const fields = cleanPage();
+  if (fields.page_path === lastSentPath) return;
+  const gtagFn = pageWindow().gtag;
+  if (gtagFn === undefined) return;
+  lastSentPath = fields.page_path;
+  gtagFn("event", "page_view", {
+    ...fields,
+    send_to: id,
+  });
+}
+
 /** Insert the GA4 tag once. Signals, ads personalization, and ads linking stay off. */
 export function loadGa4(measurementId: string): void {
   if (!isGa4MeasurementId(measurementId)) return;
@@ -98,12 +121,14 @@ export function loadGa4(measurementId: string): void {
     analytics_storage: "granted",
   });
   gtag("set", "allow_google_signals", false);
+  const pageFields = cleanPage();
   gtag("config", measurementId, {
     allow_google_signals: false,
     allow_ad_personalization_signals: false,
     ads_data_redaction: true,
-    send_page_view: true,
+    send_page_view: false,
     cookie_expires: GA4_COOKIE_EXPIRES_SECONDS,
+    ...pageFields,
   });
   const script = document.createElement("script");
   script.async = true;
@@ -111,6 +136,7 @@ export function loadGa4(measurementId: string): void {
   script.dataset["ga4"] = measurementId;
   document.head.appendChild(script);
   loadedId = measurementId;
+  sendPageView(measurementId);
 }
 
 function denyAnalyticsStorage(): void {
@@ -178,13 +204,7 @@ export function onSpaRouteChange(): void {
     }),
   });
   if (!allowed || loadedId !== id) return;
-  const gtagFn = pageWindow().gtag;
-  if (gtagFn === undefined) return;
-  gtagFn("event", "page_view", {
-    page_path: `${location.pathname}${location.search}`,
-    page_location: location.href,
-    send_to: id,
-  });
+  sendPageView(id);
 }
 
 setGaWithdrawalHooks({

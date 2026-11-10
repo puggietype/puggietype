@@ -286,11 +286,9 @@ async function router(options = {} as NavigateOptions): Promise<void> {
         force: true,
       },
     );
-    onSpaRouteChange();
-    return;
+  } else {
+    await match.route.load(getParams(match), options);
   }
-
-  await match.route.load(getParams(match), options);
   onSpaRouteChange();
 }
 

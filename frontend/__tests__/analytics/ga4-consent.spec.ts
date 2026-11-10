@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
   ga4MeasurementId: "",
@@ -551,7 +551,7 @@ describe("in-session GA withdrawal", () => {
       "utf8",
     );
     try {
-      expect(router).toContain("onSpaRouteChange()");
+      expect(router.match(/onSpaRouteChange\(\)/g)).toHaveLength(1);
       const sent = layer.length;
       window.history.pushState({}, "", "/faq");
       onSpaRouteChange();
@@ -602,5 +602,136 @@ describe("in-session GA withdrawal", () => {
     } finally {
       finish();
     }
+  });
+});
+
+const PAGE_SECRETS = [
+  "ada@example.com",
+  "sekret",
+  "invite-9",
+  "discord-token",
+  "access_token",
+];
+
+function dataLayer(): unknown[] {
+  return (window as Window & { dataLayer?: unknown[] }).dataLayer ?? [];
+}
+
+function isCommand(entry: unknown, command: string): entry is unknown[] {
+  return Array.isArray(entry) && entry[0] === command;
+}
+
+function pageViews(layer: unknown[]): unknown[][] {
+  return layer.filter(
+    (entry): entry is unknown[] =>
+      isCommand(entry, "event") && entry[1] === "page_view",
+  );
+}
+
+function assertCleanPagePayloads(layer: unknown[]): void {
+  const tracked = layer.filter(
+    (entry) => isCommand(entry, "config") || isCommand(entry, "event"),
+  );
+  const text = JSON.stringify(tracked);
+  for (const secret of PAGE_SECRETS) {
+    expect(text).not.toContain(secret);
+  }
+  for (const entry of tracked) {
+    if (!isCommand(entry, "config") && !isCommand(entry, "event")) continue;
+    const payload = entry[2];
+    if (payload === null || typeof payload !== "object") continue;
+    const fields = payload as { page_path?: string; page_location?: string };
+    if (typeof fields.page_path === "string") {
+      expect(fields.page_path).not.toMatch(/[?#]/);
+    }
+    if (typeof fields.page_location === "string") {
+      expect(fields.page_location).not.toMatch(/[?#]/);
+    }
+  }
+}
+
+describe("sanitized single page view", () => {
+  const id = "G-PRIV1234";
+
+  async function freshGa(): Promise<
+    typeof import("../../src/ts/analytics/ga4")
+  > {
+    const page = window as Window & { dataLayer?: unknown[]; gtag?: unknown };
+    page.dataLayer = [];
+    Reflect.deleteProperty(page, "gtag");
+    vi.resetModules();
+    return import("../../src/ts/analytics/ga4");
+  }
+
+  function show(relative: string): void {
+    const url = new URL(relative, location.origin);
+    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  beforeEach(() => {
+    env.ga4MeasurementId = id;
+    sessionStorage.removeItem("puggie-kids-flow");
+    writeConsentRecord(ACCEPTED);
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => node);
+  });
+
+  afterEach(() => {
+    env.ga4MeasurementId = "";
+    window.history.pushState({}, "", "/");
+    vi.restoreAllMocks();
+  });
+
+  it("first load sends one page_view and drops query and Discord hash", async () => {
+    show(
+      "/login?email=ada@example.com&token=sekret&code=invite-9&reset=now#access_token=discord-token",
+    );
+    expect(location.search).toContain("token=sekret");
+    expect(location.hash).toContain("access_token=discord-token");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    const layer = dataLayer();
+    assertCleanPagePayloads(layer);
+    const views = pageViews(layer);
+    expect(views).toHaveLength(1);
+    expect(views[0]?.[2]).toMatchObject({
+      page_path: "/login",
+      page_location: `${location.origin}/login`,
+    });
+    const config = layer.find((entry) => isCommand(entry, "config"));
+    expect(config?.[2]).toMatchObject({
+      send_page_view: false,
+      page_path: "/login",
+      page_location: `${location.origin}/login`,
+    });
+  });
+
+  it("sends one page_view for the first load, /about, and a repeated path", async () => {
+    show("/");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    const layer = dataLayer();
+    expect(pageViews(layer)).toHaveLength(1);
+
+    show("/faq?email=ada@example.com");
+    ga.onSpaRouteChange();
+    expect(pageViews(layer)).toHaveLength(2);
+
+    show("/about?token=sekret&code=invite-9#access_token=discord-token");
+    expect(location.search).toContain("token=sekret");
+    expect(location.hash).toContain("access_token");
+    ga.onSpaRouteChange();
+    ga.onSpaRouteChange();
+    const views = pageViews(layer);
+    expect(views).toHaveLength(3);
+    const about = views.filter((entry) => {
+      const payload = entry[2] as { page_path?: string };
+      return payload.page_path === "/about";
+    });
+    expect(about).toHaveLength(1);
+    expect(about[0]?.[2]).toMatchObject({
+      page_path: "/about",
+      page_location: `${location.origin}/about`,
+    });
+    assertCleanPagePayloads(layer);
   });
 });
