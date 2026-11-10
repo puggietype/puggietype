@@ -471,11 +471,21 @@ export function scoreFromResult(result: {
   };
 }
 
+export type ScorePostOk = { ok: true; recorded?: boolean };
+
+function recordedFlag(body: unknown): boolean | undefined {
+  if (typeof body !== "object" || body === null || !("recorded" in body)) {
+    return undefined;
+  }
+  const recorded = (body as { recorded?: unknown }).recorded;
+  return typeof recorded === "boolean" ? recorded : undefined;
+}
+
 export async function postLeaderboardScore(
   base: string,
   submission: ScoreSubmission,
   fetchImpl: typeof fetch = fetch,
-): Promise<LeaderboardErr | { ok: true }> {
+): Promise<LeaderboardErr | ScorePostOk> {
   try {
     const response = await fetchImpl(
       new URL("/leaderboards", `${base}/`).toString(),
@@ -507,7 +517,8 @@ export async function postLeaderboardScore(
     if (!response.ok) {
       return { ok: false, error: "Couldn't submit your score." };
     }
-    return { ok: true };
+    const recorded = recordedFlag(json);
+    return recorded === undefined ? { ok: true } : { ok: true, recorded };
   } catch {
     return { ok: false, error: "Couldn't submit your score." };
   }

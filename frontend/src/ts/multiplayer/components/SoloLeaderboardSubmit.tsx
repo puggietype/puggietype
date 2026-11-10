@@ -111,9 +111,14 @@ export function SoloLeaderboardSubmit(props: {
       ...(token !== undefined ? { sessionToken: token } : {}),
     }).then((result) => {
       inflight = false;
-      if (result.ok) {
+      if (result.ok && result.recorded !== false) {
         setPhase("done");
         setMessage("Score submitted.");
+        return;
+      }
+      if (result.ok) {
+        setPhase("idle");
+        setMessage("This score was not added to the board.");
         return;
       }
       setPhase("idle");

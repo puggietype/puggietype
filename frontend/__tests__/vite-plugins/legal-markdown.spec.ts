@@ -38,7 +38,7 @@ describe("legal-markdown", () => {
   it("includes the leaderboards privacy section verbatim", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     expect(md).toContain(
-      "After a completed solo test, a score is posted only when you press Submit score. Finishing a test, starting the next one, or leaving the results page doesn't post it. You can turn 'Show my score on the leaderboard' off before you press Submit score. We then save your randomly assigned nickname, your speed (wpm), accuracy and raw speed, and that test's settings (mode, length, language, punctuation and numbers). Solo scores are lightly checked by our server for impossible speeds, but they aren't otherwise verified. We save these scores in our database, which is hosted for us by Neon on Amazon Web Services servers in Oregon, USA.",
+      "After a completed solo test, the score is sent only when you press Submit score. Finishing a test, starting the next one, or leaving the results page doesn't send it. You can turn 'Show my score on the leaderboard' off before you press Submit score. If the server adds the score, we then save your randomly assigned nickname, your speed (wpm), accuracy and raw speed, and that test's settings (mode, length, language, punctuation and numbers). Solo scores are lightly checked by our server for impossible speeds, but they aren't otherwise verified. We save these scores in our database, which is hosted for us by Neon on Amazon Web Services servers in Oregon, USA.",
     );
     expect(md).toContain(
       "We may remove scores that look cheated or that break our rules.",
@@ -62,7 +62,7 @@ describe("legal-markdown", () => {
     expect(md).toContain("Last updated: November 4, 2026.");
     const faq = readFileSync(path.join(srcDir, "faq.html"), "utf8");
     const faqAnswer =
-      "Your settings stay in your browser. Ranks shows solo test scores that players chose to submit: after a completed solo test, a score is posted only when you press Submit score. A posted score shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends; all-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
+      "Your settings stay in your browser. Ranks shows solo test scores that players chose to submit: after a completed solo test, the score is sent only when you press Submit score. A score the server adds shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends; all-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
     expect(faq.split(faqAnswer).length - 1).toBe(2);
     expect(faq).toContain('datetime="2026-11-04"');
     expect(md).toContain(

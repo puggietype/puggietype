@@ -452,6 +452,60 @@ describe("scores", () => {
     });
     expect(body).not.toHaveProperty("playerId");
   });
+
+  it("keeps recorded:false distinct from an accepted score", async () => {
+    const fetchImpl = vi.fn(async () => {
+      return new Response(JSON.stringify({ ok: true, recorded: false }), {
+        status: 200,
+      });
+    });
+    await expect(
+      postLeaderboardScore(
+        "https://ws.puggietype.com",
+        {
+          showOnLeaderboard: false,
+          mode: "words",
+          mode2: 10,
+          language: "english",
+          punctuation: false,
+          numbers: false,
+          wpm: 196,
+          acc: 100,
+          raw: 196,
+          chars: 50,
+          durationMs: 2949,
+        },
+        fetchImpl,
+      ),
+    ).resolves.toEqual({ ok: true, recorded: false });
+  });
+
+  it("reports recorded:true when the server added the score", async () => {
+    const fetchImpl = vi.fn(async () => {
+      return new Response(JSON.stringify({ ok: true, recorded: true }), {
+        status: 200,
+      });
+    });
+    await expect(
+      postLeaderboardScore(
+        "https://ws.puggietype.com",
+        {
+          showOnLeaderboard: true,
+          mode: "words",
+          mode2: 10,
+          language: "english",
+          punctuation: false,
+          numbers: false,
+          wpm: 196,
+          acc: 100,
+          raw: 196,
+          chars: 50,
+          durationMs: 2949,
+        },
+        fetchImpl,
+      ),
+    ).resolves.toEqual({ ok: true, recorded: true });
+  });
 });
 
 describe("score consent and kids finish fields", () => {

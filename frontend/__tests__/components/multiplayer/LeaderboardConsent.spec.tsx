@@ -190,6 +190,29 @@ describe("SoloLeaderboardSubmit", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("does not call a score submitted when the server did not add it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ ok: true, recorded: false }), {
+          status: 200,
+        });
+      }),
+    );
+    const { getByTestId, findByTestId } = renderSubmit();
+    const box = getByTestId<HTMLInputElement>("lb-show-score");
+    fireEvent.click(box);
+    vi.advanceTimersByTime(2000);
+    expect(fetch).not.toHaveBeenCalled();
+    fireEvent.click(getByTestId("lb-submit"));
+    const status = await findByTestId("lb-submit-status");
+    expect(status).toHaveTextContent("This score was not added to the board.");
+    expect(status).not.toHaveTextContent("Score submitted.");
+    expect(postedBody()).toMatchObject({ showOnLeaderboard: false, wpm: 88 });
+    expect(getByTestId("lb-submit")).not.toBeDisabled();
+    expect(getByTestId("lb-submit")).toHaveTextContent("Submit score");
+  });
+
   it("shows a failure and allows one later retry", async () => {
     vi.stubGlobal(
       "fetch",

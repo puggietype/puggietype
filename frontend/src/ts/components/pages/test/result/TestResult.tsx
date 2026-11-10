@@ -14,20 +14,7 @@ import { getConfig } from "../../../../config/store";
 import { isAuthAvailable } from "../../../../firebase";
 import { useRefWithUtils } from "../../../../hooks/useRefWithUtils";
 import { isAgeConfirmed } from "../../../../multiplayer/age-gate";
-import {
-  SoloLeaderboardSubmit,
-  type SoloSubmitAvailability,
-} from "../../../../multiplayer/components/SoloLeaderboardSubmit";
 import { MULTIPLAYER_ENABLED } from "../../../../multiplayer/flags";
-import {
-  leaderboardSubmitBlocked,
-  scoreFromResult,
-} from "../../../../multiplayer/leaderboards";
-import {
-  connectionStatus,
-  leaderboardsOn,
-  serverFeatures,
-} from "../../../../multiplayer/store";
 import { getIsScreenshotting, isAuthenticated } from "../../../../states/core";
 import { getGlarsesMode } from "../../../../states/glarses-mode";
 import { resultState } from "../../../../states/result";
@@ -53,6 +40,7 @@ import { ResultMainStats } from "./ResultMainStats";
 import { ResultReplay } from "./ResultReplay";
 import { ResultSecondaryStats } from "./ResultSecondaryStats";
 import { ResultWordsHistory } from "./ResultWordsHistory";
+import { InGameLeaderboard } from "./SoloResultScore";
 
 // chart.js (~85 KB gzip) is only needed once a result is shown
 const ResultChart = lazy(async () =>
@@ -123,7 +111,10 @@ export function TestResult(): JSXElement {
                   />
                 </Suspense>
               </div>
-              <InGameLeaderboard result={test().result} />
+              <InGameLeaderboard
+                result={test().result}
+                invalid={isTestInvalid()}
+              />
               <ResultSecondaryStats result={test().result} />
               <ResultWordsHistory eventLog={test().eventLog} />
               <ResultReplay />
@@ -139,45 +130,6 @@ export function TestResult(): JSXElement {
       </Show>
       <ResultAds />
     </div>
-  );
-}
-
-function InGameLeaderboard(props: {
-  result: Parameters<typeof scoreFromResult>[0];
-}): JSXElement {
-  const score = createMemo(() => scoreFromResult(props.result));
-  const kids = (): boolean =>
-    leaderboardSubmitBlocked(
-      window.location.pathname,
-      document.referrer,
-      sessionStorage,
-    );
-  const availability = (): SoloSubmitAvailability | "hidden" => {
-    if (leaderboardsOn()) return "on";
-    // Same 13+ gate as before: the client only learns that ranks are on
-    // after the existing confirmation. No separate solo age prompt.
-    if (!MULTIPLAYER_ENABLED || !isAgeConfirmed()) return "hidden";
-    if (serverFeatures() === undefined) return "checking";
-    if (
-      connectionStatus() === "connecting" ||
-      connectionStatus() === "reconnecting"
-    ) {
-      return "checking";
-    }
-    return "off";
-  };
-  const state = availability();
-  return (
-    <Show when={state === "hidden" ? undefined : state}>
-      {(ready) => (
-        <SoloLeaderboardSubmit
-          score={score()}
-          invalid={isTestInvalid()}
-          kids={kids()}
-          availability={ready()}
-        />
-      )}
-    </Show>
   );
 }
 
