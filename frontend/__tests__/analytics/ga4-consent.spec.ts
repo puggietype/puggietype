@@ -149,6 +149,39 @@ describe("analytics consent gate", () => {
         kidsFlow: readKidsFlow(fromHome),
       }),
     ).toBe(true);
+    // Same session, later SPA or typed navigation, referrer already gone.
+    expect(
+      noteKidsFlowVisit({
+        pathname: "/privacy",
+        referrer: "",
+        storage: fromHome,
+      }),
+    ).toBe(true);
+    // A new tab does not share sessionStorage. No kids referrer means no kids-flow.
+    const newTab = new Map<string, string>();
+    const newTabStorage = {
+      getItem: (key: string): string | null => newTab.get(key) ?? null,
+      setItem: (key: string, value: string): void => {
+        newTab.set(key, value);
+      },
+    };
+    expect(
+      noteKidsFlowVisit({
+        pathname: "/",
+        referrer: "",
+        storage: newTabStorage,
+      }),
+    ).toBe(false);
+    expect(
+      analyticsLoadAllowed({
+        measurementId: "G-TEST1234",
+        analytics: null,
+        kidsExcluded: kidsAnalyticsExcluded({
+          pathname: "/",
+          kidsFlow: readKidsFlow(newTabStorage),
+        }),
+      }),
+    ).toBe(false);
     const leaderboards = readFileSync(
       path.join(src, "ts/multiplayer/leaderboards.ts"),
       "utf8",
