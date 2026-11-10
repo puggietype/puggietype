@@ -617,15 +617,19 @@ function dataLayer(): unknown[] {
   return (window as Window & { dataLayer?: unknown[] }).dataLayer ?? [];
 }
 
-function isCommand(entry: unknown, command: string): entry is unknown[] {
-  return Array.isArray(entry) && entry[0] === command;
+/** gtag.js reads indexed fields of an Arguments object, not a plain Array. */
+function isGtagArguments(entry: unknown): entry is IArguments {
+  return Object.prototype.toString.call(entry) === "[object Arguments]";
 }
 
-function pageViews(layer: unknown[]): unknown[][] {
-  return layer.filter(
-    (entry): entry is unknown[] =>
-      isCommand(entry, "event") && entry[1] === "page_view",
-  );
+function isCommand(entry: unknown, command: string): entry is IArguments {
+  return isGtagArguments(entry) && entry[0] === command;
+}
+
+function pageViews(layer: unknown[]): IArguments[] {
+  return layer.filter((entry): entry is IArguments => {
+    return isCommand(entry, "event") && entry[1] === "page_view";
+  });
 }
 
 function assertCleanPagePayloads(layer: unknown[]): void {
@@ -733,6 +737,62 @@ describe("sanitized single page view", () => {
       page_location: `${location.origin}/about`,
     });
     assertCleanPagePayloads(layer);
+  });
+
+  it("pushes Arguments objects for consent, set, config, and event", async () => {
+    show("/");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    writeConsentRecord(REJECTED);
+    const layer = dataLayer();
+    expect(layer.length).toBeGreaterThan(0);
+    for (const entry of layer) {
+      expect(Object.prototype.toString.call(entry)).toBe("[object Arguments]");
+      expect(Array.isArray(entry)).toBe(false);
+    }
+    const commands = layer as IArguments[];
+    const third = (entry: IArguments): Record<string, unknown> | undefined => {
+      const value: unknown = entry[2];
+      if (value === null || typeof value !== "object") return undefined;
+      return value as Record<string, unknown>;
+    };
+    expect(
+      commands.some(
+        (entry) =>
+          entry[0] === "consent" &&
+          entry[1] === "default" &&
+          third(entry)?.["analytics_storage"] === "denied",
+      ),
+    ).toBe(true);
+    expect(
+      commands.some(
+        (entry) =>
+          entry[0] === "consent" &&
+          entry[1] === "update" &&
+          third(entry)?.["analytics_storage"] === "granted",
+      ),
+    ).toBe(true);
+    expect(
+      commands.some(
+        (entry) =>
+          entry[0] === "consent" &&
+          entry[1] === "update" &&
+          third(entry)?.["analytics_storage"] === "denied",
+      ),
+    ).toBe(true);
+    expect(
+      commands.some(
+        (entry) => entry[0] === "set" && entry[1] === "allow_google_signals",
+      ),
+    ).toBe(true);
+    expect(
+      commands.some((entry) => entry[0] === "config" && entry[1] === id),
+    ).toBe(true);
+    expect(
+      commands.some(
+        (entry) => entry[0] === "event" && entry[1] === "page_view",
+      ),
+    ).toBe(true);
   });
 
   it("sends /about again after withdraw and re-accept on that path", async () => {

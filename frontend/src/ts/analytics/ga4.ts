@@ -57,18 +57,25 @@ function setGaCollectionDisabled(id: string, disabled: boolean): void {
   flagMap()[gaDisableKey(id)] = disabled;
 }
 
-function gtag(...args: GtagValue[]): void {
+function gtag(...args: GtagValue[]): void;
+// gtag.js only processes an Arguments object in dataLayer. A plain Array is ignored,
+// so config, event, consent, and set would never reach the real library.
+// eslint-disable-next-line prefer-rest-params
+function gtag(): void {
+  // eslint-disable-next-line prefer-rest-params
+  const command = arguments[0] as unknown;
   // Consent updates still go through. Events and config do not, so a hit
   // cannot refresh or recreate `_ga` after the opt-out flag is set.
   if (
     isGaCollectionDisabled(configuredMeasurementId()) &&
-    args[0] !== "consent"
+    command !== "consent"
   ) {
     return;
   }
   const page = pageWindow();
   page.dataLayer = page.dataLayer ?? [];
-  page.dataLayer.push(args);
+  // eslint-disable-next-line prefer-rest-params
+  page.dataLayer.push(arguments);
   page.gtag = gtag;
 }
 
