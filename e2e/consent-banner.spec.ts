@@ -612,6 +612,13 @@ test("more options keeps the disclosure and can reach save at 320px", async ({
   await page.locator("#consent-copy").waitFor();
   await expectEssentialVisible(page, "#consent-copy", 320, 700);
   await page.getByRole("button", { name: "more options" }).click();
+  const note = page.locator("[data-consent-note='saved in this browser']");
+  await expect(note).toContainText("saved in this browser");
+  await expect(note).toContainText("not in cookies");
+  await expect(note.locator("input")).toHaveCount(0);
+  await expect(
+    note.getByRole("link", { name: "Privacy policy" }),
+  ).toHaveAttribute("href", "/privacy");
   await expect(page.locator("#consent-copy")).toBeAttached();
   const described = await page.evaluate(() => {
     const dialog = document.getElementById("CookiesModal");

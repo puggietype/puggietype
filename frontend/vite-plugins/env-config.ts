@@ -1,9 +1,6 @@
 import { Plugin } from "vite";
 import { EnvConfig } from "virtual:env-config";
-import {
-  consentRegionList,
-  resolveGa4MeasurementId,
-} from "../src/ts/analytics/consent";
+import { resolveGa4MeasurementId } from "../src/ts/analytics/consent";
 import { getSourceLinks, SourceLinks } from "./source-links";
 
 const virtualModuleId = "virtual:env-config";
@@ -16,10 +13,9 @@ function fallback(value: string | undefined | null, fallback: string): string {
 
 function analyticsConfig(
   env: Record<string, string>,
-): Pick<EnvConfig, "ga4MeasurementId" | "ga4ConsentRegions"> {
+): Pick<EnvConfig, "ga4MeasurementId"> {
   return {
     ga4MeasurementId: resolveGa4MeasurementId(env["GA4_MEASUREMENT_ID"]),
-    ga4ConsentRegions: consentRegionList(env["GA4_CONSENT_REGIONS"]),
   };
 }
 

@@ -61,7 +61,9 @@ These providers process IP addresses and technical request data on our behalf. F
 ## Cookies, analytics and error reporting
 PuggieType does not load advertising or error-reporting scripts, and does not set advertising cookies. We do not sell or share personal information for cross-context behavioral advertising.
 
-**Google Analytics 4.** We use Google Analytics 4 (Google LLC) to understand how people use puggietype.com (for example page views and rough geography). Google may process technical data such as IP address, device/browser type, and page URLs on our behalf. We configure GA4 with Google signals off and without using Analytics for ads personalization. Where the law requires consent for analytics cookies or similar storage, we ask before GA4 runs. See [Google's privacy policy](https://policies.google.com/privacy) and [how Google uses data when you use our partners' sites](https://policies.google.com/technologies/partner-sites). You can also use [Google Analytics opt-out](https://tools.google.com/dlpage/gaoptout) where available.
+**Google Analytics 4.** We use Google Analytics 4 (Google LLC) to understand how people use puggietype.com (for example page views and rough geography). Google may process technical data such as IP address, device/browser type, and page URLs on our behalf. We configure GA4 with Google signals off and without using Analytics for ads personalization. We ask before GA4 runs, wherever you are. If you reject or don't choose, it doesn't load. See [Google's privacy policy](https://policies.google.com/privacy) and [how Google uses data when you use our partners' sites](https://policies.google.com/technologies/partner-sites). You can also use [Google Analytics opt-out](https://tools.google.com/dlpage/gaoptout) where available.
+
+Your analytics choice is saved in this browser (localStorage "acceptedCookies") until you change it or clear site data. After a visit to a kids guide, a session-only marker ("puggie-kids-flow") keeps the analytics banner and Google Analytics off in that tab.
 
 Other traffic statistics we use are the aggregate totals Cloudflare produces from its own request data (see above).
 
@@ -75,6 +77,8 @@ Depending on where you live (for example under the EU or UK GDPR, or California'
 | Data | How long we keep it |
 |---|---|
 | Solo settings and results (except a leaderboard score you choose to submit), the Quick Match speed list ("puggie-mp-recent-pace", last 10 entries) and the random Quick Match ID ("puggie-mp-client-id"; on our server only in memory while you're queued) | in your browser only (localStorage/IndexedDB), until you clear them |
+| Analytics choice (localStorage "acceptedCookies") | in this browser until you change it or clear site data. Rejecting saves analytics as off and does not delete other stored data. |
+| Kids-guide visit (sessionStorage "puggie-kids-flow") | for that browser tab only. It keeps the analytics banner and Google Analytics off in that tab, then the browser drops it when the tab session ends. |
 | Session nickname, lobby code, race data, IP address, speed for matching, and reporter counts (one-way hashes, on the game server) | in memory until your session or room ends, plus a 20-second reconnect window, plus 10 minutes for a hashed IP address and session ID of a player removed by the host; this session data is not written to disk or logs |
 | Leaderboard score (random nickname, wpm, accuracy, raw speed) | in the Neon database. Daily, weekly and monthly boards reset on UTC time and are cleared when each period ends. All-time boards keep scores for up to 12 months. Each board keeps only its top 100 scores. Deleted scores may persist in Neon restore copies for up to 6 hours |
 | Steam ID, Steam ownership result and Steam display name (desktop app sign-in, on the game server) | in memory only while the sign-in request is handled; not written to disk, a database or logs |

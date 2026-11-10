@@ -73,11 +73,20 @@ describe("legal-markdown", () => {
   it("includes Legal's GA4 paragraph and retention row verbatim", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     expect(md).toContain(
-      "**Google Analytics 4.** We use Google Analytics 4 (Google LLC) to understand how people use puggietype.com (for example page views and rough geography). Google may process technical data such as IP address, device/browser type, and page URLs on our behalf. We configure GA4 with Google signals off and without using Analytics for ads personalization. Where the law requires consent for analytics cookies or similar storage, we ask before GA4 runs. See [Google's privacy policy](https://policies.google.com/privacy) and [how Google uses data when you use our partners' sites](https://policies.google.com/technologies/partner-sites). You can also use [Google Analytics opt-out](https://tools.google.com/dlpage/gaoptout) where available.",
+      "**Google Analytics 4.** We use Google Analytics 4 (Google LLC) to understand how people use puggietype.com (for example page views and rough geography). Google may process technical data such as IP address, device/browser type, and page URLs on our behalf. We configure GA4 with Google signals off and without using Analytics for ads personalization. We ask before GA4 runs, wherever you are. If you reject or don't choose, it doesn't load. See [Google's privacy policy](https://policies.google.com/privacy) and [how Google uses data when you use our partners' sites](https://policies.google.com/technologies/partner-sites). You can also use [Google Analytics opt-out](https://tools.google.com/dlpage/gaoptout) where available.",
     );
     expect(md).toContain(
       "| Google Analytics 4 event data | per our GA4 property retention setting (we use the shortest available that still supports a 30-day traffic review, then auto-expire); deleted from our property when retention elapses or if we remove GA4 |",
     );
+    expect(md).toContain(
+      'Your analytics choice is saved in this browser (localStorage "acceptedCookies") until you change it or clear site data.',
+    );
+    expect(md).toContain(
+      'After a visit to a kids guide, a session-only marker ("puggie-kids-flow") keeps the analytics banner and Google Analytics off in that tab.',
+    );
+    expect(md).toContain("does not delete other stored data");
+    expect(md).not.toContain("pt_country");
+    expect(md).not.toContain("Where the law requires consent");
     expect(md).not.toContain("doesn't load any analytics");
     expect(md).not.toContain("no analytics scripts");
   });

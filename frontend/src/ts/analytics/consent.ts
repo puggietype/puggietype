@@ -3,9 +3,6 @@ import { z } from "zod";
 import { isAdsExcludedPath } from "../ads/excluded-paths";
 import { isKidsGuidePath } from "../controllers/background-music";
 
-/** Must match `COUNTRY_COOKIE` in `functions/_middleware.ts`. */
-export const COUNTRY_COOKIE = "pt_country";
-
 export const CONSENT_STORAGE_KEY = "acceptedCookies";
 
 /**
@@ -61,47 +58,6 @@ export function pinToVisualBottom(el: HTMLElement): void {
 /** Same session flag as leaderboards `KIDS_FLOW_KEY`. Read only. */
 export const KIDS_FLOW_STORAGE_KEY = "puggie-kids-flow";
 
-/**
- * EEA, UK (Cloudflare uses GB), and Switzerland. Extra ISO codes come from
- * `GA4_CONSENT_REGIONS` at build time.
- */
-export const DEFAULT_CONSENT_REGIONS = [
-  "AT",
-  "BE",
-  "BG",
-  "HR",
-  "CY",
-  "CZ",
-  "DK",
-  "EE",
-  "FI",
-  "FR",
-  "DE",
-  "GR",
-  "HU",
-  "IE",
-  "IT",
-  "LV",
-  "LT",
-  "LU",
-  "MT",
-  "NL",
-  "PL",
-  "PT",
-  "RO",
-  "SK",
-  "SI",
-  "ES",
-  "SE",
-  "IS",
-  "LI",
-  "NO",
-  "GB",
-  "CH",
-] as const;
-
-const UNKNOWN_COUNTRY = new Set(["XX", "T1"]);
-
 const ConsentRecordSchema = z
   .object({
     security: z.literal(true),
@@ -129,35 +85,6 @@ export function resolveGa4MeasurementId(raw: string | undefined): string {
     );
   }
   return id;
-}
-
-export function normalizeCountry(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim().toUpperCase();
-  const code = trimmed === "UK" ? "GB" : trimmed;
-  if (!/^[A-Z]{2}$/.test(code)) return null;
-  if (UNKNOWN_COUNTRY.has(code)) return null;
-  return code;
-}
-
-export function consentRegionList(extra: string | undefined): string[] {
-  const regions = new Set<string>(DEFAULT_CONSENT_REGIONS);
-  for (const part of (extra ?? "").split(",")) {
-    const code = normalizeCountry(part);
-    if (code !== null) regions.add(code);
-  }
-  return [...regions];
-}
-
-export function readCountryCookie(cookie: string): string | null {
-  for (const part of cookie.split(";")) {
-    const trimmed = part.trim();
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-    if (trimmed.slice(0, eq) !== COUNTRY_COOKIE) continue;
-    return normalizeCountry(decodeURIComponent(trimmed.slice(eq + 1)));
-  }
-  return null;
 }
 
 export function readConsentRecord(): ConsentRecord | null {

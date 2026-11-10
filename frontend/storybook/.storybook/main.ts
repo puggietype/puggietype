@@ -23,7 +23,6 @@ function stubVirtualEnvConfig(): Plugin {
           quickLoginEmail: undefined,
           quickLoginPassword: undefined,
           ga4MeasurementId: "",
-          ga4ConsentRegions: [],
         })};`;
       }
     },
