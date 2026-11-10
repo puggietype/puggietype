@@ -54,7 +54,11 @@ The WS server's Origin allowlist must include every host serving the frontend
   `/js/*` and `/css/*`, `no-cache` for `version.json` and `sw.js`. The
   `__SCRIPT_HASHES__` / `__WS_ORIGIN__` placeholders are filled at build time by
   `frontend/vite-plugins/pages-headers.ts`. Adding a new external origin means
-  editing the CSP there.
+  editing the CSP there. The kids guides (`/guide/teaching-kids-to-type` and
+  the `/guide/typing-for-kids` 301, with and without a trailing slash) detach
+  that CSP and set one policy with no Analytics, Tag Manager, or ads hosts.
+  Pages comma-joins two values of the same header, so a second CSP without
+  the detach would keep the Google origins.
 
 Check a build locally with Pages semantics:
 
