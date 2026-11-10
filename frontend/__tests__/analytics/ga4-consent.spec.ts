@@ -19,7 +19,9 @@ import {
 import {
   GA4_COOKIE_EXPIRES_SECONDS,
   GA4_SCRIPT_URL,
+  gaDisableKey,
   loadGa4,
+  onSpaRouteChange,
   syncGa4,
 } from "../../src/ts/analytics/ga4";
 import {
@@ -473,6 +475,132 @@ describe("GA cookie withdrawal", () => {
     } finally {
       env.ga4MeasurementId = "";
       vi.restoreAllMocks();
+    }
+  });
+});
+
+describe("in-session GA withdrawal", () => {
+  const id = "G-TEST1234";
+
+  function bootAccepted(): void {
+    env.ga4MeasurementId = id;
+    window.history.pushState({}, "", "/");
+    sessionStorage.removeItem("puggie-kids-flow");
+    writeConsentRecord(ACCEPTED);
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => node);
+    loadGa4(id);
+  }
+
+  function flag(): unknown {
+    return Reflect.get(window, gaDisableKey(id));
+  }
+
+  function finish(): void {
+    env.ga4MeasurementId = "";
+    Reflect.set(window, gaDisableKey(id), false);
+    window.history.pushState({}, "", "/");
+    vi.restoreAllMocks();
+  }
+
+  it("sets the ga-disable flag before consent deny and before cookie deletion", () => {
+    bootAccepted();
+    const layer =
+      (window as Window & { dataLayer?: unknown[] }).dataLayer ?? [];
+    let consentWhileDisabled = false;
+    const push = layer.push.bind(layer);
+    vi.spyOn(layer, "push").mockImplementation((entry: unknown) => {
+      const text = JSON.stringify(entry);
+      if (
+        text.includes('"consent"') &&
+        text.includes('"analytics_storage":"denied"')
+      ) {
+        consentWhileDisabled = flag() === true;
+      }
+      return push(entry);
+    });
+    const cookieOrder: string[] = [];
+    vi.spyOn(document, "cookie", "get").mockReturnValue(
+      "_ga=GA1.1.1.1; _ga_TEST=GS1.1",
+    );
+    vi.spyOn(document, "cookie", "set").mockImplementation(() => {
+      cookieOrder.push(
+        consentWhileDisabled && flag() === true ? "after" : "before",
+      );
+    });
+    try {
+      expect(flag()).not.toBe(true);
+      writeConsentRecord(REJECTED);
+      expect(flag()).toBe(true);
+      expect(consentWhileDisabled).toBe(true);
+      expect(cookieOrder.length).toBeGreaterThan(0);
+      expect(cookieOrder.every((mark) => mark === "after")).toBe(true);
+    } finally {
+      finish();
+    }
+  });
+
+  it("drops page_view and other events on later route changes", () => {
+    bootAccepted();
+    const page = window as Window & {
+      dataLayer?: unknown[];
+      gtag?: (...args: unknown[]) => void;
+    };
+    const layer = page.dataLayer ?? [];
+    const router = readFileSync(
+      path.join(src, "ts/controllers/route-controller.ts"),
+      "utf8",
+    );
+    try {
+      expect(router).toContain("onSpaRouteChange()");
+      const sent = layer.length;
+      window.history.pushState({}, "", "/faq");
+      onSpaRouteChange();
+      expect(JSON.stringify(layer.slice(sent))).toContain('"page_view"');
+
+      writeConsentRecord(REJECTED);
+      const sets: string[] = [];
+      vi.spyOn(document, "cookie", "set").mockImplementation(
+        (value: string) => {
+          sets.push(value);
+        },
+      );
+      const frozen = layer.length;
+      for (const next of ["/about", "/privacy", "/settings"]) {
+        window.history.pushState({}, "", next);
+        onSpaRouteChange();
+        page.gtag?.("event", "page_view", { page_path: next });
+        page.gtag?.("event", "scroll", { page_path: next });
+      }
+      expect(layer.length).toBe(frozen);
+      expect(JSON.stringify(layer.slice(frozen))).not.toContain('"page_view"');
+      expect(sets).toEqual([]);
+    } finally {
+      finish();
+    }
+  });
+
+  it("re-accepts in the same tab by clearing the disable flag", () => {
+    bootAccepted();
+    const layer =
+      (window as Window & { dataLayer?: unknown[] }).dataLayer ?? [];
+    try {
+      writeConsentRecord(REJECTED);
+      expect(flag()).toBe(true);
+      window.history.pushState({}, "", "/about");
+      onSpaRouteChange();
+
+      writeConsentRecord(ACCEPTED);
+      expect(flag()).toBe(false);
+      syncGa4();
+      const at = layer.length;
+      window.history.pushState({}, "", "/settings");
+      onSpaRouteChange();
+      const added = JSON.stringify(layer.slice(at));
+      expect(added).toContain('"page_view"');
+      expect(added).toContain("/settings");
+      expect(flag()).toBe(false);
+    } finally {
+      finish();
     }
   });
 });

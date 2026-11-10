@@ -202,11 +202,29 @@ function analyticsConsentWithdrawn(
   return previous?.analytics === true && !next.analytics;
 }
 
+/**
+ * GA4 registers these. Withdrawal runs the stop step before cookie deletion.
+ * A later accept in the same tab clears that stop so collection can resume.
+ */
+let beforeGaCookieDelete: (() => void) | undefined;
+let onAnalyticsReaccept: (() => void) | undefined;
+
+export function setGaWithdrawalHooks(hooks: {
+  beforeCookieDelete: () => void;
+  onReaccept: () => void;
+}): void {
+  beforeGaCookieDelete = hooks.beforeCookieDelete;
+  onAnalyticsReaccept = hooks.onReaccept;
+}
+
 export function writeConsentRecord(record: ConsentRecord): void {
   const previous = readConsentRecord();
   const next = ConsentRecordSchema.parse(record);
   localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(next));
-  if (analyticsConsentWithdrawn(previous, next)) deleteGaCookies();
+  if (previous?.analytics !== true && next.analytics) onAnalyticsReaccept?.();
+  if (!analyticsConsentWithdrawn(previous, next)) return;
+  beforeGaCookieDelete?.();
+  deleteGaCookies();
 }
 
 export function globalPrivacyControl(): boolean {

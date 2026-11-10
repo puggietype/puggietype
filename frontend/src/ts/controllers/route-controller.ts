@@ -1,3 +1,4 @@
+import { onSpaRouteChange } from "../analytics/ga4";
 import * as PageController from "./page-controller";
 import { onDOMReady } from "../utils/dom";
 import { isAuthAvailable } from "../firebase";
@@ -285,10 +286,12 @@ async function router(options = {} as NavigateOptions): Promise<void> {
         force: true,
       },
     );
+    onSpaRouteChange();
     return;
   }
 
   await match.route.load(getParams(match), options);
+  onSpaRouteChange();
 }
 
 window.addEventListener("popstate", () => {

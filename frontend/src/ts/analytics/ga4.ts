@@ -6,6 +6,7 @@ import {
   isGa4MeasurementId,
   noteKidsFlowVisit,
   readConsentRecord,
+  setGaWithdrawalHooks,
 } from "./consent";
 
 /** GA4 tag origin only. No ads, Google signals, or Ads linking endpoints. */
@@ -31,7 +32,38 @@ function isSteam(): boolean {
   return typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam";
 }
 
+function configuredMeasurementId(): string {
+  return envConfig.ga4MeasurementId ?? "";
+}
+
+/** Google's documented opt-out property: `window['ga-disable-G-XXXX']`. */
+export function gaDisableKey(id: string): string {
+  return `ga-disable-${id}`;
+}
+
+function flagMap(): Record<string, unknown> {
+  return pageWindow() as AnalyticsWindow & Record<string, unknown>;
+}
+
+export function isGaCollectionDisabled(id: string): boolean {
+  if (!isGa4MeasurementId(id)) return false;
+  return flagMap()[gaDisableKey(id)] === true;
+}
+
+function setGaCollectionDisabled(id: string, disabled: boolean): void {
+  if (!isGa4MeasurementId(id)) return;
+  flagMap()[gaDisableKey(id)] = disabled;
+}
+
 function gtag(...args: GtagValue[]): void {
+  // Consent updates still go through. Events and config do not, so a hit
+  // cannot refresh or recreate `_ga` after the opt-out flag is set.
+  if (
+    isGaCollectionDisabled(configuredMeasurementId()) &&
+    args[0] !== "consent"
+  ) {
+    return;
+  }
   const page = pageWindow();
   page.dataLayer = page.dataLayer ?? [];
   page.dataLayer.push(args);
@@ -47,6 +79,7 @@ const ADS_DENIED = {
 /** Insert the GA4 tag once. Signals, ads personalization, and ads linking stay off. */
 export function loadGa4(measurementId: string): void {
   if (!isGa4MeasurementId(measurementId)) return;
+  if (isGaCollectionDisabled(measurementId)) return;
   if (loadedId === measurementId) return;
   if (typeof document === "undefined") return;
   const page = pageWindow();
@@ -117,9 +150,52 @@ export function syncGa4(): void {
     denyAnalyticsStorage();
     return;
   }
+  // Same-tab accept after a withdrawal: clear the opt-out, then grant.
+  setGaCollectionDisabled(measurementId, false);
   if (loadedId === measurementId) {
     grantAnalyticsStorage();
     return;
   }
   loadGa4(measurementId);
 }
+
+/**
+ * SPA navigations. No page_view while the opt-out flag is set or analytics
+ * is off, so a route change cannot send a hit or recreate `_ga` in this tab.
+ */
+export function onSpaRouteChange(): void {
+  const id = configuredMeasurementId();
+  if (!isGa4MeasurementId(id) || isGaCollectionDisabled(id) || isSteam()) {
+    return;
+  }
+  const allowed = analyticsLoadAllowed({
+    measurementId: id,
+    analytics: readConsentRecord()?.analytics ?? null,
+    kidsExcluded: noteKidsFlowVisit({
+      pathname: window.location.pathname,
+      referrer: document.referrer,
+      storage: sessionStorage,
+    }),
+  });
+  if (!allowed || loadedId !== id) return;
+  const gtagFn = pageWindow().gtag;
+  if (gtagFn === undefined) return;
+  gtagFn("event", "page_view", {
+    page_path: `${location.pathname}${location.search}`,
+    page_location: location.href,
+    send_to: id,
+  });
+}
+
+setGaWithdrawalHooks({
+  beforeCookieDelete: () => {
+    const id = configuredMeasurementId();
+    setGaCollectionDisabled(id, true);
+    const gtagFn = pageWindow().gtag;
+    if (gtagFn === undefined) return;
+    gtagFn("consent", "update", { analytics_storage: "denied" });
+  },
+  onReaccept: () => {
+    setGaCollectionDisabled(configuredMeasurementId(), false);
+  },
+});
