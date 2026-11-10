@@ -1,19 +1,38 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
   ga4MeasurementId: "",
 }));
+
+const recorded = vi.hoisted(() => {
+  const calls: string[] = [];
+  const xhrSends: string[] = [];
+  const urlOf = (input: unknown): string => {
+    if (typeof input === "string") return input;
+    if (typeof URL !== "undefined" && input instanceof URL) return input.href;
+    if (typeof Request !== "undefined" && input instanceof Request) {
+      return input.url;
+    }
+    return "";
+  };
+  if (typeof window !== "undefined") {
+    window.fetch = async (input: RequestInfo | URL) => {
+      calls.push(urlOf(input));
+      return new Response("forwarded", { status: 204 });
+    };
+    navigator.sendBeacon = ((url: string | URL) => {
+      calls.push(`beacon:${urlOf(url)}`);
+      return true;
+    }) as typeof navigator.sendBeacon;
+    XMLHttpRequest.prototype.send = function (): void {
+      xhrSends.push("sent");
+    };
+  }
+  return { calls, xhrSends };
+});
 
 vi.mock("virtual:env-config", () => ({
   envConfig: env,
@@ -28,6 +47,7 @@ import {
   GA4_COOKIE_EXPIRES_SECONDS,
   GA4_SCRIPT_URL,
   gaDisableKey,
+  gaTransportDropCount,
   isGaTransportBlocked,
   loadGa4,
   onSpaRouteChange,
@@ -56,54 +76,13 @@ const FAQ_INTERIM =
 const ABOUT =
   "We use privacy-preserving aggregate traffic tools from our host (Cloudflare) and, when enabled, Google Analytics 4. Details are in our";
 
-function requestUrl(input: unknown): string {
-  if (typeof input === "string") return input;
-  if (input instanceof URL) return input.href;
-  if (typeof Request !== "undefined" && input instanceof Request) {
-    return input.url;
-  }
-  return "";
-}
-
 describe("GA collect transport gate", () => {
   const id = "G-TEST1234";
-  const calls: string[] = [];
-  let happyOpen: typeof XMLHttpRequest.prototype.open;
-  const xhrSends: string[] = [];
-
-  beforeAll(() => {
-    window.fetch = async (input: RequestInfo | URL, _init?: RequestInit) => {
-      calls.push(requestUrl(input));
-      return new Response(null, { status: 204 });
-    };
-    navigator.sendBeacon = ((url: string | URL, _data?: BodyInit | null) => {
-      calls.push(`beacon:${requestUrl(url)}`);
-      return true;
-    }) as typeof navigator.sendBeacon;
-    happyOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function (
-      this: XMLHttpRequest,
-      method: string,
-      url: string | URL,
-      async?: boolean,
-      username?: string | null,
-      password?: string | null,
-    ): void {
-      happyOpen.call(this, method, url, async ?? true, username, password);
-    };
-    XMLHttpRequest.prototype.send = function (
-      this: XMLHttpRequest,
-      body?: Document | XMLHttpRequestBodyInit | null,
-    ): void {
-      xhrSends.push("sent");
-      void body;
-    };
-  });
+  const savedFetch = window.fetch;
+  const savedBeacon = navigator.sendBeacon.bind(navigator);
 
   beforeEach(() => {
     env.ga4MeasurementId = id;
-    calls.length = 0;
-    xhrSends.length = 0;
     writeConsentRecord(ACCEPTED);
   });
 
@@ -116,40 +95,69 @@ describe("GA collect transport gate", () => {
     writeConsentRecord(REJECTED);
   }
 
+  async function expectFetchBlocked(
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<void> {
+    const before = gaTransportDropCount();
+    const response = await window.fetch(input, init);
+    expect(await response.text()).toBe("ga-transport-blocked");
+    expect(gaTransportDropCount()).toBe(before + 1);
+  }
+
+  function expectNotDropped(run: () => void): void {
+    const before = gaTransportDropCount();
+    run();
+    expect(gaTransportDropCount()).toBe(before);
+  }
+
+  async function expectFetchForwarded(url: string): Promise<void> {
+    const beforeDrops = gaTransportDropCount();
+    const beforeCalls = recorded.calls.length;
+    const response = await window.fetch(url);
+    expect(await response.text()).toBe("forwarded");
+    expect(recorded.calls.slice(beforeCalls)).toContain(url);
+    expect(gaTransportDropCount()).toBe(beforeDrops);
+  }
+
   async function expectBlocked(url: string): Promise<void> {
-    calls.length = 0;
-    await window.fetch(url);
-    await window.fetch(new URL(url));
-    await window.fetch(new Request(url));
-    expect(calls, url).toEqual([]);
+    const callsBefore = recorded.calls.length;
+    const xhrBefore = recorded.xhrSends.length;
+    await expectFetchBlocked(url);
+    await expectFetchBlocked(new URL(url));
+    await expectFetchBlocked(new Request(url));
+    const beforeBeacon = gaTransportDropCount();
     expect(navigator.sendBeacon(url)).toBe(true);
-    expect(calls, url).toEqual([]);
+    expect(gaTransportDropCount()).toBe(beforeBeacon + 1);
     const img = new Image();
+    const beforeImg = gaTransportDropCount();
     img.src = url;
-    expect(img.src).not.toContain("/g/collect");
-    expect(img.src).not.toContain("/ccm/");
-    expect(img.src).not.toContain("/pagead/");
-    expect(img.src).not.toContain("/ads/");
+    expect(img.src).not.toContain(new URL(url).hostname);
+    expect(gaTransportDropCount()).toBe(beforeImg + 1);
     const xhr = new XMLHttpRequest();
-    const before = xhrSends.length;
+    const beforeXhr = gaTransportDropCount();
     xhr.open("POST", url);
     xhr.send();
-    expect(xhrSends.length).toBe(before);
+    expect(gaTransportDropCount()).toBe(beforeXhr + 1);
+    expect(recorded.calls.length).toBe(callsBefore);
+    expect(recorded.xhrSends.length).toBe(xhrBefore);
   }
 
   async function expectPassed(url: string): Promise<void> {
-    calls.length = 0;
-    xhrSends.length = 0;
-    await window.fetch(url);
-    await window.fetch(new URL(url));
-    await window.fetch(new Request(url));
-    expect(calls).toEqual([url, url, url]);
-    navigator.sendBeacon(url);
-    expect(calls).toContain(`beacon:${url}`);
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", url);
-    xhr.send();
-    expect(xhrSends).toEqual(["sent"]);
+    await expectFetchForwarded(url);
+    const beforeCalls = recorded.calls.length;
+    const beforeXhr = recorded.xhrSends.length;
+    expectNotDropped(() => {
+      expect(navigator.sendBeacon(url)).toBe(true);
+      const img = new Image();
+      img.src = url;
+      expect(img.src).toContain(new URL(url).hostname);
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", url);
+      xhr.send();
+    });
+    expect(recorded.calls.slice(beforeCalls)).toContain(`beacon:${url}`);
+    expect(recorded.xhrSends.length).toBe(beforeXhr + 1);
   }
 
   it("drops queued collect transports after withdraw and lets them through again", async () => {
@@ -193,6 +201,7 @@ describe("GA collect transport gate", () => {
     if (desc !== undefined) {
       Object.defineProperty(navigator, "sendBeacon", desc);
     }
+    window.fetch = savedFetch;
   });
 
   it("lets unrelated hosts and non-collect google URLs through while withdrawn", async () => {
@@ -206,11 +215,125 @@ describe("GA collect transport gate", () => {
       "https://cdn.example.com/walls/custom-background.jpg",
       "https://www.google.com/search?q=puggietype",
       "https://www.google.com/images/branding/googlelogo.png",
-      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234",
     ];
     for (const url of allowed) {
       await expectPassed(url);
     }
+  });
+
+  it("blocks setAttribute src and srcset, and script src, except GET /gtag/js", () => {
+    withdraw();
+    const collect = "https://www.google-analytics.com/g/collect";
+    const img = document.createElement("img");
+    const before = gaTransportDropCount();
+    img.setAttribute("src", collect);
+    img.setAttribute("SRC", collect);
+    img.setAttributeNS(null, "src", collect);
+    img.srcset = `${collect} 1x, https://cdn.example.com/ok.png 2x`;
+    img.setAttribute("srcset", `${collect} 1x`);
+    expect(img.getAttribute("src")).toBeNull();
+    expect(img.getAttribute("srcset")).toBeNull();
+    expect(gaTransportDropCount()).toBe(before + 5);
+
+    const script = document.createElement("script");
+    const beforeScript = gaTransportDropCount();
+    script.src = collect;
+    script.setAttribute("src", collect);
+    expect(script.getAttribute("src")).toBeNull();
+    expect(gaTransportDropCount()).toBe(beforeScript + 2);
+
+    const gtag = "https://www.googletagmanager.com/gtag/js?id=G-TEST1234";
+    expectNotDropped(() => {
+      script.src = gtag;
+    });
+    expect(script.src).toContain("/gtag/js");
+    expectNotDropped(() => {
+      script.setAttribute("src", gtag);
+    });
+    expect(script.getAttribute("src")).toContain("/gtag/js");
+  });
+
+  it("still allows a GET of /gtag/js while withdrawn and blocks other uses", async () => {
+    withdraw();
+    const gtag = "https://www.googletagmanager.com/gtag/js?id=G-TEST1234";
+    await expectFetchForwarded(gtag);
+    const beforeXhr = recorded.xhrSends.length;
+    expectNotDropped(() => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", gtag);
+      xhr.send();
+    });
+    expect(recorded.xhrSends.length).toBe(beforeXhr + 1);
+    const before = gaTransportDropCount();
+    expect(navigator.sendBeacon(gtag)).toBe(true);
+    const img = new Image();
+    img.src = gtag;
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", gtag);
+    xhr.send();
+    expect(img.src).not.toContain("googletagmanager.com");
+    expect(gaTransportDropCount()).toBe(before + 3);
+  });
+
+  it("blocks fetch and sendBeacon references saved before withdraw", async () => {
+    withdraw();
+    const response = await savedFetch(
+      "https://www.google-analytics.com/g/collect",
+    );
+    expect(await response.text()).toBe("ga-transport-blocked");
+    const before = gaTransportDropCount();
+    expect(savedBeacon("https://www.google-analytics.com/g/collect")).toBe(
+      true,
+    );
+    expect(gaTransportDropCount()).toBe(before + 1);
+    writeConsentRecord(ACCEPTED);
+    await expectFetchForwarded("https://www.google-analytics.com/g/collect");
+  });
+
+  it("blocks every path on analytics and ads hosts", async () => {
+    withdraw();
+    await expectBlocked("https://www.google-analytics.com/favicon.ico");
+    await expectBlocked("https://region1.analytics.google.com/g/collect");
+    await expectBlocked("https://stats.g.doubleclick.net/pixel");
+    await expectBlocked("https://www.googleadservices.com/pagead/conversion");
+    await expectBlocked(
+      "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js",
+    );
+    await expectBlocked("https://www.googletagmanager.com/gtm.js?id=GTM-TEST");
+  });
+
+  it("blocks double-slash, mp, legacy collect, and td paths", async () => {
+    withdraw();
+    await expectBlocked("https://www.google-analytics.com//g/collect");
+    await expectBlocked("https://www.google-analytics.com/mp/collect");
+    await expectBlocked("https://www.google-analytics.com/collect");
+    await expectBlocked("https://www.google-analytics.com/td");
+    await expectBlocked("https://www.google.com//g/collect");
+    await expectBlocked("https://www.google.com/mp/collect");
+    await expectBlocked("https://www.google.com/collect");
+    await expectBlocked("https://www.google.com/td");
+  });
+
+  it("does not block non-Google setAttribute, or Google URLs while consent is on", () => {
+    const img = document.createElement("img");
+    expectNotDropped(() => {
+      img.setAttribute("src", "https://www.google-analytics.com/g/collect");
+    });
+    expect(img.getAttribute("src")).toContain("google-analytics.com");
+    withdraw();
+    const plain = document.createElement("img");
+    expectNotDropped(() => {
+      plain.setAttribute(
+        "src",
+        "https://cdn.example.com/walls/custom-background.jpg",
+      );
+      plain.setAttribute(
+        "srcset",
+        "https://cdn.example.com/walls/custom-background.jpg 1x",
+      );
+    });
+    expect(plain.getAttribute("src")).toContain("cdn.example.com");
+    expect(plain.getAttribute("srcset")).toContain("cdn.example.com");
   });
 });
 
