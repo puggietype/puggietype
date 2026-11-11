@@ -355,3 +355,79 @@ export class SecureTokenStore {
     }
   }
 }
+
+// ------------------------------------------------------ steam ticket helper
+// Optional Steamworks ticket helper (tools/steam-ticket-helper), behind
+// PUGGIE_STEAM_SDK=1 (off by default). It is a separate one-shot program
+// that prints one hex Web API ticket to stdout and exits; this shell never
+// links the SDK. Any failure (missing helper, timeout, bad output) returns
+// null, and the app falls back to the OpenID button (the kept session token
+// is tried before the helper, Legal C37-1).
+// The ticket is never stored or logged.
+export const STEAM_TICKET_HEX_RX = /^(?:[0-9a-fA-F]{2}){16,2048}$/;
+export const STEAM_TICKET_TIMEOUT_MS = 5000;
+const TICKET_MAX_STDOUT = 16 * 1024;
+
+export function steamSdkEnabled(env) {
+  return env.PUGGIE_STEAM_SDK === "1";
+}
+
+export function ticketHelperName(platform) {
+  return platform === "win32"
+    ? "steam-ticket-helper.exe"
+    : "steam-ticket-helper";
+}
+
+/** Reads only stdout; returns the hex ticket or null. */
+export function parseTicketOutput(stdout) {
+  if (typeof stdout !== "string") return null;
+  const t = stdout.trim();
+  return STEAM_TICKET_HEX_RX.test(t) ? t : null;
+}
+
+/**
+ * Spawns the helper once (no shell, no arguments, stdin and stderr ignored)
+ * and resolves with the ticket or null. Never rejects.
+ * @param {string} file
+ * @param {{ spawn: typeof import("node:child_process").spawn,
+ *   exists: (f: string) => boolean, timeoutMs?: number }} deps
+ */
+export function runTicketHelper(file, deps) {
+  return new Promise((resolve) => {
+    if (!deps.exists(file)) return resolve(null);
+    let out = "";
+    let done = false;
+    const finish = (v) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(v);
+    };
+    let child;
+    try {
+      child = deps.spawn(file, [], {
+        stdio: ["ignore", "pipe", "ignore"],
+        shell: false,
+        windowsHide: true,
+      });
+    } catch {
+      return resolve(null);
+    }
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish(null);
+    }, deps.timeoutMs ?? STEAM_TICKET_TIMEOUT_MS);
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (d) => {
+      out += d;
+      if (out.length > TICKET_MAX_STDOUT) {
+        child.kill("SIGKILL");
+        finish(null);
+      }
+    });
+    child.on("error", () => finish(null));
+    child.on("close", (code) =>
+      finish(code === 0 ? parseTicketOutput(out) : null),
+    );
+  });
+}
