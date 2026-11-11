@@ -214,6 +214,12 @@ describe("GA collect transport gate", () => {
     await expectPassed(
       "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=dataLayer",
     );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=other",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=",
+    );
     await expectBlocked("https://www.googletagmanager.com/%74d?dl=host/r/ABCD");
     await expectBlocked(
       "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&is_td=1&dl=host/r/ABCD",
@@ -222,6 +228,24 @@ describe("GA collect transport gate", () => {
       "https://www.googletagmanager.com/%67tag/js?id=G-TEST1234&is_td=1&dl=host/r/ABCD",
     );
     await expectBlocked("https://www.googletagmanager.com/gtag/js?id=G-OTHER");
+  });
+
+
+  it("allows /gtag/js only with optional l=dataLayer", async () => {
+    expect(isGaTransportBlocked()).toBe(false);
+    await expectPassed("https://www.googletagmanager.com/gtag/js?id=G-TEST1234");
+    await expectPassed(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=dataLayer",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=other",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=dataLayer&l=dataLayer",
+    );
   });
 
   it("blocks is_td /gtag/js after accept and while withdrawn, in every channel", async () => {

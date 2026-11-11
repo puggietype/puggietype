@@ -142,7 +142,14 @@ function isAllowedGtagScriptLoad(url: URL): boolean {
   ) {
     return false;
   }
-  if (params.has("l") && params.getAll("l").length !== 1) return false;
+  if (params.has("l")) {
+    if (
+      params.getAll("l").length !== 1 ||
+      params.get("l") !== "dataLayer"
+    ) {
+      return false;
+    }
+  }
   return true;
 }
 

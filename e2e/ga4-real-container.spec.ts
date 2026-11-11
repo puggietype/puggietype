@@ -8,22 +8,71 @@ import { pathToFileURL } from "node:url";
 import { expect, test, type Request } from "@playwright/test";
 
 /**
- * Saved GET of https://www.googletagmanager.com/gtag/js?id=G-B8GK1C9T6T.
- * Collects are answered here and are not forwarded.
+ * Live GET of https://www.googletagmanager.com/gtag/js?id=G-B8GK1C9T6T,
+ * fetched once in this process. Collects and every other Google URL are
+ * answered locally and are not forwarded. The body is never written to disk.
  */
-const FIXTURES = [
-  {
-    file: "e2e/fixtures/gtag-G-B8GK1C9T6T-em-on.js.bin",
-    sha256: "b09bcf0fac8f774f11df5a451be886c1edc60d1e46484b77973d0c8da3b524e7",
-    emPageView: true,
-  },
-  {
-    file: "e2e/fixtures/gtag-G-B8GK1C9T6T.js.bin",
-    sha256: "91a205abf80be3803f09fa6cb7faf9d2763fbecd9061a410230eb9e695dd8644",
-    emPageView: false,
-  },
-] as const;
 const ID = "G-B8GK1C9T6T";
+const GTAG_JS_URL = `https://www.googletagmanager.com/gtag/js?id=${ID}`;
+
+type LiveGtag = { bytes: Buffer; sha256: string };
+
+let liveGtag: LiveGtag | undefined;
+let liveGtagError: string | undefined;
+
+async function fetchLiveGtag(): Promise<LiveGtag> {
+  const response = await fetch(GTAG_JS_URL, {
+    method: "GET",
+    redirect: "follow",
+    headers: { accept: "application/javascript,text/javascript,*/*" },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length === 0) throw new Error("empty body");
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  console.log(`live gtag.js sha256=${sha256} bytes=${bytes.length}`);
+  return { bytes, sha256 };
+}
+
+/**
+ * The live container no longer ships `__ccd_em_page_view`, so there is no
+ * in-memory flag to flip to turn the history emitter on. Append a tiny
+ * hand-written listener that registers the way gtag does (same script,
+ * so document.currentScript is the googletagmanager.com tag). If our
+ * swallow is broken, Back/Forward would send an extra page_view.
+ * The combined bytes stay in memory only.
+ */
+function gtagBodyWithPopstateStub(live: Buffer): Buffer {
+  const stub = `;(function () {
+  function emitExtraPageView() {
+    var dl = location.origin + location.pathname;
+    var url = "https://www.google-analytics.com/g/collect?v=2&tid=${ID}&en=page_view&gcs=G101&npa=1&dl=" +
+      encodeURIComponent(dl) + "&dr=";
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(url);
+        return;
+      }
+    } catch (error) {
+      // fall through to the image beacon
+    }
+    var img = new Image();
+    img.src = url;
+  }
+  window.addEventListener("popstate", emitExtraPageView);
+})();`;
+  return Buffer.concat([live, Buffer.from(stub, "utf8")]);
+}
+
+function loadedGtag(): LiveGtag {
+  if (liveGtag === undefined) {
+    throw new Error("live gtag.js was not loaded");
+  }
+  return liveGtag;
+}
 
 const chromePath = process.env["CHROME_PATH"];
 if (chromePath !== undefined && chromePath !== "") {
@@ -31,6 +80,26 @@ if (chromePath !== undefined && chromePath !== "") {
     launchOptions: { executablePath: chromePath },
   });
 }
+
+test.beforeAll(async () => {
+  try {
+    liveGtag = await fetchLiveGtag();
+  } catch (error) {
+    liveGtagError = error instanceof Error ? error.message : String(error);
+    console.log(
+      `SKIPPED_LIVE_GTAG_FETCH: could not fetch ${GTAG_JS_URL}: ${liveGtagError}`,
+    );
+  }
+});
+
+test.beforeEach(() => {
+  if (liveGtag === undefined) {
+    test.skip(
+      true,
+      `Skipping: could not fetch live gtag.js (${GTAG_JS_URL}): ${liveGtagError ?? "unknown error"}`,
+    );
+  }
+});
 
 type Hit = {
   en: string;
@@ -72,13 +141,20 @@ function isGtagJsPath(url: string): boolean {
   }
 }
 
-/** Our tag only: query is exactly id=<G-ID>, optionally plus l=. */
+/** Our tag only: query is exactly id=<G-ID>, optionally plus l=dataLayer. */
 function isAllowedGtagScript(url: string): boolean {
   if (!isGtagJsPath(url)) return false;
   try {
     const parsed = new URL(url);
     const keys = [...parsed.searchParams.keys()];
     if (keys.some((key) => key !== "id" && key !== "l")) return false;
+    if (
+      parsed.searchParams.has("l") &&
+      (parsed.searchParams.getAll("l").length !== 1 ||
+        parsed.searchParams.get("l") !== "dataLayer")
+    ) {
+      return false;
+    }
     return (
       parsed.searchParams.getAll("id").length === 1 &&
       parsed.searchParams.get("id") === ID
@@ -180,7 +256,7 @@ async function servePage(): Promise<{ url: string; close: () => void }> {
 test("real GA4 container sends one consented page view per route", async ({
   page,
 }) => {
-  let bytes = Buffer.alloc(0);
+  const bytes = loadedGtag().bytes;
   const hits: Hit[] = [];
   let servedFixture = false;
   await page.route("**/*", async (route) => {
@@ -206,52 +282,41 @@ test("real GA4 container sends one consented page view per route", async ({
     await route.continue();
   });
 
-  for (const fixture of FIXTURES) {
-    bytes = readFileSync(path.resolve(fixture.file));
-    expect(createHash("sha256").update(bytes).digest("hex")).toBe(
-      fixture.sha256,
-    );
-    expect(bytes.includes(Buffer.from("__ccd_em_page_view"))).toBe(
-      fixture.emPageView,
-    );
-    hits.length = 0;
-    servedFixture = false;
-    const served = await servePage();
-    try {
-      await page.goto(served.url, { waitUntil: "domcontentloaded" });
-      await page.waitForTimeout(7000);
-      const afterLoad = hits.filter((hit) => hit.en === "page_view").length;
-      await page.evaluate(() => {
-        history.pushState({}, "", "/next?q=1#hash");
-        const fields = {
-          page_path: location.pathname,
-          page_location: `${location.origin}${location.pathname}`,
-          page_referrer: `${location.origin}/login`,
-        };
-        const gtag = (
-          window as Window & { gtag?: (...args: unknown[]) => void }
-        ).gtag;
-        gtag?.("set", fields);
-        gtag?.("event", "page_view", { ...fields, send_to: "G-B8GK1C9T6T" });
-      });
-      await page.waitForTimeout(6000);
-      expect(servedFixture).toBe(true);
-      expect(afterLoad).toBe(1);
-      const views = hits.filter((hit) => hit.en === "page_view");
-      expect(views).toHaveLength(2);
-      for (const hit of hits) {
-        expect(hit.gcs, hit.en).toBe("G101");
-        expect(hit.npa, hit.en).toBe("1");
-        expect(hit.dl, hit.en).not.toMatch(/[?#]/);
-        expect(hit.dr, hit.en).not.toMatch(/[?#]/);
-      }
-      expect(views.map((hit) => new URL(hit.dl).pathname)).toEqual([
-        "/login",
-        "/next",
-      ]);
-    } finally {
-      served.close();
+  const served = await servePage();
+  try {
+    await page.goto(served.url, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(7000);
+    const afterLoad = hits.filter((hit) => hit.en === "page_view").length;
+    await page.evaluate(() => {
+      history.pushState({}, "", "/next?q=1#hash");
+      const fields = {
+        page_path: location.pathname,
+        page_location: `${location.origin}${location.pathname}`,
+        page_referrer: `${location.origin}/login`,
+      };
+      const gtag = (
+        window as Window & { gtag?: (...args: unknown[]) => void }
+      ).gtag;
+      gtag?.("set", fields);
+      gtag?.("event", "page_view", { ...fields, send_to: "G-B8GK1C9T6T" });
+    });
+    await page.waitForTimeout(6000);
+    expect(servedFixture).toBe(true);
+    expect(afterLoad).toBe(1);
+    const views = hits.filter((hit) => hit.en === "page_view");
+    expect(views).toHaveLength(2);
+    for (const hit of hits) {
+      expect(hit.gcs, hit.en).toBe("G101");
+      expect(hit.npa, hit.en).toBe("1");
+      expect(hit.dl, hit.en).not.toMatch(/[?#]/);
+      expect(hit.dr, hit.en).not.toMatch(/[?#]/);
     }
+    expect(views.map((hit) => new URL(hit.dl).pathname)).toEqual([
+      "/login",
+      "/next",
+    ]);
+  } finally {
+    served.close();
   }
 });
 
@@ -425,7 +490,7 @@ test("forced sampling does not send /td or /a or raw room and profile paths", as
       await route.fulfill({
         status: 200,
         contentType: "application/javascript",
-        body: readFileSync(path.resolve(FIXTURES[0].file)),
+        body: loadedGtag().bytes,
       });
       return;
     }
@@ -498,14 +563,11 @@ test("forced sampling does not send /td or /a or raw room and profile paths", as
   }
 });
 
-test("em-on history fixture sends one page_view on Back and Forward", async ({
+test("em-on popstate stub sends one page_view on Back and Forward", async ({
   page,
 }) => {
   const harness = await bundleGa4Harness();
-  const fixture = FIXTURES[0];
-  expect(fixture.emPageView).toBe(true);
-  const bytes = readFileSync(path.resolve(fixture.file));
-  expect(createHash("sha256").update(bytes).digest("hex")).toBe(fixture.sha256);
+  const bytes = gtagBodyWithPopstateStub(loadedGtag().bytes);
   const hits: Hit[] = [];
   let servedFixture = false;
   await page.route("**/*", async (route) => {
