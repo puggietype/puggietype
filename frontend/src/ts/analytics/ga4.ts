@@ -28,11 +28,12 @@ function pageWindow(): AnalyticsWindow {
 
 let loadedId: string | null = null;
 /**
- * Last raw pathname we sent a page_view for. A repeat of that path is not
- * another hit. The hit itself uses the redacted path, so two rooms still
- * count as two views.
+ * Last canonical pathname we sent a page_view for. A repeat of that path
+ * is not another hit. The hit itself uses the redacted path, so two rooms
+ * still count as two views (`/r/ABCD` and `/r/EFGH` differ before redact).
  */
 let lastSentPath: string | null = null;
+let popstateLocked = false;
 
 function isSteam(): boolean {
   return typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam";
@@ -108,7 +109,25 @@ function isGtagScript(url: URL): boolean {
 }
 
 /**
+ * Gtag's sampled diagnostics beacons (`/td`, `/a`) build `dl` from the raw
+ * `location.hostname+pathname`, ignoring `page_location`. Drop them always,
+ * including after accept. They are not measurement hits.
+ */
+function isGtmDiagnostics(url: URL): boolean {
+  const host = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (!hostUnder(host, "googletagmanager.com")) return false;
+  const path = url.pathname.replace(/\/{2,}/g, "/");
+  return (
+    path === "/td" ||
+    path.startsWith("/td/") ||
+    path === "/a" ||
+    path.startsWith("/a/")
+  );
+}
+
+/**
  * While withdrawn, block every Google host. GET /gtag/js stays open.
+ * `/td` and `/a` on googletagmanager.com are also blocked when allowed.
  *
  * A native fetch, sendBeacon, or setAttribute copied before this module
  * runs, or taken from another window, is not wrapped. sendBeacon added
@@ -119,13 +138,21 @@ function shouldBlockGaRequest(
   raw: string,
   channel: { method?: string; script?: boolean; allowGtagGet?: boolean },
 ): boolean {
-  if (!gaTransportBlocked || raw === "") return false;
+  if (raw === "") return false;
   let url: URL;
   try {
     url = new URL(raw, location.href);
   } catch {
     return false;
   }
+  const protocolEarly = url.protocol;
+  if (
+    (protocolEarly === "http:" || protocolEarly === "https:") &&
+    isGtmDiagnostics(url)
+  ) {
+    return true;
+  }
+  if (!gaTransportBlocked) return false;
   const protocol = url.protocol;
   const http =
     protocol === "http:" ||
@@ -373,14 +400,74 @@ const ADS_DENIED = {
 } as const;
 
 /**
+ * SPA routes from route-controller, plus static HTML pages from the sitemap.
+ * Keep this list in step with those sources (see ga4-consent.spec.ts).
+ * `/guide/` is the guides index; other trailing slashes are stripped first.
+ */
+const KNOWN_ANALYTICS_PATHS = new Set([
+  "/",
+  "/verify",
+  "/leaderboards",
+  "/about",
+  "/settings",
+  "/login",
+  "/account",
+  "/account-settings",
+  "/profile",
+  "/race",
+  "/friends",
+  "/faq",
+  "/contact",
+  "/creators",
+  "/terms",
+  "/privacy",
+  "/email",
+  "/guide/",
+  "/guide/about",
+  "/guide/wpm-accuracy",
+  "/guide/typing-tips",
+  "/guide/multiplayer",
+  "/guide/modes-settings",
+  "/guide/touch-typing-beginners",
+  "/guide/home-row-finger-placement",
+  "/guide/type-faster",
+  "/guide/keyboard-layouts",
+  "/guide/typing-ergonomics",
+  "/guide/typing-test-math",
+  "/guide/improve-accuracy",
+  "/guide/teaching-kids-to-type",
+]);
+
+/**
+ * Decode, collapse slashes, and drop a trailing slash except for `/` and
+ * `/guide/`. `/r%2Fcode` becomes `/r/code` so redaction can match it.
+ */
+function canonicalizeAnalyticsPath(pathname: string): string {
+  let path = pathname;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // keep the raw path when it is not valid encoding
+  }
+  if (!path.startsWith("/")) path = `/${path}`;
+  path = path.replace(/\/{2,}/g, "/");
+  if (path === "/guide" || path === "/guide/") return "/guide/";
+  if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+  return path === "" ? "/" : path;
+}
+
+/**
  * The router captures the rest of the path for these two segments
  * (`/r/:code`, `/profile/:uidOrName`). Nothing else in the route table
  * carries a user id, name, or code. Query and hash never reach this.
+ * Unmatched paths, including `/reset/<token>`, are sent as `/404`.
  */
 function redactAnalyticsPath(pathname: string): string {
-  return pathname
-    .replace(/^\/r\/.+/, "/r/:code")
-    .replace(/^\/profile\/.+/, "/profile/:id");
+  const path = canonicalizeAnalyticsPath(pathname);
+  if (/^\/r\/.+/.test(path)) return "/r/:code";
+  if (/^\/profile\/.+/.test(path)) return "/profile/:id";
+  if (KNOWN_ANALYTICS_PATHS.has(path)) return path;
+  return "/404";
 }
 
 /** Path only. Query and hash can carry tokens (email, reset, Discord access_token). */
@@ -394,7 +481,10 @@ function cleanPage(): { page_path: string; page_location: string } {
 
 /**
  * Keep gtag from seeing route changes. Its history listener sends a second
- * page_view and copies the raw URL, query included, into the hit.
+ * page_view and copies the raw URL, query included, into the hit. The
+ * pushState/replaceState lock does not cover Back/Forward: gtag still
+ * hears `popstate`. A bubble listener registered after the router and
+ * before gtag.js loads stops that without blocking the router's handler.
  */
 function lockHistoryMethods(): void {
   for (const name of ["pushState", "replaceState"] as const) {
@@ -410,6 +500,12 @@ function lockHistoryMethods(): void {
     } catch {
       // A previous load already locked the method.
     }
+  }
+  if (!popstateLocked && typeof window !== "undefined") {
+    window.addEventListener("popstate", (event: PopStateEvent) => {
+      event.stopImmediatePropagation();
+    });
+    popstateLocked = true;
   }
 }
 
@@ -449,12 +545,12 @@ function publishCleanPage(gtagFn: Gtag): void {
 
 function sendPageView(id: string): void {
   if (!isGa4MeasurementId(id) || isGaCollectionDisabled(id)) return;
-  const rawPath = location.pathname;
-  if (rawPath === lastSentPath) return;
+  const pathKey = canonicalizeAnalyticsPath(location.pathname);
+  if (pathKey === lastSentPath) return;
   const gtagFn = pageWindow().gtag;
   if (gtagFn === undefined) return;
   const fields = cleanPage();
-  lastSentPath = rawPath;
+  lastSentPath = pathKey;
   publishCleanPage(gtagFn);
   gtagFn("event", "page_view", {
     ...fields,

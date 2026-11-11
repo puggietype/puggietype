@@ -29,10 +29,16 @@ import { loadGa4 } from "../../src/ts/analytics/ga4";
 describe("history lock still lets the app navigate", () => {
   afterEach(() => {
     history.replaceState(null, "", "/");
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("pushState, replaceState, and Back still move the URL after GA loads", async () => {
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => node);
+    let early = 0;
+    const onEarly = (): void => {
+      early += 1;
+    };
+    window.addEventListener("popstate", onEarly);
     loadGa4("G-TEST1234");
     history.pushState(null, "", "/settings");
     expect(location.pathname).toBe("/settings");
@@ -41,14 +47,18 @@ describe("history lock still lets the app navigate", () => {
     history.replaceState(null, "", "/guide/about");
     expect(location.pathname).toBe("/guide/about");
 
-    let popped = 0;
-    const onPop = (): void => {
-      popped += 1;
+    let late = 0;
+    const onLate = (): void => {
+      late += 1;
     };
-    window.addEventListener("popstate", onPop);
+    window.addEventListener("popstate", onLate);
     history.back();
-    window.removeEventListener("popstate", onPop);
-    expect(popped).toBe(1);
+    window.removeEventListener("popstate", onLate);
+    window.removeEventListener("popstate", onEarly);
+    // The router-style listener registered before the lock still runs.
+    // A later listener (gtag) is stopped.
+    expect(early).toBe(1);
+    expect(late).toBe(0);
     expect(location.pathname).toBe("/settings");
     await onPopState();
     expect(Pages.change).toHaveBeenCalledWith("settings", expect.anything());

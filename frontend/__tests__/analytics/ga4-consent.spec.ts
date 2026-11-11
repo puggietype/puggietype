@@ -202,6 +202,17 @@ describe("GA collect transport gate", () => {
     await expectPassed("https://www.google.com/search?q=puggietype");
   });
 
+  it("always drops googletagmanager /td and /a, including after accept", async () => {
+    expect(isGaTransportBlocked()).toBe(false);
+    await expectBlocked("https://www.googletagmanager.com/td?dl=qa.example/r/ABCD");
+    await expectBlocked("https://www.googletagmanager.com/td/");
+    await expectBlocked("https://www.googletagmanager.com//td?id=G-TEST1234");
+    await expectBlocked("https://www.googletagmanager.com/a?pid=1");
+    await expectBlocked("https://www.googletagmanager.com/a/");
+    await expectPassed("https://www.google-analytics.com/g/collect?cid=1");
+    await expectPassed("https://www.googletagmanager.com/gtag/js?id=G-TEST1234");
+  });
+
   it("blocks every path on a Google host, not only collect paths", async () => {
     withdraw();
     await expectBlocked("https://www.google-analytics.com/favicon.ico");
@@ -1215,5 +1226,139 @@ describe("sanitized single page view", () => {
     expect(
       views.map((entry) => (entry[2] as { page_path?: string }).page_path),
     ).toEqual(["/about", "/settings", "/about"]);
+  });
+
+  it("sends unmatched and token paths as /404, including /reset/<token>", async () => {
+    show("/reset/secret-token-99?email=ada@example.com");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    const layer = dataLayer();
+    expect(pageViews(layer)[0]?.[2]).toMatchObject({
+      page_path: "/404",
+      page_location: `${location.origin}/404`,
+    });
+    show("/QAEDGE5/secret");
+    ga.onSpaRouteChange();
+    const views = pageViews(layer);
+    expect(views).toHaveLength(2);
+    expect(views[1]?.[2]).toMatchObject({ page_path: "/404" });
+    const text = JSON.stringify(layer);
+    expect(text).not.toContain("secret-token-99");
+    expect(text).not.toContain("QAEDGE5");
+    expect(text).not.toContain("/reset/");
+    assertCleanPagePayloads(layer);
+  });
+
+  it("decodes the path before redacting an encoded room or profile segment", async () => {
+    const previous = Object.getOwnPropertyDescriptor(document, "referrer");
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      get: () => `${location.origin}/r%2FQAEDGE4`,
+    });
+    try {
+      show("/profile%2Fx?utm_source=qa");
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      const layer = dataLayer();
+      expect(pageViews(layer)[0]?.[2]).toMatchObject({
+        page_path: "/profile/:id",
+        page_location: `${location.origin}/profile/:id`,
+        page_referrer: `${location.origin}/r/:code`,
+      });
+      const text = JSON.stringify(layer);
+      expect(text).not.toContain("QAEDGE4");
+      expect(text).not.toContain("/profile/x");
+      assertCleanPagePayloads(layer);
+    } finally {
+      if (previous === undefined) {
+        Reflect.deleteProperty(document, "referrer");
+      } else {
+        Object.defineProperty(document, "referrer", previous);
+      }
+    }
+  });
+
+  it("dedupes /r/ and /r as one /404 and still counts two rooms", async () => {
+    show("/r/");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    const layer = dataLayer();
+    expect(pageViews(layer)).toHaveLength(1);
+    expect(pageViews(layer)[0]?.[2]).toMatchObject({ page_path: "/404" });
+    show("/r");
+    ga.onSpaRouteChange();
+    expect(pageViews(layer)).toHaveLength(1);
+
+    show("/r/ABCD");
+    ga.onSpaRouteChange();
+    show("/r/EFGH");
+    ga.onSpaRouteChange();
+    const views = pageViews(layer);
+    expect(views).toHaveLength(3);
+    expect(
+      views.map((entry) => (entry[2] as { page_path?: string }).page_path),
+    ).toEqual(["/404", "/r/:code", "/r/:code"]);
+    expect(JSON.stringify(layer)).not.toContain("ABCD");
+    expect(JSON.stringify(layer)).not.toContain("EFGH");
+  });
+
+  it("keeps static pages and the guides index as themselves", async () => {
+    show("/faq?email=ada@example.com");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    ga.onSpaRouteChange();
+    show("/guide/");
+    ga.onSpaRouteChange();
+    show("/privacy");
+    ga.onSpaRouteChange();
+    const views = pageViews(dataLayer());
+    expect(
+      views.map((entry) => (entry[2] as { page_path?: string }).page_path),
+    ).toEqual(["/faq", "/guide/", "/privacy"]);
+  });
+
+  it("keeps the known-path list in step with the sitemap and spa routes", () => {
+    const gaSource = readFileSync(
+      path.join(src, "ts/analytics/ga4.ts"),
+      "utf8",
+    );
+    const knownBlock = /const KNOWN_ANALYTICS_PATHS = new Set\(\[([\s\S]*?)\]\);/.exec(
+      gaSource,
+    );
+    expect(knownBlock).not.toBeNull();
+    const listed = knownBlock?.[1] ?? "";
+    const known = new Set<string>();
+    const pathRe = /"([^"]+)"/g;
+    let pathMatch = pathRe.exec(listed);
+    while (pathMatch !== null) {
+      const value = pathMatch[1];
+      if (value !== undefined) known.add(value);
+      pathMatch = pathRe.exec(listed);
+    }
+    const sitemapSource = readFileSync(
+      path.resolve(__dirname, "../../static/sitemap.xml"),
+      "utf8",
+    );
+    const locRe = /<loc>https:\/\/puggietype\.com(\/[^<]*)<\/loc>/g;
+    let locMatch = locRe.exec(sitemapSource);
+    while (locMatch !== null) {
+      const page = locMatch[1] ?? "";
+      expect(known.has(page), page).toBe(true);
+      locMatch = locRe.exec(sitemapSource);
+    }
+    const routes = readFileSync(
+      path.join(src, "ts/controllers/route-controller.ts"),
+      "utf8",
+    );
+    const spaRe = /path:\s*"(\/[^"]*)"/g;
+    let spaMatch = spaRe.exec(routes);
+    while (spaMatch !== null) {
+      const route = spaMatch[1];
+      if (route !== undefined && !route.includes(":")) {
+        expect(known.has(route), route).toBe(true);
+      }
+      spaMatch = spaRe.exec(routes);
+    }
+    expect(known.has("/email")).toBe(true);
   });
 });
