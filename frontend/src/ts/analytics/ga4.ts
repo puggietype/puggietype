@@ -27,8 +27,15 @@ function pageWindow(): AnalyticsWindow {
 }
 
 let loadedId: string | null = null;
-/** Last pathname we actually sent. A repeat call for that path is not another hit. */
+/** Set around the gtag.js script.src assignment in loadGa4. */
+let loadingScriptId: string | null = null;
+/**
+ * Last canonical pathname we sent a page_view for. A repeat of that path
+ * is not another hit. The hit itself uses the redacted path, so two rooms
+ * still count as two views (`/r/ABCD` and `/r/EFGH` differ before redact).
+ */
 let lastSentPath: string | null = null;
+let popstateLocked = false;
 
 function isSteam(): boolean {
   return typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam";
@@ -94,17 +101,81 @@ function isGoogleHost(host: string): boolean {
   );
 }
 
-function isGtagScript(url: URL): boolean {
+function decodeGtmPath(pathname: string): string {
+  let path = pathname;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // keep the raw path when it is not valid encoding
+  }
+  return path.replace(/\/{2,}/g, "/");
+}
+
+function isGtagScriptPath(url: URL): boolean {
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
-  const path = url.pathname.replace(/\/{2,}/g, "/");
+  if (!hostUnder(host, "googletagmanager.com")) return false;
+  const path = decodeGtmPath(url.pathname);
+  return path === "/gtag/js" || path.startsWith("/gtag/js/");
+}
+
+/**
+ * The only /gtag/js load we allow is our measurement tag: query is exactly
+ * `id=<our G-ID>`, optionally plus `l=`. `is_td` and any other param, including
+ * a raw `dl` path, are blocked in every consent state.
+ */
+function isAllowedGtagScriptLoad(url: URL): boolean {
+  if (!isGtagScriptPath(url)) return false;
+  const allowed = [configuredMeasurementId(), loadedId, loadingScriptId].filter(
+    (value): value is string => value !== null && isGa4MeasurementId(value),
+  );
+  if (allowed.length === 0) return false;
+  const params = url.searchParams;
+  const keys = [...params.keys()];
+  if (keys.length === 0 || keys.some((key) => key !== "id" && key !== "l")) {
+    return false;
+  }
+  const requested = params.get("id");
+  if (
+    params.getAll("id").length !== 1 ||
+    requested === null ||
+    !allowed.includes(requested)
+  ) {
+    return false;
+  }
+  if (params.has("l")) {
+    if (
+      params.getAll("l").length !== 1 ||
+      params.get("l") !== "dataLayer"
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Gtag's sampled diagnostics beacons (`/td`, `/a`) build `dl` from the raw
+ * `location.hostname+pathname`, ignoring `page_location`. Drop them always,
+ * including after accept. They are not measurement hits. The path is decoded
+ * so `/%74d` matches too.
+ */
+function isGtmDiagnostics(url: URL): boolean {
+  const host = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (!hostUnder(host, "googletagmanager.com")) return false;
+  const path = decodeGtmPath(url.pathname);
   return (
-    hostUnder(host, "googletagmanager.com") &&
-    (path === "/gtag/js" || path.startsWith("/gtag/js/"))
+    path === "/td" ||
+    path.startsWith("/td/") ||
+    path === "/a" ||
+    path.startsWith("/a/")
   );
 }
 
 /**
- * While withdrawn, block every Google host. GET /gtag/js stays open.
+ * While withdrawn, block every Google host. The only exception is a GET of
+ * our own /gtag/js (`id=<G-ID>`, optionally `l=`), so a later accept can
+ * load the tag. `/td`, `/a`, and any other /gtag/js (including `is_td`)
+ * are blocked in every consent state.
  *
  * A native fetch, sendBeacon, or setAttribute copied before this module
  * runs, or taken from another window, is not wrapped. sendBeacon added
@@ -115,7 +186,7 @@ function shouldBlockGaRequest(
   raw: string,
   channel: { method?: string; script?: boolean; allowGtagGet?: boolean },
 ): boolean {
-  if (!gaTransportBlocked || raw === "") return false;
+  if (raw === "") return false;
   let url: URL;
   try {
     url = new URL(raw, location.href);
@@ -129,12 +200,17 @@ function shouldBlockGaRequest(
     protocol === "ws:" ||
     protocol === "wss:";
   if (!http) return false;
+  if (protocol === "http:" || protocol === "https:") {
+    if (isGtmDiagnostics(url)) return true;
+    if (isGtagScriptPath(url) && !isAllowedGtagScriptLoad(url)) return true;
+  }
+  if (!gaTransportBlocked) return false;
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
   const method = (channel.method ?? "GET").toUpperCase();
   if (
     (protocol === "http:" || protocol === "https:") &&
     method === "GET" &&
-    isGtagScript(url) &&
+    isAllowedGtagScriptLoad(url) &&
     (channel.script === true || channel.allowGtagGet === true)
   ) {
     return false;
@@ -368,23 +444,211 @@ const ADS_DENIED = {
   ad_personalization: "denied",
 } as const;
 
+/**
+ * SPA routes from route-controller, plus static HTML pages from the sitemap.
+ * Keep this list in step with those sources (see ga4-consent.spec.ts).
+ * `/guide/` is the guides index; other trailing slashes are stripped first.
+ */
+const KNOWN_ANALYTICS_PATHS = new Set([
+  "/",
+  "/verify",
+  "/leaderboards",
+  "/about",
+  "/settings",
+  "/login",
+  "/account",
+  "/account-settings",
+  "/profile",
+  "/race",
+  "/friends",
+  "/faq",
+  "/contact",
+  "/creators",
+  "/terms",
+  "/privacy",
+  "/email",
+  "/guide/",
+  "/guide/about",
+  "/guide/wpm-accuracy",
+  "/guide/typing-tips",
+  "/guide/multiplayer",
+  "/guide/modes-settings",
+  "/guide/touch-typing-beginners",
+  "/guide/home-row-finger-placement",
+  "/guide/type-faster",
+  "/guide/keyboard-layouts",
+  "/guide/typing-ergonomics",
+  "/guide/typing-test-math",
+  "/guide/improve-accuracy",
+  "/guide/teaching-kids-to-type",
+]);
+
+/**
+ * Decode, collapse slashes, and drop a trailing slash except for `/` and
+ * `/guide/`. `/r%2Fcode` becomes `/r/code` so redaction can match it.
+ */
+function canonicalizeAnalyticsPath(pathname: string): string {
+  let path = pathname;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // keep the raw path when it is not valid encoding
+  }
+  if (!path.startsWith("/")) path = `/${path}`;
+  path = path.replace(/\/{2,}/g, "/");
+  if (path === "/guide" || path === "/guide/") return "/guide/";
+  if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+  return path === "" ? "/" : path;
+}
+
+/**
+ * The router captures the rest of the path for these two segments
+ * (`/r/:code`, `/profile/:uidOrName`). Nothing else in the route table
+ * carries a user id, name, or code. Query and hash never reach this.
+ * Unmatched paths, including `/reset/<token>`, are sent as `/404`.
+ */
+function redactAnalyticsPath(pathname: string): string {
+  const path = canonicalizeAnalyticsPath(pathname);
+  if (/^\/r\/.+/.test(path)) return "/r/:code";
+  if (/^\/profile\/.+/.test(path)) return "/profile/:id";
+  if (KNOWN_ANALYTICS_PATHS.has(path)) return path;
+  return "/404";
+}
+
 /** Path only. Query and hash can carry tokens (email, reset, Discord access_token). */
 function cleanPage(): { page_path: string; page_location: string } {
+  const pagePath = redactAnalyticsPath(location.pathname);
   return {
-    page_path: location.pathname,
-    page_location: `${location.origin}${location.pathname}`,
+    page_path: pagePath,
+    page_location: `${location.origin}${pagePath}`,
   };
+}
+
+/**
+ * Keep gtag from seeing route changes. Its history listener sends a second
+ * page_view and copies the raw URL, query included, into the hit. The
+ * pushState/replaceState lock does not cover Back/Forward. Before gtag.js
+ * is injected, wrap window.addEventListener and the onpopstate setter so
+ * only registrations from gtag.js become no-ops. Later app or third-party
+ * listeners still fire, and the router (registered first) is unchanged.
+ */
+function isGtagPopstateRegistration(): boolean {
+  const script = document.currentScript;
+  if (script instanceof HTMLScriptElement && script.src !== "") {
+    try {
+      const src = new URL(script.src, location.href);
+      const host = src.hostname.toLowerCase().replace(/\.$/, "");
+      if (hostUnder(host, "googletagmanager.com")) return true;
+    } catch {
+      // ignore a bad script src
+    }
+  }
+  try {
+    const stack = new Error().stack ?? "";
+    if (/googletagmanager\.com/i.test(stack)) return true;
+  } catch {
+    // ignore environments that cannot capture a stack
+  }
+  return false;
+}
+
+function swallowGtagPopstate(): void {
+  if (popstateLocked || typeof window === "undefined") return;
+  popstateLocked = true;
+  const origAdd = window.addEventListener.bind(window);
+  window.addEventListener = ((
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ) => {
+    if (type === "popstate" && isGtagPopstateRegistration()) return;
+    origAdd(type, listener, options);
+  }) as typeof window.addEventListener;
+
+  const proto = Object.getPrototypeOf(window) as Window;
+  const desc =
+    Object.getOwnPropertyDescriptor(window, "onpopstate") ??
+    Object.getOwnPropertyDescriptor(proto, "onpopstate");
+  if (desc?.get === undefined || desc.set === undefined) return;
+  const getValue = desc.get;
+  const setValue = desc.set;
+  Object.defineProperty(window, "onpopstate", {
+    configurable: true,
+    enumerable: desc.enumerable,
+    get(): WindowEventHandlers["onpopstate"] {
+      return getValue.call(this) as WindowEventHandlers["onpopstate"];
+    },
+    set(handler: WindowEventHandlers["onpopstate"]) {
+      if (isGtagPopstateRegistration()) return;
+      setValue.call(this, handler);
+    },
+  });
+}
+
+function lockHistoryMethods(): void {
+  for (const name of ["pushState", "replaceState"] as const) {
+    const native = history[name].bind(history);
+    try {
+      Object.defineProperty(history, name, {
+        configurable: false,
+        writable: false,
+        value: (...args: Parameters<History["pushState"]>): void => {
+          native(...args);
+        },
+      });
+    } catch {
+      // A previous load already locked the method.
+    }
+  }
+  swallowGtagPopstate();
+}
+
+/**
+ * Same-origin referrer: path only, with room codes and profile names
+ * replaced. Another site: origin only. Empty when the browser has none.
+ */
+function cleanReferrer(): string {
+  if (document.referrer === "") return "";
+  try {
+    const url = new URL(document.referrer);
+    if (url.origin !== location.origin) return url.origin;
+    return `${url.origin}${redactAnalyticsPath(url.pathname)}`;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * The real gtag.js for this property sends its own page_view when it handles
+ * `js`. Consent and this set have to be queued first. `page_location` alone
+ * still leaves that extra hit; `send_page_view: false` in the same set drops it.
+ * Route changes repeat the set so later automatic events keep the clean URL.
+ */
+function publishCleanPage(gtagFn: Gtag): void {
+  const fields = cleanPage();
+  gtagFn("set", {
+    send_page_view: false,
+    page_path: fields.page_path,
+    page_location: fields.page_location,
+    page_referrer: cleanReferrer(),
+    ads_data_redaction: true,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false,
+  });
 }
 
 function sendPageView(id: string): void {
   if (!isGa4MeasurementId(id) || isGaCollectionDisabled(id)) return;
-  const fields = cleanPage();
-  if (fields.page_path === lastSentPath) return;
+  const pathKey = canonicalizeAnalyticsPath(location.pathname);
+  if (pathKey === lastSentPath) return;
   const gtagFn = pageWindow().gtag;
   if (gtagFn === undefined) return;
-  lastSentPath = fields.page_path;
+  const fields = cleanPage();
+  lastSentPath = pathKey;
+  publishCleanPage(gtagFn);
   gtagFn("event", "page_view", {
     ...fields,
+    page_referrer: cleanReferrer(),
     send_to: id,
   });
 }
@@ -398,7 +662,6 @@ export function loadGa4(measurementId: string): void {
   const page = pageWindow();
   page.dataLayer = page.dataLayer ?? [];
   page.gtag = gtag;
-  gtag("js", new Date());
   gtag("consent", "default", {
     ...ADS_DENIED,
     analytics_storage: "denied",
@@ -411,6 +674,10 @@ export function loadGa4(measurementId: string): void {
     analytics_storage: "granted",
   });
   gtag("set", "allow_google_signals", false);
+  publishCleanPage(gtag);
+  gtag("js", new Date());
+  // gtag.js wraps history and sends another page_view from the raw URL.
+  lockHistoryMethods();
   const pageFields = cleanPage();
   gtag("config", measurementId, {
     allow_google_signals: false,
@@ -419,13 +686,16 @@ export function loadGa4(measurementId: string): void {
     send_page_view: false,
     cookie_expires: GA4_COOKIE_EXPIRES_SECONDS,
     ...pageFields,
+    page_referrer: cleanReferrer(),
   });
   const script = document.createElement("script");
   script.async = true;
+  loadingScriptId = measurementId;
   script.src = `${GA4_SCRIPT_URL}?id=${encodeURIComponent(measurementId)}`;
   script.dataset["ga4"] = measurementId;
   document.head.appendChild(script);
   loadedId = measurementId;
+  loadingScriptId = null;
   sendPageView(measurementId);
 }
 

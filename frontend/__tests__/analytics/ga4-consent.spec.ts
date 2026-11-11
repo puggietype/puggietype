@@ -202,6 +202,76 @@ describe("GA collect transport gate", () => {
     await expectPassed("https://www.google.com/search?q=puggietype");
   });
 
+  it("always drops googletagmanager /td and /a, including after accept", async () => {
+    expect(isGaTransportBlocked()).toBe(false);
+    await expectBlocked("https://www.googletagmanager.com/td?dl=qa.example/r/ABCD");
+    await expectBlocked("https://www.googletagmanager.com/td/");
+    await expectBlocked("https://www.googletagmanager.com//td?id=G-TEST1234");
+    await expectBlocked("https://www.googletagmanager.com/a?pid=1");
+    await expectBlocked("https://www.googletagmanager.com/a/");
+    await expectPassed("https://www.google-analytics.com/g/collect?cid=1");
+    await expectPassed("https://www.googletagmanager.com/gtag/js?id=G-TEST1234");
+    await expectPassed(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=dataLayer",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=other",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=",
+    );
+    await expectBlocked("https://www.googletagmanager.com/%74d?dl=host/r/ABCD");
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&is_td=1&dl=host/r/ABCD",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/%67tag/js?id=G-TEST1234&is_td=1&dl=host/r/ABCD",
+    );
+    await expectBlocked("https://www.googletagmanager.com/gtag/js?id=G-OTHER");
+  });
+
+
+  it("allows /gtag/js only with optional l=dataLayer", async () => {
+    expect(isGaTransportBlocked()).toBe(false);
+    await expectPassed("https://www.googletagmanager.com/gtag/js?id=G-TEST1234");
+    await expectPassed(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=dataLayer",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=other",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=dataLayer&l=dataLayer",
+    );
+  });
+
+  it("blocks is_td /gtag/js after accept and while withdrawn, in every channel", async () => {
+    const isTd =
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&is_td=1&dl=qa.example/r/ABCD";
+    expect(isGaTransportBlocked()).toBe(false);
+    await expectBlocked(isTd);
+    const script = document.createElement("script");
+    script.src = isTd;
+    script.setAttribute("src", isTd);
+    expect(script.getAttribute("src")).toBeNull();
+    withdraw();
+    await expectBlocked(isTd);
+    const again = document.createElement("script");
+    again.src = isTd;
+    again.setAttribute("src", isTd);
+    expect(again.getAttribute("src")).toBeNull();
+    const allowed = "https://www.googletagmanager.com/gtag/js?id=G-TEST1234";
+    recorded.calls.length = 0;
+    await window.fetch(allowed);
+    expect(recorded.calls).toEqual([allowed]);
+    const tag = document.createElement("script");
+    tag.src = allowed;
+    expect(tag.src).toContain("/gtag/js");
+  });
+
   it("blocks every path on a Google host, not only collect paths", async () => {
     withdraw();
     await expectBlocked("https://www.google-analytics.com/favicon.ico");
@@ -501,6 +571,8 @@ describe("analytics consent gate", () => {
 
   it("loads GA4 once, with signals and ads personalization off", () => {
     const scripts: HTMLScriptElement[] = [];
+    const previousId = env.ga4MeasurementId;
+    env.ga4MeasurementId = "G-TEST1234";
     vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
       if (node instanceof HTMLScriptElement) scripts.push(node);
       return node;
@@ -533,6 +605,7 @@ describe("analytics consent gate", () => {
       syncGa4();
       expect(scripts).toHaveLength(1);
     } finally {
+      env.ga4MeasurementId = previousId;
       vi.restoreAllMocks();
     }
   });
@@ -893,24 +966,43 @@ function pageViews(layer: unknown[]): IArguments[] {
   });
 }
 
+function commandPayload(
+  entry: IArguments,
+): Record<string, unknown> | undefined {
+  const value: unknown = entry[0] === "set" ? entry[1] : entry[2];
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
+}
+
 function assertCleanPagePayloads(layer: unknown[]): void {
   const tracked = layer.filter(
-    (entry) => isCommand(entry, "config") || isCommand(entry, "event"),
+    (entry) =>
+      isCommand(entry, "config") ||
+      isCommand(entry, "event") ||
+      isCommand(entry, "set"),
   );
   const text = JSON.stringify(tracked);
   for (const secret of PAGE_SECRETS) {
     expect(text).not.toContain(secret);
   }
   for (const entry of tracked) {
-    if (!isCommand(entry, "config") && !isCommand(entry, "event")) continue;
-    const payload = entry[2];
-    if (payload === null || typeof payload !== "object") continue;
-    const fields = payload as { page_path?: string; page_location?: string };
+    if (!isGtagArguments(entry)) continue;
+    const fields = commandPayload(entry) as {
+      page_path?: string;
+      page_location?: string;
+      page_referrer?: string;
+    };
+    if (fields === undefined) continue;
     if (typeof fields.page_path === "string") {
       expect(fields.page_path).not.toMatch(/[?#]/);
     }
     if (typeof fields.page_location === "string") {
       expect(fields.page_location).not.toMatch(/[?#]/);
+    }
+    if (typeof fields.page_referrer === "string") {
+      expect(fields.page_referrer).not.toMatch(/[?#]/);
     }
   }
 }
@@ -968,6 +1060,105 @@ describe("sanitized single page view", () => {
       page_path: "/login",
       page_location: `${location.origin}/login`,
     });
+    const commands = layer as IArguments[];
+    const jsAt = commands.findIndex((entry) => entry[0] === "js");
+    const defaultAt = commands.findIndex(
+      (entry) => entry[0] === "consent" && entry[1] === "default",
+    );
+    const blockAt = commands.findIndex((entry) => {
+      return commandPayload(entry)?.["send_page_view"] === false;
+    });
+    expect(defaultAt).toBeGreaterThan(-1);
+    expect(blockAt).toBeGreaterThan(defaultAt);
+    expect(jsAt).toBeGreaterThan(blockAt);
+    const configAt = commands.findIndex((entry) => entry[0] === "config");
+    expect(configAt).toBeGreaterThan(jsAt);
+    expect(commandPayload(commands[blockAt] as IArguments)?.["page_path"]).toBe(
+      "/login",
+    );
+  });
+
+  it("sends another site's referrer as its origin only", async () => {
+    const previous = Object.getOwnPropertyDescriptor(document, "referrer");
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      get: () =>
+        "https://news.example/story?token=sekret#access_token=discord-token",
+    });
+    try {
+      show("/");
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      assertCleanPagePayloads(dataLayer());
+      const set = (dataLayer() as IArguments[]).find((entry) => {
+        return commandPayload(entry)?.["page_referrer"] !== undefined;
+      });
+      expect(commandPayload(set as IArguments)?.["page_referrer"]).toBe(
+        "https://news.example",
+      );
+    } finally {
+      if (previous === undefined) {
+        Reflect.deleteProperty(document, "referrer");
+      } else {
+        Object.defineProperty(document, "referrer", previous);
+      }
+    }
+  });
+
+  it("normalises room codes, profile ids, and referrers", async () => {
+    let referrer = `${location.origin}/r/ABCD?token=sekret#access_token=discord-token`;
+    const previous = Object.getOwnPropertyDescriptor(document, "referrer");
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      get: () => referrer,
+    });
+    try {
+      show("/profile/x?email=ada@example.com#access_token=discord-token");
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      const layer = dataLayer();
+      assertCleanPagePayloads(layer);
+      const profile = {
+        page_path: "/profile/:id",
+        page_location: `${location.origin}/profile/:id`,
+        page_referrer: `${location.origin}/r/:code`,
+      };
+      expect(pageViews(layer)[0]?.[2]).toMatchObject(profile);
+      const config = layer.find((entry) => isCommand(entry, "config"));
+      expect(config?.[2]).toMatchObject(profile);
+      const firstSet = (layer as IArguments[]).find((entry) => {
+        return commandPayload(entry)?.["page_path"] === "/profile/:id";
+      });
+      expect(commandPayload(firstSet as IArguments)).toMatchObject(profile);
+
+      referrer =
+        "https://news.example/story?token=sekret#access_token=discord-token";
+      show("/r/ABCD?code=invite-9#access_token=discord-token");
+      ga.onSpaRouteChange();
+      const room = {
+        page_path: "/r/:code",
+        page_location: `${location.origin}/r/:code`,
+        page_referrer: "https://news.example",
+      };
+      const views = pageViews(layer);
+      expect(views).toHaveLength(2);
+      expect(views[1]?.[2]).toMatchObject(room);
+      const sets = (layer as IArguments[]).filter((entry) => {
+        return commandPayload(entry)?.["page_path"] === "/r/:code";
+      });
+      expect(sets.length).toBeGreaterThan(0);
+      expect(commandPayload(sets.at(-1) as IArguments)).toMatchObject(room);
+      assertCleanPagePayloads(layer);
+      const text = JSON.stringify(layer);
+      expect(text).not.toContain("ABCD");
+      expect(text).not.toContain("/profile/x");
+    } finally {
+      if (previous === undefined) {
+        Reflect.deleteProperty(document, "referrer");
+      } else {
+        Object.defineProperty(document, "referrer", previous);
+      }
+    }
   });
 
   it("sends one page_view for the first load, /about, and a repeated path", async () => {
@@ -1097,5 +1288,139 @@ describe("sanitized single page view", () => {
     expect(
       views.map((entry) => (entry[2] as { page_path?: string }).page_path),
     ).toEqual(["/about", "/settings", "/about"]);
+  });
+
+  it("sends unmatched and token paths as /404, including /reset/<token>", async () => {
+    show("/reset/secret-token-99?email=ada@example.com");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    const layer = dataLayer();
+    expect(pageViews(layer)[0]?.[2]).toMatchObject({
+      page_path: "/404",
+      page_location: `${location.origin}/404`,
+    });
+    show("/QAEDGE5/secret");
+    ga.onSpaRouteChange();
+    const views = pageViews(layer);
+    expect(views).toHaveLength(2);
+    expect(views[1]?.[2]).toMatchObject({ page_path: "/404" });
+    const text = JSON.stringify(layer);
+    expect(text).not.toContain("secret-token-99");
+    expect(text).not.toContain("QAEDGE5");
+    expect(text).not.toContain("/reset/");
+    assertCleanPagePayloads(layer);
+  });
+
+  it("decodes the path before redacting an encoded room or profile segment", async () => {
+    const previous = Object.getOwnPropertyDescriptor(document, "referrer");
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      get: () => `${location.origin}/r%2FQAEDGE4`,
+    });
+    try {
+      show("/profile%2Fx?utm_source=qa");
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      const layer = dataLayer();
+      expect(pageViews(layer)[0]?.[2]).toMatchObject({
+        page_path: "/profile/:id",
+        page_location: `${location.origin}/profile/:id`,
+        page_referrer: `${location.origin}/r/:code`,
+      });
+      const text = JSON.stringify(layer);
+      expect(text).not.toContain("QAEDGE4");
+      expect(text).not.toContain("/profile/x");
+      assertCleanPagePayloads(layer);
+    } finally {
+      if (previous === undefined) {
+        Reflect.deleteProperty(document, "referrer");
+      } else {
+        Object.defineProperty(document, "referrer", previous);
+      }
+    }
+  });
+
+  it("dedupes /r/ and /r as one /404 and still counts two rooms", async () => {
+    show("/r/");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    const layer = dataLayer();
+    expect(pageViews(layer)).toHaveLength(1);
+    expect(pageViews(layer)[0]?.[2]).toMatchObject({ page_path: "/404" });
+    show("/r");
+    ga.onSpaRouteChange();
+    expect(pageViews(layer)).toHaveLength(1);
+
+    show("/r/ABCD");
+    ga.onSpaRouteChange();
+    show("/r/EFGH");
+    ga.onSpaRouteChange();
+    const views = pageViews(layer);
+    expect(views).toHaveLength(3);
+    expect(
+      views.map((entry) => (entry[2] as { page_path?: string }).page_path),
+    ).toEqual(["/404", "/r/:code", "/r/:code"]);
+    expect(JSON.stringify(layer)).not.toContain("ABCD");
+    expect(JSON.stringify(layer)).not.toContain("EFGH");
+  });
+
+  it("keeps static pages and the guides index as themselves", async () => {
+    show("/faq?email=ada@example.com");
+    const ga = await freshGa();
+    ga.loadGa4(id);
+    ga.onSpaRouteChange();
+    show("/guide/");
+    ga.onSpaRouteChange();
+    show("/privacy");
+    ga.onSpaRouteChange();
+    const views = pageViews(dataLayer());
+    expect(
+      views.map((entry) => (entry[2] as { page_path?: string }).page_path),
+    ).toEqual(["/faq", "/guide/", "/privacy"]);
+  });
+
+  it("keeps the known-path list in step with the sitemap and spa routes", () => {
+    const gaSource = readFileSync(
+      path.join(src, "ts/analytics/ga4.ts"),
+      "utf8",
+    );
+    const knownBlock = /const KNOWN_ANALYTICS_PATHS = new Set\(\[([\s\S]*?)\]\);/.exec(
+      gaSource,
+    );
+    expect(knownBlock).not.toBeNull();
+    const listed = knownBlock?.[1] ?? "";
+    const known = new Set<string>();
+    const pathRe = /"([^"]+)"/g;
+    let pathMatch = pathRe.exec(listed);
+    while (pathMatch !== null) {
+      const value = pathMatch[1];
+      if (value !== undefined) known.add(value);
+      pathMatch = pathRe.exec(listed);
+    }
+    const sitemapSource = readFileSync(
+      path.resolve(__dirname, "../../static/sitemap.xml"),
+      "utf8",
+    );
+    const locRe = /<loc>https:\/\/puggietype\.com(\/[^<]*)<\/loc>/g;
+    let locMatch = locRe.exec(sitemapSource);
+    while (locMatch !== null) {
+      const page = locMatch[1] ?? "";
+      expect(known.has(page), page).toBe(true);
+      locMatch = locRe.exec(sitemapSource);
+    }
+    const routes = readFileSync(
+      path.join(src, "ts/controllers/route-controller.ts"),
+      "utf8",
+    );
+    const spaRe = /path:\s*"(\/[^"]*)"/g;
+    let spaMatch = spaRe.exec(routes);
+    while (spaMatch !== null) {
+      const route = spaMatch[1];
+      if (route !== undefined && !route.includes(":")) {
+        expect(known.has(route), route).toBe(true);
+      }
+      spaMatch = spaRe.exec(routes);
+    }
+    expect(known.has("/email")).toBe(true);
   });
 });
