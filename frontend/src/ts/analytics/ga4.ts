@@ -27,6 +27,8 @@ function pageWindow(): AnalyticsWindow {
 }
 
 let loadedId: string | null = null;
+/** Set around the gtag.js script.src assignment in loadGa4. */
+let loadingScriptId: string | null = null;
 /**
  * Last canonical pathname we sent a page_view for. A repeat of that path
  * is not another hit. The hit itself uses the redacted path, so two rooms
@@ -99,24 +101,61 @@ function isGoogleHost(host: string): boolean {
   );
 }
 
-function isGtagScript(url: URL): boolean {
+function decodeGtmPath(pathname: string): string {
+  let path = pathname;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // keep the raw path when it is not valid encoding
+  }
+  return path.replace(/\/{2,}/g, "/");
+}
+
+function isGtagScriptPath(url: URL): boolean {
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
-  const path = url.pathname.replace(/\/{2,}/g, "/");
-  return (
-    hostUnder(host, "googletagmanager.com") &&
-    (path === "/gtag/js" || path.startsWith("/gtag/js/"))
+  if (!hostUnder(host, "googletagmanager.com")) return false;
+  const path = decodeGtmPath(url.pathname);
+  return path === "/gtag/js" || path.startsWith("/gtag/js/");
+}
+
+/**
+ * The only /gtag/js load we allow is our measurement tag: query is exactly
+ * `id=<our G-ID>`, optionally plus `l=`. `is_td` and any other param, including
+ * a raw `dl` path, are blocked in every consent state.
+ */
+function isAllowedGtagScriptLoad(url: URL): boolean {
+  if (!isGtagScriptPath(url)) return false;
+  const allowed = [configuredMeasurementId(), loadedId, loadingScriptId].filter(
+    (value): value is string => value !== null && isGa4MeasurementId(value),
   );
+  if (allowed.length === 0) return false;
+  const params = url.searchParams;
+  const keys = [...params.keys()];
+  if (keys.length === 0 || keys.some((key) => key !== "id" && key !== "l")) {
+    return false;
+  }
+  const requested = params.get("id");
+  if (
+    params.getAll("id").length !== 1 ||
+    requested === null ||
+    !allowed.includes(requested)
+  ) {
+    return false;
+  }
+  if (params.has("l") && params.getAll("l").length !== 1) return false;
+  return true;
 }
 
 /**
  * Gtag's sampled diagnostics beacons (`/td`, `/a`) build `dl` from the raw
  * `location.hostname+pathname`, ignoring `page_location`. Drop them always,
- * including after accept. They are not measurement hits.
+ * including after accept. They are not measurement hits. The path is decoded
+ * so `/%74d` matches too.
  */
 function isGtmDiagnostics(url: URL): boolean {
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
   if (!hostUnder(host, "googletagmanager.com")) return false;
-  const path = url.pathname.replace(/\/{2,}/g, "/");
+  const path = decodeGtmPath(url.pathname);
   return (
     path === "/td" ||
     path.startsWith("/td/") ||
@@ -126,8 +165,10 @@ function isGtmDiagnostics(url: URL): boolean {
 }
 
 /**
- * While withdrawn, block every Google host. GET /gtag/js stays open.
- * `/td` and `/a` on googletagmanager.com are also blocked when allowed.
+ * While withdrawn, block every Google host. The only exception is a GET of
+ * our own /gtag/js (`id=<G-ID>`, optionally `l=`), so a later accept can
+ * load the tag. `/td`, `/a`, and any other /gtag/js (including `is_td`)
+ * are blocked in every consent state.
  *
  * A native fetch, sendBeacon, or setAttribute copied before this module
  * runs, or taken from another window, is not wrapped. sendBeacon added
@@ -145,14 +186,6 @@ function shouldBlockGaRequest(
   } catch {
     return false;
   }
-  const protocolEarly = url.protocol;
-  if (
-    (protocolEarly === "http:" || protocolEarly === "https:") &&
-    isGtmDiagnostics(url)
-  ) {
-    return true;
-  }
-  if (!gaTransportBlocked) return false;
   const protocol = url.protocol;
   const http =
     protocol === "http:" ||
@@ -160,12 +193,17 @@ function shouldBlockGaRequest(
     protocol === "ws:" ||
     protocol === "wss:";
   if (!http) return false;
+  if (protocol === "http:" || protocol === "https:") {
+    if (isGtmDiagnostics(url)) return true;
+    if (isGtagScriptPath(url) && !isAllowedGtagScriptLoad(url)) return true;
+  }
+  if (!gaTransportBlocked) return false;
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
   const method = (channel.method ?? "GET").toUpperCase();
   if (
     (protocol === "http:" || protocol === "https:") &&
     method === "GET" &&
-    isGtagScript(url) &&
+    isAllowedGtagScriptLoad(url) &&
     (channel.script === true || channel.allowGtagGet === true)
   ) {
     return false;
@@ -482,10 +520,64 @@ function cleanPage(): { page_path: string; page_location: string } {
 /**
  * Keep gtag from seeing route changes. Its history listener sends a second
  * page_view and copies the raw URL, query included, into the hit. The
- * pushState/replaceState lock does not cover Back/Forward: gtag still
- * hears `popstate`. A bubble listener registered after the router and
- * before gtag.js loads stops that without blocking the router's handler.
+ * pushState/replaceState lock does not cover Back/Forward. Before gtag.js
+ * is injected, wrap window.addEventListener and the onpopstate setter so
+ * only registrations from gtag.js become no-ops. Later app or third-party
+ * listeners still fire, and the router (registered first) is unchanged.
  */
+function isGtagPopstateRegistration(): boolean {
+  const script = document.currentScript;
+  if (script instanceof HTMLScriptElement && script.src !== "") {
+    try {
+      const src = new URL(script.src, location.href);
+      const host = src.hostname.toLowerCase().replace(/\.$/, "");
+      if (hostUnder(host, "googletagmanager.com")) return true;
+    } catch {
+      // ignore a bad script src
+    }
+  }
+  try {
+    const stack = new Error().stack ?? "";
+    if (/googletagmanager\.com/i.test(stack)) return true;
+  } catch {
+    // ignore environments that cannot capture a stack
+  }
+  return false;
+}
+
+function swallowGtagPopstate(): void {
+  if (popstateLocked || typeof window === "undefined") return;
+  popstateLocked = true;
+  const origAdd = window.addEventListener.bind(window);
+  window.addEventListener = ((
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ) => {
+    if (type === "popstate" && isGtagPopstateRegistration()) return;
+    origAdd(type, listener, options);
+  }) as typeof window.addEventListener;
+
+  const proto = Object.getPrototypeOf(window) as Window;
+  const desc =
+    Object.getOwnPropertyDescriptor(window, "onpopstate") ??
+    Object.getOwnPropertyDescriptor(proto, "onpopstate");
+  if (desc?.get === undefined || desc.set === undefined) return;
+  const getValue = desc.get;
+  const setValue = desc.set;
+  Object.defineProperty(window, "onpopstate", {
+    configurable: true,
+    enumerable: desc.enumerable,
+    get(): WindowEventHandlers["onpopstate"] {
+      return getValue.call(this) as WindowEventHandlers["onpopstate"];
+    },
+    set(handler: WindowEventHandlers["onpopstate"]) {
+      if (isGtagPopstateRegistration()) return;
+      setValue.call(this, handler);
+    },
+  });
+}
+
 function lockHistoryMethods(): void {
   for (const name of ["pushState", "replaceState"] as const) {
     const native = history[name].bind(history);
@@ -501,12 +593,7 @@ function lockHistoryMethods(): void {
       // A previous load already locked the method.
     }
   }
-  if (!popstateLocked && typeof window !== "undefined") {
-    window.addEventListener("popstate", (event: PopStateEvent) => {
-      event.stopImmediatePropagation();
-    });
-    popstateLocked = true;
-  }
+  swallowGtagPopstate();
 }
 
 /**
@@ -596,10 +683,12 @@ export function loadGa4(measurementId: string): void {
   });
   const script = document.createElement("script");
   script.async = true;
+  loadingScriptId = measurementId;
   script.src = `${GA4_SCRIPT_URL}?id=${encodeURIComponent(measurementId)}`;
   script.dataset["ga4"] = measurementId;
   document.head.appendChild(script);
   loadedId = measurementId;
+  loadingScriptId = null;
   sendPageView(measurementId);
 }
 

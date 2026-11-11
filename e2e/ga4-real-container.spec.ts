@@ -40,12 +40,48 @@ type Hit = {
   dr: string;
 };
 
-function isGtagScript(url: string): boolean {
+function decodeUrlText(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function gtmPathname(url: URL): string {
+  return decodeUrlText(url.pathname).replace(/\/{2,}/g, "/");
+}
+
+function isGtmHost(host: string): boolean {
+  const name = host.toLowerCase().replace(/\.$/, "");
+  return (
+    name === "www.googletagmanager.com" ||
+    name === "googletagmanager.com" ||
+    name.endsWith(".googletagmanager.com")
+  );
+}
+
+function isGtagJsPath(url: string): boolean {
   try {
     const parsed = new URL(url);
+    if (!isGtmHost(parsed.hostname)) return false;
+    const gtmPath = gtmPathname(parsed);
+    return gtmPath === "/gtag/js" || gtmPath.startsWith("/gtag/js/");
+  } catch {
+    return false;
+  }
+}
+
+/** Our tag only: query is exactly id=<G-ID>, optionally plus l=. */
+function isAllowedGtagScript(url: string): boolean {
+  if (!isGtagJsPath(url)) return false;
+  try {
+    const parsed = new URL(url);
+    const keys = [...parsed.searchParams.keys()];
+    if (keys.some((key) => key !== "id" && key !== "l")) return false;
     return (
-      parsed.hostname === "www.googletagmanager.com" &&
-      parsed.pathname.startsWith("/gtag/")
+      parsed.searchParams.getAll("id").length === 1 &&
+      parsed.searchParams.get("id") === ID
     );
   } catch {
     return false;
@@ -149,7 +185,7 @@ test("real GA4 container sends one consented page view per route", async ({
   let servedFixture = false;
   await page.route("**/*", async (route) => {
     const url = route.request().url();
-    if (isGtagScript(url)) {
+    if (isAllowedGtagScript(url)) {
       servedFixture = true;
       await route.fulfill({
         status: 200,
@@ -243,7 +279,11 @@ function isGtmDiagnostics(url: string): boolean {
 }
 
 function rawPathLeak(url: string): boolean {
-  return /\/r\/ABCD|\/profile\/x\b/.test(url);
+  const text = decodeUrlText(url);
+  return (
+    /\/r\/(?!:code)[^/?#]+/.test(text) ||
+    /\/profile\/(?!:id)[^/?#]+/.test(text)
+  );
 }
 
 async function bundleGa4Harness(): Promise<string> {
@@ -263,10 +303,25 @@ async function bundleGa4Harness(): Promise<string> {
 }
 export function analyticsLoadAllowed(): boolean { return true; }
 export function noteKidsFlowVisit(): boolean { return false; }
+let record: { analytics: boolean; doNotSellOrShare: boolean } = {
+  analytics: true,
+  doNotSellOrShare: false,
+};
 export function readConsentRecord(): { analytics: boolean; doNotSellOrShare: boolean } {
-  return { analytics: true, doNotSellOrShare: false };
+  return record;
 }
-export function setGaWithdrawalHooks(_hooks: unknown): void {}
+type Hooks = { beforeCookieDelete?: () => void; onReaccept?: () => void };
+let hooks: Hooks = {};
+export function setGaWithdrawalHooks(next: Hooks): void {
+  hooks = next;
+}
+function withdraw(): void {
+  record = { analytics: false, doNotSellOrShare: true };
+  hooks.beforeCookieDelete?.();
+}
+if (typeof window !== "undefined") {
+  (window as Window & { __ptGaWithdraw?: () => void }).__ptGaWithdraw = withdraw;
+}
 `,
   );
   const repo = path.resolve(".");
@@ -358,18 +413,29 @@ test("forced sampling does not send /td or /a or raw room and profile paths", as
 }) => {
   const harness = await bundleGa4Harness();
   const googleUrls: string[] = [];
+  const isTdUrls: string[] = [];
   let servedFixture = false;
   await page.addInitScript(() => {
     Math.random = () => 0.99999;
   });
   await page.route("**/*", async (route) => {
     const url = route.request().url();
-    if (isGtagScript(url)) {
+    if (isAllowedGtagScript(url)) {
       servedFixture = true;
       await route.fulfill({
         status: 200,
         contentType: "application/javascript",
         body: readFileSync(path.resolve(FIXTURES[0].file)),
+      });
+      return;
+    }
+    if (isGtagJsPath(url)) {
+      isTdUrls.push(url);
+      googleUrls.push(url);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/javascript",
+        body: "",
       });
       return;
     }
@@ -389,23 +455,43 @@ test("forced sampling does not send /td or /a or raw room and profile paths", as
     await route.continue();
   });
 
+  function assertCleanGoogle(label: string): void {
+    expect(
+      googleUrls.filter((url) => isGtmDiagnostics(url)),
+      label,
+    ).toEqual([]);
+    expect(isTdUrls, label).toEqual([]);
+    for (const url of googleUrls) {
+      expect(rawPathLeak(url), label).toBe(false);
+    }
+  }
+
   for (const startPath of ["/r/ABCD?x=1#h", "/profile/x?utm_source=qa"]) {
     googleUrls.length = 0;
+    isTdUrls.length = 0;
     servedFixture = false;
     const served = await serveHarness(harness, startPath);
     try {
       await page.goto(served.url, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(7000);
       expect(servedFixture, startPath).toBe(true);
-      expect(
-        googleUrls.filter((url) => isGtmDiagnostics(url)),
-        startPath,
-      ).toEqual([]);
-      for (const url of googleUrls) {
-        expect(rawPathLeak(url), startPath).toBe(false);
-        expect(url, startPath).not.toContain("ABCD");
-        expect(url, startPath).not.toMatch(/\/profile\/x\b/);
-      }
+      assertCleanGoogle(startPath);
+
+      const beforeWithdraw = googleUrls.length;
+      await page.evaluate(() => {
+        (
+          window as unknown as { __ptGaWithdraw?: () => void }
+        ).__ptGaWithdraw?.();
+      });
+      await page.evaluate(() => {
+        history.pushState({}, "", "/r/ABCD?after=withdraw");
+        (
+          window as unknown as { PtGa4: { onSpaRouteChange: () => void } }
+        ).PtGa4.onSpaRouteChange();
+      });
+      await page.waitForTimeout(6000);
+      expect(googleUrls.length, `withdraw ${startPath}`).toBe(beforeWithdraw);
+      assertCleanGoogle(`withdraw ${startPath}`);
     } finally {
       served.close();
     }
@@ -424,7 +510,7 @@ test("em-on history fixture sends one page_view on Back and Forward", async ({
   let servedFixture = false;
   await page.route("**/*", async (route) => {
     const url = route.request().url();
-    if (isGtagScript(url)) {
+    if (isAllowedGtagScript(url)) {
       servedFixture = true;
       await route.fulfill({
         status: 200,
@@ -448,6 +534,13 @@ test("em-on history fixture sends one page_view on Back and Forward", async ({
   const served = await serveHarness(harness, "/login");
   try {
     await page.goto(served.url, { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => {
+      (window as unknown as { __ptPopCount?: number }).__ptPopCount = 0;
+      window.addEventListener("popstate", () => {
+        const state = window as unknown as { __ptPopCount?: number };
+        state.__ptPopCount = (state.__ptPopCount ?? 0) + 1;
+      });
+    });
     await page.waitForTimeout(7000);
     expect(servedFixture).toBe(true);
     expect(hits.filter((hit) => hit.en === "page_view")).toHaveLength(1);
@@ -481,6 +574,11 @@ test("em-on history fixture sends one page_view on Back and Forward", async ({
     const afterBack = hits.filter((hit) => hit.en === "page_view");
     expect(afterBack).toHaveLength(beforeBack + 1);
     expect(new URL(afterBack.at(-1)?.dl ?? "").pathname).toBe("/settings");
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __ptPopCount?: number }).__ptPopCount,
+      ),
+    ).toBe(1);
 
     const beforeForward = afterBack.length;
     await page.goForward();
@@ -493,6 +591,11 @@ test("em-on history fixture sends one page_view on Back and Forward", async ({
     const afterForward = hits.filter((hit) => hit.en === "page_view");
     expect(afterForward).toHaveLength(beforeForward + 1);
     expect(new URL(afterForward.at(-1)?.dl ?? "").pathname).toBe("/about");
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __ptPopCount?: number }).__ptPopCount,
+      ),
+    ).toBe(2);
 
     for (const hit of hits.filter((row) => row.en === "page_view")) {
       expect(hit.gcs, hit.dl).toBe("G101");

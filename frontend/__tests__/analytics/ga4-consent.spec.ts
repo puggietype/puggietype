@@ -211,6 +211,41 @@ describe("GA collect transport gate", () => {
     await expectBlocked("https://www.googletagmanager.com/a/");
     await expectPassed("https://www.google-analytics.com/g/collect?cid=1");
     await expectPassed("https://www.googletagmanager.com/gtag/js?id=G-TEST1234");
+    await expectPassed(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=dataLayer",
+    );
+    await expectBlocked("https://www.googletagmanager.com/%74d?dl=host/r/ABCD");
+    await expectBlocked(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&is_td=1&dl=host/r/ABCD",
+    );
+    await expectBlocked(
+      "https://www.googletagmanager.com/%67tag/js?id=G-TEST1234&is_td=1&dl=host/r/ABCD",
+    );
+    await expectBlocked("https://www.googletagmanager.com/gtag/js?id=G-OTHER");
+  });
+
+  it("blocks is_td /gtag/js after accept and while withdrawn, in every channel", async () => {
+    const isTd =
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&is_td=1&dl=qa.example/r/ABCD";
+    expect(isGaTransportBlocked()).toBe(false);
+    await expectBlocked(isTd);
+    const script = document.createElement("script");
+    script.src = isTd;
+    script.setAttribute("src", isTd);
+    expect(script.getAttribute("src")).toBeNull();
+    withdraw();
+    await expectBlocked(isTd);
+    const again = document.createElement("script");
+    again.src = isTd;
+    again.setAttribute("src", isTd);
+    expect(again.getAttribute("src")).toBeNull();
+    const allowed = "https://www.googletagmanager.com/gtag/js?id=G-TEST1234";
+    recorded.calls.length = 0;
+    await window.fetch(allowed);
+    expect(recorded.calls).toEqual([allowed]);
+    const tag = document.createElement("script");
+    tag.src = allowed;
+    expect(tag.src).toContain("/gtag/js");
   });
 
   it("blocks every path on a Google host, not only collect paths", async () => {
@@ -512,6 +547,8 @@ describe("analytics consent gate", () => {
 
   it("loads GA4 once, with signals and ads personalization off", () => {
     const scripts: HTMLScriptElement[] = [];
+    const previousId = env.ga4MeasurementId;
+    env.ga4MeasurementId = "G-TEST1234";
     vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
       if (node instanceof HTMLScriptElement) scripts.push(node);
       return node;
@@ -544,6 +581,7 @@ describe("analytics consent gate", () => {
       syncGa4();
       expect(scripts).toHaveLength(1);
     } finally {
+      env.ga4MeasurementId = previousId;
       vi.restoreAllMocks();
     }
   });

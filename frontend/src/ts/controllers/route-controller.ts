@@ -184,12 +184,20 @@ const routes: Route[] = [
   },
 ];
 
+function sameOriginPathUrl(url: string): string {
+  // `//r//X` is a path, but pushState treats a leading `//` as a
+  // protocol-relative URL and throws SecurityError.
+  if (url.startsWith("//")) return `/${url.replace(/^\/+/, "")}`;
+  return url;
+}
+
 export async function navigate(
   url = window.location.pathname +
     window.location.search +
     window.location.hash,
   options = {} as NavigateOptions,
 ): Promise<void> {
+  url = sameOriginPathUrl(url);
   if (
     !options.force &&
     (isTestRestarting() ||
