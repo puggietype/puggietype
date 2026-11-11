@@ -159,10 +159,10 @@ describe("static routing", () => {
     );
     expect(page).toContain("There are no ads during a test or race.");
     expect(page).toContain(
-      "Teaching kids to type: a guide for parents and teachers | PuggieType",
+      "Teaching kids to type: a parent-teacher guide | PuggieType",
     );
     expect(page).toContain(
-      "How parents and teachers can help children learn touch typing: readiness, desk setup, the home row, short sessions, and why accuracy should come before speed. PuggieType itself is for ages 13+.",
+      "A parent and teacher guide to helping children learn touch typing: readiness, desk setup, short sessions, and accuracy first. PuggieType is for ages 13+.",
     );
     expect(page).not.toMatch(/child-directed|max-ad-content-rating|coppa/i);
     const lines = redirectsFile
