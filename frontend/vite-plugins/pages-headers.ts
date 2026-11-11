@@ -3,6 +3,19 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { Plugin } from "vite";
 
+import { cspWithoutAnalyticsAds } from "./ga4-csp";
+
+/**
+ * The parents guide, the old slug that 301s to it, and both trailing-slash
+ * forms. Must stay in step with KIDS_GUIDE_PATH / TEACHING_KIDS_GUIDE_PATH.
+ */
+export const KIDS_CSP_PATHS = [
+  "/guide/teaching-kids-to-type",
+  "/guide/teaching-kids-to-type/",
+  "/guide/typing-for-kids",
+  "/guide/typing-for-kids/",
+] as const;
+
 const DEFAULT_WS_ORIGIN = "wss://ws.puggietype.com";
 const SCRIPT_RE = /<script([^>]*)>([\s\S]*?)<\/script>/gi;
 const JS_TYPE_RE = /\btype\s*=\s*["']?(module|text\/javascript)["']?/i;
@@ -60,6 +73,28 @@ export function connectSrcOrigins(configured: string | undefined): string {
   return http === ws ? ws : `${ws} ${http}`;
 }
 
+function firstCspPolicy(headers: string): string {
+  for (const line of headers.split("\n")) {
+    const match = /^\s*Content-Security-Policy:\s*(.*)$/.exec(line);
+    if (match?.[1] !== undefined) return match[1].trim();
+  }
+  throw new Error("CSP has no Content-Security-Policy");
+}
+
+/**
+ * Pages joins a repeated header with a comma. A second CSP on these paths
+ * would keep the catch-all policy, Google origins included. Detach, then set
+ * one policy that has no Analytics, Tag Manager, or ads hosts.
+ */
+export function kidsCspRules(policy: string): string {
+  const strict = cspWithoutAnalyticsAds(policy);
+  const rules = KIDS_CSP_PATHS.map(
+    (rulePath) =>
+      `${rulePath}\n  ! Content-Security-Policy\n  Content-Security-Policy: ${strict}\n`,
+  ).join("\n");
+  return `# Kids guides. Detach the catch-all CSP, then set one policy without Google analytics/ads hosts.\n${rules}`;
+}
+
 export function renderHeaders(
   template: string,
   values: {
@@ -71,9 +106,12 @@ export function renderHeaders(
   const rendered = template
     .replaceAll("__SCRIPT_HASHES__", values.scriptHashes.join(" "))
     .replaceAll("__WS_ORIGIN__", values.wsOrigin);
-  return values.extraCsp === undefined
-    ? rendered
-    : addCspSources(rendered, values.extraCsp);
+  const withExtra =
+    values.extraCsp === undefined
+      ? rendered
+      : addCspSources(rendered, values.extraCsp);
+  const base = withExtra.endsWith("\n") ? withExtra : `${withExtra}\n`;
+  return `${base}\n${kidsCspRules(firstCspPolicy(withExtra))}`;
 }
 
 /**

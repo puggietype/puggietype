@@ -3,6 +3,23 @@ import { expect, test, type Page } from "@playwright/test";
 import { skipNgrokWarning } from "./tunnel";
 
 const GA_REQUEST = /google-analytics|googletagmanager|gtag\/js/i;
+const GOOGLE_CSP_HOST =
+  /google-analytics|googletagmanager|analytics\.google|doubleclick|googleadservices|googlesyndication|googletagservices|fundingchoices|adservice\.google/i;
+
+function cspValues(
+  headers: ReadonlyArray<{ name: string; value: string }>,
+): string[] {
+  return headers
+    .filter((header) => header.name.toLowerCase() === "content-security-policy")
+    .map((header) => header.value);
+}
+
+function expectOneKidsCsp(values: string[]): void {
+  expect(values).toHaveLength(1);
+  expect(values[0]).toContain("script-src");
+  expect(values[0]).toContain("'self'");
+  expect(values[0]).not.toMatch(GOOGLE_CSP_HOST);
+}
 
 async function seedAnalyticsAccept(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -41,9 +58,7 @@ test("kids slug sets kids-flow and later pages do not load GA", async ({
   await seedAnalyticsAccept(page);
 
   const landing = await page.goto("/guide/teaching-kids-to-type");
-  const csp = landing?.headers()["content-security-policy"] ?? "";
-  expect(csp).toContain("script-src");
-  expect(csp).toContain("'self'");
+  expectOneKidsCsp(cspValues((await landing?.headersArray()) ?? []));
   await expect(page.locator("h1")).toBeVisible();
   expect(
     await page.evaluate(() => sessionStorage.getItem("puggie-kids-flow")),
@@ -66,6 +81,15 @@ test("kids guide, start typing, then privacy stays free of GA", async ({
 }) => {
   const ga = watchGa(page);
   await seedAnalyticsAccept(page);
+
+  const redirect = await page.request.get("/guide/typing-for-kids", {
+    maxRedirects: 0,
+  });
+  expect(redirect.status()).toBe(301);
+  expectOneKidsCsp(cspValues(redirect.headersArray()));
+  expect(redirect.headers()["location"]).toContain(
+    "/guide/teaching-kids-to-type",
+  );
 
   await page.goto("/guide/typing-for-kids");
   await page.locator("a.startTyping").click();

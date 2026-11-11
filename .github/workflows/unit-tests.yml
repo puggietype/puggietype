@@ -48,17 +48,58 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build-fe
+      # Test id only. Does not change the Pages project env.
+      - run: GA4_MEASUREMENT_ID=G-QATEST0000 pnpm build-fe
       - run: pnpm exec playwright install --with-deps chromium
       - name: pages dev with _headers CSP
         run: |
           npx --yes wrangler@4.45.0 pages dev frontend/dist --port 3300 --ip 127.0.0.1 > /tmp/wrangler-pages.log 2>&1 &
+          ready=0
           for i in $(seq 1 60); do
             if curl -sf -D - -o /dev/null http://127.0.0.1:3300/guide/teaching-kids-to-type | grep -qi 'content-security-policy:'; then
-              exit 0
+              ready=1
+              break
             fi
             sleep 1
           done
-          cat /tmp/wrangler-pages.log
-          exit 1
+          if [ "$ready" != 1 ]; then
+            cat /tmp/wrangler-pages.log
+            exit 1
+          fi
+          # Build used GA4_MEASUREMENT_ID=G-QATEST0000. Pages comma-joins a repeated
+          # CSP, so kids routes must serve exactly one header and it must not name
+          # a Google analytics, tag manager, or ads host. Other routes keep the GA hosts.
+          google_host='google-analytics|googletagmanager|analytics\.google|doubleclick|googleadservices|googlesyndication|googletagservices|fundingchoices|adservice\.google'
+          check_csp() {
+            path="$1"
+            kids="$2"
+            hdr=$(curl -sS -D - -o /dev/null "http://127.0.0.1:3300$path")
+            count=$(printf '%s\n' "$hdr" | grep -ci '^content-security-policy:' || true)
+            csp=$(printf '%s\n' "$hdr" | grep -i '^content-security-policy:' || true)
+            if [ "$count" != "1" ]; then
+              echo "expected 1 CSP on $path, got $count"
+              printf '%s\n' "$hdr"
+              exit 1
+            fi
+            if [ "$kids" = kids ]; then
+              if printf '%s\n' "$csp" | grep -Eiq "$google_host"; then
+                echo "kids CSP names a Google host on $path"
+                echo "$csp"
+                exit 1
+              fi
+              printf '%s\n' "$csp" | grep -q "'self'" || exit 1
+            else
+              printf '%s\n' "$csp" | grep -q 'googletagmanager' || {
+                echo "expected GA host on $path"
+                echo "$csp"
+                exit 1
+              }
+            fi
+          }
+          check_csp / home
+          check_csp /guide/teaching-kids-to-type kids
+          check_csp /guide/teaching-kids-to-type/ kids
+          check_csp /guide/typing-for-kids kids
+          check_csp /guide/typing-for-kids/ kids
+          check_csp /privacy home
       - run: BASE_URL=http://127.0.0.1:3300 pnpm exec playwright test e2e/kids-flow-ga.spec.ts e2e/ga4-real-container.spec.ts
