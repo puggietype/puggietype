@@ -45,8 +45,9 @@ const FORBIDDEN: Record<string, RegExp> = {
   top: /\btop\b/i,
   "number one": /\bnumber one\b/i,
   proven: /\bproven\b/i,
+  // a typical or average figure, written as wpm or spelled out
   "typical/average wpm":
-    /\b(typical|average)\b[^.]{0,40}\bwpm\b|\bwpm\b[^.]{0,40}\b(typical|average)\b/i,
+    /\b(typical|average)\b[^.]{0,40}\b(wpm|words per minute)\b|\b(wpm|words per minute)\b[^.]{0,40}\b(typical|average)\b/i,
   prevent: /\bprevent\w*/i,
   pain: /\bpain(s|ful)?\b/i,
   health: /\bhealth\w*/i,
@@ -58,15 +59,34 @@ const FORBIDDEN: Record<string, RegExp> = {
 };
 
 /**
- * Legitimate uses, removed from the text before the check. A page-specific
- * entry must still be on its page, so the allowlist can't go stale. Anything
+ * Legitimate uses, removed from the text before the check. Every entry is
+ * scoped to one page and must still be on it, so the allowlist can't go stale. Anything
  * not listed here fails: fix the copy or ask Legal before adding an entry.
  */
 const ALLOWED: { page: string; phrase: string; why: string }[] = [
   // keyboard geometry, not a ranking claim
-  { page: "*", phrase: "top-row", why: "keyboard row" },
-  { page: "*", phrase: "top row", why: "keyboard row" },
-  { page: "*", phrase: "on top of", why: "idiom" },
+  {
+    page: "/guide/touch-typing-beginners",
+    phrase: "top-row",
+    why: "keyboard row",
+  },
+  {
+    page: "/guide/touch-typing-beginners",
+    phrase: "top row",
+    why: "keyboard row",
+  },
+  {
+    page: "/guide/home-row-finger-placement",
+    phrase: "top row",
+    why: "keyboard row",
+  },
+  {
+    page: "/guide/home-row-finger-placement",
+    phrase: "on top of",
+    why: "idiom",
+  },
+  { page: "/guide/keyboard-layouts", phrase: "on top of", why: "idiom" },
+  { page: "/guide/typing-ergonomics", phrase: "top row", why: "keyboard row" },
   {
     page: "/guide/keyboard-layouts",
     phrase: "sit at the top left",
@@ -164,12 +184,12 @@ const ALLOWED: { page: string; phrase: string; why: string }[] = [
     phrase: "much easier to prevent than to undo",
     why: "habit advice, not health",
   },
-  // PENDING LEGAL: a product claim, not a wording slip. The kids page is
-  // frozen (byte-identical dist) so it is listed here until Legal rules on it.
+  // a product claim: the only ad slot is the solo results screen, and races
+  // return before it renders (test-logic.ts); no ad provider is wired today
   {
     page: "/guide/teaching-kids-to-type",
     phrase: "There are no ads during a test or race.",
-    why: "pending Legal ads check",
+    why: "Legal ruled accurate Nov 17; re-review before ads launch",
   },
 ];
 
@@ -369,10 +389,8 @@ describe("guide seo", () => {
         `${title} ${mainOf(html)} ${meta(html, "name", "description").join(" ")}`,
       );
       for (const { page, phrase } of ALLOWED) {
-        if (page !== "*" && page !== p) continue;
-        if (page === p) {
-          expect(text, `stale allowlist: ${phrase}`).toContain(phrase);
-        }
+        if (page !== p) continue;
+        expect(text, `stale allowlist: ${phrase}`).toContain(phrase);
         text = text.split(phrase).join(" ");
       }
       for (const [term, re] of Object.entries(FORBIDDEN)) {
