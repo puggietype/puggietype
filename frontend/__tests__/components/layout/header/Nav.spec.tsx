@@ -101,7 +101,7 @@ describe("Nav", () => {
     const expected: [string, string, string][] = [
       ["test", "solo", "/"],
       ["race", "multiplayer", "/race"],
-      ["about", "guides", "/about"],
+      ["about", "guides", "/guide/about"],
       ["settings", "settings", "/settings"],
     ];
     for (const [navItem, label, href] of expected) {
@@ -114,6 +114,11 @@ describe("Nav", () => {
       expect(el.querySelector("i.fa-fw")).not.toBeNull();
     }
     expect(item(container, "race").dataset["testid"]).toBe("nav-race");
+    // crawlable href is the canonical page, in-app clicks keep the /about route
+    expect(item(container, "about").dataset["appPath"]).toBe("/about");
+    expect(item(container, "about").hasAttribute("router-link")).toBe(true);
+    expect(item(container, "about").hasAttribute("target")).toBe(false);
+    expect(item(container, "test").hasAttribute("data-app-path")).toBe(false);
   });
 
   it("never hides a label on small screens; short labels below 849px", () => {

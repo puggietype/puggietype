@@ -135,4 +135,18 @@ describe("history lock still lets the app navigate", () => {
       link.remove();
     }
   });
+
+  it("a router link with data-app-path routes in-app, its href stays canonical", async () => {
+    const link = document.createElement("a");
+    link.href = "/guide/about";
+    link.setAttribute("router-link", "");
+    link.dataset["appPath"] = "/about";
+    document.body.append(link);
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+    link.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await vi.waitFor(() => expect(location.pathname).toBe("/about"));
+    expect(Pages.change).toHaveBeenCalledWith("about", expect.anything());
+    link.remove();
+  });
 });

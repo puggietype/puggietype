@@ -33,6 +33,7 @@ import { inlineStaticPageCss } from "./vite-plugins/inline-static-css";
 import { steamAssetClearance } from "./vite-plugins/steam-asset-clearance";
 import { notFoundPage } from "./vite-plugins/not-found-page";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
+import { KEEP_COMMENTS } from "./vite-plugins/email-off";
 import { staticConsentScript } from "./vite-plugins/static-consent-script";
 import {
   getCommitHash,
@@ -165,7 +166,8 @@ function getPlugins({
     fontPreview(),
     fontawesomeSubset(),
     versionFile({ clientVersion }),
-    ViteMinifyPlugin(),
+    // keeps cloudflare's email_off comments (see vite-plugins/email-off.ts)
+    ViteMinifyPlugin({ ignoreCustomComments: KEEP_COMMENTS }),
     VitePWA({
       // injectRegister: "networkfirst",
       injectRegister: null,

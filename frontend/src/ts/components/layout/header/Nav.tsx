@@ -66,6 +66,8 @@ const focusClass = (): string | false =>
 
 function NavLink(props: {
   href: string;
+  /** in-app route when it differs from the crawlable href */
+  appPath?: string;
   icon: FaSolidIcon;
   label: string;
   navItem: string;
@@ -92,6 +94,9 @@ function NavLink(props: {
       dataset={{
         "data-nav-item": props.navItem,
         ...(props.testId !== undefined ? { "data-testid": props.testId } : {}),
+        ...(props.appPath !== undefined
+          ? { "data-app-path": props.appPath }
+          : {}),
       }}
       onClick={() => props.onClick?.()}
       onMouseEnter={() => props.onMouseEnter?.()}
@@ -199,8 +204,11 @@ export function Nav(): JSXElement {
           }}
         />
       </Show>
+      {/* /about 301s to /guide/about on a full load: crawlers get the canonical
+          href, in-app clicks keep the about page */}
       <NavLink
-        href="/about"
+        href="/guide/about"
+        appPath="/about"
         icon="fa-info"
         label="guides"
         navItem="about"
