@@ -15,7 +15,9 @@ import {
 import {
   connectSrcOrigins,
   KIDS_CSP_PATHS,
+  KIDS_IMG_SRC,
   renderHeaders,
+  withDirective,
 } from "../../vite-plugins/pages-headers";
 
 const template = readFileSync(
@@ -29,7 +31,18 @@ const values = {
 };
 
 const GOOGLE_HOST =
-  /google-analytics|googletagmanager|analytics\.google|doubleclick|googleadservices|googlesyndication|googletagservices|fundingchoices|adservice\.google/i;
+  /google-analytics|googletagmanager|analytics\.google|doubleclick|googleadservices|googlesyndication|googletagservices|fundingchoices|adservice\.google|google\.com|gstatic\.com/i;
+
+/**
+ * `/*` CSP rendered by origin/main bfbb017 (before the google.com and img-src
+ * changes) with HASH and the default WS origin. Non-kids routes must not move.
+ */
+function mainCspFixture(name: "ga" | "no-ga"): string {
+  return readFileSync(
+    path.resolve(__dirname, `__fixtures__/main-csp-${name}.txt`),
+    "utf8",
+  ).trim();
+}
 
 /** path -> header lines, skipping comments and blanks */
 function headerRules(headers: string): Map<string, string[]> {
@@ -79,22 +92,29 @@ describe("analytics/ads source filter", () => {
       "https://www.googletagservices.com",
       "https://fundingchoicesmessages.google.com",
       "https://www.adservice.google.com/pagead",
+      "https://google.com",
+      "https://www.google.com",
+      "https://apis.google.com",
+      "https://*.google.com",
+      "https://WWW.GOOGLE.COM/recaptcha/",
+      "https://www.gstatic.com",
+      "https://fonts.gstatic.com",
     ]) {
       expect(isAnalyticsAdsSource(token), token).toBe(true);
     }
   });
 
-  it("leaves scheme sources and non-ads Google hosts", () => {
+  it("leaves scheme sources and hosts that only look like google.com", () => {
     for (const token of [
       "'self'",
       "'sha256-abc+/='",
       "data:",
       "blob:",
       "https:",
-      "https://apis.google.com",
       "https://identitytoolkit.googleapis.com",
+      "https://notgoogle.com",
+      "https://google.com.example",
       "https://challenges.cloudflare.com",
-      "https://fonts.gstatic.com",
       "wss://ws.puggietype.com",
     ]) {
       expect(isAnalyticsAdsSource(token), token).toBe(false);
@@ -104,14 +124,14 @@ describe("analytics/ads source filter", () => {
   it("strips those hosts only from script-src, connect-src, and img-src", () => {
     const policy = [
       "default-src 'self'",
-      "script-src 'self' https://www.googletagmanager.com https://apis.google.com",
+      "script-src 'self' https://www.googletagmanager.com https://apis.google.com https://challenges.cloudflare.com",
       "img-src 'self' data: blob: https: https://www.google-analytics.com https://googleads.g.doubleclick.net",
       "connect-src 'self' https://*.google-analytics.com https://poetrydb.org",
       "font-src 'self' data:",
     ].join("; ");
     const out = cspWithoutAnalyticsAds(policy);
     expect(directive(out, "script-src")).toBe(
-      "script-src 'self' https://apis.google.com",
+      "script-src 'self' https://challenges.cloudflare.com",
     );
     expect(directive(out, "img-src")).toBe("img-src 'self' data: blob: https:");
     expect(directive(out, "connect-src")).toBe(
@@ -178,9 +198,7 @@ describe("kids CSP rules", () => {
       expect(directive(policy, "connect-src")).toBe(
         "connect-src 'self' wss://ws.puggietype.com https://ws.puggietype.com https://poetrydb.org https://*.wikipedia.org",
       );
-      expect(directive(policy, "img-src")).toBe(
-        "img-src 'self' data: blob: https:",
-      );
+      expect(directive(policy, "img-src")).toBe("img-src 'self'");
       expect(directive(policy, "font-src")).toBe("font-src 'self' data:");
       expect(directive(policy, "style-src")).toBe(
         "style-src 'self' 'unsafe-inline'",
@@ -207,7 +225,7 @@ describe("kids CSP rules", () => {
       const lines = rules.get(rulePath) ?? [];
       expect(lines[0], rulePath).toBe("! Content-Security-Policy");
       const set = policies(rules, rulePath);
-      expect(set, rulePath).toEqual([home]);
+      expect(set, rulePath).toEqual([withDirective(home, KIDS_IMG_SRC)]);
       expect(set[0]).not.toMatch(GOOGLE_HOST);
     }
   });
@@ -227,12 +245,69 @@ describe("kids CSP rules", () => {
       expect(line.length, line.slice(0, 80)).toBeLessThanOrEqual(2000);
     }
     const kids = policies(headerRules(headers), "/guide/teaching-kids-to-type");
-    expect(directive(kids[0] ?? "", "img-src")).toBe(
-      "img-src 'self' data: blob: https:",
-    );
+    expect(directive(kids[0] ?? "", "img-src")).toBe("img-src 'self'");
     expect(kids[0]).not.toMatch(GOOGLE_HOST);
     expect(policies(headerRules(headers), "/*")[0]).toContain(
       "https://googleads.g.doubleclick.net",
+    );
+  });
+
+  it.each([
+    ["ga", "G-QATEST0000"],
+    ["no-ga", undefined],
+  ] as const)(
+    "%s build: non-kids CSP is byte-identical to origin/main",
+    (name, id) => {
+      const rules = render(id);
+      expect(policies(rules, "/*")).toEqual([mainCspFixture(name)]);
+      for (const [rulePath, lines] of rules) {
+        if (rulePath === "/*") continue;
+        if ((KIDS_CSP_PATHS as readonly string[]).includes(rulePath)) continue;
+        expect(cspLines(lines), rulePath).toEqual([]);
+      }
+    },
+  );
+
+  it("img-src is narrowed on kids routes only", () => {
+    const rules = render("G-QATEST0000");
+    expect(directive(policies(rules, "/*")[0] ?? "", "img-src")).toBe(
+      "img-src 'self' data: blob: https:",
+    );
+    for (const rulePath of KIDS_CSP_PATHS) {
+      const policy = policies(rules, rulePath)[0] ?? "";
+      expect(directive(policy, "img-src"), rulePath).toBe("img-src 'self'");
+      expect(policy.match(/img-src/g), rulePath).toHaveLength(1);
+    }
+  });
+
+  it("google.com hosts on the catch-all CSP stay there, off the kids CSP", () => {
+    const headers = renderHeaders(template, {
+      ...values,
+      extraCsp: {
+        "script-src": ["https://www.google.com", "https://apis.google.com"],
+        "connect-src": ["https://*.google.com", "https://www.gstatic.com"],
+      },
+    });
+    const rules = headerRules(headers);
+    const home = policies(rules, "/*")[0] ?? "";
+    expect(home).toContain("https://www.google.com https://apis.google.com");
+    expect(home).toContain("https://*.google.com https://www.gstatic.com");
+    for (const rulePath of KIDS_CSP_PATHS) {
+      expect(policies(rules, rulePath)[0], rulePath).not.toMatch(GOOGLE_HOST);
+    }
+  });
+});
+
+describe("withDirective", () => {
+  it("replaces an existing directive in place", () => {
+    expect(
+      withDirective("default-src 'self'; img-src *; x y", "img-src 'self'"),
+    ).toBe("default-src 'self'; img-src 'self'; x y");
+  });
+
+  it("does not match a directive that only shares a prefix", () => {
+    expect(withDirective("img-src-x a; b c", "img-src 'self'")).toBe(
+      "img-src-x a; b c; img-src 'self'",
     );
   });
 });

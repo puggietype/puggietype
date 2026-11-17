@@ -33,11 +33,15 @@ export function mergeCspSources(
 }
 
 /**
- * Analytics, Tag Manager, and ads hosts. A source is blocked when its host
- * is one of these or a subdomain, including a `*.` wildcard label.
- * `https:` (scheme only) is not a host and is left alone.
+ * Analytics, Tag Manager, ads, and other Google hosts (google.com covers
+ * www/apis/analytics/adservice.google.com, gstatic.com its static hosts).
+ * A source is blocked when its host is one of these or a subdomain,
+ * including a `*.` wildcard label. `https:` (scheme only) is not a host and
+ * is left alone. Only the kids-guide CSP is filtered with this list.
  */
 export const ANALYTICS_ADS_HOST_SUFFIXES = [
+  "google.com",
+  "gstatic.com",
   "google-analytics.com",
   "analytics.google.com",
   "googletagmanager.com",
