@@ -15,6 +15,13 @@ export { KIDS_CSP_PATHS };
  */
 export const KIDS_IMG_SRC = "img-src 'self'";
 
+/**
+ * connect-src for the kids guides. The page makes no fetch, XHR, or websocket
+ * calls (its only script is kids-flow.js, a sessionStorage flag), so the
+ * game server, poetrydb, and wikipedia origins are dropped.
+ */
+export const KIDS_CONNECT_SRC = "connect-src 'self'";
+
 const DEFAULT_WS_ORIGIN = "wss://ws.puggietype.com";
 const SCRIPT_RE = /<script([^>]*)>([\s\S]*?)<\/script>/gi;
 const JS_TYPE_RE = /\btype\s*=\s*["']?(module|text\/javascript)["']?/i;
@@ -92,18 +99,60 @@ export function withDirective(policy: string, value: string): string {
   return parts.join("; ");
 }
 
+/** the catch-all policy without Google hosts, with same-origin img/connect-src */
+export function kidsCspPolicy(policy: string): string {
+  return withDirective(
+    withDirective(cspWithoutAnalyticsAds(policy), KIDS_IMG_SRC),
+    KIDS_CONNECT_SRC,
+  );
+}
+
 /**
  * Pages joins a repeated header with a comma. A second CSP on these paths
  * would keep the catch-all policy, Google origins included. Detach, then set
- * one policy that has no Google hosts and a same-origin img-src.
+ * one policy that has no Google hosts and same-origin img-src and connect-src.
  */
 export function kidsCspRules(policy: string): string {
-  const strict = withDirective(cspWithoutAnalyticsAds(policy), KIDS_IMG_SRC);
+  const strict = kidsCspPolicy(policy);
   const rules = KIDS_CSP_PATHS.map(
     (rulePath) =>
       `${rulePath}\n  ! Content-Security-Policy\n  Content-Security-Policy: ${strict}\n`,
   ).join("\n");
   return `# Kids guides. Detach the catch-all CSP, then set one policy without Google hosts and with img-src 'self' only.\n${rules}`;
+}
+
+/** built html files of the kids guides, relative to outDir */
+export const KIDS_HTML_FILES = [
+  ...new Set(
+    KIDS_CSP_PATHS.map((p) => `${p.replace(/\/$/, "").slice(1)}.html`),
+  ),
+];
+
+const META_CSP_RE =
+  /<meta\b[^>]*http-equiv\s*=\s*["']?content-security-policy/i;
+const META_CHARSET_RE = /<meta\b[^>]*\bcharset\s*=[^>]*>/i;
+
+/**
+ * Puts the kids policy in a <meta> right after <meta charset>, ahead of every
+ * script, so the page keeps it if the _headers rule is not applied.
+ * frame-ancestors is dropped: a meta CSP ignores it (the header keeps it).
+ */
+export function withKidsMetaCsp(html: string, kidsPolicy: string): string {
+  if (META_CSP_RE.test(html)) {
+    throw new Error("kids html already has a CSP meta");
+  }
+  const content = kidsPolicy
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part !== "" && !/^frame-ancestors\b/.test(part))
+    .join("; ")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;");
+  const charset = META_CHARSET_RE.exec(html);
+  if (charset === null) throw new Error("kids html has no <meta charset>");
+  const at = charset.index + charset[0].length;
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${content}">`;
+  return `${html.slice(0, at)}${meta}${html.slice(at)}`;
 }
 
 export function renderHeaders(
@@ -128,6 +177,7 @@ export function renderHeaders(
 /**
  * Fills the CSP placeholders of the Cloudflare Pages `_headers` file copied
  * from static/: hashes of the final (minified) inline scripts and the WS origin.
+ * Then writes the kids policy into the kids guide html as a meta CSP.
  */
 export function pagesHeaders(options: {
   wsUrl: string | undefined;
@@ -153,6 +203,12 @@ export function pagesHeaders(options: {
         extraCsp: options.extraCsp,
       });
       writeFileSync(headersPath, rendered);
+      const kidsPolicy = kidsCspPolicy(firstCspPolicy(rendered));
+      for (const file of KIDS_HTML_FILES) {
+        const htmlPath = path.join(outDir, file);
+        const html = readFileSync(htmlPath, "utf8");
+        writeFileSync(htmlPath, withKidsMetaCsp(html, kidsPolicy));
+      }
     },
   };
 }
