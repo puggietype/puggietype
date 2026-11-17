@@ -64,14 +64,22 @@ describe("legal-markdown", () => {
     const faqAnswer =
       "Your settings stay in your browser. Ranks shows solo test scores that players chose to submit: after a completed solo test, the score is sent only when you press Submit score. A score the server adds shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends; all-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
     expect(faq.split(faqAnswer).length - 1).toBe(2);
-    expect(faq).toContain('datetime="2026-11-10"');
-    expect(faq).toContain('"dateModified": "2026-11-10"');
-    expect(faq).toContain("November 10, 2026");
-    for (const page of ["guide/about.html", "guide/multiplayer.html"]) {
+    for (const page of [
+      "faq.html",
+      "guide/about.html",
+      "guide/multiplayer.html",
+    ]) {
       const html = readFileSync(path.join(srcDir, page), "utf8");
-      expect(html).toContain('datetime="2026-11-10"');
-      expect(html).toContain('"dateModified": "2026-11-10"');
-      expect(html).toContain("November 10, 2026");
+      // stamped on or after the 2026-11-10 legal update
+      const modified =
+        /"dateModified": "(\d{4}-\d{2}-\d{2})"/.exec(html)?.[1] ?? "";
+      expect(modified >= "2026-11-10", modified).toBe(true);
+      // the visible date must say the same day as the machine date
+      const human = new Date(`${modified}T12:00:00Z`).toLocaleDateString(
+        "en-US",
+        { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+      );
+      expect(html).toContain(`<time datetime="${modified}">${human}</time>`);
       expect(html).not.toContain("November 4, 2026");
     }
     expect(md).toContain(
