@@ -74,7 +74,12 @@ describe("legal-markdown", () => {
       const modified =
         /"dateModified": "(\d{4}-\d{2}-\d{2})"/.exec(html)?.[1] ?? "";
       expect(modified >= "2026-11-10", modified).toBe(true);
-      expect(html).toContain(`datetime="${modified}"`);
+      // the visible date must say the same day as the machine date
+      const human = new Date(`${modified}T12:00:00Z`).toLocaleDateString(
+        "en-US",
+        { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+      );
+      expect(html).toContain(`<time datetime="${modified}">${human}</time>`);
       expect(html).not.toContain("November 4, 2026");
     }
     expect(md).toContain(

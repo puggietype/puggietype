@@ -232,6 +232,23 @@ const ldBlocks = (html: string): Ld[] =>
 const mainOf = (html: string): string =>
   /<main>([\s\S]*?)<\/main>/.exec(html)?.[1] ?? "";
 
+/**
+ * Visible FAQ pairs: each h3 and the text up to the next heading. On guides
+ * that is the "Frequently asked questions" h2 section; /faq is all FAQ.
+ */
+function visibleFaq(main: string): { q: string; a: string }[] {
+  const h2 = /<h2>[^<]*frequently asked questions[^<]*<\/h2>/i.exec(main);
+  let region = main;
+  if (h2 !== null) {
+    const after = main.slice(h2.index + h2[0].length);
+    const next = after.search(/<h2\b/);
+    region = next === -1 ? after : after.slice(0, next);
+  }
+  return [
+    ...region.matchAll(/<h3>([\s\S]*?)<\/h3>([\s\S]*?)(?=<h[1-6]\b|$)/g),
+  ].map((m) => ({ q: inlineText(m[1] ?? ""), a: inlineText(m[2] ?? "") }));
+}
+
 const pages = pagePaths.map((p) => {
   const html = renderPage(pageOf(p));
   const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "";
@@ -281,23 +298,56 @@ describe("guide seo", () => {
       it("has FAQPage questions and answers that match the visible text", () => {
         const faqs = blocks.filter((b) => b["@type"] === "FAQPage");
         if (FAQ_REQUIRED.includes(p)) expect(faqs).toHaveLength(1);
-        const main = mainOf(html);
-        const h3s = [...main.matchAll(/<h3>([\s\S]*?)<\/h3>/g)].map((m) =>
-          inlineText(m[1] ?? ""),
+        expect(faqs.length).toBeLessThanOrEqual(1);
+        const faq = faqs[0];
+        if (faq === undefined) return;
+        const entities = faq["mainEntity"] as Ld[];
+        expect(entities.length).toBeGreaterThan(0);
+        const ld = entities.map((q) => {
+          // wrong @type on either level must fail, not just a missing name
+          expect(q["@type"]).toBe("Question");
+          const answer = q["acceptedAnswer"] as Ld;
+          expect(answer["@type"]).toBe("Answer");
+          return {
+            q: String(q["name"]),
+            a: String(answer["text"]).replace(/\s+/g, " ").trim(),
+          };
+        });
+        // compare pair by pair, in order and in both directions, so swapped
+        // answers, missing entries and visible-only questions all fail
+        expect(visibleFaq(mainOf(html))).toEqual(ld);
+      });
+
+      it("shows a last-updated date that matches dateModified in words", () => {
+        const modified = /"dateModified": "(\d{4}-\d{2}-\d{2})"/.exec(
+          html,
+        )?.[1];
+        // the /guide/ index carries no date at all
+        if (modified === undefined) {
+          expect(html).not.toContain('class="last-updated"');
+          return;
+        }
+        const human = new Date(`${modified}T12:00:00Z`).toLocaleDateString(
+          "en-US",
+          { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
         );
-        const visible = inlineText(main);
-        for (const faq of faqs) {
-          const entities = faq["mainEntity"] as Ld[];
-          expect(entities.length).toBeGreaterThan(0);
-          for (const q of entities) {
-            const name = String(q["name"]);
-            const answer = (q["acceptedAnswer"] as Ld)["text"];
-            expect(q["@type"]).toBe("Question");
-            expect(h3s, name).toContain(name);
-            expect(visible, name).toContain(
-              String(answer).replace(/\s+/g, " ").trim(),
-            );
-          }
+        expect(html).toContain(
+          `<p class="last-updated">Last updated <time datetime="${modified}">${human}</time></p>`,
+        );
+      });
+
+      it("never skips a heading level", () => {
+        const levels = [...mainOf(html).matchAll(/<h([1-6])\b/g)].map((m) =>
+          Number(m[1]),
+        );
+        expect(levels[0]).toBe(1);
+        for (let i = 1; i < levels.length; i++) {
+          const prev = levels[i - 1] ?? 1;
+          const cur = levels[i] ?? 1;
+          expect(
+            cur,
+            `h${prev} -> h${cur} at heading ${i + 1}`,
+          ).toBeLessThanOrEqual(prev + 1);
         }
       });
     });
