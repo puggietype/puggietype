@@ -536,3 +536,57 @@ describe("kids meta CSP in the build output", () => {
     expect(() => withKidsMetaCsp("<head></head>", policy)).toThrow(/charset/);
   });
 });
+
+describe("kids HTML ads / adsense markers in the build output", () => {
+  // Same strings the kids-flow-csp CI job greps for in dist and on the wire.
+  const ADS_MARKER = /google-adsense-account|adsbygoogle|ca-pub-/gi;
+  const ADSENSE_META =
+    '<meta name="google-adsense-account" content="ca-pub-8233445679738428" />';
+
+  function adsMarkers(html: string): string[] {
+    return html.match(ADS_MARKER) ?? [];
+  }
+
+  function source(file: string): string {
+    return readFileSync(path.resolve(__dirname, "../../src", file), "utf8");
+  }
+
+  // Vite emits src/guide/<slug>.html as dist/guide/<slug>.html and adds no
+  // ads markup on the web build. CI greps the real dist and served page.
+  const kidsFiles = KIDS_CSP_PATHS.filter((p) => !p.endsWith("/")).map(
+    (p) => `${p.slice(1)}.html`,
+  );
+
+  it("covers both kids guide files", () => {
+    expect(kidsFiles).toEqual([
+      "guide/teaching-kids-to-type.html",
+      "guide/typing-for-kids.html",
+    ]);
+  });
+
+  it.each(kidsFiles)("%s has no AdSense markers", (file) => {
+    expect(adsMarkers(source(file))).toEqual([]);
+  });
+
+  it.each(kidsFiles)("%s: checker catches a re-inserted marker", (file) => {
+    const html = source(file);
+    const head = '<meta charset="UTF-8" />';
+    expect(html).toContain(head);
+    const mutants = [
+      ADSENSE_META,
+      '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>',
+      "<ins class='AdsByGoogle'></ins>",
+      '<ins data-ad-client="CA-PUB-0000000000000000"></ins>',
+    ];
+    for (const mutant of mutants) {
+      expect(
+        adsMarkers(html.replace(head, `${head}\n    ${mutant}`)),
+        mutant,
+      ).not.toEqual([]);
+    }
+  });
+
+  it("homepage keeps the AdSense account meta", () => {
+    expect(source("index.html")).toContain(ADSENSE_META);
+  });
+});

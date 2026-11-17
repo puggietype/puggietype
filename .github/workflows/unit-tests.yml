@@ -156,4 +156,23 @@ jobs:
           check_status /guide/typing-for-kids 301 /guide/teaching-kids-to-type
           check_status /guide%2Fteaching-kids-to-type 404 ""
           check_status /guide/teaching-kids-to-type 200 ""
+          # ADS-KIDS01: kids HTML must not name an AdSense account or ad slot,
+          # served or in dist. Other pages keep the google-adsense-account meta.
+          ads_marker='google-adsense-account|adsbygoogle|ca-pub-'
+          check_kids_no_ads() {
+            file="$1"
+            if [ ! -s "$file" ]; then
+              echo "missing or empty kids HTML: $file"
+              exit 1
+            fi
+            if grep -Eiq "$ads_marker" "$file"; then
+              echo "AdSense marker in kids HTML: $file"
+              grep -Eion "$ads_marker" "$file"
+              exit 1
+            fi
+          }
+          curl -sSf -o /tmp/kids-served.html http://127.0.0.1:3300/guide/teaching-kids-to-type
+          check_kids_no_ads /tmp/kids-served.html
+          check_kids_no_ads frontend/dist/guide/teaching-kids-to-type.html
+          check_kids_no_ads frontend/dist/guide/typing-for-kids.html
       - run: BASE_URL=http://127.0.0.1:3300 pnpm exec playwright test e2e/kids-flow-ga.spec.ts e2e/kids-meta-csp-fail-open.spec.ts e2e/ga4-real-container.spec.ts
