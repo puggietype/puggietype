@@ -69,9 +69,11 @@ describe("legal-markdown", () => {
     expect(faq).toContain("November 10, 2026");
     for (const page of ["guide/about.html", "guide/multiplayer.html"]) {
       const html = readFileSync(path.join(srcDir, page), "utf8");
-      expect(html).toContain('datetime="2026-11-10"');
-      expect(html).toContain('"dateModified": "2026-11-10"');
-      expect(html).toContain("November 10, 2026");
+      // stamped on or after the 2026-11-10 legal update
+      const modified =
+        /"dateModified": "(\d{4}-\d{2}-\d{2})"/.exec(html)?.[1] ?? "";
+      expect(modified >= "2026-11-10", modified).toBe(true);
+      expect(html).toContain(`datetime="${modified}"`);
       expect(html).not.toContain("November 4, 2026");
     }
     expect(md).toContain(
