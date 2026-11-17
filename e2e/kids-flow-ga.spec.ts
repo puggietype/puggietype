@@ -4,7 +4,7 @@ import { skipNgrokWarning } from "./tunnel";
 
 const GA_REQUEST = /google-analytics|googletagmanager|gtag\/js/i;
 const GOOGLE_CSP_HOST =
-  /google-analytics|googletagmanager|analytics\.google|doubleclick|googleadservices|googlesyndication|googletagservices|fundingchoices|adservice\.google/i;
+  /google-analytics|googletagmanager|analytics\.google|doubleclick|googleadservices|googlesyndication|googletagservices|fundingchoices|adservice\.google|google\.com|gstatic\.com/i;
 
 function cspValues(
   headers: ReadonlyArray<{ name: string; value: string }>,
@@ -19,6 +19,25 @@ function expectOneKidsCsp(values: string[]): void {
   expect(values[0]).toContain("script-src");
   expect(values[0]).toContain("'self'");
   expect(values[0]).not.toMatch(GOOGLE_CSP_HOST);
+  expect(values[0]).toMatch(/(^|; )img-src 'self'(;|$)/);
+}
+
+async function watchCspViolations(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    Object.assign(window, { __cspViolations: seen });
+    document.addEventListener("securitypolicyviolation", (event) => {
+      seen.push(`${event.effectiveDirective} ${event.blockedURI}`);
+    });
+  });
+}
+
+async function cspViolations(page: Page): Promise<string[]> {
+  return page.evaluate(
+    () =>
+      (window as unknown as { __cspViolations?: string[] }).__cspViolations ??
+      [],
+  );
 }
 
 async function seedAnalyticsAccept(page: Page): Promise<void> {
@@ -56,10 +75,13 @@ test("kids slug sets kids-flow and later pages do not load GA", async ({
 }) => {
   const ga = watchGa(page);
   await seedAnalyticsAccept(page);
+  await watchCspViolations(page);
 
   const landing = await page.goto("/guide/teaching-kids-to-type");
   expectOneKidsCsp(cspValues((await landing?.headersArray()) ?? []));
   await expect(page.locator("h1")).toBeVisible();
+  await page.waitForLoadState("load");
+  expect(await cspViolations(page)).toEqual([]);
   expect(
     await page.evaluate(() => sessionStorage.getItem("puggie-kids-flow")),
   ).toBe("1");

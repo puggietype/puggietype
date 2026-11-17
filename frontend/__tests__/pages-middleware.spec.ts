@@ -1,9 +1,18 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, it, expect } from "vitest";
 import {
   onRequest,
   isAssetPath,
   ASSET_PREFIXES,
+  normalizePath,
 } from "../../functions/_middleware";
+import { TEACHING_KIDS_GUIDE_PATH } from "../src/ts/controllers/background-music";
+import {
+  KIDS_CANONICAL_PATH,
+  KIDS_CSP_PATHS,
+} from "../vite-plugins/kids-csp-paths";
 import routes from "../static/_routes.json";
 
 const html = (): Response =>
@@ -151,5 +160,157 @@ describe("pages middleware", () => {
     );
     expect(r.status).toBe(200);
     expect(r.headers.get("Cache-Control")).toContain("immutable");
+  });
+});
+
+describe("kids guide canonical redirect", () => {
+  const CANONICAL = "https://puggietype.com/guide/teaching-kids-to-type";
+
+  const get = async (
+    path: string,
+    host = "puggietype.com",
+  ): Promise<{ res: Response; nextCalls: number }> => {
+    let nextCalls = 0;
+    const res = await onRequest({
+      request: new Request(`https://${host}${path}`),
+      next: async () => {
+        nextCalls++;
+        return html();
+      },
+    });
+    return { res, nextCalls };
+  };
+
+  it("canonical path is the parents guide", () => {
+    expect(KIDS_CANONICAL_PATH).toBe(TEACHING_KIDS_GUIDE_PATH);
+    expect(KIDS_CSP_PATHS).toContain(KIDS_CANONICAL_PATH);
+  });
+
+  it.each([
+    "/guide/teaching-kids-to-type",
+    "/guide/teaching-kids-to-type?utm_source=x",
+    // exact trailing-slash and old-slug paths: left to static/_redirects
+    "/guide/teaching-kids-to-type/",
+    "/guide/typing-for-kids",
+    "/guide/typing-for-kids/",
+  ])("%s passes through untouched", async (p) => {
+    const { res, nextCalls } = await get(p);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Location")).toBeNull();
+    expect(nextCalls).toBe(1);
+  });
+
+  it.each([
+    "/guide//teaching-kids-to-type",
+    "//guide/teaching-kids-to-type",
+    "/guide///teaching-kids-to-type",
+    "/guide/teaching-kids-to-typ%65",
+    "/guide/%74eaching-kids-to-type",
+    "/%67uide/teaching-kids-to-type",
+    "/guide/teaching%2Dkids%2dto%2Dtype",
+    "/guide//teaching-kids-to-typ%65",
+    "/guide//teaching-kids-to-type/",
+    "/guide/teaching-kids-to-typ%65/",
+    "/guide//typing-for-kids",
+    "/guide/typing-for-kid%73",
+    "/guide/typing-for-kid%73/",
+  ])("%s 301s to the canonical kids guide", async (p) => {
+    const { res, nextCalls } = await get(p);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Location")).toBe(CANONICAL);
+    expect(res.headers.get("Strict-Transport-Security")).toContain("max-age");
+    expect(nextCalls).toBe(0);
+  });
+
+  it("keeps the query string", async () => {
+    const { res } = await get("/guide//teaching-kids-to-type?a=1&b=%2F");
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Location")).toBe(`${CANONICAL}?a=1&b=%2F`);
+  });
+
+  it("does not loop: the redirect target passes through", async () => {
+    const { res } = await get("/guide/teaching-kids-to-typ%65?x=1");
+    const target = new URL(res.headers.get("Location") ?? "");
+    const second = await get(`${target.pathname}${target.search}`);
+    expect(second.res.status).toBe(200);
+    expect(second.nextCalls).toBe(1);
+  });
+
+  it("www still goes to apex first, keeping the path", async () => {
+    const { res } = await get(
+      "/guide//teaching-kids-to-type",
+      "www.puggietype.com",
+    );
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Location")).toBe(
+      "https://puggietype.com/guide//teaching-kids-to-type",
+    );
+  });
+
+  it.each([
+    "/guide%2Fteaching-kids-to-type",
+    "/guide%2fteaching-kids-to-type",
+    "/guide%2Ftyping-for-kids",
+    "/guide/teaching-kids-to-type%2F",
+    "/guide%2F%2Fteaching-kids-to-typ%65",
+  ])(
+    "%s: %2F is not decoded into a redirect; 404 instead of the kids page",
+    async (p) => {
+      const { res, nextCalls } = await get(p);
+      expect(res.status).toBe(404);
+      expect(res.headers.get("Location")).toBeNull();
+      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(nextCalls).toBe(0);
+    },
+  );
+
+  it.each([
+    "/guide/teaching-kids-to-type%E0%A4%A",
+    "/guide/teaching-kids-to-typ%6",
+    "/guide/teaching-kids-to-typ%",
+    "/guide/teaching-kids-to-typ%ZZ",
+    "/guide/%E0%A4%A/teaching-kids-to-type",
+  ])("malformed encoding %s falls through", async (p) => {
+    const { res, nextCalls } = await get(p);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Location")).toBeNull();
+    expect(nextCalls).toBe(1);
+  });
+
+  it.each([
+    "/",
+    "/privacy",
+    "/guide/",
+    "/guide//typing-tips",
+    "/guide/typing-tip%73",
+    "/guide/teaching-kids-to-type-more",
+    "/guide/teaching-kids-to-type/extra",
+    "/GUIDE/teaching-kids-to-type",
+    "/r//ABCD",
+    "/profile/a%2Fb",
+  ])("non-kids path %s is untouched", async (p) => {
+    const { res, nextCalls } = await get(p);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Location")).toBeNull();
+    expect(nextCalls).toBe(1);
+  });
+
+  it("normalizePath decodes only unreserved escapes and collapses slashes", () => {
+    expect(normalizePath("/a//b%7E%2e%5F%2D%41z")).toBe("/a/b~._-Az");
+    expect(normalizePath("/a%2Fb%2fc%20d%3F")).toBe("/a%2Fb%2fc%20d%3F");
+    expect(normalizePath("/%E0%A4%A")).toBe("/%E0%A4%A");
+    expect(normalizePath("/%256")).toBe("/%256");
+  });
+
+  it("static/_redirects 301s every other kids path to the canonical one", () => {
+    const redirects = readFileSync(
+      path.resolve(__dirname, "../static/_redirects"),
+      "utf8",
+    );
+    const lines = redirects.split("\n").map((line) => line.trim());
+    for (const p of KIDS_CSP_PATHS) {
+      if (p === KIDS_CANONICAL_PATH) continue;
+      expect(lines).toContain(`${p} ${KIDS_CANONICAL_PATH} 301`);
+    }
   });
 });

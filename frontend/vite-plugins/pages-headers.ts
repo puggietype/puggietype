@@ -4,17 +4,16 @@ import path from "node:path";
 import { Plugin } from "vite";
 
 import { cspWithoutAnalyticsAds } from "./ga4-csp";
+import { KIDS_CSP_PATHS } from "./kids-csp-paths";
+
+export { KIDS_CSP_PATHS };
 
 /**
- * The parents guide, the old slug that 301s to it, and both trailing-slash
- * forms. Must stay in step with KIDS_GUIDE_PATH / TEACHING_KIDS_GUIDE_PATH.
+ * img-src for the kids guides. The built page loads only same-origin images
+ * (favicon.ico / favicon.svg, manifest icons); its pug is inline SVG and its
+ * CSS has no url() images or data: URIs.
  */
-export const KIDS_CSP_PATHS = [
-  "/guide/teaching-kids-to-type",
-  "/guide/teaching-kids-to-type/",
-  "/guide/typing-for-kids",
-  "/guide/typing-for-kids/",
-] as const;
+export const KIDS_IMG_SRC = "img-src 'self'";
 
 const DEFAULT_WS_ORIGIN = "wss://ws.puggietype.com";
 const SCRIPT_RE = /<script([^>]*)>([\s\S]*?)<\/script>/gi;
@@ -81,18 +80,30 @@ function firstCspPolicy(headers: string): string {
   throw new Error("CSP has no Content-Security-Policy");
 }
 
+/** replaces the directive named by `value`'s first token, or appends it */
+export function withDirective(policy: string, value: string): string {
+  const name = value.split(/\s+/)[0] ?? "";
+  const parts = policy.split(";").map((part) => part.trim());
+  const index = parts.findIndex(
+    (part) => part === name || part.startsWith(`${name} `),
+  );
+  if (index === -1) return [...parts, value].join("; ");
+  parts[index] = value;
+  return parts.join("; ");
+}
+
 /**
  * Pages joins a repeated header with a comma. A second CSP on these paths
  * would keep the catch-all policy, Google origins included. Detach, then set
- * one policy that has no Analytics, Tag Manager, or ads hosts.
+ * one policy that has no Google hosts and a same-origin img-src.
  */
 export function kidsCspRules(policy: string): string {
-  const strict = cspWithoutAnalyticsAds(policy);
+  const strict = withDirective(cspWithoutAnalyticsAds(policy), KIDS_IMG_SRC);
   const rules = KIDS_CSP_PATHS.map(
     (rulePath) =>
       `${rulePath}\n  ! Content-Security-Policy\n  Content-Security-Policy: ${strict}\n`,
   ).join("\n");
-  return `# Kids guides. Detach the catch-all CSP, then set one policy without Google analytics/ads hosts.\n${rules}`;
+  return `# Kids guides. Detach the catch-all CSP, then set one policy without Google hosts and with img-src 'self' only.\n${rules}`;
 }
 
 export function renderHeaders(
