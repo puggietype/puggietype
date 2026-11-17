@@ -32,13 +32,145 @@ const FAQ_REQUIRED = [
   "/guide/wpm-accuracy",
   "/guide/home-row-finger-placement",
 ];
-const FORBIDDEN = [
-  /\bbest\b/i,
-  /#1\b/,
-  /\bofficial\b/i,
-  /\bguarantee/i,
-  /\bno ads\b/i,
-  /carpal|\bRSI\b|repetitive strain|injur/i,
+// wording Legal asked us not to use: superlatives, unsourced stats, health
+// claims, ad/tracking promises and brand or affiliation claims
+const FORBIDDEN: Record<string, RegExp> = {
+  best: /\bbest\b/i,
+  "#1": /#1\b/,
+  official: /\bofficial(ly)?\b/i,
+  guarantee: /\bguarantee\w*/i,
+  "no ads": /\bno ads\b/i,
+  injury: /carpal|\bRSI\b|repetitive strain|\binjur\w*/i,
+  fastest: /\bfastest\b/i,
+  top: /\btop\b/i,
+  "number one": /\bnumber one\b/i,
+  proven: /\bproven\b/i,
+  "typical/average wpm":
+    /\b(typical|average)\b[^.]{0,40}\bwpm\b|\bwpm\b[^.]{0,40}\b(typical|average)\b/i,
+  prevent: /\bprevent\w*/i,
+  pain: /\bpain(s|ful)?\b/i,
+  health: /\bhealth\w*/i,
+  "ad-free": /\bad-free\b/i,
+  "no tracking": /\bno tracking\b/i,
+  Monkeytype: /\bmonkeytype\b/i,
+  affiliated: /\baffiliated\b/i,
+  endorsed: /\bendorsed\b/i,
+};
+
+/**
+ * Legitimate uses, removed from the text before the check. A page-specific
+ * entry must still be on its page, so the allowlist can't go stale. Anything
+ * not listed here fails: fix the copy or ask Legal before adding an entry.
+ */
+const ALLOWED: { page: string; phrase: string; why: string }[] = [
+  // keyboard geometry, not a ranking claim
+  { page: "*", phrase: "top-row", why: "keyboard row" },
+  { page: "*", phrase: "top row", why: "keyboard row" },
+  { page: "*", phrase: "on top of", why: "idiom" },
+  {
+    page: "/guide/keyboard-layouts",
+    phrase: "sit at the top left",
+    why: "key position",
+  },
+  {
+    page: "/guide/typing-ergonomics",
+    phrase: "the top of the screen",
+    why: "monitor height",
+  },
+  // GPL credit and the non-affiliation line Legal approved (Oct 17)
+  {
+    page: "/guide/about",
+    phrase:
+      "built on the open-source Monkeytype codebase, created by Miodec and the Monkeytype contributors",
+    why: "GPL-3.0 attribution",
+  },
+  {
+    page: "/guide/about",
+    phrase: "is not affiliated with or endorsed by Monkeytype",
+    why: "non-affiliation disclaimer",
+  },
+  // a reader's own results, not a claim about PuggieType
+  {
+    page: "/guide/type-faster",
+    phrase: "not the best",
+    why: "median vs best run",
+  },
+  {
+    page: "/guide/type-faster",
+    phrase: "personal best",
+    why: "pace caret setting",
+  },
+  {
+    page: "/guide/type-faster",
+    phrase: "remember only the best runs",
+    why: "own results",
+  },
+  {
+    page: "/guide/type-faster",
+    phrase: "Progress is fastest at the start",
+    why: "learning curve wording, not a speed claim",
+  },
+  {
+    page: "/guide/keyboard-layouts",
+    phrase: "It works best during a quiet period",
+    why: "advice",
+  },
+  { page: "/guide/keyboard-layouts", phrase: "is best left on", why: "advice" },
+  { page: "/guide/keyboard-layouts", phrase: "less painful", why: "idiom" },
+  // Legal-approved line, pinned in static-routing.spec.ts
+  {
+    page: "/guide/typing-ergonomics",
+    phrase: "The best posture is your next one.",
+    why: "Legal-approved",
+  },
+  // safety redirects that tell readers to see a professional (no health claim)
+  {
+    page: "/guide/type-faster",
+    phrase: "persistent pain is a reason to see a professional",
+    why: "safety redirect",
+  },
+  {
+    page: "/guide/keyboard-layouts",
+    phrase: "If you have pain when typing",
+    why: "safety redirect",
+  },
+  {
+    page: "/guide/keyboard-layouts",
+    phrase: "talk to a health professional",
+    why: "safety redirect",
+  },
+  {
+    page: "/guide/typing-ergonomics",
+    phrase: "First, a note about pain",
+    why: "disclaimer heading",
+  },
+  {
+    page: "/guide/typing-ergonomics",
+    phrase: "we are not health professionals. If you have pain,",
+    why: "not-medical-advice disclaimer",
+  },
+  {
+    page: "/guide/typing-ergonomics",
+    phrase: "qualified health professional",
+    why: "safety redirect",
+  },
+  {
+    page: "/guide/teaching-kids-to-type",
+    phrase: "If a child mentions pain",
+    why: "safety redirect",
+  },
+  {
+    page: "/guide/teaching-kids-to-type",
+    phrase: "much easier to prevent than to undo",
+    why: "habit advice, not health",
+  },
+  // PENDING LEGAL: a product claim, not a wording slip. The kids page is
+  // frozen (byte-identical dist) so it is listed here until Legal rules on it.
+  {
+    page: "/guide/teaching-kids-to-type",
+    phrase: "There are no ads during a test or race.",
+    why: "pending Legal ads check",
+  },
 ];
 
 const pageOf = (p: string): string =>
@@ -181,13 +313,26 @@ describe("guide seo", () => {
     }
   });
 
-  for (const p of SEO_PAGES) {
+  for (const { path: p, html, title } of pages) {
     it(`${p} avoids claims we can't stand behind`, () => {
-      const page = pages.find((x) => x.path === p);
-      const text = plain(
-        `${page?.title ?? ""} ${mainOf(page?.html ?? "")} ${meta(page?.html ?? "", "name", "description").join(" ")}`,
+      let text = plain(
+        `${title} ${mainOf(html)} ${meta(html, "name", "description").join(" ")}`,
       );
-      for (const re of FORBIDDEN) expect(text, String(re)).not.toMatch(re);
+      for (const { page, phrase } of ALLOWED) {
+        if (page !== "*" && page !== p) continue;
+        if (page === p) {
+          expect(text, `stale allowlist: ${phrase}`).toContain(phrase);
+        }
+        text = text.split(phrase).join(" ");
+      }
+      for (const [term, re] of Object.entries(FORBIDDEN)) {
+        const hit = re.exec(text);
+        const context =
+          hit === null
+            ? ""
+            : text.slice(Math.max(0, hit.index - 50), hit.index + 50);
+        expect(hit, `${term}: …${context}…`).toBeNull();
+      }
     });
   }
 });
