@@ -79,6 +79,10 @@ test("kids slug sets kids-flow and later pages do not load GA", async ({
 
   const landing = await page.goto("/guide/teaching-kids-to-type");
   expectOneKidsCsp(cspValues((await landing?.headersArray()) ?? []));
+  // the same policy also ships in the html, for when the header is missing
+  const meta = page.locator('meta[http-equiv="Content-Security-Policy"]');
+  await expect(meta).toHaveCount(1);
+  expectOneKidsCsp([(await meta.getAttribute("content")) ?? ""]);
   await expect(page.locator("h1")).toBeVisible();
   await page.waitForLoadState("load");
   expect(await cspViolations(page)).toEqual([]);
