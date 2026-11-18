@@ -318,6 +318,122 @@ test("hide quick-chat switch: hides everything and is remembered in localStorage
   ).toBeNull();
 });
 
+// QA M03: guard the 24px target size and the 4.5:1 text contrast (WCAG 2.5.8, 1.4.3) of the quick-chat controls
+const VIEWPORTS = [
+  { width: 1280, height: 800 },
+  { width: 390, height: 844 },
+];
+
+for (const vp of VIEWPORTS) {
+  test(`hide quick-chat label is at least 24px tall and quick-chat text has 4.5:1 contrast at ${vp.width}x${vp.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(vp);
+    const mock = await mockServer(page, { quickChat: true });
+    await openLobby(page);
+    await dismissBanner(page);
+    mock.push({ type: "chat:preset", playerId: GUEST, presetId: "gg" });
+    await expect(byTestId(page, "mp-quickchat-line-gg")).toBeVisible();
+
+    const label = byTestId(page, "mp-quickchat-hide").locator(
+      "xpath=ancestor::label",
+    );
+    await label.scrollIntoViewIfNeeded();
+    const box = await label.boundingBox();
+    expect(box, "hide label has a box").not.toBeNull();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
+
+    await page.mouse.move(1, 1);
+    const rows = await page.evaluate(() => {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 1;
+      const cx = cv.getContext("2d", { willReadFrequently: true });
+      if (cx === null) throw new Error("no 2d context");
+      type Rgba = [number, number, number, number];
+      const rgba = (c: string): Rgba => {
+        cx.clearRect(0, 0, 1, 1);
+        cx.fillStyle = "#000";
+        cx.fillStyle = c;
+        cx.fillRect(0, 0, 1, 1);
+        const d = cx.getImageData(0, 0, 1, 1).data;
+        return [d[0] ?? 0, d[1] ?? 0, d[2] ?? 0, (d[3] ?? 0) / 255];
+      };
+      const over = (f: Rgba, b: Rgba): Rgba =>
+        [
+          ...([0, 1, 2] as const).map((i) => f[i] * f[3] + b[i] * (1 - f[3])),
+          1,
+        ] as Rgba;
+      const lum = (c: Rgba): number => {
+        const [r, g, b] = ([0, 1, 2] as const).map((i) => {
+          const v = c[i] / 255;
+          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+      };
+      const ratio = (a: Rgba, b: Rgba): number => {
+        const hi = Math.max(lum(a), lum(b));
+        const lo = Math.min(lum(a), lum(b));
+        return (hi + 0.05) / (lo + 0.05);
+      };
+      // composite the ancestors' backgrounds, nearest first, until an opaque one
+      const bgOf = (el: Element): Rgba => {
+        const layers: Rgba[] = [];
+        for (let n: Element | null = el; n !== null; n = n.parentElement) {
+          const c = rgba(getComputedStyle(n).backgroundColor);
+          if (c[3] > 0) {
+            layers.push(c);
+            if (c[3] === 1) break;
+          }
+        }
+        let b: Rgba = [0, 0, 0, 1];
+        if (layers.length > 0 && layers[layers.length - 1]?.[3] === 1) {
+          b = layers.pop() as Rgba;
+        }
+        for (let i = layers.length - 1; i >= 0; i--) {
+          b = over(layers[i] as Rgba, b);
+        }
+        return b;
+      };
+      const opacityOf = (el: Element): number => {
+        let o = 1;
+        for (let n: Element | null = el; n !== null; n = n.parentElement) {
+          o *= Number(getComputedStyle(n).opacity);
+        }
+        return o;
+      };
+      const out: { text: string; ratio: number }[] = [];
+      for (const root of document.querySelectorAll(
+        '[data-testid="mp-quickchat"]',
+      )) {
+        for (const e of root.querySelectorAll("*")) {
+          const own = [...e.childNodes].some(
+            (c) => c.nodeType === 3 && (c.textContent ?? "").trim() !== "",
+          );
+          if (!own) continue;
+          const r = e.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          // faded (disabled/cooldown) controls are exempt from 1.4.3
+          const op = opacityOf(e);
+          if (op < 1) continue;
+          const fg0 = rgba(getComputedStyle(e).color);
+          const fg = over(fg0, bgOf(e));
+          out.push({
+            text: (e.textContent ?? "").trim().slice(0, 28),
+            ratio: ratio(fg, bgOf(e)),
+          });
+        }
+      }
+      return out;
+    });
+    expect(rows.length, "measured some quick-chat text").toBeGreaterThan(3);
+    for (const row of rows) {
+      expect(row.ratio, `contrast of "${row.text}"`).toBeGreaterThanOrEqual(
+        4.5,
+      );
+    }
+  });
+}
+
 test("phases: paused in countdown/racing, collapsed disclosure in results, back to the lobby", async ({
   page,
 }) => {
