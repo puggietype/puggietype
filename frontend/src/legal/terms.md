@@ -1,6 +1,6 @@
 # Terms of Service
 
-_Effective date: November 4, 2026. Last updated: November 4, 2026. "We", "us" and "our" mean the PuggieType team._
+_Effective date: November 18, 2026. Last updated: November 18, 2026. "We", "us" and "our" mean the PuggieType team._
 
 ## 1. Age requirement
 PuggieType's solo typing test needs no account and collects no account data. You must be **at least 13 years old** to use multiplayer. If you are under 18, or under the age of majority where you live, use multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.
@@ -10,8 +10,10 @@ Multiplayer races take place in rooms of up to 8 players. **Private lobbies:** w
 
 Quick Match may include computer-controlled Pug Bots. Bots are named "Pug Bot · ~NN wpm" (the number is the bot's approximate target pace, not its result), always carry a visible "Bot" label, and never count toward stats or leaderboards.
 
+**Quick-chat.** In private rooms (in the lobby and on the results screen) you can send quick-chat: friendly preset lines (such as "gg" or "good luck!") and emotes from a fixed list that we write. You can't type your own messages. Quick-chat isn't available in Quick Match or Open Rooms. The players in your lobby see what you send while you're in it. You can mute any player, or hide quick-chat altogether, for yourself. Muting happens on your device and the other player isn't told. Don't use quick-chat to spam or harass anyone, for example by sending the same line over and over. We may change or remove presets, limit how often you can send them, switch quick-chat off, or remove or suspend anyone who misuses it. Like the rest of multiplayer, quick-chat is only for players aged 13 and over. To report misuse, use the report button or email support@puggietype.com.
+
 ## 3. Nicknames
-In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown to the other players in your lobby. If you submit a leaderboard score, that nickname is also shown on the public leaderboard, as described in the privacy policy. There is no chat, and players can't send each other messages.
+In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown to the other players in your lobby. If you submit a leaderboard score, that nickname is also shown on the public leaderboard, as described in the privacy policy.
 
 ## 4. Leaderboards
 If you submit a score, you let us show it publicly with your random nickname on PuggieType's leaderboards for the periods described in the privacy policy. We may remove any score, or block future scores, if it looks cheated, automated or otherwise breaks these terms. Leaderboards may be reset or changed at any time.
