@@ -49,7 +49,7 @@ import { CharacterPicker } from "./CharacterPicker";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
 import { QuickChat } from "./QuickChat";
-import { QuickChatBadge } from "./QuickChatBadge";
+import { QuickChatBubble } from "./QuickChatBubble";
 import { QuickChatMuteButton } from "./QuickChatMuteButton";
 import { ReadyBadge } from "./ReadyBadge";
 import { ReadyButton } from "./ReadyButton";
@@ -405,10 +405,10 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                   >
                     <PlayerName player={p} />
                   </span>
+                  <QuickChatBubble playerId={p.id} />
                   <Show when={p.id === myId()}>
                     <span class="shrink-0 text-sm text-sub">(you)</span>
                   </Show>
-                  <QuickChatBadge playerId={p.id} />
                   <Show when={p.id === props.room.hostId}>
                     <span
                       class="shrink-0 text-main"

@@ -485,7 +485,8 @@ export function isObject(obj: unknown): obj is Record<string, unknown> {
 }
 
 export function prefersReducedMotion(): boolean {
-  return matchMedia?.("(prefers-reduced-motion)")?.matches;
+  // globalThis: a bare matchMedia throws where it doesn't exist (jsdom)
+  return globalThis.matchMedia?.("(prefers-reduced-motion)")?.matches ?? false;
 }
 
 /**

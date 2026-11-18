@@ -19,7 +19,7 @@ import { CharacterImage } from "./CharacterImage";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
 import { QuickChat } from "./QuickChat";
-import { QuickChatBadge } from "./QuickChatBadge";
+import { QuickChatBubble } from "./QuickChatBubble";
 import { QuickChatMuteButton } from "./QuickChatMuteButton";
 import { ReadyBadge } from "./ReadyBadge";
 import { ReadyButton } from "./ReadyButton";
@@ -262,6 +262,7 @@ export function Podium(props: {
                           >
                             <PlayerName player={r} />
                           </span>
+                          <QuickChatBubble playerId={r.playerId} />
                           <Show when={isMe(r.playerId)}>
                             <YouPill testId="mp-result-you" />
                             <span class="sr-only">(you)</span>
@@ -274,7 +275,6 @@ export function Podium(props: {
                             </span>
                           </Show>
                         </span>
-                        <QuickChatBadge playerId={r.playerId} />
                         <Show
                           when={
                             resultsReadyOn() &&

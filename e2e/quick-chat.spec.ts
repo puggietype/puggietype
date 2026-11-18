@@ -163,7 +163,7 @@ test("flag off in welcome: no quick-chat anywhere", async ({ page }) => {
   // a relay anyway (a stray frame) shows nothing
   mock.push({ type: "chat:preset", playerId: GUEST, presetId: "gg" });
   await page.waitForTimeout(300);
-  await expect(byTestId(page, "mp-quickchat-badge")).toHaveCount(0);
+  await expect(byTestId(page, "mp-quickchat-bubble")).toHaveCount(0);
 });
 
 test("lobby picker: 14 lines + 8 emotes, no free text, sends ids only, shows broadcasts", async ({
@@ -227,7 +227,7 @@ test("lobby picker: 14 lines + 8 emotes, no free text, sends ids only, shows bro
   await expect(
     page
       .locator('[data-testid="mp-player"][data-player-id="p-me"]')
-      .locator('[data-testid="mp-quickchat-badge"]'),
+      .locator('[data-testid="mp-quickchat-bubble"]'),
   ).toHaveText("gg");
 
   // an emote
@@ -248,13 +248,19 @@ test("lobby picker: 14 lines + 8 emotes, no free text, sends ids only, shows bro
   await expect(
     page
       .locator('[data-testid="mp-player"][data-player-id="p-guest"]')
-      .locator('[data-testid="mp-quickchat-badge"]'),
+      .locator('[data-testid="mp-quickchat-bubble"]'),
   ).toHaveText("good luck!");
 
   await dismissBanner(page);
   await page.setViewportSize({ width: 1280, height: 1000 });
   await page.screenshot({ path: `${SCREENS}/quickchat-lobby-picker.png` });
 
+  // axe reads the colour mid-transition otherwise (the hovered send button was
+  // still fading): flaky contrast reads, not a real violation
+  await page.mouse.move(0, 0);
+  await page.addStyleTag({
+    content: "*, *::before, *::after { transition: none !important; }",
+  });
   const results = await new AxeBuilder({ page })
     .include('[data-testid="mp-quickchat"]')
     .analyze();
@@ -309,7 +315,7 @@ test("hide quick-chat switch: hides everything and is remembered in localStorage
   ).toBe("1");
   mock.push({ type: "chat:preset", playerId: GUEST, presetId: "gg" });
   await page.waitForTimeout(300);
-  await expect(byTestId(page, "mp-quickchat-badge")).toHaveCount(0);
+  await expect(byTestId(page, "mp-quickchat-bubble")).toHaveCount(0);
 
   await byTestId(page, "mp-quickchat-hide").uncheck();
   await expect(byTestId(page, "mp-quickchat-line-gg")).toBeVisible();
@@ -442,11 +448,11 @@ test("phases: paused in countdown/racing, collapsed disclosure in results, back 
   await expect(byTestId(page, "mp-quickchat-line-gg")).toBeVisible();
 
   mock.push({ type: "chat:preset", playerId: GUEST, presetId: "gg" });
-  await expect(byTestId(page, "mp-quickchat-badge")).toHaveCount(1);
+  await expect(byTestId(page, "mp-quickchat-bubble")).toHaveCount(1);
 
   // a countdown starts: last race's bubbles go and nothing can be sent
   mock.push(roomState({ phase: "countdown" }));
-  await expect(byTestId(page, "mp-quickchat-badge")).toHaveCount(0);
+  await expect(byTestId(page, "mp-quickchat-bubble")).toHaveCount(0);
   mock.push({ type: "chat:preset", playerId: GUEST, presetId: "gg" });
   await page.waitForTimeout(300);
   await expect(byTestId(page, "mp-quickchat-feed-item")).toHaveCount(1);
@@ -507,7 +513,7 @@ test("phases: paused in countdown/racing, collapsed disclosure in results, back 
   await expect(
     page
       .locator('[data-testid="mp-result-row"]')
-      .locator('[data-testid="mp-quickchat-badge"]'),
+      .locator('[data-testid="mp-quickchat-bubble"]'),
   ).toHaveText("rematch?");
   await dismissBanner(page);
   await page.setViewportSize({ width: 1280, height: 1100 });
@@ -524,7 +530,7 @@ test("never in Quick Match rooms or Open Rooms", async ({ page }) => {
   await expect(byTestId(page, "mp-quickchat")).toHaveCount(0);
   qm.push({ type: "chat:preset", playerId: GUEST, presetId: "gg" });
   await page.waitForTimeout(300);
-  await expect(byTestId(page, "mp-quickchat-badge")).toHaveCount(0);
+  await expect(byTestId(page, "mp-quickchat-bubble")).toHaveCount(0);
 });
 
 test("never in an open (listed) room", async ({ page }) => {

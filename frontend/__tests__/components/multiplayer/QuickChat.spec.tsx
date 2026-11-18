@@ -19,8 +19,8 @@ vi.mock("../../../src/ts/multiplayer/race", () => race);
 const Store = await import("../../../src/ts/multiplayer/store");
 const { QuickChat } =
   await import("../../../src/ts/multiplayer/components/QuickChat");
-const { QuickChatBadge } =
-  await import("../../../src/ts/multiplayer/components/QuickChatBadge");
+const { QuickChatBubble, BUBBLE_MS, BUBBLE_FADE_MS } =
+  await import("../../../src/ts/multiplayer/components/QuickChatBubble");
 const { QuickChatMuteButton } =
   await import("../../../src/ts/multiplayer/components/QuickChatMuteButton");
 const { QUICK_CHAT_LINES, QUICK_CHAT_EMOTES } =
@@ -296,6 +296,24 @@ describe("QuickChat", () => {
     expect(getByTestId("mp-quickchat-panel")).not.toHaveClass("hidden");
   });
 
+  it("keeps the feed in a collapsed, keyboard-reachable history", () => {
+    Store.setQuickChatFeed([entry("them", "gg"), entry("me", "e-paw")]);
+    const { getByTestId } = renderPanel();
+    const history = getByTestId("mp-quickchat-history") as HTMLDetailsElement;
+    const summary = getByTestId("mp-quickchat-history-toggle");
+    expect(history.tagName).toBe("DETAILS");
+    expect(history.open).toBe(false);
+    // a native <summary> is focusable and toggles with Enter/Space
+    expect(summary.tagName).toBe("SUMMARY");
+    expect(history.firstElementChild).toBe(summary);
+    expect(summary).toHaveTextContent("recent quick-chat (2)");
+    expect(history).toContainElement(getByTestId("mp-quickchat-feed"));
+    fireEvent.click(summary);
+    expect(history.open).toBe(true);
+    Store.setQuickChatFeed((f) => [...f, entry("them", "brb")]);
+    expect(summary).toHaveTextContent("recent quick-chat (3)");
+  });
+
   describe("announcements", () => {
     it("go through the single role=status region", () => {
       vi.useFakeTimers();
@@ -341,8 +359,27 @@ describe("QuickChat", () => {
   });
 });
 
-describe("QuickChatBadge", () => {
+describe("QuickChatBubble", () => {
+  const bubble = (r: ReturnType<typeof render>): HTMLElement | null =>
+    r.queryByTestId("mp-quickchat-bubble");
+  const say = (
+    playerId: string,
+    presetId: QuickChatEntry["presetId"],
+  ): QuickChatEntry => {
+    const e = entry(playerId, presetId);
+    Store.setQuickChatLatest((m) => new Map(m).set(playerId, e));
+    return e;
+  };
+  const reducedMotion = (on: boolean): void => {
+    vi.stubGlobal(
+      "matchMedia",
+      (query: string) =>
+        ({ matches: on && query.includes("reduced-motion") }) as MediaQueryList,
+    );
+  };
+
   beforeEach(() => {
+    vi.useFakeTimers();
     clientFlags.clear();
     clientFlags.add("quickChat");
     Store.setServerFeatures({
@@ -352,36 +389,190 @@ describe("QuickChatBadge", () => {
       report: false,
       quickChat: true,
     });
+    Store.setMyId("me");
     Store.setQuickChatHiddenSignal(false);
+    Store.setMutedPlayersSignal(new Set<string>());
+    Store.setQuickChatFeed([]);
+    Store.setQuickChatLatest(new Map());
+    reducedMotion(false);
     setup();
-    Store.setQuickChatLatest(new Map([["them", entry("them", "e-heart")]]));
   });
   afterEach(() => {
     cleanup();
     Store.setRoom(undefined);
     Store.setQuickChatLatest(new Map());
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
-  it("shows the player's latest, hidden from assistive tech", () => {
-    const { getByTestId } = render(() => <QuickChatBadge playerId="them" />);
-    const badge = getByTestId("mp-quickchat-badge");
-    expect(badge).toHaveAttribute("aria-hidden", "true");
-    expect(badge).toHaveAttribute("data-preset-id", "e-heart");
-    expect(badge).toHaveTextContent("heart");
+  it("pops on arrival: decorative, click-through, the table text", () => {
+    const r = render(() => <QuickChatBubble playerId="them" />);
+    expect(bubble(r)).toBeNull();
+    say("them", "e-heart");
+    const b = bubble(r) as HTMLElement;
+    expect(b).toHaveAttribute("aria-hidden", "true");
+    expect(b).toHaveClass("pointer-events-none", "qc-bubble", "min-w-12");
+    expect(b).toHaveAttribute("data-player-id", "them");
+    expect(b).toHaveAttribute("data-preset-id", "e-heart");
+    expect(b).toHaveTextContent("heart");
+    expect(b.querySelector(".fa-heart")).not.toBeNull();
   });
 
-  it("is absent for players without one, when hidden or flag off", () => {
-    const other = render(() => <QuickChatBadge playerId="me" />);
-    expect(other.queryByTestId("mp-quickchat-badge")).toBeNull();
-    other.unmount();
+  it("fades for the last 250ms and is gone at 4s", () => {
+    const r = render(() => <QuickChatBubble playerId="them" />);
+    say("them", "gg");
+    vi.advanceTimersByTime(BUBBLE_MS - BUBBLE_FADE_MS - 1);
+    expect(bubble(r)).not.toHaveAttribute("data-fading");
+    expect(bubble(r)).not.toHaveClass("opacity-0");
+    vi.advanceTimersByTime(1);
+    expect(bubble(r)).toHaveAttribute("data-fading", "true");
+    expect(bubble(r)).toHaveClass("opacity-0");
+    vi.advanceTimersByTime(BUBBLE_FADE_MS - 1);
+    expect(bubble(r)).not.toBeNull();
+    vi.advanceTimersByTime(1);
+    expect(bubble(r)).toBeNull();
+  });
+
+  it("a new message from the same sender replaces it and restarts the 4s", () => {
+    const r = render(() => <QuickChatBubble playerId="them" />);
+    say("them", "gg");
+    const first = bubble(r);
+    vi.advanceTimersByTime(3900);
+    expect(bubble(r)).toHaveAttribute("data-fading", "true");
+    say("them", "gg");
+    expect(r.getAllByTestId("mp-quickchat-bubble")).toHaveLength(1);
+    // a fresh element, so the pop plays again, and no longer fading
+    expect(bubble(r)).not.toBe(first);
+    expect(bubble(r)).not.toHaveAttribute("data-fading");
+    say("them", "e-paw");
+    expect(bubble(r)).toHaveAttribute("data-preset-id", "e-paw");
+    vi.advanceTimersByTime(BUBBLE_MS - 1);
+    expect(bubble(r)).not.toBeNull();
+    vi.advanceTimersByTime(1);
+    expect(bubble(r)).toBeNull();
+  });
+
+  it("another player's message does not touch this bubble's timer", () => {
+    const r = render(() => <QuickChatBubble playerId="them" />);
+    say("them", "gg");
+    vi.advanceTimersByTime(3000);
+    say("me", "thanks");
+    vi.advanceTimersByTime(1000);
+    expect(bubble(r)).toBeNull();
+  });
+
+  it("a remount shows only what is left of the 4s", () => {
+    say("them", "gg");
+    vi.advanceTimersByTime(3000);
+    const r = render(() => <QuickChatBubble playerId="them" />);
+    expect(bubble(r)).not.toBeNull();
+    vi.advanceTimersByTime(1000);
+    expect(bubble(r)).toBeNull();
+    r.unmount();
+    vi.advanceTimersByTime(1);
+    const late = render(() => <QuickChatBubble playerId="them" />);
+    expect(bubble(late)).toBeNull();
+  });
+
+  it.each(["countdown", "racing"] as const)(
+    "never renders while %s",
+    (phase) => {
+      setup(phase);
+      const r = render(() => <QuickChatBubble playerId="them" />);
+      say("them", "gg");
+      expect(bubble(r)).toBeNull();
+      setup("results");
+      expect(bubble(r)).not.toBeNull();
+      setup(phase);
+      expect(bubble(r)).toBeNull();
+    },
+  );
+
+  it("a muted sender never gets one; muting removes it at once", () => {
+    Store.setMutedPlayersSignal(new Set(["them"]));
+    const r = render(() => <QuickChatBubble playerId="them" />);
+    say("them", "gg");
+    expect(bubble(r)).toBeNull();
+    Store.setMutedPlayersSignal(new Set<string>());
+    say("them", "gg");
+    expect(bubble(r)).not.toBeNull();
+    Store.setMutedPlayersSignal(new Set(["them"]));
+    expect(bubble(r)).toBeNull();
+  });
+
+  it("hide quick-chat removes visible bubbles at once; flag off shows none", () => {
+    const r = render(() => <QuickChatBubble playerId="them" />);
+    say("them", "gg");
+    expect(bubble(r)).not.toBeNull();
     Store.setQuickChatHiddenSignal(true);
-    const hidden = render(() => <QuickChatBadge playerId="them" />);
-    expect(hidden.queryByTestId("mp-quickchat-badge")).toBeNull();
-    hidden.unmount();
+    expect(bubble(r)).toBeNull();
     Store.setQuickChatHiddenSignal(false);
     clientFlags.clear();
-    const off = render(() => <QuickChatBadge playerId="them" />);
-    expect(off.queryByTestId("mp-quickchat-badge")).toBeNull();
+    const off = render(() => <QuickChatBubble playerId="them" />);
+    say("them", "gg");
+    expect(bubble(off)).toBeNull();
+  });
+
+  it("reduced motion: no fade, still removed at 4s", () => {
+    reducedMotion(true);
+    const r = render(() => <QuickChatBubble playerId="them" />);
+    say("them", "gg");
+    vi.advanceTimersByTime(BUBBLE_MS - 1);
+    expect(bubble(r)).not.toHaveAttribute("data-fading");
+    expect(bubble(r)).not.toHaveClass("opacity-0");
+    vi.advanceTimersByTime(1);
+    expect(bubble(r)).toBeNull();
+  });
+
+  it("clears its timers on unmount", () => {
+    const r = render(() => <QuickChatBubble playerId="them" />);
+    say("them", "gg");
+    expect(vi.getTimerCount()).toBe(2);
+    r.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("bubbles stay aria-hidden; the live region announces each message once", async () => {
+    const room = Store.room() as RoomState;
+    const r = render(() => (
+      <>
+        <QuickChat room={room} variant="lobby" />
+        <QuickChatBubble playerId="them" />
+      </>
+    ));
+    const live = r.getByTestId("mp-quickchat-live");
+    const said: string[] = [];
+    const observer = new MutationObserver(() => {
+      if (live.textContent !== "") said.push(live.textContent ?? "");
+    });
+    observer.observe(live, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    const arrive = (presetId: QuickChatEntry["presetId"]): void => {
+      const e = say("them", presetId);
+      Store.setQuickChatFeed((f) => [...f, e]);
+    };
+    arrive("gg");
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
+    expect(said).toEqual(["themPug says: gg"]);
+    const b = bubble(r) as HTMLElement;
+    expect(b.closest("[aria-hidden=true]")).toBe(b);
+    expect(b.querySelector("[aria-live],[role=status]")).toBeNull();
+    expect(r.container.querySelectorAll("[aria-live]")).toHaveLength(1);
+    // the bubble's own timers and removal never re-announce
+    vi.advanceTimersByTime(BUBBLE_MS + 2000);
+    await Promise.resolve();
+    expect(bubble(r)).toBeNull();
+    arrive("e-heart");
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
+    vi.advanceTimersByTime(BUBBLE_MS);
+    await Promise.resolve();
+    expect(said).toEqual(["themPug says: gg", "themPug sent an emote: heart"]);
+    observer.disconnect();
   });
 });
 
