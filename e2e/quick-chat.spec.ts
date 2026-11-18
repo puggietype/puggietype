@@ -24,7 +24,30 @@ const GUEST = "p-guest";
 
 type Phase = "lobby" | "countdown" | "racing" | "results";
 
-function player(id: string, name: string, color: string, isBot = false) {
+type MockPlayer = {
+  id: string;
+  name: string;
+  isBot: boolean;
+  color: string;
+  ready: boolean;
+  inLobby: boolean;
+  connected: boolean;
+  character: string;
+  progress: {
+    wordIndex: number;
+    charIndex: number;
+    testMs: number;
+    wpm: number;
+  };
+  finished: boolean;
+};
+
+function player(
+  id: string,
+  name: string,
+  color: string,
+  isBot = false,
+): MockPlayer {
   return {
     id,
     name,
@@ -41,7 +64,7 @@ function player(id: string, name: string, color: string, isBot = false) {
 
 type RoomOpts = { phase?: Phase; open?: boolean; quickMatch?: boolean };
 
-function roomState(opts: RoomOpts = {}) {
+function roomState(opts: RoomOpts = {}): Record<string, unknown> {
   return {
     type: "room:state",
     code: "TESTAB",
@@ -128,7 +151,7 @@ async function dismissBanner(page: Page): Promise<void> {
   }
 }
 
-const chatFrames = (mock: Mock) =>
+const chatFrames = (mock: Mock): Record<string, unknown>[] =>
   mock.received.filter((m) => m["type"] === "chat:preset");
 
 test("flag off in welcome: no quick-chat anywhere", async ({ page }) => {

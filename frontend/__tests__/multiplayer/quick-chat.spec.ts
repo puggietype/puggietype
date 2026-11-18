@@ -161,6 +161,23 @@ describe("QUICK_CHAT_ITEMS", () => {
     expect("e-peace" in QUICK_CHAT_ITEMS).toBe(false);
   });
 
+  it("maps every emote id to exactly this Font Awesome icon and label (an icon swap needs Legal's re-review)", () => {
+    expect(
+      Object.fromEntries(
+        QUICK_CHAT_EMOTE_ITEMS.map((i) => [i.id, [i.icon, i.text]]),
+      ),
+    ).toEqual({
+      "e-paw": ["fa-paw", "paw"],
+      "e-heart": ["fa-heart", "heart"],
+      "e-thumbs-up": ["fa-thumbs-up", "thumbs up"],
+      "e-smile": ["fa-smile", "smile"],
+      "e-wow": ["fa-grin-stars", "wow"],
+      "e-treat": ["fa-bone", "treat"],
+      "e-handshake": ["fa-handshake", "handshake"],
+      "e-woof": ["fa-dog", "woof"],
+    });
+  });
+
   it("each item has its id, kind, short lowercase text; emotes have an icon", () => {
     for (const [id, item] of Object.entries(QUICK_CHAT_ITEMS)) {
       expect(item.id).toBe(id);

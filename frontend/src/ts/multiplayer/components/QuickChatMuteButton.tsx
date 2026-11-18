@@ -32,7 +32,7 @@ export function QuickChatMuteButton(props: {
       <span class="inline-flex shrink-0 items-center gap-1">
         <Show when={muted()}>
           <span
-            class="text-sm text-sub"
+            class="text-sm text-text"
             data-testid="mp-quickchat-muted-chip"
             data-player-id={props.player.id}
           >

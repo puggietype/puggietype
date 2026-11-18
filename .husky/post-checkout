@@ -1,5 +1,8 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+# a fresh worktree has no .husky/_ until `pnpm i` runs husky install: skip quietly
+husky_sh="$(dirname -- "$0")/_/husky.sh"
+[ -f "$husky_sh" ] || exit 0
+. "$husky_sh"
 
 # branch checkouts only, not file checkouts
 [ "$3" = "1" ] || exit 0

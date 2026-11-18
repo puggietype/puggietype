@@ -145,13 +145,13 @@ export function QuickChat(props: {
         <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <Show
             when={props.variant === "results" && !quickChatHidden()}
-            fallback={<h3 class="text-sm text-sub">quick chat</h3>}
+            fallback={<h3 class="text-sm text-text">quick chat</h3>}
           >
             <Button
               variant="text"
               fa={{ icon: expanded() ? "fa-chevron-up" : "fa-chevron-down" }}
               text="quick chat"
-              class="py-1 text-sm"
+              class="py-1 text-sm text-text"
               dataset={{
                 "data-testid": "mp-quickchat-toggle",
                 "aria-expanded": String(expanded()),
@@ -160,7 +160,7 @@ export function QuickChat(props: {
               onClick={() => setExpanded(!expanded())}
             />
           </Show>
-          <label class="flex cursor-pointer items-center gap-2 text-sm text-sub">
+          <label class="flex min-h-6 cursor-pointer items-center gap-2 py-0.5 text-sm text-text">
             <input
               type="checkbox"
               role="switch"
@@ -190,7 +190,9 @@ export function QuickChat(props: {
                   class="flex items-center gap-2 text-sm text-text"
                   data-testid="mp-quickchat-latest"
                 >
-                  <span class="text-sub">{nameOf(e().playerId)}</span>
+                  <span class="font-bold text-text">
+                    {nameOf(e().playerId)}
+                  </span>
                   <QuickChatFace item={quickChatItem(e().presetId)} />
                 </p>
               )}
@@ -217,7 +219,7 @@ export function QuickChat(props: {
                     data-player-id={e.playerId}
                     data-preset-id={e.presetId}
                   >
-                    <span class="min-w-0 truncate text-sub">
+                    <span class="min-w-0 truncate font-bold text-text">
                       {nameOf(e.playerId)}
                     </span>
                     <QuickChatFace item={quickChatItem(e.presetId)} />
@@ -243,7 +245,10 @@ export function QuickChat(props: {
                 {(item) => <PickerButton item={item} />}
               </For>
             </div>
-            <p class="min-h-5 text-sm text-sub" data-testid="mp-quickchat-hint">
+            <p
+              class="min-h-5 text-sm text-text"
+              data-testid="mp-quickchat-hint"
+            >
               {hint()}
             </p>
           </div>
