@@ -12,6 +12,7 @@ export const FEATURE_FLAGS = [
   "openRooms",
   "quickMatch",
   "report",
+  "quickChat",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 

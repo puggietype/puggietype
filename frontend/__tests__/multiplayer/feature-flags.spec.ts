@@ -46,6 +46,26 @@ describe("feature flags", () => {
     expect([...flags].sort()).toEqual(["openRooms", "quickMatch", "report"]);
   });
 
+  it("quickChat is on by default, off via ?flags=none or a list without it", () => {
+    expect(FEATURE_FLAGS).toContain("quickChat");
+    expect(resolveFlags("", memoryStorage(), undefined).has("quickChat")).toBe(
+      true,
+    );
+    expect(
+      resolveFlags("?flags=none", memoryStorage(), undefined).has("quickChat"),
+    ).toBe(false);
+    expect(
+      resolveFlags("?flags=report", memoryStorage(), undefined).has(
+        "quickChat",
+      ),
+    ).toBe(false);
+    expect(
+      resolveFlags("?flags=quickChat", memoryStorage(), undefined).has(
+        "quickChat",
+      ),
+    ).toBe(true);
+  });
+
   it("default set is FEATURE_FLAGS minus DEFAULT_OFF_FLAGS", () => {
     const expected = FEATURE_FLAGS.filter(
       (f) => !DEFAULT_OFF_FLAGS.includes(f),
