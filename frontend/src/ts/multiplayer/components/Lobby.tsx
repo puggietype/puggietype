@@ -48,6 +48,9 @@ import { CharacterImage } from "./CharacterImage";
 import { CharacterPicker } from "./CharacterPicker";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
+import { QuickChat } from "./QuickChat";
+import { QuickChatBadge } from "./QuickChatBadge";
+import { QuickChatMuteButton } from "./QuickChatMuteButton";
 import { ReadyBadge } from "./ReadyBadge";
 import { ReadyButton } from "./ReadyButton";
 import { ReadyCount } from "./ReadyCount";
@@ -405,6 +408,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                   <Show when={p.id === myId()}>
                     <span class="shrink-0 text-sm text-sub">(you)</span>
                   </Show>
+                  <QuickChatBadge playerId={p.id} />
                   <Show when={p.id === props.room.hostId}>
                     <span
                       class="shrink-0 text-main"
@@ -422,6 +426,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                   >
                     <ReadyBadge player={p} racing={racing()} />
                   </Show>
+                  <QuickChatMuteButton room={props.room} player={p} />
                   <ReportButton room={props.room} player={p} />
                   <KickButton
                     room={props.room}
@@ -433,6 +438,7 @@ export function Lobby(props: { room: RoomState }): JSXElement {
             )}
           </For>
         </ul>
+        <QuickChat room={props.room} variant="lobby" />
         <Show when={!isHost()}>
           <ReadyButton
             ready={me()?.ready === true}

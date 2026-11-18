@@ -18,6 +18,9 @@ import { characterSelectOn, isHost, myId, resultsReadyOn } from "../store";
 import { CharacterImage } from "./CharacterImage";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
+import { QuickChat } from "./QuickChat";
+import { QuickChatBadge } from "./QuickChatBadge";
+import { QuickChatMuteButton } from "./QuickChatMuteButton";
 import { ReadyBadge } from "./ReadyBadge";
 import { ReadyButton } from "./ReadyButton";
 import { ReadyCount } from "./ReadyCount";
@@ -271,6 +274,7 @@ export function Podium(props: {
                             </span>
                           </Show>
                         </span>
+                        <QuickChatBadge playerId={r.playerId} />
                         <Show
                           when={
                             resultsReadyOn() &&
@@ -299,6 +303,14 @@ export function Podium(props: {
                             <Fa icon="fa-flag" />
                           </span>
                         </Show>
+                        <QuickChatMuteButton
+                          room={props.room}
+                          player={{
+                            id: r.playerId,
+                            name: r.name,
+                            isBot: r.isBot,
+                          }}
+                        />
                         <ReportButton
                           room={props.room}
                           align="left"
@@ -444,6 +456,7 @@ export function Podium(props: {
             />
           </div>
         </Show>
+        <QuickChat room={props.room} variant="results" />
       </div>
     </div>
   );

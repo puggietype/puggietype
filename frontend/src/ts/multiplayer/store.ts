@@ -2,7 +2,17 @@ import { createSignal } from "solid-js";
 
 import { loadCharacter, saveCharacter } from "./character-storage";
 import { isFlagEnabled } from "./feature-flags";
+import { leaderboardSubmitBlocked } from "./leaderboards";
 import type { RoomsList } from "./open-rooms";
+import {
+  canSendQuickChat,
+  loadHidden,
+  loadMuted,
+  quickChatAvailable,
+  type QuickChatContext,
+  type QuickChatEntry,
+} from "./quick-chat";
+import type { QuickChatId } from "./quick-chat-presets";
 import type { QueueState } from "./quick-match";
 import {
   DEFAULT_CHARACTER,
@@ -98,6 +108,92 @@ export function quickMatchOn(): boolean {
 /** player reports are on here (client flag) and on the server we talk to */
 export function reportOn(): boolean {
   return isFlagEnabled("report") && serverFeatures()?.report === true;
+}
+
+/** quick-chat is on here (client flag) and on the server we talk to */
+export function quickChatOn(): boolean {
+  return isFlagEnabled("quickChat") && serverFeatures()?.quickChat === true;
+}
+
+/** this tab is in the kids flow (a kids guide page, or arrived from one): quick-chat never shows */
+export function kidsFlow(): boolean {
+  try {
+    return leaderboardSubmitBlocked(
+      window.location.pathname,
+      document.referrer,
+      sessionStorage,
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function browserStorage(
+  which: "session" | "local",
+): Storage | undefined {
+  try {
+    return which === "session" ? sessionStorage : localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+/** players we muted for quick-chat (this tab only; sessionStorage) */
+export const [mutedPlayers, setMutedPlayersSignal] = createSignal<
+  ReadonlySet<string>
+>(new Set(loadMuted(browserStorage("session"))), { name: "mutedPlayers" });
+
+/** "hide quick-chat" (localStorage) */
+export const [quickChatHidden, setQuickChatHiddenSignal] = createSignal(
+  loadHidden(browserStorage("local")),
+  { name: "quickChatHidden" },
+);
+
+/** the last few quick-chat messages in this room, newest last (memory only) */
+export const [quickChatFeed, setQuickChatFeed] = createSignal<
+  readonly QuickChatEntry[]
+>([], { name: "quickChatFeed" });
+
+/** each player's most recent quick-chat, shown next to their name until the next race starts */
+export const [quickChatLatest, setQuickChatLatest] = createSignal<
+  ReadonlyMap<string, QuickChatEntry>
+>(new Map(), { name: "quickChatLatest" });
+
+/** send cooldown (timestamp ms, 0 = none) and ids locked by the same-id repeat window */
+export const [quickChatCooldownUntil, setQuickChatCooldownUntil] = createSignal(
+  0,
+  { name: "quickChatCooldownUntil" },
+);
+export const [quickChatRepeatLocked, setQuickChatRepeatLocked] = createSignal<
+  ReadonlySet<QuickChatId>
+>(new Set(), { name: "quickChatRepeatLocked" });
+/** "slow down a moment": a send was refused; clears itself */
+export const [quickChatSlowHint, setQuickChatSlowHint] = createSignal(false, {
+  name: "quickChatSlowHint",
+});
+
+/** inputs to the pure visibility rules, read from the live signals */
+export function quickChatContext(): QuickChatContext {
+  const r = room();
+  return {
+    on: quickChatOn(),
+    kids: kidsFlow(),
+    room:
+      r === undefined
+        ? undefined
+        : { quickMatch: r.quickMatch, open: r.open, phase: r.phase },
+    hidden: quickChatHidden(),
+  };
+}
+
+/** the quick-chat panel belongs on screen (flag, private room, not kids); it may still be hidden by the player */
+export function quickChatAvailableNow(): boolean {
+  return quickChatAvailable(quickChatContext());
+}
+
+/** the picker can send right now (cooldown aside) */
+export function quickChatCanSendNow(): boolean {
+  return canSendQuickChat(quickChatContext());
 }
 
 /** our Quick Match wait, undefined when not queued */
