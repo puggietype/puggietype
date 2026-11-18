@@ -173,6 +173,8 @@ describe("legal-markdown", () => {
   it("has no stale no-chat claims on the guide pages and shows the Font Awesome credit (C6, L6)", () => {
     const read = (page: string): string =>
       readFileSync(path.join(srcDir, page), "utf8");
+    const terms = readFileSync(path.join(legalDir, "terms.md"), "utf-8");
+    const privacy = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     for (const page of [
       "faq.html",
       "guide/about.html",
@@ -188,7 +190,16 @@ describe("legal-markdown", () => {
     );
     const about = read("guide/about.html").replace(/\s+/g, " ");
     expect(about).toContain(
-      'Icons: <a href="https://fontawesome.com/license/free" rel="noopener">Font Awesome Free (fontawesome.com)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>; fonts <a href="https://openfontlicense.org/" rel="noopener">SIL OFL 1.1</a>; code <a href="https://opensource.org/license/mit" rel="noopener">MIT</a>',
+      'Icons: Font Awesome Free by Fonticons, Inc. (<a href="https://fontawesome.com/" rel="noopener">fontawesome.com</a>). Its icons are licensed under <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>, its fonts under <a href="https://openfontlicense.org/" rel="noopener">SIL OFL 1.1</a> and its code under <span style="white-space: nowrap"><a href="https://opensource.org/license/mit" rel="noopener">MIT</a>.</span>',
+    );
+    expect(read("guide/multiplayer.html")).toContain(
+      "There is no typed chat, and you can't type your own messages to other players. In private rooms, you can send quick-chat: fixed, friendly preset lines and emotes that anyone can mute or hide.",
+    );
+    expect(terms).toContain(
+      "Quick-chat isn't available in Quick Match or Open Rooms.",
+    );
+    expect(privacy).toContain(
+      'Your mutes are kept only in that browser tab and are dropped when the tab session ends, and your "hide quick-chat" choice stays in your browser until you turn it off or clear site data.',
     );
   });
 });
