@@ -59,10 +59,10 @@ describe("legal-markdown", () => {
     expect(md).not.toContain("server rejects");
     expect(md).not.toContain("no longer accepted");
     expect(md).not.toContain("separate 'Solo' board");
-    expect(md).toContain("Last updated: November 10, 2026.");
+    expect(md).toContain("Last updated: November 18, 2026.");
     const faq = readFileSync(path.join(srcDir, "faq.html"), "utf8");
     const faqAnswer =
-      "Your settings stay in your browser. Ranks shows solo test scores that players chose to submit: after a completed solo test, the score is sent only when you press Submit score. A score the server adds shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends; all-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
+      "Your settings stay in your browser. Ranks shows solo test scores that players chose to submit: after a completed solo test, the score is sent only when you press Submit score. A score the server adds shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends. Scores from an ended period stop showing right away, and the stored rows are deleted automatically, usually within an hour. All-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
     expect(faq.split(faqAnswer).length - 1).toBe(2);
     for (const page of [
       "faq.html",
@@ -129,11 +129,66 @@ describe("legal-markdown", () => {
     expect(md).not.toContain("no analytics scripts");
   });
 
-  it("contains no chat clauses", () => {
-    for (const name of ["terms", "privacy"]) {
-      const md = readFileSync(path.join(legalDir, `${name}.md`), "utf-8");
-      expect(md).not.toMatch(/quick-chat messages|free-text nickname/i);
-      expect(md).toContain("There is no chat");
+  it("has Legal's quick-chat clauses (C1-C5, L3) and no stale no-chat claims", () => {
+    const terms = readFileSync(path.join(legalDir, "terms.md"), "utf-8");
+    const privacy = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    for (const md of [terms, privacy]) {
+      expect(md).not.toContain("There is no chat");
+      expect(md).not.toMatch(/free-text nickname/i);
     }
+    // C1 + C2
+    expect(terms).toContain(
+      "In private rooms (in the lobby and on the results screen) you can send quick-chat:",
+    );
+    expect(terms).not.toContain("In private lobbies you can send quick-chat");
+    expect(terms).toContain(
+      "Like the rest of multiplayer, quick-chat is only for players aged 13 and over. To report misuse, use the report button or email support@puggietype.com.",
+    );
+    // C3 + C4
+    expect(privacy).toContain(
+      "with the random player ID for your current session (which your lobby already uses to show who's who)",
+    );
+    expect(privacy).not.toContain("already see)");
+    expect(privacy).toContain(
+      "We keep three anonymous daily totals: how many quick-chat lines and emotes were sent, and how many were blocked by our rate limits. These totals don't say who sent anything, in which lobby, or which preset was used.",
+    );
+    expect(privacy).not.toContain("anonymous daily count");
+    // C5
+    expect(privacy).toContain(
+      '| Quick-chat mutes (sessionStorage "puggie-qc-muted") |',
+    );
+    expect(privacy).toContain(
+      '| "Hide quick-chat" choice (localStorage "puggie-qc-hidden") |',
+    );
+    expect(privacy).toContain("the three anonymous daily quick-chat totals");
+    // Legal's purge sentence, on /privacy and /faq
+    const purge =
+      "Scores from an ended period stop showing right away, and the stored rows are deleted automatically, usually within an hour.";
+    expect(privacy).toContain(purge);
+    expect(readFileSync(path.join(srcDir, "faq.html"), "utf8")).toContain(
+      purge,
+    );
+  });
+
+  it("has no stale no-chat claims on the guide pages and shows the Font Awesome credit (C6, L6)", () => {
+    const read = (page: string): string =>
+      readFileSync(path.join(srcDir, page), "utf8");
+    for (const page of [
+      "faq.html",
+      "guide/about.html",
+      "guide/multiplayer.html",
+      "guide/typing-for-kids.html",
+    ]) {
+      expect(read(page), page).not.toMatch(
+        /no chat|moderation or chat|accounts or chat/,
+      );
+    }
+    expect(read("guide/typing-for-kids.html")).toContain(
+      "accounts or typed chat (only fixed, friendly preset messages)",
+    );
+    const about = read("guide/about.html").replace(/\s+/g, " ");
+    expect(about).toContain(
+      'Icons: <a href="https://fontawesome.com/license/free" rel="noopener">Font Awesome Free (fontawesome.com)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>; fonts <a href="https://openfontlicense.org/" rel="noopener">SIL OFL 1.1</a>; code <a href="https://opensource.org/license/mit" rel="noopener">MIT</a>',
+    );
   });
 });
