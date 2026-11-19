@@ -8,7 +8,8 @@ import {
 import { cn } from "../../utils/cn";
 
 /**
- * One dog frame, inlined so theme colours apply (outline = --pug-ink).
+ * One dog frame, inlined so theme colours apply (outline = --pug-ink); full
+ * colour in every theme (.dog-color, styles/character-color.scss).
  * Decorative unless `alt` is given.
  */
 export function CharacterImage(props: {
@@ -25,7 +26,10 @@ export function CharacterImage(props: {
   );
   return (
     <div
-      class={cn("text-(--pug-ink) [&>svg]:h-full [&>svg]:w-full", props.class)}
+      class={cn(
+        "dog-color text-(--pug-ink) [&>svg]:h-full [&>svg]:w-full",
+        props.class,
+      )}
       data-testid={props.testId}
       data-character={props.character}
       role={props.alt !== undefined ? "img" : undefined}

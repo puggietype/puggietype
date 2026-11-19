@@ -7,6 +7,7 @@ import {
   type Page,
 } from "@playwright/test";
 
+import { mockServer, openLobby } from "./mock-room";
 import { skipNgrokWarning } from "./tunnel";
 
 // Character select (spec §11). Needs the WS server with
@@ -176,3 +177,51 @@ test("flags off: no picker, no opponent dogs", async ({ browser }) => {
   await expect(byTestId(page, "mp-player-character")).toHaveCount(0);
   await ctx.close();
 });
+
+// selection cue in full-colour dogs: ring + scale + check, in mono and colour
+// themes. /ws mocked (page.routeWebSocket), no server needed.
+for (const theme of ["serika_dark", "puggie_dark", "serika", "nord"]) {
+  test(`mocked: selected dog shows ring and check (${theme})`, async ({
+    page,
+  }) => {
+    await mockServer(page, { characterSelect: true });
+    await openLobby(page, theme);
+    const corgie = byTestId(page, "mp-character-corgie");
+    await corgie.click();
+    await expect(corgie).toHaveAttribute("aria-checked", "true");
+    const check = corgie.locator('[data-testid="mp-character-check"]');
+    await expect(check).toBeVisible();
+    await expect(check).toHaveAttribute("aria-hidden", "true");
+    await expect(check.locator("i.fa-check")).toBeVisible();
+    await expect(
+      page.locator('[data-testid="mp-character-check"]'),
+    ).toHaveCount(1);
+    // after the transition
+    await expect(corgie).toHaveCSS("scale", "1.05");
+    await expect(corgie).toHaveCSS("border-top-width", "2px");
+    const look = await corgie.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return {
+        border: s.borderTopColor,
+        width: s.borderTopWidth,
+        bg: s.backgroundColor,
+      };
+    });
+    expect(look.width).toBe("2px");
+    expect(look.border).not.toBe(look.bg);
+    expect(look.border).not.toMatch(/rgba\(.*, 0\)$/);
+    // hovering keeps the ring
+    await corgie.hover();
+    await expect(corgie).toHaveCSS("border-top-color", look.border);
+    // not selected: no ring, no check
+    const pug = byTestId(page, "mp-character-puggie");
+    await page.mouse.move(1, 1);
+    await expect(pug).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
+    await expect(pug.locator('[data-testid="mp-character-check"]')).toHaveCount(
+      0,
+    );
+    await byTestId(page, "mp-character-card").screenshot({
+      path: `${process.env["SCREENS_DIR"] ?? "e2e/screens"}/charselect-${theme}.png`,
+    });
+  });
+}

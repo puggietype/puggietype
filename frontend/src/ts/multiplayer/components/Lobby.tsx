@@ -49,7 +49,7 @@ import { CharacterPicker } from "./CharacterPicker";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
 import { QuickChat } from "./QuickChat";
-import { QuickChatBadge } from "./QuickChatBadge";
+import { QuickChatBubble } from "./QuickChatBubble";
 import { QuickChatMuteButton } from "./QuickChatMuteButton";
 import { ReadyBadge } from "./ReadyBadge";
 import { ReadyButton } from "./ReadyButton";
@@ -393,22 +393,30 @@ export function Lobby(props: { room: RoomState }): JSXElement {
                       </Show>
                     </span>
                   </Show>
+                  {/* the bubble wraps under the name rather than squeezing it */}
                   <span
                     class={cn(
-                      "leading-tight font-(--font) text-text",
-                      // humans keep the one-line truncate; bot names never shrink
-                      // below min-content (halves may still wrap between them)
-                      isBot(p) ? "min-w-min" : "min-w-0 truncate",
+                      "flex flex-wrap items-center gap-x-1 gap-y-1",
+                      isBot(p) ? "min-w-min" : "min-w-0",
                     )}
-                    title={p.name}
-                    aria-label={isBot(p) ? displayName(p) : undefined}
                   >
-                    <PlayerName player={p} />
+                    <span
+                      class={cn(
+                        "leading-tight font-(--font) text-text",
+                        // humans keep the one-line truncate; bot names never shrink
+                        // below min-content (halves may still wrap between them)
+                        isBot(p) ? "min-w-min" : "min-w-0 truncate",
+                      )}
+                      title={p.name}
+                      aria-label={isBot(p) ? displayName(p) : undefined}
+                    >
+                      <PlayerName player={p} />
+                    </span>
+                    <QuickChatBubble playerId={p.id} />
                   </span>
                   <Show when={p.id === myId()}>
                     <span class="shrink-0 text-sm text-sub">(you)</span>
                   </Show>
-                  <QuickChatBadge playerId={p.id} />
                   <Show when={p.id === props.room.hostId}>
                     <span
                       class="shrink-0 text-main"

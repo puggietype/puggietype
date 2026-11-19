@@ -173,3 +173,22 @@
     color: transparent;
   }
 }
+
+// quick-chat bubble pop (QuickChatBubble.tsx); the prefers-reduced-motion rule in
+// media-queries.scss switches it off, the bubble then just appears
+.qc-bubble {
+  transform-origin: 0 50%;
+  // backwards, not both: a held opacity: 1 would beat the fade-out class
+  animation: qc-pop 220ms cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+}
+
+@keyframes qc-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}

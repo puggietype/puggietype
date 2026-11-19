@@ -154,7 +154,7 @@ export const [quickChatFeed, setQuickChatFeed] = createSignal<
   readonly QuickChatEntry[]
 >([], { name: "quickChatFeed" });
 
-/** each player's most recent quick-chat, shown next to their name until the next race starts */
+/** each player's most recent quick-chat (a short-lived bubble after their name); cleared when the next race starts */
 export const [quickChatLatest, setQuickChatLatest] = createSignal<
   ReadonlyMap<string, QuickChatEntry>
 >(new Map(), { name: "quickChatLatest" });

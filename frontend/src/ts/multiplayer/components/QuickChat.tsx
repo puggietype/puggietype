@@ -206,27 +206,36 @@ export function QuickChat(props: {
             )}
             data-testid="mp-quickchat-panel"
           >
-            <ul
-              class="grid min-h-6 gap-1 text-sm"
-              aria-label="recent quick-chat"
-              data-testid="mp-quickchat-feed"
-            >
-              <For each={quickChatFeed()}>
-                {(e) => (
-                  <li
-                    class="flex min-w-0 flex-wrap items-center gap-x-2 text-text"
-                    data-testid="mp-quickchat-feed-item"
-                    data-player-id={e.playerId}
-                    data-preset-id={e.presetId}
-                  >
-                    <span class="min-w-0 truncate font-bold text-text">
-                      {nameOf(e.playerId)}
-                    </span>
-                    <QuickChatFace item={quickChatItem(e.presetId)} />
-                  </li>
-                )}
-              </For>
-            </ul>
+            {/* bubbles show each message for a moment; the history keeps the last few */}
+            <details class="text-sm" data-testid="mp-quickchat-history">
+              <summary
+                class="min-h-6 w-fit cursor-pointer py-0.5 text-text"
+                data-testid="mp-quickchat-history-toggle"
+              >
+                recent quick-chat ({quickChatFeed().length})
+              </summary>
+              <ul
+                class="grid min-h-6 gap-1 text-sm"
+                aria-label="recent quick-chat"
+                data-testid="mp-quickchat-feed"
+              >
+                <For each={quickChatFeed()}>
+                  {(e) => (
+                    <li
+                      class="flex min-w-0 flex-wrap items-center gap-x-2 text-text"
+                      data-testid="mp-quickchat-feed-item"
+                      data-player-id={e.playerId}
+                      data-preset-id={e.presetId}
+                    >
+                      <span class="min-w-0 truncate font-bold text-text">
+                        {nameOf(e.playerId)}
+                      </span>
+                      <QuickChatFace item={quickChatItem(e.presetId)} />
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </details>
             <div
               class="flex flex-wrap gap-2"
               role="group"

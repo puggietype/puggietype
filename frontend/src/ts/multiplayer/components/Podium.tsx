@@ -19,7 +19,7 @@ import { CharacterImage } from "./CharacterImage";
 import { KickButton } from "./KickButton";
 import { PlayerName } from "./PlayerName";
 import { QuickChat } from "./QuickChat";
-import { QuickChatBadge } from "./QuickChatBadge";
+import { QuickChatBubble } from "./QuickChatBubble";
 import { QuickChatMuteButton } from "./QuickChatMuteButton";
 import { ReadyBadge } from "./ReadyBadge";
 import { ReadyButton } from "./ReadyButton";
@@ -249,23 +249,35 @@ export function Podium(props: {
                               testId="mp-result-character"
                             />
                           </Show>
+                          {/* the bubble wraps under name + You rather than squeezing them
+                              (shown last; in the DOM it stays right after the name) */}
                           <span
                             class={cn(
-                              "leading-tight text-text",
-                              isMe(r.playerId) && "font-bold",
-                              // bot halves may wrap between them, never inside
-                              isBot(r) ? "min-w-min" : "min-w-0 truncate",
+                              "flex flex-wrap items-center gap-x-2 gap-y-1 [&>.qc-bubble]:order-1",
+                              isBot(r) ? "min-w-min" : "min-w-0",
                             )}
-                            title={r.name}
-                            aria-label={isBot(r) ? displayName(r) : undefined}
-                            data-testid="mp-result-name"
                           >
-                            <PlayerName player={r} />
+                            <span
+                              class={cn(
+                                "leading-tight text-text",
+                                // own name truncates beside the You pill (2.75rem = pill + gap)
+                                isMe(r.playerId) &&
+                                  "max-w-[calc(100%-2.75rem)] font-bold",
+                                // bot halves may wrap between them, never inside
+                                isBot(r) ? "min-w-min" : "min-w-0 truncate",
+                              )}
+                              title={r.name}
+                              aria-label={isBot(r) ? displayName(r) : undefined}
+                              data-testid="mp-result-name"
+                            >
+                              <PlayerName player={r} />
+                            </span>
+                            <QuickChatBubble playerId={r.playerId} />
+                            <Show when={isMe(r.playerId)}>
+                              <YouPill testId="mp-result-you" />
+                              <span class="sr-only">(you)</span>
+                            </Show>
                           </span>
-                          <Show when={isMe(r.playerId)}>
-                            <YouPill testId="mp-result-you" />
-                            <span class="sr-only">(you)</span>
-                          </Show>
                           <Show when={!r.finished}>
                             <span
                               class={cn("shrink-0 text-sm", subCls(r.playerId))}
@@ -274,7 +286,6 @@ export function Podium(props: {
                             </span>
                           </Show>
                         </span>
-                        <QuickChatBadge playerId={r.playerId} />
                         <Show
                           when={
                             resultsReadyOn() &&

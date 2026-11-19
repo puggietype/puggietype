@@ -1,14 +1,17 @@
 import { createSignal, For, JSXElement, onCleanup, Show } from "solid-js";
 
+import { Fa } from "../../components/common/Fa";
 import {
   CHARACTERS,
   characterLabel,
   characterName,
   type Character,
 } from "../../components/pages/test/character-frames";
+import { getTheme } from "../../states/theme";
 import { cn } from "../../utils/cn";
 import { gridMove } from "../helpers";
 import { setCharacter } from "../race";
+import { dogPickColor } from "../theme-contrast";
 import { CharacterImage } from "./CharacterImage";
 
 /** ≤390px the grid is 2 wide (max-[391px] below) */
@@ -49,6 +52,8 @@ export function CharacterPicker(props: {
     <section
       class="grid content-start gap-4 rounded-lg bg-sub-alt p-6 max-sm:p-4"
       data-testid="mp-character-card"
+      // ring + check colour: theme text, or black/white where text is under 3:1 on bg
+      style={{ "--dog-pick": dogPickColor(getTheme()).css }}
     >
       <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div class="text-sm tracking-wide text-sub" id="mp-character-label">
@@ -88,13 +93,16 @@ export function CharacterPicker(props: {
               aria-disabled={props.locked ? "true" : undefined}
               tabIndex={c === props.selected ? 0 : -1}
               class={cn(
-                "group grid size-22 place-items-center rounded-lg border-2 bg-bg p-1 transition-colors max-[481px]:size-16",
+                "group relative grid size-22 place-items-center rounded-lg border-2 bg-bg p-1 transition-[border-color,opacity,scale] max-[481px]:size-16",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-main",
+                // selected: ring + scale + check, not colour alone (dogs are full colour)
                 c === props.selected
-                  ? "border-main"
+                  ? "scale-105 border-(--dog-pick)"
                   : "border-transparent hover:border-sub",
-                props.locked && c !== props.selected && "opacity-40",
-                props.locked && "cursor-not-allowed hover:border-transparent",
+                props.locked && "cursor-not-allowed",
+                props.locked &&
+                  c !== props.selected &&
+                  "opacity-40 hover:border-transparent",
               )}
               data-testid={`mp-character-${c}`}
               data-selected={String(c === props.selected)}
@@ -102,6 +110,16 @@ export function CharacterPicker(props: {
               onKeyDown={(e) => onKeyDown(e, i())}
             >
               <CharacterImage character={c} frame="idle" class="size-full" />
+              <Show when={c === props.selected}>
+                {/* decorative: aria-checked and "racing as" carry the state */}
+                <span
+                  class="absolute -top-2 -right-2 grid size-5 place-items-center rounded-full bg-(--dog-pick) text-xs text-bg"
+                  aria-hidden="true"
+                  data-testid="mp-character-check"
+                >
+                  <Fa icon="fa-check" />
+                </span>
+              </Show>
             </button>
           )}
         </For>
