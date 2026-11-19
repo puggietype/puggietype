@@ -1,12 +1,13 @@
-// Accounts settings sync: the whole local config goes to PUT /v1/me/settings
-// while signed in, and GET /v1/me/settings after sign-in or restore. Only
-// reached through import() from session.ts (VITE_FEATURE_ACCOUNTS).
+// Accounts settings sync: the allowlisted config keys (SYNCED_KEYS) go to
+// PUT /v1/me/settings while signed in, and GET /v1/me/settings after sign-in
+// or restore. Only reached through import() from session.ts
+// (VITE_FEATURE_ACCOUNTS).
 import {
+  ConfigKey,
   Config as ConfigType,
   ConfigSchema,
 } from "@monkeytype/schemas/configs";
 
-import { getDefaultConfig } from "../constants/default-config";
 import { applyConfig, configLoadPromise } from "../config/lifecycle";
 import {
   saveFullConfigToLocalStorage,
@@ -14,14 +15,139 @@ import {
 } from "../config/persistence";
 import { Config } from "../config/store";
 import { migrateConfig } from "../config/utils";
+import { showNoticeNotification } from "../states/notifications";
 import { getSettings, putSettings } from "./api";
 import { SETTINGS_DIRTY_KEY } from "./flag";
 import { callWithIdToken } from "./authed-call";
 import { getAccountUser } from "./state";
+import { accountsCopy } from "./strings";
+
+/**
+ * Never sent to or taken from the server (Legal review 2026-11-19, M3):
+ * free text, URLs, or values that only make sense on this device.
+ */
+export const LOCAL_ONLY_KEYS = [
+  // any http(s) image URL, up to 2048 chars: may hold tokens or private paths
+  "customBackground",
+  // only describe customBackground, which stays here
+  "customBackgroundSize",
+  "customBackgroundFilter",
+  // besides the built-in fonts, any typed name of a font installed locally
+  "fontFamily",
+] as const satisfies readonly ConfigKey[];
+
+/**
+ * The only config keys that sync. Every value is an enum, number, boolean or
+ * a list of known names (themes, layouts, languages, funboxes, hex colors).
+ * A new config key must be added here or to LOCAL_ONLY_KEYS (a test fails
+ * otherwise).
+ */
+export const SYNCED_KEYS = [
+  // test
+  "punctuation",
+  "numbers",
+  "words",
+  "time",
+  "mode",
+  "quoteLength",
+  "language",
+  "burstHeatmap",
+  // behavior
+  "difficulty",
+  "quickRestart",
+  "repeatQuotes",
+  "resultSaving",
+  "blindMode",
+  "alwaysShowWordsHistory",
+  "singleListCommandLine",
+  "minWpm",
+  "minWpmCustomSpeed",
+  "minAcc",
+  "minAccCustom",
+  "minBurst",
+  "minBurstCustomSpeed",
+  "britishEnglish",
+  "funbox",
+  "customLayoutfluid",
+  "customPolyglot",
+  // input
+  "freedomMode",
+  "strictSpace",
+  "oppositeShiftMode",
+  "stopOnError",
+  "deleteOnError",
+  "confidenceMode",
+  "quickEnd",
+  "indicateTypos",
+  "compositionDisplay",
+  "hideExtraLetters",
+  "lazyMode",
+  "layout",
+  "codeUnindentOnBackspace",
+  // sound
+  "soundVolume",
+  "playSoundOnClick",
+  "playSoundOnError",
+  "playTimeWarning",
+  // caret
+  "smoothCaret",
+  "caretStyle",
+  "paceCaret",
+  "paceCaretCustomSpeed",
+  "paceCaretStyle",
+  "repeatedPace",
+  // appearance
+  "timerStyle",
+  "liveSpeedStyle",
+  "liveAccStyle",
+  "liveBurstStyle",
+  "timerColor",
+  "timerOpacity",
+  "highlightMode",
+  "typedEffect",
+  "tapeMode",
+  "tapeMargin",
+  "smoothLineScroll",
+  "showAllLines",
+  "alwaysShowDecimalPlaces",
+  "typingSpeedUnit",
+  "startGraphsAtZero",
+  "maxLineWidth",
+  "fontSize",
+  "keymapMode",
+  "keymapLayout",
+  "keymapStyle",
+  "keymapLegendStyle",
+  "keymapKeys",
+  "keymapSize",
+  // theme
+  "flipTestColors",
+  "colorfulMode",
+  "autoSwitchTheme",
+  "themeLight",
+  "themeDark",
+  "randomTheme",
+  "favThemes",
+  "theme",
+  "customTheme",
+  "customThemeColors",
+  // hide elements
+  "showKeyTips",
+  "showOutOfFocusWarning",
+  "capsLockWarning",
+  "showAverage",
+  "showPb",
+  // other (hidden)
+  "accountChart",
+  "monkey",
+  "monkeyPowerLevel",
+  // ads
+  "ads",
+] as const satisfies readonly ConfigKey[];
 
 /** config saves within this window become one PUT */
 export const PUSH_DEBOUNCE_MS = 2000;
-/** the API takes 16 KB; bigger configs stay local (and dirty) */
+/** the API takes 16 KB; bigger settings stay local (and dirty) */
 export const MAX_SETTINGS_BYTES = 15_000;
 
 // the uid sync runs for, null while signed out
@@ -35,9 +161,20 @@ let pulling: Promise<void> | undefined;
 let pushing = false;
 // set while a pulled config is applied, so it isn't pushed straight back
 let applying = false;
+// the "too large" notice, once per page load
+let tooLargeShown = false;
+
+/** the synced part of a config */
+function syncedPart(config: ConfigType): Partial<ConfigType> {
+  const part: Partial<ConfigType> = {};
+  for (const key of SYNCED_KEYS) {
+    (part as Record<string, unknown>)[key] = config[key];
+  }
+  return part;
+}
 
 function serialize(): string {
-  return JSON.stringify(Config);
+  return JSON.stringify(syncedPart(Config));
 }
 
 function isDirty(uid: string): boolean {
@@ -57,11 +194,15 @@ function isCurrent(uid: string): boolean {
 }
 
 /**
- * The server's settings as a full config, through the same migration as a
- * local or imported one. undefined (keep local) unless it's an object with
- * at least one known config key and the result passes the config schema.
+ * The local config with the server's synced keys applied. Other keys from
+ * the server are ignored, and each value must pass its schema or the local
+ * one stays. undefined (keep local) unless it's an object with at least one
+ * valid synced key and the result passes the config schema.
  */
-export function toConfig(settings: unknown): ConfigType | undefined {
+export function toConfig(
+  settings: unknown,
+  local: ConfigType = Config,
+): ConfigType | undefined {
   if (
     typeof settings !== "object" ||
     settings === null ||
@@ -69,21 +210,27 @@ export function toConfig(settings: unknown): ConfigType | undefined {
   ) {
     return undefined;
   }
-  const known = Object.keys(getDefaultConfig());
-  if (!Object.keys(settings).some((key) => known.includes(key))) {
-    return undefined;
+  const server = settings as Record<string, unknown>;
+  const merged: Record<string, unknown> = structuredClone(local);
+  let taken = 0;
+  for (const key of SYNCED_KEYS) {
+    if (!Object.hasOwn(server, key)) continue;
+    const parsed = ConfigSchema.shape[key].safeParse(server[key]);
+    if (!parsed.success) continue;
+    merged[key] = parsed.data;
+    taken++;
   }
+  if (taken === 0) return undefined;
   try {
-    const parsed = ConfigSchema.safeParse(
-      migrateConfig(structuredClone(settings)),
-    );
+    // the same platform resets as a local or imported config
+    const parsed = ConfigSchema.safeParse(migrateConfig(merged));
     return parsed.success ? parsed.data : undefined;
   } catch {
     return undefined;
   }
 }
 
-/** PUT of the current config; dirty until the server has it */
+/** PUT of the synced keys; dirty until the server has them */
 async function push(uid: string): Promise<void> {
   if (!isCurrent(uid)) return;
   if (pushing) {
@@ -96,7 +243,14 @@ async function push(uid: string): Promise<void> {
     return;
   }
   markDirty(uid);
-  if (new TextEncoder().encode(snapshot).length > MAX_SETTINGS_BYTES) return;
+  if (new TextEncoder().encode(snapshot).length > MAX_SETTINGS_BYTES) {
+    // a notice, not an error: nothing is lost on this device
+    if (!tooLargeShown) {
+      tooLargeShown = true;
+      showNoticeNotification(accountsCopy.api.tooLarge);
+    }
+    return;
+  }
   pushing = true;
   try {
     const settings = JSON.parse(snapshot) as Record<string, unknown>;
@@ -154,7 +308,7 @@ async function pull(uid: string): Promise<void> {
   if (config === undefined) return;
   applying = true;
   try {
-    if (JSON.stringify(config) !== serialize()) {
+    if (JSON.stringify(config) !== JSON.stringify(Config)) {
       await applyConfig(config);
       saveFullConfigToLocalStorage(true);
     }

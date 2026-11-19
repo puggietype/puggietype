@@ -27,16 +27,29 @@ const legacy = vi.hoisted(() => ({
 }));
 vi.mock("../../src/ts/ape/config", () => legacy);
 
-import type { Config as ConfigType } from "@monkeytype/schemas/configs";
+const notifications = vi.hoisted(() => ({
+  showNoticeNotification: vi.fn(),
+  showErrorNotification: vi.fn(),
+  showSuccessNotification: vi.fn(),
+}));
+vi.mock("../../src/ts/states/notifications", () => notifications);
+
+import {
+  type Config as ConfigType,
+  ConfigSchema,
+} from "@monkeytype/schemas/configs";
 
 import { SETTINGS_DIRTY_KEY } from "../../src/ts/accounts/flag";
 import {
+  LOCAL_ONLY_KEYS,
   MAX_SETTINGS_BYTES,
   onAccountChange,
   PUSH_DEBOUNCE_MS,
+  SYNCED_KEYS,
   toConfig,
 } from "../../src/ts/accounts/settings-sync";
 import { setAccountUser } from "../../src/ts/accounts/state";
+import { accountsCopy } from "../../src/ts/accounts/strings";
 import * as Persistence from "../../src/ts/config/persistence";
 import { Config } from "../../src/ts/config/store";
 import { getDefaultConfig } from "../../src/ts/constants/default-config";
@@ -63,6 +76,15 @@ function userChanges(change: Partial<ConfigType>): void {
   Object.assign(Config, change);
   Persistence.saveToLocalStorage(Object.keys(change)[0] as keyof ConfigType);
 }
+
+/** what a push should send: the synced keys of the current config */
+function syncedOf(config: ConfigType): Record<string, unknown> {
+  return Object.fromEntries(
+    SYNCED_KEYS.map((key) => [key, structuredClone(config[key])]),
+  );
+}
+
+const PRIVATE_BG = "https://example.test/private/me.png?token=secret";
 
 function serverHas(settings: unknown, updatedAt: string | null): void {
   api.getSettings.mockResolvedValue({ ok: true, settings, updatedAt });
@@ -137,13 +159,42 @@ describe("settings sync: pull after sign-in", () => {
     expect(localStorage.getItem(SETTINGS_DIRTY_KEY)).toBeNull();
   });
 
-  it("migrates a partial or old server config like a local one", async () => {
+  it("a partial server config only changes the keys it has", async () => {
+    Config.theme = "alduin";
     serverHas({ time: 30, notAConfigKey: true }, "2026-11-18");
     await signIn();
     const applied = lifecycle.applyConfig.mock.calls[0]?.[0] as ConfigType;
     expect(applied.time).toBe(30);
     expect(applied).not.toHaveProperty("notAConfigKey");
-    expect(applied.theme).toBe(getDefaultConfig().theme);
+    expect(applied.theme).toBe("alduin");
+  });
+
+  it("local-only keys from the server are ignored, local values kept", async () => {
+    Config.customBackground = "";
+    Config.fontFamily = "My_Font";
+    serverHas(
+      {
+        ...getDefaultConfig(),
+        theme: "nord",
+        customBackground: PRIVATE_BG,
+        customBackgroundSize: "contain",
+        fontFamily: "Roboto_Mono",
+      },
+      "2026-11-18",
+    );
+    await signIn();
+    expect(Config.theme).toBe("nord");
+    expect(Config.customBackground).toBe("");
+    expect(Config.customBackgroundSize).toBe(
+      getDefaultConfig().customBackgroundSize,
+    );
+    expect(Config.fontFamily).toBe("My_Font");
+  });
+
+  it("only local-only keys from the server: nothing applied", async () => {
+    serverHas({ customBackground: PRIVATE_BG }, "2026-11-18");
+    await signIn();
+    expect(lifecycle.applyConfig).not.toHaveBeenCalled();
   });
 
   it("first sync: no server settings, the local config is pushed", async () => {
@@ -152,7 +203,7 @@ describe("settings sync: pull after sign-in", () => {
     await signIn();
     expect(lifecycle.applyConfig).not.toHaveBeenCalled();
     expect(api.putSettings).toHaveBeenCalledTimes(1);
-    expect(putBodies()[0]).toEqual(structuredClone(Config));
+    expect(putBodies()[0]).toEqual(syncedOf(Config));
     expect(localStorage.getItem(SETTINGS_DIRTY_KEY)).toBeNull();
     // the new path never goes through the legacy backend stubs
     expect(legacy.saveConfig).not.toHaveBeenCalled();
@@ -207,10 +258,15 @@ describe("settings sync: pull after sign-in", () => {
     expect(api.putSettings).not.toHaveBeenCalled();
   });
 
-  it("toConfig drops invalid values to defaults but keeps valid ones", () => {
-    const config = toConfig({ time: "sixty", theme: "nord" });
-    expect(config?.time).toBe(getDefaultConfig().time);
+  it("toConfig keeps the local value for an invalid one, takes valid ones", () => {
+    const local = { ...getDefaultConfig(), time: 120 };
+    const config = toConfig({ time: "sixty", theme: "nord" }, local);
+    expect(config?.time).toBe(120);
     expect(config?.theme).toBe("nord");
+  });
+
+  it("toConfig: no valid synced value means keep local", () => {
+    expect(toConfig({ time: "sixty", theme: "not-a-theme" })).toBeUndefined();
   });
 
   it("a failed pull changes nothing", async () => {
@@ -233,7 +289,7 @@ describe("settings sync: push on config saves", () => {
     serverHas({ ...getDefaultConfig() }, "2026-11-18");
   });
 
-  it("debounce collapses many saves into one full-config PUT", async () => {
+  it("debounce collapses many saves into one PUT of the synced keys", async () => {
     await signIn();
     userChanges({ theme: "arch" });
     userChanges({ time: 60 });
@@ -246,7 +302,7 @@ describe("settings sync: push on config saves", () => {
     expect(api.putSettings).toHaveBeenCalledTimes(1);
     expect(putBodies()[0]).toMatchObject({ theme: "beach", time: 60 });
     expect(Object.keys(putBodies()[0] ?? {}).sort()).toEqual(
-      Object.keys(getDefaultConfig()).sort(),
+      [...SYNCED_KEYS].sort(),
     );
     expect(localStorage.getItem(SETTINGS_DIRTY_KEY)).toBeNull();
     expect(api.putSettings.mock.calls[0]?.[0]).toMatchObject({
@@ -284,12 +340,52 @@ describe("settings sync: push on config saves", () => {
     expect(localStorage.getItem(SETTINGS_DIRTY_KEY)).toBe("u1");
   });
 
-  it("oversize configs are skipped and stay dirty", async () => {
+  it("local-only keys never leave the device", async () => {
     await signIn();
-    userChanges({ customBackground: "x".repeat(MAX_SETTINGS_BYTES) });
+    userChanges({ customBackground: PRIVATE_BG, theme: "arch" });
+    userChanges({ fontFamily: "My_Font" });
+    await afterDebounce();
+    expect(api.putSettings).toHaveBeenCalledTimes(1);
+    const body = JSON.stringify(putBodies()[0]);
+    expect(body).toContain('"theme":"arch"');
+    for (const key of LOCAL_ONLY_KEYS) {
+      expect(putBodies()[0]).not.toHaveProperty(key);
+    }
+    expect(body).not.toContain("secret");
+    expect(body).not.toContain("My_Font");
+  });
+
+  it("a local-only change alone doesn't push", async () => {
+    await signIn();
+    userChanges({ customBackground: PRIVATE_BG });
+    await afterDebounce();
+    expect(api.putSettings).not.toHaveBeenCalled();
+    expect(localStorage.getItem(SETTINGS_DIRTY_KEY)).toBeNull();
+  });
+
+  it("oversize settings: skipped, stay dirty, one quiet notice per session", async () => {
+    await signIn();
+    const huge = Array.from({ length: MAX_SETTINGS_BYTES }, () => "nord");
+    userChanges({ favThemes: huge as ConfigType["favThemes"] });
     await afterDebounce();
     expect(api.putSettings).not.toHaveBeenCalled();
     expect(localStorage.getItem(SETTINGS_DIRTY_KEY)).toBe("u1");
+    expect(notifications.showNoticeNotification).toHaveBeenCalledTimes(1);
+    expect(notifications.showNoticeNotification).toHaveBeenCalledWith(
+      accountsCopy.api.tooLarge,
+    );
+    // more saves, and a new sign-in: still the one notice
+    userChanges({ theme: "arch" });
+    await afterDebounce();
+    onAccountChange(null);
+    await signIn();
+    userChanges({ theme: "beach" });
+    await afterDebounce();
+    expect(api.putSettings).not.toHaveBeenCalled();
+    expect(localStorage.getItem(SETTINGS_DIRTY_KEY)).toBe("u1");
+    expect(notifications.showNoticeNotification).toHaveBeenCalledTimes(1);
+    expect(notifications.showErrorNotification).not.toHaveBeenCalled();
+    expect(notifications.showSuccessNotification).not.toHaveBeenCalled();
   });
 
   it("404 no_account stops syncing quietly", async () => {
@@ -354,5 +450,26 @@ describe("settings sync: push on config saves", () => {
     userChanges({ theme: "arch" });
     await afterDebounce();
     expect(api.putSettings).not.toHaveBeenCalled();
+  });
+});
+
+describe("settings sync: scope", () => {
+  const all = Object.keys(ConfigSchema.shape);
+
+  it("every config key is either synced or local-only (decide for new keys)", () => {
+    const listed = [...SYNCED_KEYS, ...LOCAL_ONLY_KEYS] as string[];
+    expect(all.filter((key) => !listed.includes(key))).toEqual([]);
+    expect(listed.filter((key) => !all.includes(key))).toEqual([]);
+  });
+
+  it("no key is in both lists, or twice", () => {
+    const listed = [...SYNCED_KEYS, ...LOCAL_ONLY_KEYS];
+    expect(new Set(listed).size).toBe(listed.length);
+  });
+
+  it("free-text and URL keys stay local", () => {
+    expect(LOCAL_ONLY_KEYS).toEqual(
+      expect.arrayContaining(["customBackground", "fontFamily"]),
+    );
   });
 });
