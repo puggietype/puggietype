@@ -97,11 +97,12 @@ const TERMS_AGE =
   "PuggieType's solo typing test needs no account. You must be **at least 13 years old** to create an account or use multiplayer. If you are under 18, or under the age of majority where you live, use accounts and multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.";
 const TERMS_ACCOUNTS = [
   "You can create an account with your email address and a password, or with Google. Give accurate information, keep your sign-in details to yourself, and tell us at support@puggietype.com if you think someone else has used your account. You're responsible for what happens under your account. One account per person; don't create accounts to get around a suspension or limit.",
-  "Settings and personal bests saved to your account come from your browser. They aren't verified, they aren't leaderboard scores, and we may ignore, correct or remove any that look impossible or cheated.",
-  'You can delete your account at any time from the sign-in page ("delete account"), or by emailing support@puggietype.com; see the Privacy Policy for what is deleted. We may suspend or end an account that breaks these Terms or is used to cheat, abuse others or attack the service, and we may change or stop account features. Account data download is provided as a convenience copy of the data described in the Privacy Policy.',
+  "Settings and personal bests saved to your account come from your browser. We don't verify them, and they aren't leaderboard scores. Our service may refuse to save a value that is outside realistic limits, and we reserve the right to change or delete any saved personal best that we reasonably believe is wrong or was not achieved by typing by hand. We aren't required to review them.",
+  'You can delete your account at any time from the sign-in page ("delete account"), or by emailing support@puggietype.com; see the Privacy Policy for what is deleted. We may suspend or end an account that breaks these Terms or is used to cheat, abuse others or attack the service, and we may change or stop account features. Account data download is provided as a convenience copy of the data described in the Privacy Policy and doesn\'t limit your legal rights.',
+  "**If we restrict your account.** If we suspend or end your account, or hide or remove a personal best or other saved result because we believe you broke these Terms, a person at PuggieType makes that decision, not an automated process alone. We'll tell you what we did, why, and how to appeal, by email to the address you signed in with, unless the law or an urgent security reason stops us or we can't reach you; in an urgent case we may act first and tell you afterwards. To appeal, reply to that email or write to support@puggietype.com within 6 months. A person who wasn't involved in the first decision will look again where we can, and we'll answer within 30 days. If we find we got it wrong, we'll reverse the decision. Ending your account doesn't affect your right to ask for a copy of your data.",
 ];
 const TERMS_ENFORCEMENT =
-  "We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer or to your account for anyone who breaks these Terms. To report a player, use the in-game report button or email support@puggietype.com.";
+  "We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. We suspend or end accounts only as described in section 5. To report a player, use the in-game report button or email support@puggietype.com.";
 const TERMS_CHANGES =
   "We may update these Terms. We'll change the date at the top, and if a change is significant we'll say so on the site. Using PuggieType after a change means you accept it.";
 const TERMS_HEADINGS = [
@@ -492,6 +493,23 @@ describe("legal-markdown", () => {
     );
   });
 
+  it("replaces the old impossible-personal-best and enforcement wording (Legal 2026-11-19 Tier A)", () => {
+    const md = readFileSync(path.join(legalDir, "terms.md"), "utf-8");
+
+    expect(md).not.toContain(
+      "and we may ignore, correct or remove any that look impossible or cheated.",
+    );
+    expect(md).not.toContain(
+      "or suspend access to multiplayer or to your account for anyone who breaks these Terms.",
+    );
+    expect(md).toContain("We aren't required to review them.");
+    expect(md).toContain("and doesn't limit your legal rights.");
+    expect(md).toContain(
+      "We suspend or end accounts only as described in section 5.",
+    );
+    expect(md.match(/\*\*If we restrict your account\.\*\*/g)).toHaveLength(1);
+  });
+
   it("slugifies h2 text into ids", () => {
     expect(slugify("Accounts (ages 13+)")).toBe("accounts-ages-13");
     expect(slugify("Why we use this data (GDPR legal bases)")).toBe(
@@ -520,7 +538,7 @@ describe("legal-markdown", () => {
       expect(html).not.toContain("collects no account data");
     });
 
-    it("has the 5. Accounts heading and its three paragraphs (item 2) verbatim", () => {
+    it("has the 5. Accounts heading and its four paragraphs (item 2) verbatim", () => {
       const html = renderTerms();
       expect(html).toContain(
         `<h2>5. Accounts</h2>\n${TERMS_ACCOUNTS.map((p) => `<p>${inline(p)}</p>`).join("\n")}\n<h2>6. Acceptable use</h2>`,

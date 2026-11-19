@@ -23,9 +23,11 @@ If you submit a score, you let us show it publicly with your random nickname on 
 ## 5. Accounts
 You can create an account with your email address and a password, or with Google. Give accurate information, keep your sign-in details to yourself, and tell us at support@puggietype.com if you think someone else has used your account. You're responsible for what happens under your account. One account per person; don't create accounts to get around a suspension or limit.
 
-Settings and personal bests saved to your account come from your browser. They aren't verified, they aren't leaderboard scores, and we may ignore, correct or remove any that look impossible or cheated.
+Settings and personal bests saved to your account come from your browser. We don't verify them, and they aren't leaderboard scores. Our service may refuse to save a value that is outside realistic limits, and we reserve the right to change or delete any saved personal best that we reasonably believe is wrong or was not achieved by typing by hand. We aren't required to review them.
 
-You can delete your account at any time from the sign-in page ("delete account"), or by emailing support@puggietype.com; see the Privacy Policy for what is deleted. We may suspend or end an account that breaks these Terms or is used to cheat, abuse others or attack the service, and we may change or stop account features. Account data download is provided as a convenience copy of the data described in the Privacy Policy.
+You can delete your account at any time from the sign-in page ("delete account"), or by emailing support@puggietype.com; see the Privacy Policy for what is deleted. We may suspend or end an account that breaks these Terms or is used to cheat, abuse others or attack the service, and we may change or stop account features. Account data download is provided as a convenience copy of the data described in the Privacy Policy and doesn't limit your legal rights.
+
+**If we restrict your account.** If we suspend or end your account, or hide or remove a personal best or other saved result because we believe you broke these Terms, a person at PuggieType makes that decision, not an automated process alone. We'll tell you what we did, why, and how to appeal, by email to the address you signed in with, unless the law or an urgent security reason stops us or we can't reach you; in an urgent case we may act first and tell you afterwards. To appeal, reply to that email or write to support@puggietype.com within 6 months. A person who wasn't involved in the first decision will look again where we can, and we'll answer within 30 days. If we find we got it wrong, we'll reverse the decision. Ending your account doesn't affect your right to ask for a copy of your data.
 
 ## 6. Acceptable use
 When you use PuggieType, you agree not to:
@@ -39,7 +41,7 @@ When you use PuggieType, you agree not to:
 
 <!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Accounts are behind a flag that is off. Legal 2026-11-19 section 4 item 3 (enforcement covers accounts). Merges together with the privacy accounts PR (#29) at flag-on; bump the effective date then. -->
 ## 7. Enforcement
-We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer or to your account for anyone who breaks these Terms. To report a player, use the in-game report button or email support@puggietype.com.
+We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. We suspend or end accounts only as described in section 5. To report a player, use the in-game report button or email support@puggietype.com.
 
 ## 8. Copyright complaints
 We respect intellectual property rights. If you believe content on PuggieType (for example, a quote or word list) infringes your copyright, send a written notice to support@puggietype.com that includes:
