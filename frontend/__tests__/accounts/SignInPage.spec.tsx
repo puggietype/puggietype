@@ -93,6 +93,7 @@ describe("SignInPage", () => {
       text.indexOf(accountsCopy.verify.notice),
     );
     expect(button(container, accountsCopy.account.delete)).toBeTruthy();
+    expect(button(container, accountsCopy.exportData.button)).toBeTruthy();
     fireEvent.click(button(container, accountsCopy.signedIn.signOut));
     expect(session.signOut).toHaveBeenCalledTimes(1);
     // the uid and pug name are not shown

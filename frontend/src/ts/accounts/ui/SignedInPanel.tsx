@@ -6,10 +6,11 @@ import { AccountUser } from "../api";
 import { signOut } from "../session";
 import { accountsCopy } from "../strings";
 import { DeleteAccount } from "./DeleteAccount";
+import { ExportData } from "./ExportData";
 import { PersonalBests } from "./PersonalBests";
 import { VerifyEmailNotice } from "./VerifyEmailNotice";
 
-/** /login while signed in: verify notice, personal bests, sign out, delete account */
+/** /login while signed in: verify notice, personal bests, sign out, export, delete account */
 export function SignedInPanel(props: { user: AccountUser }): JSXElement {
   return (
     <>
@@ -28,6 +29,7 @@ export function SignedInPanel(props: { user: AccountUser }): JSXElement {
         // signed out locally either way
         onClick={() => void signOut().catch(() => undefined)}
       />
+      <ExportData />
       <DeleteAccount />
     </>
   );

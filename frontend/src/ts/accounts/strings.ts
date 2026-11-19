@@ -107,6 +107,12 @@ export const accountsCopy = {
     stillUnverified: "Your email isn't verified yet",
     verified: "Email verified",
   },
+  // DRAFT FOR LEGAL: data export (not yet reviewed)
+  exportData: {
+    button: "Download my data",
+    busy: "Preparing your data...",
+    fileName: "puggietype-data.json",
+  },
   account: {
     delete: "delete account",
     warning:
