@@ -139,7 +139,7 @@ describe("accountsCopy (Legal 2026-11-19, C1-C18)", () => {
 
   it("C9 verify notice", () => {
     expect(accountsCopy.verify.notice).toBe(
-      "Please verify your email address. We sent you a link. We only use your email for account emails like this one.",
+      "Please verify your email address. We sent you a link. We use your email only for account emails like this one and to contact you about your account.",
     );
   });
 
@@ -151,7 +151,7 @@ describe("accountsCopy (Legal 2026-11-19, C1-C18)", () => {
 
   it("C11 C12 export description and done", () => {
     expect(accountsCopy.exportData.description).toBe(
-      "Download a copy of the data we hold for your account: your account details and sign-in email, settings, personal bests and recent results, as a JSON file. The file isn't password protected, so keep it somewhere private.",
+      "Download a copy of the data we hold for your account: your account details and sign-in email, settings and personal bests, as a JSON file. It also has lists for recent results and flagged runs, which are empty because we don't record those yet. The file isn't password protected, so keep it somewhere private.",
     );
     expect(accountsCopy.exportData.done).toBe("Your data was downloaded.");
   });
