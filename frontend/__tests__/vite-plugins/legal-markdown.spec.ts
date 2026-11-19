@@ -3,7 +3,10 @@ import path from "node:path";
 import { marked } from "marked";
 import { describe, it, expect } from "vitest";
 
-import { renderLegalMarkdown } from "../../vite-plugins/legal-markdown";
+import {
+  renderLegalMarkdown,
+  wrapTables,
+} from "../../vite-plugins/legal-markdown";
 
 const legalDir = path.resolve(__dirname, "../../src/legal");
 const srcDir = path.resolve(__dirname, "../../src");
@@ -25,9 +28,74 @@ describe("legal-markdown", () => {
       const html = renderLegalMarkdown(page, legalDir);
 
       expect(html).not.toContain("legal-markdown:");
-      expect(html).toContain(marked.parse(md, { async: false }));
+      const rendered = marked.parse(md, { async: false }) as string;
+      // the only change to the rendered text is the table scroll wrapper
+      expect(html).toContain(wrapTables(rendered));
+      const unwrapped = html
+        .replace(/<div class="tableWrap"[^>]*>(<table>)/g, "$1")
+        .replace(/(<\/table>)<\/div>/g, "$1");
+      expect(unwrapped).toContain(rendered);
     });
   }
+
+  describe("table scroll wrappers", () => {
+    const WRAP_OPEN =
+      /<div class="tableWrap" tabindex="0" role="region" aria-label="([^"]+)"><table>/g;
+
+    it("wraps every table in the privacy page in a focusable labelled region", () => {
+      const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+      const html = renderLegalMarkdown(page, legalDir);
+      const tables = html.match(/<table>/g) ?? [];
+      const wraps = [...html.matchAll(WRAP_OPEN)];
+
+      expect(tables.length).toBeGreaterThan(0);
+      expect(wraps).toHaveLength(tables.length);
+      expect(wraps[0]?.[1]).toBe("table: Retention summary");
+      expect((html.match(/<\/table><\/div>/g) ?? []).length).toBe(
+        tables.length,
+      );
+    });
+
+    it("never leaves a bare table in either legal page", () => {
+      for (const name of ["terms", "privacy"]) {
+        const page = readFileSync(path.join(srcDir, `${name}.html`), "utf-8");
+        const html = renderLegalMarkdown(page, legalDir);
+        const bare = html.replace(WRAP_OPEN, "");
+        expect(bare).not.toContain("<table>");
+      }
+    });
+
+    it("labels each table after the heading above it, with a generic fallback", () => {
+      const out = wrapTables(
+        '<table><tr><td>0</td></tr></table>\n<h2 id="a">Data &amp; <em>use</em></h2>\n<table><tr><td>1</td></tr></table>\n<h3>Second</h3>\n<table><tr><td>2</td></tr></table>',
+      );
+      const labels = [...out.matchAll(WRAP_OPEN)].map((m) => m[1]);
+      expect(labels).toEqual([
+        "table: scrollable",
+        "table: Data &amp; use",
+        "table: Second",
+      ]);
+    });
+
+    it("keeps the scroll wrapper and the narrow-screen main column in the stylesheet", () => {
+      const scss = readFileSync(
+        path.join(srcDir, "styles/static-page.scss"),
+        "utf-8",
+      );
+      expect(scss).toMatch(/\.tableWrap \{\s*overflow-x: auto;/);
+      expect(scss).toContain(".tableWrap:focus-visible");
+      // main is a grid; its column must be allowed to shrink below the widest
+      // child, or wide tables and long URLs push the text off a phone screen
+      expect(scss).toMatch(
+        /\nmain \{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*overflow-wrap: anywhere;/,
+      );
+    });
+
+    it("leaves html without tables unchanged", () => {
+      const html = "<h2>Hello</h2><p>no table</p>";
+      expect(wrapTables(html)).toBe(html);
+    });
+  });
 
   it("privacy page descriptions do not say leaderboards are memory-only", () => {
     const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
