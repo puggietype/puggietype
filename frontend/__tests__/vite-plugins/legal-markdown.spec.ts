@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { marked } from "marked";
 import { describe, it, expect } from "vitest";
+import { ViteMinifyPlugin } from "vite-plugin-minify";
 
+import { KEEP_COMMENTS } from "../../vite-plugins/email-off";
 import {
   renderLegalMarkdown,
   slugify,
@@ -90,6 +92,48 @@ const ACCOUNTS_PROVIDERS = [
 ].join("\n");
 const PROVIDERS_NOT_IN_EFFECT =
   '<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. The Google (Firebase Authentication) and Cloudflare Turnstile entries, and the account data in the Neon entry, are pre-launch text for the "Accounts (ages 13+)" section. Accounts are behind a flag that is off; these entries describe no processing that happens today. -->';
+// Legal review 2026-11-19 (accounts-p1), section 4 items 1-4 (exact copy)
+const TERMS_AGE =
+  "PuggieType's solo typing test needs no account. You must be **at least 13 years old** to create an account or use multiplayer. If you are under 18, or under the age of majority where you live, use accounts and multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.";
+const TERMS_ACCOUNTS = [
+  "You can create an account with your email address and a password, or with Google. Give accurate information, keep your sign-in details to yourself, and tell us at support@puggietype.com if you think someone else has used your account. You're responsible for what happens under your account. One account per person; don't create accounts to get around a suspension or limit.",
+  "Settings and personal bests saved to your account come from your browser. They aren't verified, they aren't leaderboard scores, and we may ignore, correct or remove any that look impossible or cheated.",
+  'You can delete your account at any time from the sign-in page ("delete account"), or by emailing support@puggietype.com; see the Privacy Policy for what is deleted. We may suspend or end an account that breaks these Terms or is used to cheat, abuse others or attack the service, and we may change or stop account features. Account data download is provided as a convenience copy of the data described in the Privacy Policy.',
+];
+const TERMS_ENFORCEMENT =
+  "We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer or to your account for anyone who breaks these Terms. To report a player, use the in-game report button or email support@puggietype.com.";
+const TERMS_CHANGES =
+  "We may update these Terms. We'll change the date at the top, and if a change is significant we'll say so on the site. Using PuggieType after a change means you accept it.";
+const TERMS_HEADINGS = [
+  "1. Age requirement",
+  "2. Multiplayer",
+  "3. Nicknames",
+  "4. Leaderboards",
+  "5. Accounts",
+  "6. Acceptable use",
+  "7. Enforcement",
+  "8. Copyright complaints",
+  "9. No warranty",
+  "10. Open-source license",
+  "11. Changes to these Terms",
+  "12. Contact",
+];
+// unchanged from main (edb2095); bumped only at the accounts flag-on publish
+const TERMS_DATE_LINE =
+  '_Effective date: November 18, 2026. Last updated: November 18, 2026. "We", "us" and "our" mean the PuggieType team._';
+
+const renderTerms = (): string =>
+  renderLegalMarkdown(
+    readFileSync(path.join(srcDir, "terms.html"), "utf-8"),
+    legalDir,
+  );
+const inline = (md: string): string => {
+  const html = marked.parseInline(md, { async: false });
+  if (typeof html !== "string") throw new Error("marked returned a promise");
+  return html;
+};
+const stripComments = (html: string): string =>
+  html.replace(/<!--[\s\S]*?-->/g, "");
 
 describe("legal-markdown", () => {
   for (const name of ["terms", "privacy"]) {
@@ -462,5 +506,84 @@ describe("legal-markdown", () => {
       const ids = [...html.matchAll(/<h2 id="([^"]+)">/g)].map((m) => m[1]);
       expect(ids, name).toEqual(name === "privacy" ? ["accounts-ages-13"] : []);
     }
+  });
+
+  describe("terms: Legal's accounts review section 4 (not in effect)", () => {
+    it("has the age requirement (item 1) verbatim", () => {
+      const html = renderTerms();
+      expect(html).toContain(
+        `<h2>1. Age requirement</h2>\n<p>${inline(TERMS_AGE)}</p>`,
+      );
+      expect(html).toContain(
+        "<strong>at least 13 years old</strong> to create an account or use multiplayer",
+      );
+      expect(html).not.toContain("collects no account data");
+    });
+
+    it("has the 5. Accounts heading and its three paragraphs (item 2) verbatim", () => {
+      const html = renderTerms();
+      expect(html).toContain(
+        `<h2>5. Accounts</h2>\n${TERMS_ACCOUNTS.map((p) => `<p>${inline(p)}</p>`).join("\n")}\n<h2>6. Acceptable use</h2>`,
+      );
+    });
+
+    it("numbers the headings 1-12 in order, with 6-12 renumbered", () => {
+      const html = renderTerms();
+      const h2s = [...html.matchAll(/<h2>([^<]*)<\/h2>/g)].map((m) => m[1]);
+      expect(h2s).toEqual(TERMS_HEADINGS.map((h) => inline(h)));
+      for (const h of TERMS_HEADINGS.slice(5)) {
+        expect(html).toContain(`<h2>${inline(h)}</h2>`);
+      }
+      for (const old of [
+        "5. Acceptable use",
+        "6. Enforcement",
+        "7. Copyright complaints",
+        "8. No warranty",
+        "9. Open-source license",
+        "10. Contact",
+      ]) {
+        expect(html).not.toContain(`<h2>${old}</h2>`);
+      }
+    });
+
+    it("has the enforcement sentence covering accounts (item 3) verbatim", () => {
+      const html = renderTerms();
+      expect(html).toContain(
+        `<h2>7. Enforcement</h2>\n<p>${inline(TERMS_ENFORCEMENT)}</p>`,
+      );
+    });
+
+    it("has 11. Changes to these Terms (item 4) verbatim", () => {
+      const html = renderTerms();
+      expect(html).toContain(
+        `<h2>11. Changes to these Terms</h2>\n<p>${inline(TERMS_CHANGES)}</p>\n<h2>12. Contact</h2>`,
+      );
+    });
+
+    it("keeps the effective date line unchanged", () => {
+      const html = renderTerms();
+      expect(html).toContain(`<p>${inline(TERMS_DATE_LINE)}</p>`);
+      expect(stripComments(html).match(/Effective date:/g)).toHaveLength(1);
+    });
+
+    it("hides the NOT IN EFFECT comments from the rendered page", async () => {
+      const html = renderTerms();
+      // one per item: age, accounts, enforcement, changes
+      expect(
+        html.match(/<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH\./g),
+      ).toHaveLength(4);
+      expect(stripComments(html)).not.toMatch(
+        /not in effect|flag that is off/i,
+      );
+      // the build's html minifier drops them from the shipped page
+      const plugin = ViteMinifyPlugin({ ignoreCustomComments: KEEP_COMMENTS });
+      const hook = plugin.transformIndexHtml as {
+        handler: (html: string) => Promise<string>;
+      };
+      const out = await hook.handler(html);
+      expect(out).not.toMatch(/not in effect|flag that is off|#29/i);
+      expect(out).toContain("<h2>5. Accounts</h2>");
+      expect(out).toContain("<!--email_off-->");
+    });
   });
 });
