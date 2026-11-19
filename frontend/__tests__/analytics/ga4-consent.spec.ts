@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ACCOUNTS_ONLY_PATHS } from "../../vite-plugins/accounts-env";
 
 const env = vi.hoisted(() => ({
   ga4MeasurementId: "",
@@ -204,13 +205,17 @@ describe("GA collect transport gate", () => {
 
   it("always drops googletagmanager /td and /a, including after accept", async () => {
     expect(isGaTransportBlocked()).toBe(false);
-    await expectBlocked("https://www.googletagmanager.com/td?dl=qa.example/r/ABCD");
+    await expectBlocked(
+      "https://www.googletagmanager.com/td?dl=qa.example/r/ABCD",
+    );
     await expectBlocked("https://www.googletagmanager.com/td/");
     await expectBlocked("https://www.googletagmanager.com//td?id=G-TEST1234");
     await expectBlocked("https://www.googletagmanager.com/a?pid=1");
     await expectBlocked("https://www.googletagmanager.com/a/");
     await expectPassed("https://www.google-analytics.com/g/collect?cid=1");
-    await expectPassed("https://www.googletagmanager.com/gtag/js?id=G-TEST1234");
+    await expectPassed(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234",
+    );
     await expectPassed(
       "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=dataLayer",
     );
@@ -230,10 +235,11 @@ describe("GA collect transport gate", () => {
     await expectBlocked("https://www.googletagmanager.com/gtag/js?id=G-OTHER");
   });
 
-
   it("allows /gtag/js only with optional l=dataLayer", async () => {
     expect(isGaTransportBlocked()).toBe(false);
-    await expectPassed("https://www.googletagmanager.com/gtag/js?id=G-TEST1234");
+    await expectPassed(
+      "https://www.googletagmanager.com/gtag/js?id=G-TEST1234",
+    );
     await expectPassed(
       "https://www.googletagmanager.com/gtag/js?id=G-TEST1234&l=dataLayer",
     );
@@ -1384,9 +1390,8 @@ describe("sanitized single page view", () => {
       path.join(src, "ts/analytics/ga4.ts"),
       "utf8",
     );
-    const knownBlock = /const KNOWN_ANALYTICS_PATHS = new Set\(\[([\s\S]*?)\]\);/.exec(
-      gaSource,
-    );
+    const knownBlock =
+      /const KNOWN_ANALYTICS_PATHS = new Set\(\[([\s\S]*?)\]\);/.exec(gaSource);
     expect(knownBlock).not.toBeNull();
     const listed = knownBlock?.[1] ?? "";
     const known = new Set<string>();
@@ -1416,7 +1421,13 @@ describe("sanitized single page view", () => {
     let spaMatch = spaRe.exec(routes);
     while (spaMatch !== null) {
       const route = spaMatch[1];
-      if (route !== undefined && !route.includes(":")) {
+      // accounts-only routes (flag-gated) stay out of the off bundle, so
+      // they report as /404; the email action page has nothing to measure
+      if (
+        route !== undefined &&
+        !route.includes(":") &&
+        !ACCOUNTS_ONLY_PATHS.includes(route)
+      ) {
         expect(known.has(route), route).toBe(true);
       }
       spaMatch = spaRe.exec(routes);

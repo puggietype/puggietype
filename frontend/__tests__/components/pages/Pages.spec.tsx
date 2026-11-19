@@ -59,6 +59,7 @@ const registry: PageRegistry = {
   about: { component: stubPage("about"), class: "full-width" },
   account: { component: stubPage("account"), needsAuthentication: true },
   login: { component: stubPage("login") },
+  accountAction: { component: stubPage("accountAction") },
   profile: { component: stubPage("profile") },
   profileSearch: { component: stubPage("profileSearch") },
   404: { component: stubPage("404") },
