@@ -17,6 +17,10 @@ export const accountsCopy = {
     rateLimited: "Too many attempts, please wait and try again",
     unavailable: "Accounts aren't available right now. Please try again later.",
     badResponse: "Something went wrong. Please try again.",
+    // DRAFT FOR LEGAL: settings sync, personal bests, export (not yet reviewed)
+    invalidPb: "That result couldn't be saved as a personal best.",
+    pbLimit: "You've reached the limit of saved personal bests.",
+    tooLarge: "That's too much to save in one go.",
     failed: (status: number): string =>
       `Something went wrong (error ${status}). Please try again.`,
   },
