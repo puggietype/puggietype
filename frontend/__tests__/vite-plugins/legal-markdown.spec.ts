@@ -44,15 +44,15 @@ const ACCOUNTS_SECTION_LINES = [
   "",
   "**How long we keep it:** for as long as you have an account. When you delete your account we delete your account record and everything saved to it, such as settings and personal bests, from our database and your sign-in from Firebase straight away; if Firebase can't be reached, we keep only your account ID until it is removed, within 30 days. Our database provider keeps short-term restore copies, and anything you delete drops out of them within about 6 hours; we don't restore deleted accounts. Google and Cloudflare keep limited security logs and backups as described in their own policies.",
   "",
-  '**Deleting your account:** sign in, open the sign-in page and choose "delete account". You can also email support@puggietype.com and we\'ll do it within 30 days (we may ask you to confirm you control the account).',
+  '**Deleting your account:** sign in, open the sign-in page and choose "delete account". You can also email privacy@puggietype.com and we\'ll do it within 30 days (we may ask you to confirm you control the account).',
   "",
-  "**Decisions about your account:** if we ever suspend or end your account, or hide or remove a personal best, a person makes that decision, not an automated process alone. We'll tell you why and how to appeal (see our Terms). If you think we got it wrong, email support@puggietype.com.",
+  "**Decisions about your account:** if we ever suspend or end your account, or hide or remove a personal best, a person makes that decision, not an automated process alone. We'll tell you why and how to appeal (see our Terms). If you think we got it wrong, email privacy@puggietype.com.",
   "",
-  "**Download your data:** when signed in, choose \"Download my data\" to get a JSON file with what our database holds for your account, plus your sign-in email address and sign-in method (email and password, or Google), which come from your sign-in and aren't stored in our database. The file has your account record (every field listed above, including your account ID, pug name, status, when you passed the age check and when the record was last updated), your settings and when they were last saved, and your personal bests. It also has two lists that are empty today because we don't record that data yet: recent results (each with the average and spread of your keystroke timing and the app version saved with it) and runs flagged for review (with the keystroke timings of those runs). Our short-lived abuse counters aren't included. We create the file when you ask and don't keep a copy. You can download it up to 3 times per UTC day; if you reach that limit, email support@puggietype.com and we'll send you a copy.",
+  "**Download your data:** when signed in, choose \"Download my data\" to get a JSON file with what our database holds for your account, plus your sign-in email address and sign-in method (email and password, or Google), which come from your sign-in and aren't stored in our database. The file has your account record (every field listed above, including your account ID, pug name, status, when you passed the age check and when the record was last updated), your settings and when they were last saved, and your personal bests. It also has two lists that are empty today because we don't record that data yet: recent results (each with the average and spread of your keystroke timing and the app version saved with it) and runs flagged for review (with the keystroke timings of those runs). Our short-lived abuse counters aren't included. We create the file when you ask and don't keep a copy. You can download it up to 3 times per UTC day; if you reach that limit, email privacy@puggietype.com and we'll send you a copy.",
   "",
-  `**Your rights:** depending on where you live (including under the GDPR, UK GDPR and the California Consumer Privacy Act as amended), you can ask to access, correct, delete or export your data, to object to or restrict how we use it, and to complain to your data protection authority. Use the in-account download and delete, or email support@puggietype.com. To protect the service, in-account actions are limited per account (for example, up to 3 downloads per day), and a request over a limit is refused and you are asked to wait and try again. These limits never stop you using your rights: you can always email us instead. We'll answer within one month (45 days for California requests). We don't sell or share your personal information as those terms are defined in California law, and we won't treat you differently for using your rights. California residents: in the last 12 months we collected identifiers (account ID, email address), internet activity (settings, personal bests) and the age-check result, from you and from Google if you use Google sign-in, to run your account; we disclose it only to the processors listed above.`,
+  `**Your rights:** depending on where you live (including under the GDPR, UK GDPR and the California Consumer Privacy Act as amended), you can ask to access, correct, delete or export your data, to object to or restrict how we use it, and to complain to your data protection authority. Use the in-account download and delete, or email privacy@puggietype.com. To protect the service, in-account actions are limited per account (for example, up to 3 downloads per day), and a request over a limit is refused and you are asked to wait and try again. These limits never stop you using your rights: you can always email us instead. We'll answer within one month (45 days for California requests). We don't sell or share your personal information as those terms are defined in California law, and we won't treat you differently for using your rights. California residents: in the last 12 months we collected identifiers (account ID, email address), internet activity (settings, personal bests) and the age-check result, from you and from Google if you use Google sign-in, to run your account; we disclose it only to the processors listed above.`,
   "",
-  "**Children:** accounts are only for people aged 13 and over, and the age check is a first line of defence, not a guarantee. If you're a parent or guardian and think a child under 13 has an account, email support@puggietype.com and we'll delete it.",
+  "**Children:** accounts are only for people aged 13 and over, and the age check is a first line of defence, not a guarantee. If you're a parent or guardian and think a child under 13 has an account, email privacy@puggietype.com and we'll delete it.",
 ];
 const ACCOUNTS_SECTION = ACCOUNTS_SECTION_LINES.join("\n");
 const ACCOUNTS_NOT_IN_EFFECT =
@@ -77,7 +77,7 @@ const SOLO_ACCOUNTS =
 const COOKIES_ACCOUNTS =
   "We do not sell or share personal information for cross-context behavioral advertising. If you sign in, we also store the items listed under Accounts (ages 13+); they're used only to sign you in and aren't advertising or analytics.";
 const CHILDREN_ACCOUNTS = [
-  "If a parent or guardian tells us at support@puggietype.com that a child under 13 used multiplayer or created an account, we will delete any information we hold.",
+  "If a parent or guardian tells us at privacy@puggietype.com that a child under 13 used multiplayer or created an account, we will delete any information we hold.",
   "and leaderboard scores are kept only as described under Leaderboards. Account data is deleted when the account is deleted.",
 ];
 
@@ -594,5 +594,46 @@ describe("legal-markdown", () => {
       const ids = [...html.matchAll(/<h2 id="([^"]+)">/g)].map((m) => m[1]);
       expect(ids, name).toEqual(name === "privacy" ? ["accounts-ages-13"] : []);
     }
+  });
+  describe("contact line (Legal M7)", () => {
+    const WHO_WE_ARE =
+      "Who we are: PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email privacy@puggietype.com.";
+
+    it("has the exact Who-we-are line right after the title and date lines", () => {
+      const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+      const lines = md.split("\n");
+      expect(lines[0]).toBe("# Privacy Policy");
+      expect(lines[2]).toMatch(/^_Effective date: .* Last updated: .*\._$/);
+      expect(lines[4]).toBe(WHO_WE_ARE);
+      expect(md.split(WHO_WE_ARE)).toHaveLength(2);
+      expect(md).not.toContain("PuggieType is run by the PuggieType team");
+      // the line is in the rendered page, too (as the first paragraph)
+      const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+      const html = renderLegalMarkdown(page, legalDir);
+      expect(html).toContain(
+        "<p>Who we are: PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email ",
+      );
+      expect(html).toContain('href="mailto:privacy@puggietype.com"');
+    });
+
+    it("uses only privacy@puggietype.com as an email address in the privacy policy", () => {
+      for (const name of ["privacy"]) {
+        const md = readFileSync(path.join(legalDir, `${name}.md`), "utf-8");
+        const emails = md.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+/g);
+        expect(emails, name).not.toBeNull();
+        expect(new Set(emails), name).toEqual(
+          new Set(["privacy@puggietype.com"]),
+        );
+        expect(md, name).not.toMatch(/support@|jakemegan/i);
+      }
+    });
+
+    it("names no people and gives no EU/UK representative", () => {
+      const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+      expect(md).not.toMatch(/\bJake\b|\bMegan\b/);
+      expect(md).not.toMatch(
+        /(EU|UK|European|United Kingdom)\s+(data protection\s+)?representative/i,
+      );
+    });
   });
 });
