@@ -8,6 +8,7 @@ import { KEEP_COMMENTS } from "../../vite-plugins/email-off";
 import {
   renderLegalMarkdown,
   slugify,
+  wrapTables,
 } from "../../vite-plugins/legal-markdown";
 
 const legalDir = path.resolve(__dirname, "../../src/legal");
@@ -45,15 +46,15 @@ const ACCOUNTS_SECTION_LINES = [
   "",
   "**How long we keep it:** for as long as you have an account. When you delete your account we delete your account record and everything saved to it, such as settings and personal bests, from our database and your sign-in from Firebase straight away; if Firebase can't be reached, we keep only your account ID until it is removed, within 30 days. Our database provider keeps short-term restore copies, and anything you delete drops out of them within about 6 hours; we don't restore deleted accounts. Google and Cloudflare keep limited security logs and backups as described in their own policies.",
   "",
-  '**Deleting your account:** sign in, open the sign-in page and choose "delete account". You can also email support@puggietype.com and we\'ll do it within 30 days (we may ask you to confirm you control the account).',
+  '**Deleting your account:** sign in, open the sign-in page and choose "delete account". You can also email privacy@puggietype.com and we\'ll do it within 30 days (we may ask you to confirm you control the account).',
   "",
-  "**Decisions about your account:** if we ever suspend or end your account, or hide or remove a personal best, a person makes that decision, not an automated process alone. We'll tell you why and how to appeal (see our Terms). If you think we got it wrong, email support@puggietype.com.",
+  "**Decisions about your account:** if we ever suspend or end your account, or hide or remove a personal best, a person makes that decision, not an automated process alone. We'll tell you why and how to appeal (see our Terms). If you think we got it wrong, email privacy@puggietype.com.",
   "",
-  "**Download your data:** when signed in, choose \"Download my data\" to get a JSON file with what our database holds for your account, plus your sign-in email address and sign-in method (email and password, or Google), which come from your sign-in and aren't stored in our database. The file has your account record (every field listed above, including your account ID, pug name, status, when you passed the age check and when the record was last updated), your settings and when they were last saved, and your personal bests. It also has two lists that are empty today because we don't record that data yet: recent results (each with the average and spread of your keystroke timing and the app version saved with it) and runs flagged for review (with the keystroke timings of those runs). Our short-lived abuse counters aren't included. We create the file when you ask and don't keep a copy. You can download it up to 3 times per UTC day; if you reach that limit, email support@puggietype.com and we'll send you a copy.",
+  "**Download your data:** when signed in, choose \"Download my data\" to get a JSON file with what our database holds for your account, plus your sign-in email address and sign-in method (email and password, or Google), which come from your sign-in and aren't stored in our database. The file has your account record (every field listed above, including your account ID, pug name, status, when you passed the age check and when the record was last updated), your settings and when they were last saved, and your personal bests. It also has two lists that are empty today because we don't record that data yet: recent results (each with the average and spread of your keystroke timing and the app version saved with it) and runs flagged for review (with the keystroke timings of those runs). Our short-lived abuse counters aren't included. We create the file when you ask and don't keep a copy. You can download it up to 3 times per UTC day; if you reach that limit, email privacy@puggietype.com and we'll send you a copy.",
   "",
-  `**Your rights:** depending on where you live (including under the GDPR, UK GDPR and the California Consumer Privacy Act as amended), you can ask to access, correct, delete or export your data, to object to or restrict how we use it, and to complain to your data protection authority. Use the in-account download and delete, or email support@puggietype.com. To protect the service, in-account actions are limited per account (for example, up to 3 downloads per day), and a request over a limit is refused and you are asked to wait and try again. These limits never stop you using your rights: you can always email us instead. We'll answer within one month (45 days for California requests). We don't sell or share your personal information as those terms are defined in California law, and we won't treat you differently for using your rights. California residents: in the last 12 months we collected identifiers (account ID, email address), internet activity (settings, personal bests) and the age-check result, from you and from Google if you use Google sign-in, to run your account; we disclose it only to the processors listed above.`,
+  `**Your rights:** depending on where you live (including under the GDPR, UK GDPR and the California Consumer Privacy Act as amended), you can ask to access, correct, delete or export your data, to object to or restrict how we use it, and to complain to your data protection authority. Use the in-account download and delete, or email privacy@puggietype.com. To protect the service, in-account actions are limited per account (for example, up to 3 downloads per day), and a request over a limit is refused and you are asked to wait and try again. These limits never stop you using your rights: you can always email us instead. We'll answer within one month (45 days for California requests). We don't sell or share your personal information as those terms are defined in California law, and we won't treat you differently for using your rights. California residents: in the last 12 months we collected identifiers (account ID, email address), internet activity (settings, personal bests) and the age-check result, from you and from Google if you use Google sign-in, to run your account; we disclose it only to the processors listed above.`,
   "",
-  "**Children:** accounts are only for people aged 13 and over, and the age check is a first line of defence, not a guarantee. If you're a parent or guardian and think a child under 13 has an account, email support@puggietype.com and we'll delete it.",
+  "**Children:** accounts are only for people aged 13 and over, and the age check is a first line of defence, not a guarantee. If you're a parent or guardian and think a child under 13 has an account, email privacy@puggietype.com and we'll delete it.",
 ];
 const ACCOUNTS_SECTION = ACCOUNTS_SECTION_LINES.join("\n");
 const ACCOUNTS_NOT_IN_EFFECT =
@@ -78,7 +79,7 @@ const SOLO_ACCOUNTS =
 const COOKIES_ACCOUNTS =
   "We do not sell or share personal information for cross-context behavioral advertising. If you sign in, we also store the items listed under Accounts (ages 13+); they're used only to sign you in and aren't advertising or analytics.";
 const CHILDREN_ACCOUNTS = [
-  "If a parent or guardian tells us at support@puggietype.com that a child under 13 used multiplayer or created an account, we will delete any information we hold.",
+  "If a parent or guardian tells us at privacy@puggietype.com that a child under 13 used multiplayer or created an account, we will delete any information we hold.",
   "and leaderboard scores are kept only as described under Leaderboards. Account data is deleted when the account is deleted.",
 ];
 
@@ -96,13 +97,13 @@ const PROVIDERS_NOT_IN_EFFECT =
 const TERMS_AGE =
   "PuggieType's solo typing test needs no account. You must be **at least 13 years old** to create an account or use multiplayer. If you are under 18, or under the age of majority where you live, use accounts and multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.";
 const TERMS_ACCOUNTS = [
-  "You can create an account with your email address and a password, or with Google. Give accurate information, keep your sign-in details to yourself, and tell us at support@puggietype.com if you think someone else has used your account. You're responsible for what happens under your account. One account per person; don't create accounts to get around a suspension or limit.",
+  "You can create an account with your email address and a password, or with Google. Give accurate information, keep your sign-in details to yourself, and tell us at privacy@puggietype.com if you think someone else has used your account. You're responsible for what happens under your account. One account per person; don't create accounts to get around a suspension or limit.",
   "Settings and personal bests saved to your account come from your browser. We don't verify them, and they aren't leaderboard scores. Our service may automatically refuse to save a value that is outside realistic limits (that is not a decision to restrict your account), and we reserve the right to change or delete any saved personal best that we reasonably believe is wrong or was not achieved by typing by hand. We aren't required to review them.",
-  'You can delete your account at any time from the sign-in page ("delete account"), or by emailing support@puggietype.com; see the Privacy Policy for what is deleted. We may suspend or end an account that breaks these Terms or is used to cheat, abuse others or attack the service, and we may change or stop account features. Account data download is provided as a convenience copy of the data described in the Privacy Policy and doesn\'t limit your legal rights.',
-  "**If we restrict your account.** If we suspend or end your account, or hide or remove a personal best or other saved result because we believe you broke these Terms, a person at PuggieType makes that decision, not an automated process alone. We'll tell you what we did, why, and how to appeal, by email to the address you signed in with, unless the law or an urgent security reason stops us or we can't reach you; in an urgent case we may act first and tell you afterwards. To appeal, reply to that email or write to support@puggietype.com within 6 months. A person who wasn't involved in the first decision will look again where we can, and we'll answer within 30 days. If we find we got it wrong, we'll reverse the decision. Ending your account doesn't affect your right to ask for a copy of your data.",
+  'You can delete your account at any time from the sign-in page ("delete account"), or by emailing privacy@puggietype.com; see the Privacy Policy for what is deleted. We may suspend or end an account that breaks these Terms or is used to cheat, abuse others or attack the service, and we may change or stop account features. Account data download is provided as a convenience copy of the data described in the Privacy Policy and doesn\'t limit your legal rights.',
+  "**If we restrict your account.** If we suspend or end your account, or hide or remove a personal best or other saved result because we believe you broke these Terms, a person at PuggieType makes that decision, not an automated process alone. We'll tell you what we did, why, and how to appeal, by email to the address you signed in with, unless the law or an urgent security reason stops us or we can't reach you; in an urgent case we may act first and tell you afterwards. To appeal, reply to that email or write to privacy@puggietype.com within 6 months. A person who wasn't involved in the first decision will look again where we can, and we'll answer within 30 days. If we find we got it wrong, we'll reverse the decision. Ending your account doesn't affect your right to ask for a copy of your data.",
 ];
 const TERMS_ENFORCEMENT =
-  "We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. We suspend or end accounts only as described in section 5. To report a player, use the in-game report button or email support@puggietype.com.";
+  "We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. We suspend or end accounts only as described in section 5. To report a player, use the in-game report button or email privacy@puggietype.com.";
 const TERMS_CHANGES =
   "We may update these Terms. We'll change the date at the top, and if a change is significant we'll say so on the site. Using PuggieType after a change means you accept it.";
 const TERMS_HEADINGS = [
@@ -152,9 +153,140 @@ describe("legal-markdown", () => {
       );
 
       expect(html).not.toContain("legal-markdown:");
-      expect(html).toContain(expected);
+      // the only change to the rendered text is the table scroll wrapper
+      expect(html).toContain(wrapTables(expected));
+      const unwrapped = html
+        .replace(/<div class="tableWrap"[^>]*>(<table>)/g, "$1")
+        .replace(/(<\/table>)<\/div>/g, "$1");
+      expect(unwrapped).toContain(expected);
     });
   }
+
+  describe("table scroll wrappers", () => {
+    const WRAP_OPEN =
+      /<div class="tableWrap" tabindex="0" role="region" aria-label="([^"]+)"><table>/g;
+
+    it("wraps every table in the privacy page in a focusable labelled region", () => {
+      const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+      const html = renderLegalMarkdown(page, legalDir);
+      const tables = html.match(/<table>/g) ?? [];
+      const wraps = [...html.matchAll(WRAP_OPEN)];
+
+      expect(tables.length).toBeGreaterThan(0);
+      expect(wraps).toHaveLength(tables.length);
+      expect(wraps[0]?.[1]).toBe("table: Retention summary");
+      expect((html.match(/<\/table><\/div>/g) ?? []).length).toBe(
+        tables.length,
+      );
+    });
+
+    it("never leaves a bare table in either legal page", () => {
+      for (const name of ["terms", "privacy"]) {
+        const page = readFileSync(path.join(srcDir, `${name}.html`), "utf-8");
+        const html = renderLegalMarkdown(page, legalDir);
+        const bare = html.replace(WRAP_OPEN, "");
+        expect(bare).not.toContain("<table>");
+      }
+    });
+
+    it("labels each table after the heading above it, with a generic fallback", () => {
+      const out = wrapTables(
+        '<table><tr><td>0</td></tr></table>\n<h2 id="a">Data &amp; <em>use</em></h2>\n<table><tr><td>1</td></tr></table>\n<h3>Second</h3>\n<table><tr><td>2</td></tr></table>',
+      );
+      const labels = [...out.matchAll(WRAP_OPEN)].map((m) => m[1]);
+      expect(labels).toEqual([
+        "table: scrollable",
+        "table: Data &amp; use",
+        "table: Second",
+      ]);
+    });
+
+    it("keeps the scroll wrapper and the narrow-screen main column in the stylesheet", () => {
+      const scss = readFileSync(
+        path.join(srcDir, "styles/static-page.scss"),
+        "utf-8",
+      );
+      expect(scss).toMatch(/\.tableWrap \{\s*overflow-x: auto;/);
+      expect(scss).toContain(".tableWrap:focus-visible");
+      // main is a grid; its column must be allowed to shrink below the widest
+      // child, or wide tables and long URLs push the text off a phone screen
+      expect(scss).toMatch(
+        /\nmain \{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*overflow-wrap: anywhere;/,
+      );
+    });
+
+    it("escapes quotes, angle brackets and ampersands in the aria-label", () => {
+      const out = wrapTables(
+        '<h2>Say "hi" <b>&lt;now&gt;</b> &amp; x <y</h2><table><tr><td>1</td></tr></table>',
+      );
+      const label = /aria-label="([^"]*)"/.exec(out)?.[1];
+      expect(label).toBe("table: Say &quot;hi&quot; &lt;now&gt; &amp; x &lt;y");
+      // the attribute cannot be broken out of, and no raw markup leaks in
+      expect(out).toMatch(/^<h2>[^]*<\/h2><div class="tableWrap"/);
+      expect(label).not.toMatch(/["<>]/);
+      expect(out.match(/<div /g)).toHaveLength(1);
+    });
+
+    it("decodes then re-encodes entities once (no double escaping)", () => {
+      const out = wrapTables(
+        "<h2>A &amp; B &#39;c&#39; &#x26;</h2><table></table>",
+      );
+      expect(out).toContain("aria-label=\"table: A &amp; B 'c' &amp;\"");
+    });
+
+    it("does not throw on out-of-range numeric entities", () => {
+      const out = wrapTables("<h2>A &#99999999; B</h2><table></table>");
+      expect(out).toContain('aria-label="table: A &amp;#99999999; B"');
+    });
+
+    it("trims the heading text used for the label", () => {
+      const out = wrapTables(
+        "<h2>   Spaced out \n </h2><table><tr><td>1</td></tr></table>",
+      );
+      expect(out).toContain('aria-label="table: Spaced out"');
+    });
+
+    it("falls back to the generic label for a heading with no text", () => {
+      const out = wrapTables(
+        '<h2> <img src="x.png" alt=""> </h2><table></table>',
+      );
+      expect(out).toContain('aria-label="table: scrollable"');
+    });
+
+    it("suffixes repeated labels under one heading and restarts per heading", () => {
+      const t = "<table><tr><td>x</td></tr></table>";
+      const out = wrapTables(
+        `<h2>Retention</h2>${t}<p>a</p>${t}${t}<h2>Other</h2>${t}${t}<h2>Retention</h2>${t}`,
+      );
+      expect(
+        [...out.matchAll(/aria-label="([^"]+)"/g)].map((m) => m[1]),
+      ).toEqual([
+        "table: Retention",
+        "table: Retention (2)",
+        "table: Retention (3)",
+        "table: Other",
+        "table: Other (2)",
+        "table: Retention",
+      ]);
+    });
+
+    it("keeps table cells from breaking words mid-word", () => {
+      const scss = readFileSync(
+        path.join(srcDir, "styles/static-page.scss"),
+        "utf-8",
+      );
+      // main's overflow-wrap: anywhere would otherwise shrink table cells to
+      // one character and split words (Workma|n) on the guide pages
+      expect(scss).toMatch(
+        /\ntable \{\s*border-collapse: collapse;[^}]*overflow-wrap: normal;/,
+      );
+    });
+
+    it("leaves html without tables unchanged", () => {
+      const html = "<h2>Hello</h2><p>no table</p>";
+      expect(wrapTables(html)).toBe(html);
+    });
+  });
 
   it("privacy page descriptions do not say leaderboards are memory-only", () => {
     const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
@@ -432,7 +564,7 @@ describe("legal-markdown", () => {
     );
     expect(terms).not.toContain("In private lobbies you can send quick-chat");
     expect(terms).toContain(
-      "Like the rest of multiplayer, quick-chat is only for players aged 13 and over. To report misuse, use the report button or email support@puggietype.com.",
+      "Like the rest of multiplayer, quick-chat is only for players aged 13 and over. To report misuse, use the report button or email privacy@puggietype.com.",
     );
     // C3 + C4
     expect(privacy).toContain(
@@ -602,6 +734,48 @@ describe("legal-markdown", () => {
       expect(out).not.toMatch(/not in effect|flag that is off|#29/i);
       expect(out).toContain("<h2>5. Accounts</h2>");
       expect(out).toContain("<!--email_off-->");
+    });
+  });
+
+  describe("contact line (Legal M7)", () => {
+    const WHO_WE_ARE =
+      "Who we are: PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email privacy@puggietype.com.";
+
+    it("has the exact Who-we-are line right after the title and date lines", () => {
+      const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+      const lines = md.split("\n");
+      expect(lines[0]).toBe("# Privacy Policy");
+      expect(lines[2]).toMatch(/^_Effective date: .* Last updated: .*\._$/);
+      expect(lines[4]).toBe(WHO_WE_ARE);
+      expect(md.split(WHO_WE_ARE)).toHaveLength(2);
+      expect(md).not.toContain("PuggieType is run by the PuggieType team");
+      // the line is in the rendered page, too (as the first paragraph)
+      const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+      const html = renderLegalMarkdown(page, legalDir);
+      expect(html).toContain(
+        "<p>Who we are: PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email ",
+      );
+      expect(html).toContain('href="mailto:privacy@puggietype.com"');
+    });
+
+    it("uses only privacy@puggietype.com as an email address in the privacy policy and the terms", () => {
+      for (const name of ["privacy", "terms"]) {
+        const md = readFileSync(path.join(legalDir, `${name}.md`), "utf-8");
+        const emails = md.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+/g);
+        expect(emails, name).not.toBeNull();
+        expect(new Set(emails), name).toEqual(
+          new Set(["privacy@puggietype.com"]),
+        );
+        expect(md, name).not.toMatch(/support@|jakemegan/i);
+      }
+    });
+
+    it("names no people and gives no EU/UK representative", () => {
+      const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+      expect(md).not.toMatch(/\bJake\b|\bMegan\b/);
+      expect(md).not.toMatch(
+        /(EU|UK|European|United Kingdom)\s+(data protection\s+)?representative/i,
+      );
     });
   });
 });

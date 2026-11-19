@@ -157,6 +157,7 @@ import {
   isRaceRestartLocked,
 } from "../multiplayer/engine-hooks";
 import { recordSoloPace } from "../multiplayer/recent-pace";
+import { getAccountUser } from "../accounts/state";
 
 let failReason = "";
 
@@ -1036,6 +1037,19 @@ export async function finish(difficultyFailed = false): Promise<void> {
 
   // multiplayer hook: local pace history for Quick Match
   if (!dontSave) recordSoloPace(completedEvent);
+
+  // accounts hook (VITE_FEATURE_ACCOUNTS): personal best, fire and forget
+  if (
+    __FEATURE_ACCOUNTS__ &&
+    !dontSave &&
+    Config.resultSaving &&
+    getAccountUser() !== null
+  ) {
+    const result = { ...completedEvent };
+    void import("../accounts/personal-bests")
+      .then(async (m) => m.submitIfPersonalBest(result))
+      .catch(() => undefined);
+  }
 
   if (isRepeated() || difficultyFailed) {
     if (Config.resultSaving) {

@@ -99,11 +99,87 @@ export function withDirective(policy: string, value: string): string {
   return parts.join("; ");
 }
 
-/** the catch-all policy without Google hosts, with same-origin img/connect-src */
-export function kidsCspPolicy(policy: string): string {
-  return withDirective(
-    withDirective(cspWithoutAnalyticsAds(policy), KIDS_IMG_SRC),
-    KIDS_CONNECT_SRC,
+/**
+ * frame-src for the kids guides. Nothing on the page is framed; an accounts
+ * build would otherwise keep Turnstile and the Firebase auth domain here.
+ */
+export const KIDS_FRAME_SRC = "frame-src 'none'";
+
+/**
+ * Hosts never allowed on the kids guides, whatever the build env says:
+ * Firebase (auth domain, hosting, Google identity APIs), Cloudflare
+ * (Turnstile) and the accounts API. A source is blocked when its host is
+ * one of these or a subdomain (a `*.` label included).
+ */
+export const KIDS_BLOCKED_HOST_SUFFIXES = [
+  "firebaseapp.com",
+  "web.app",
+  "googleapis.com",
+  "cloudflare.com",
+  "api.puggietype.com",
+] as const;
+
+function sourceHost(token: string): string | undefined {
+  const match = /^[a-z][a-z0-9+.-]*:\/\/([^/\s]+)/i.exec(token);
+  const host = match?.[1]
+    ?.toLowerCase()
+    .replace(/^\*\./, "")
+    .replace(/:\d+$/, "");
+  return host === undefined || host === "" ? undefined : host;
+}
+
+/**
+ * True for a source the kids guides must not name: a host in
+ * KIDS_BLOCKED_HOST_SUFFIXES, or the same host as one of `blocked` (the
+ * accounts build's own CSP sources, see accountsCspSources).
+ */
+export function isKidsBlockedSource(
+  token: string,
+  blocked: readonly string[] = [],
+): boolean {
+  const host = sourceHost(token);
+  if (host === undefined) return false;
+  const blockedHosts = blocked
+    .map(sourceHost)
+    .filter((h): h is string => h !== undefined);
+  return (
+    blockedHosts.includes(host) ||
+    KIDS_BLOCKED_HOST_SUFFIXES.some(
+      (suffix) => host === suffix || host.endsWith(`.${suffix}`),
+    )
+  );
+}
+
+/** drops kids-blocked sources from every directive ('none' if left empty) */
+function withoutKidsBlocked(
+  policy: string,
+  blocked: readonly string[],
+): string {
+  return policy
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part !== "")
+    .map((part) => {
+      const [name = "", ...tokens] = part.split(/\s+/);
+      const kept = tokens.filter((t) => !isKidsBlockedSource(t, blocked));
+      if (kept.length === tokens.length) return part;
+      return [name, ...(kept.length === 0 ? ["'none'"] : kept)].join(" ");
+    })
+    .join("; ");
+}
+
+/**
+ * The catch-all policy without Google hosts or accounts hosts (`blocked`
+ * plus KIDS_BLOCKED_HOST_SUFFIXES, in every directive), with same-origin
+ * img-src and connect-src and no frames.
+ */
+export function kidsCspPolicy(
+  policy: string,
+  blocked: readonly string[] = [],
+): string {
+  return [KIDS_IMG_SRC, KIDS_CONNECT_SRC, KIDS_FRAME_SRC].reduce(
+    withDirective,
+    withoutKidsBlocked(cspWithoutAnalyticsAds(policy), blocked),
   );
 }
 
@@ -112,8 +188,11 @@ export function kidsCspPolicy(policy: string): string {
  * would keep the catch-all policy, Google origins included. Detach, then set
  * one policy that has no Google hosts and same-origin img-src and connect-src.
  */
-export function kidsCspRules(policy: string): string {
-  const strict = kidsCspPolicy(policy);
+export function kidsCspRules(
+  policy: string,
+  blocked: readonly string[] = [],
+): string {
+  const strict = kidsCspPolicy(policy, blocked);
   const rules = KIDS_CSP_PATHS.map(
     (rulePath) =>
       `${rulePath}\n  ! Content-Security-Policy\n  Content-Security-Policy: ${strict}\n`,
@@ -161,6 +240,8 @@ export function renderHeaders(
     scriptHashes: string[];
     wsOrigin: string;
     extraCsp?: Record<string, string[]>;
+    /** sources kept off the kids guides (accountsKidsBlockedSources) */
+    kidsBlocked?: readonly string[];
   },
 ): string {
   const rendered = template
@@ -171,7 +252,7 @@ export function renderHeaders(
       ? rendered
       : addCspSources(rendered, values.extraCsp);
   const base = withExtra.endsWith("\n") ? withExtra : `${withExtra}\n`;
-  return `${base}\n${kidsCspRules(firstCspPolicy(withExtra))}`;
+  return `${base}\n${kidsCspRules(firstCspPolicy(withExtra), values.kidsBlocked)}`;
 }
 
 /**
@@ -182,6 +263,7 @@ export function renderHeaders(
 export function pagesHeaders(options: {
   wsUrl: string | undefined;
   extraCsp?: Record<string, string[]>;
+  kidsBlocked?: readonly string[];
 }): Plugin {
   let outDir = path.resolve("./dist");
   return {
@@ -201,9 +283,13 @@ export function pagesHeaders(options: {
         scriptHashes: inlineScriptHashes(htmls),
         wsOrigin: connectSrcOrigins(options.wsUrl),
         extraCsp: options.extraCsp,
+        kidsBlocked: options.kidsBlocked,
       });
       writeFileSync(headersPath, rendered);
-      const kidsPolicy = kidsCspPolicy(firstCspPolicy(rendered));
+      const kidsPolicy = kidsCspPolicy(
+        firstCspPolicy(rendered),
+        options.kidsBlocked,
+      );
       for (const file of KIDS_HTML_FILES) {
         const htmlPath = path.join(outDir, file);
         const html = readFileSync(htmlPath, "utf8");

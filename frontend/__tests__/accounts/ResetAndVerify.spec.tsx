@@ -7,16 +7,6 @@ const session = vi.hoisted(() => ({
   refreshVerification: vi.fn(),
 }));
 vi.mock("../../src/ts/accounts/session", () => session);
-const turnstile = vi.hoisted(() => ({ token: "ts-token" as string | null }));
-vi.mock("../../src/ts/accounts/ui/TurnstileWidget", () => ({
-  TurnstileWidget: (props: {
-    action: string;
-    onToken: (t: string | null) => void;
-  }) => {
-    props.onToken(turnstile.token);
-    return <div data-turnstile-action={props.action} />;
-  },
-}));
 const notify = vi.hoisted(() => ({
   showErrorNotification: vi.fn(),
   showNoticeNotification: vi.fn(),
@@ -42,7 +32,6 @@ function button(container: HTMLElement, text: string): HTMLButtonElement {
 afterEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
-  turnstile.token = "ts-token";
 });
 
 describe("ResetPasswordForm", () => {
@@ -53,28 +42,45 @@ describe("ResetPasswordForm", () => {
     fireEvent.input(input);
   };
 
-  it("has Turnstile and shows the neutral sent text", async () => {
+  it("has no Turnstile and shows the neutral sent text", async () => {
     session.requestPasswordReset.mockResolvedValue({ ok: true });
     const { container, findByText } = render(() => (
       <ResetPasswordForm onBack={vi.fn()} />
     ));
-    expect(
-      container.querySelector('[data-turnstile-action="reset"]'),
-    ).not.toBeNull();
+    expect(container.querySelector("[data-turnstile-action]")).toBeNull();
     typeEmail(container, "a@b.test");
     fireEvent.submit(container.querySelector("form") as HTMLFormElement);
     expect(await findByText(accountsCopy.reset.sent)).toBeTruthy();
     expect(session.requestPasswordReset).toHaveBeenCalledWith("a@b.test");
   });
 
-  it("can't submit without a Turnstile token", async () => {
-    turnstile.token = null;
+  it("the button needs an email, nothing else", async () => {
+    const { container } = render(() => <ResetPasswordForm onBack={vi.fn()} />);
+    expect(button(container, accountsCopy.reset.submit).disabled).toBe(true);
+    typeEmail(container, "a@b.test");
+    await vi.waitFor(() =>
+      expect(button(container, accountsCopy.reset.submit).disabled).toBe(false),
+    );
+    typeEmail(container, "");
+    await vi.waitFor(() =>
+      expect(button(container, accountsCopy.reset.submit).disabled).toBe(true),
+    );
+  });
+
+  it("an error from Firebase is shown, the form stays", async () => {
+    session.requestPasswordReset.mockResolvedValue({
+      ok: false,
+      message: accountsCopy.firebase["auth/too-many-requests"],
+    });
     const { container } = render(() => <ResetPasswordForm onBack={vi.fn()} />);
     typeEmail(container, "a@b.test");
-    expect(button(container, accountsCopy.reset.submit).disabled).toBe(true);
     fireEvent.submit(container.querySelector("form") as HTMLFormElement);
-    await Promise.resolve();
-    expect(session.requestPasswordReset).not.toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(notify.showErrorNotification).toHaveBeenCalledWith(
+        "Too many attempts. Please wait a bit and try again.",
+      ),
+    );
+    expect(container.querySelector("form")).not.toBeNull();
   });
 });
 

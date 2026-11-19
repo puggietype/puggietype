@@ -44,7 +44,10 @@ The WS server's Origin allowlist must include every host serving the frontend
   `index.html`), which turns Pages' SPA fallback **off**: unknown paths get the app's
   404 page with status 404, and a missing hashed `/js` or `/css` file is a 404, never
   `index.html` cached as JS for a year. Every router path must be listed here (a unit
-  test checks it).
+  test checks it). Exception: accounts-only paths (`/account/action`) are appended to
+  `dist/_redirects` at build time only when `VITE_FEATURE_ACCOUNTS=true`
+  (`accountsRedirects` in `frontend/vite-plugins/accounts-env.ts`), so an off build's
+  `_redirects` is unchanged.
 - `_routes.json`: asset prefixes (`/js`, `/css`, `/webfonts`, `/assets`, `/images`, ...)
   are excluded so they never invoke the Pages Function (free plan quota). The
   middleware does www -> apex and HSTS. It does not set a country cookie. Real static files are served as-is.
@@ -60,6 +63,29 @@ The WS server's Origin allowlist must include every host serving the frontend
   Pages comma-joins two values of the same header, so a second CSP without
   the detach would keep the Google origins.
 
+## Firebase setup for accounts
+
+Only matters with `VITE_FEATURE_ACCOUNTS=true`. In the Firebase console of the
+accounts project (staging and production each):
+
+- **Authentication > Templates**: for **Password reset**, **Email address
+  verification** and **Email address change**, edit the template, choose
+  **Customize action URL** and set it to `https://puggietype.com/account/action`
+  (staging: `https://<staging host>/account/action`). The setting is per project and
+  applies to all three templates.
+- Why: sign-up requires at least 8 characters (`frontend/src/ts/accounts/password.ts`),
+  but Firebase's own hosted reset page only enforces the project's password policy
+  (6 characters). Firebase can enforce a stronger policy itself only after the
+  Identity Platform upgrade, which needs a billing account, so we don't use it.
+  Our `/account/action` page checks the 8-character rule before calling
+  `confirmPasswordReset`, and also handles email verification and email-change
+  recovery. It reads only `mode` and `oobCode`, removes them from the address bar
+  right away, and ignores `continueUrl`, `apiKey` and `lang` (no redirects).
+- **Authentication > Settings > User actions**: keep **Email enumeration protection**
+  on. The reset form already answers the same way whether or not an account exists.
+- **Authentication > Settings > Authorized domains**: the production and staging hosts
+  must be listed, or the action links are refused.
+
 Check a build locally with Pages semantics:
 
 ```sh
@@ -67,6 +93,34 @@ npx wrangler pages dev frontend/dist --port 3300
 curl -sI http://127.0.0.1:3300/r/ABCD2345   # 200, app
 curl -sI http://127.0.0.1:3300/robots.txt   # 200, text/plain
 ```
+
+## Abuse controls: what is and isn't protected
+
+Only matters with `VITE_FEATURE_ACCOUNTS=true`. Be plain about this in any copy:
+Turnstile does **not** protect sign-in.
+
+- **Turnstile gates only `POST /v1/auth/session`**, which creates or refreshes our
+  account record. The API verifies the token server-side (siteverify, hostname,
+  action). The widget is on sign in, create account and the birth-year prompt.
+- **Firebase sign-in, sign-up and password reset are called straight from the
+  browser** with the public API key, so anyone can call them directly (Identity
+  Toolkit). That is inherent to Firebase. The reset form has no Turnstile widget:
+  its token could never be verified, so it only looked like protection (and it was
+  a Cloudflare data flow for nothing). The reset form answers the same way whether
+  or not an account exists.
+- **Firebase-side mitigations** (console, per project):
+  - **Email enumeration protection: ON** (Authentication > Settings > User actions).
+  - **No reCAPTCHA Enterprise / Identity Platform**: it needs a billing account, so we
+    don't use it. If it is ever turned on, the privacy notice must name Google
+    reCAPTCHA first.
+  - Firebase's built-in per-project and per-user rate limits and email-send quotas.
+    When they trigger, the user sees `auth/too-many-requests` with the C2 copy
+    ("Too many attempts. Please wait a bit and try again.").
+  - Email verification is required before anything reaches a leaderboard.
+  - Watch the **Firebase Auth usage dashboard** (sign-ups, emails sent) for spikes.
+- **Accepted residual risk**: password sign-up reveals whether an email already
+  has an account (`auth/email-already-in-use`, shown with neutral wording). Firebase
+  password sign-up can't avoid this.
 
 ## Local preview against a local WS server
 

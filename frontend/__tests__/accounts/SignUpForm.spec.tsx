@@ -39,6 +39,15 @@ function button(container: HTMLElement, text: string): HTMLButtonElement {
   return found;
 }
 
+function linksOf(el: Element): (string | null)[][] {
+  return [...el.querySelectorAll("a")].map((a) => [
+    a.textContent,
+    a.getAttribute("href"),
+    a.getAttribute("target"),
+    a.getAttribute("rel"),
+  ]);
+}
+
 afterEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
@@ -148,15 +157,11 @@ describe("SignUpForm legal line", () => {
     ));
     const legal = getByTestId("sign-up-legal");
     expect(legal.textContent).toBe(
-      "By creating an account, you agree to our Terms and confirm you've read our Privacy Policy.",
+      "By creating an account (with email or Google), you agree to our Terms and confirm you've read our Privacy Policy.",
     );
-    const links = [...legal.querySelectorAll("a")].map((a) => [
-      a.textContent,
-      a.getAttribute("href"),
-    ]);
-    expect(links).toEqual([
-      ["Terms", "/terms"],
-      ["Privacy Policy", "/privacy"],
+    expect(linksOf(legal)).toEqual([
+      ["Terms", "/terms", "_blank", "noopener"],
+      ["Privacy Policy", "/privacy", "_blank", "noopener"],
     ]);
     const submit = container.querySelector('form button[type="submit"]');
     expect(submit?.nextElementSibling).toBe(legal);
@@ -190,6 +195,21 @@ describe("AgeCheckPrompt", () => {
     fireEvent.click(button(container, "continue"));
     await vi.waitFor(() => expect(onResult).toHaveBeenCalled());
     expect(session.completeAgeCheck).toHaveBeenCalledWith(false, "ts-token");
+  });
+
+  it("shows the Terms/Privacy notice above continue (Google sign-in tab creates accounts here)", () => {
+    const { container, getByTestId } = render(() => (
+      <AgeCheckPrompt onResult={vi.fn()} onCancel={vi.fn()} />
+    ));
+    const notice = getByTestId("age-legal");
+    expect(notice.textContent).toBe(
+      "By continuing, you agree to our Terms and confirm you've read our Privacy Policy.",
+    );
+    expect(linksOf(notice)).toEqual([
+      ["Terms", "/terms", "_blank", "noopener"],
+      ["Privacy Policy", "/privacy", "_blank", "noopener"],
+    ]);
+    expect(notice.nextElementSibling).toBe(button(container, "continue"));
   });
 
   it("cancel backs out", async () => {
