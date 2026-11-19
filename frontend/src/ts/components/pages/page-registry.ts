@@ -79,6 +79,15 @@ export const pageRegistry: PageRegistry = {
         )
       : LoginPage,
   },
+  // accounts email action links; the route only exists with the flag on
+  accountAction: {
+    component: __FEATURE_ACCOUNTS__
+      ? lazyPage(
+          async () => import("../../accounts/ui/AccountActionPage"),
+          "AccountActionPage",
+        )
+      : NotFoundPage,
+  },
   profile: { component: ProfilePage },
   profileSearch: { component: ProfileSearchPage },
   404: { component: NotFoundPage },

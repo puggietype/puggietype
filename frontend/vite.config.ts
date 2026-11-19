@@ -22,6 +22,7 @@ import { ga4CspSources, mergeCspSources } from "./vite-plugins/ga4-csp";
 import { firebaseStub } from "./vite-plugins/firebase-stub";
 import {
   accountsCspSources,
+  accountsRedirects,
   accountsTailwindSources,
   checkAccountsEnv,
   isAccountsEnabled,
@@ -232,6 +233,7 @@ function getPlugins({
     injectPreload(),
     inlineStaticPageCss(),
     notFoundPage(),
+    accountsRedirects({ enabled: isAccountsEnabled(env) }),
     minifyJson(),
     pagesHeaders({
       wsUrl: env["VITE_WS_URL"],

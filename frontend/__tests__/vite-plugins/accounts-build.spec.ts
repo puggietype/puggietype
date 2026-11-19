@@ -1,10 +1,14 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import {
+  ACCOUNTS_ONLY_PATHS,
   accountsCspSources,
+  accountsRedirects,
+  addAccountsRedirects,
   accountsTailwindSources,
   excludeAccountsSources,
 } from "../../vite-plugins/accounts-env";
@@ -116,5 +120,94 @@ describe("accounts Tailwind sources", () => {
   it("the excluded path is the accounts dir next to styles/", () => {
     const dir = path.resolve(path.dirname(cssFile), "../ts/accounts");
     expect(dir).toBe("/repo/frontend/src/ts/accounts");
+  });
+});
+
+describe("accounts redirects (Cloudflare Pages)", () => {
+  const redirects = readFileSync(
+    path.resolve(__dirname, "../../static/_redirects"),
+    "utf8",
+  );
+
+  it("static/_redirects has no accounts-only path (off builds unchanged)", () => {
+    for (const p of ACCOUNTS_ONLY_PATHS) expect(redirects).not.toContain(p);
+  });
+
+  it("accounts on: rewrites /account/action to the app, slash 301 first", () => {
+    const out = addAccountsRedirects(redirects);
+    const lines = out.split("\n");
+    const slash = lines.indexOf("/account/action/ /account/action 301");
+    const rewrite = lines.indexOf("/account/action / 200");
+    const firstRewrite = lines.findIndex(
+      (l) => !l.startsWith("#") && l.endsWith(" 200"),
+    );
+    expect(slash).toBeGreaterThanOrEqual(0);
+    expect(slash).toBeLessThan(firstRewrite);
+    expect(rewrite).toBeGreaterThan(firstRewrite);
+    // everything else kept, in order
+    expect(lines.filter((l) => !l.includes("/account/action"))).toEqual(
+      redirects.split("\n"),
+    );
+    expect(out.endsWith("\n")).toBe(redirects.endsWith("\n"));
+  });
+
+  type Hooks = {
+    configResolved: (c: unknown) => void;
+    closeBundle: () => void;
+  };
+  const build = (enabled: boolean): string => {
+    const dir = mkdtempSync(path.join(tmpdir(), "acc-redirects-"));
+    writeFileSync(path.join(dir, "_redirects"), redirects);
+    const plugin = accountsRedirects({ enabled }) as unknown as Hooks;
+    plugin.configResolved({ root: dir, build: { outDir: "." } });
+    plugin.closeBundle();
+    return readFileSync(path.join(dir, "_redirects"), "utf8");
+  };
+
+  it("the plugin only touches dist/_redirects with the flag on", () => {
+    expect(build(false)).toBe(redirects);
+    expect(build(true)).toBe(addAccountsRedirects(redirects));
+  });
+});
+
+describe("accounts gate sites (source)", () => {
+  const src = (file: string): string =>
+    readFileSync(path.resolve(__dirname, "../../src/ts", file), "utf8");
+
+  it.each([
+    ["accounts/session.ts", 'import("./settings-sync")'],
+    ["test/test-logic.ts", 'import("../accounts/personal-bests")'],
+    [
+      "components/pages/page-registry.ts",
+      'import("../../accounts/ui/AccountActionPage")',
+    ],
+  ])("%s: %s sits behind an inline __FEATURE_ACCOUNTS__", (file, site) => {
+    const code = src(file);
+    const at = code.indexOf(site);
+    expect(at).toBeGreaterThan(0);
+    // the define is the literal right before the import (rolldown only
+    // drops a gated import() with the literal at the site)
+    const before = code.slice(Math.max(0, at - 300), at);
+    expect(before).toContain("__FEATURE_ACCOUNTS__");
+  });
+
+  it("route-controller: /account/action only inside the gate", () => {
+    const code = src("controllers/route-controller.ts");
+    const gate = code.indexOf("...(__FEATURE_ACCOUNTS__");
+    const route = code.indexOf('path: "/account/action"');
+    expect(gate).toBeGreaterThan(0);
+    expect(route).toBeGreaterThan(gate);
+    expect(route - gate).toBeLessThan(200);
+  });
+
+  it("config/persistence: the sync listener only fires behind the define", () => {
+    const code = src("config/persistence.ts");
+    const calls = [...code.matchAll(/notifyAccountsConfigSaved\(\);/g)];
+    expect(calls).toHaveLength(2);
+    for (const m of calls) {
+      expect(code.slice((m.index ?? 0) - 30, m.index)).toContain(
+        "if (__FEATURE_ACCOUNTS__)",
+      );
+    }
   });
 });

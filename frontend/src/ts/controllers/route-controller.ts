@@ -8,6 +8,7 @@ import { showNoticeNotification } from "../states/notifications";
 import { navigationEvent, type NavigateOptions } from "../events/navigation";
 import { authEvent } from "../events/auth";
 import { isRouteHidden } from "../constants/standalone";
+import { captureActionLink } from "../accounts/action-link";
 import { isRaceActive } from "../multiplayer/engine-hooks";
 import { leaveRoom } from "../multiplayer/race";
 import { room } from "../multiplayer/store";
@@ -104,6 +105,23 @@ const routes: Route[] = [
       await PageController.change("login", options);
     },
   },
+  // accounts (VITE_FEATURE_ACCOUNTS): Firebase email action links. Gated
+  // inline so an off build has no such route (it 404s as before). Pages
+  // rewrites it via accountsRedirects (vite-plugins/accounts-env.ts); the
+  // firebase.json `account{,/**}` rewrite already covers it
+  ...(__FEATURE_ACCOUNTS__
+    ? [
+        {
+          path: "/account/action",
+          load: async (_params, options) => {
+            // before anything renders or reads the URL: the oobCode stays
+            // in memory only
+            captureActionLink();
+            await PageController.change("accountAction", options);
+          },
+        } satisfies Route,
+      ]
+    : []),
   {
     path: "/account",
     load: async (_params, options) => {

@@ -13,6 +13,24 @@ import { recordUserConfigVersion } from "./version";
 
 let configToSend: Partial<ConfigSchemas.Config> = {};
 
+// accounts settings sync (VITE_FEATURE_ACCOUNTS): accounts/settings-sync sets
+// it while signed in; the legacy saveConfig path below is unchanged
+let accountsConfigSaved: (() => void) | undefined;
+
+export function setAccountsConfigSavedListener(
+  listener: (() => void) | undefined,
+): void {
+  accountsConfigSaved = listener;
+}
+
+function notifyAccountsConfigSaved(): void {
+  try {
+    accountsConfigSaved?.();
+  } catch {
+    // a sync problem never breaks saving the config
+  }
+}
+
 export const configLS = new LocalStorageWithSchema({
   key: "config",
   schema: ConfigSchemas.ConfigSchema,
@@ -37,6 +55,7 @@ export function saveToLocalStorage(
     //@ts-expect-error this is fine
     configToSend[key] = Config[key];
     saveToDatabase();
+    if (__FEATURE_ACCOUNTS__) notifyAccountsConfigSaved();
   }
 }
 
@@ -50,6 +69,7 @@ export function saveFullConfigToLocalStorage(noDbCheck = false): void {
     void saveConfig(Config).finally(() => {
       setAccountButtonSpinner(false);
     });
+    if (__FEATURE_ACCOUNTS__) notifyAccountsConfigSaved();
   }
 }
 

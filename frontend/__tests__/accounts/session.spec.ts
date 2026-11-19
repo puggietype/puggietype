@@ -13,6 +13,10 @@ const sdk = vi.hoisted(() => ({
   getUserIdToken: vi.fn(),
   getRestoredUser: vi.fn(),
   signOutFirebase: vi.fn(),
+  checkPasswordResetCode: vi.fn(),
+  resetPassword: vi.fn(),
+  applyEmailActionCode: vi.fn(),
+  checkRecoverEmailCode: vi.fn(),
 }));
 vi.mock("../../src/ts/accounts/firebase-sdk", () => sdk);
 
@@ -22,6 +26,9 @@ const api = vi.hoisted(() => ({
   deleteMe: vi.fn(),
 }));
 vi.mock("../../src/ts/accounts/api", () => api);
+
+const settingsSync = vi.hoisted(() => ({ onAccountChange: vi.fn() }));
+vi.mock("../../src/ts/accounts/settings-sync", () => settingsSync);
 
 vi.mock("../../src/ts/accounts/config", async (importOriginal) => {
   const real =
@@ -39,7 +46,10 @@ vi.mock("../../src/ts/accounts/config", async (importOriginal) => {
   };
 });
 
-import { SESSION_HINT_KEY } from "../../src/ts/accounts/flag";
+import {
+  SESSION_HINT_KEY,
+  SETTINGS_DIRTY_KEY,
+} from "../../src/ts/accounts/flag";
 import { WEAK_PASSWORD } from "../../src/ts/accounts/password";
 import {
   AGE_BLOCK_KEY,
@@ -48,6 +58,11 @@ import {
 } from "../../src/ts/accounts/age";
 import {
   AGE_BLOCKED,
+  applyRecoverEmailLink,
+  applyVerifyEmailLink,
+  checkResetLink,
+  finishPasswordReset,
+  LINK_INVALID,
   cancelAgeCheck,
   completeAgeCheck,
   deleteAccount,
@@ -61,6 +76,7 @@ import {
   signOut,
   signUp,
 } from "../../src/ts/accounts/session";
+import { callWithIdToken } from "../../src/ts/accounts/authed-call";
 import { getAccountUser, setAccountUser } from "../../src/ts/accounts/state";
 import { accountsCopy } from "../../src/ts/accounts/strings";
 
@@ -93,6 +109,97 @@ afterEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   setAccountUser(null);
+  vi.unstubAllGlobals();
+});
+
+/** lets the gated import("./settings-sync") resolve */
+async function settle(): Promise<void> {
+  await new Promise((r) => setTimeout(r, 0));
+}
+
+describe("accounts settings sync hook", () => {
+  beforeEach(() => {
+    sdk.getRestoredUser.mockResolvedValue(fbUser);
+    api.getMe.mockResolvedValue({ ok: true, user });
+  });
+
+  it("flag on: starts after restore, stops on sign-out", async () => {
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
+    await restoreSession();
+    await settle();
+    expect(settingsSync.onAccountChange).toHaveBeenCalledWith("u1");
+    localStorage.setItem(SETTINGS_DIRTY_KEY, "u1");
+    await signOut();
+    await settle();
+    expect(settingsSync.onAccountChange).toHaveBeenLastCalledWith(null);
+    expect(localStorage.getItem(SETTINGS_DIRTY_KEY)).toBeNull();
+  });
+
+  it("flag on: a signed-out boot never starts it", async () => {
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
+    sdk.getRestoredUser.mockResolvedValue(null);
+    await restoreSession();
+    await settle();
+    expect(settingsSync.onAccountChange).not.toHaveBeenCalled();
+  });
+
+  it("flag off: never reached", async () => {
+    await restoreSession();
+    await signOut();
+    await settle();
+    expect(settingsSync.onAccountChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("accounts callWithIdToken", () => {
+  const ok = { ok: true as const };
+  const unauthorized = {
+    ok: false as const,
+    status: 401,
+    code: "unauthorized",
+    message: "x",
+  };
+
+  it("passes the API url and the user's ID token", async () => {
+    sdk.getRestoredUser.mockResolvedValue(fbUser);
+    const run = vi.fn(async () => ok);
+    expect(await callWithIdToken(run)).toBe(ok);
+    expect(run).toHaveBeenCalledWith({
+      apiUrl: "https://api.example.test",
+      idToken: "id-token",
+    });
+  });
+
+  it("a 401 refreshes the token once, never more", async () => {
+    sdk.getRestoredUser.mockResolvedValue(fbUser);
+    sdk.getUserIdToken.mockImplementation(async (_u, refresh?: boolean) =>
+      refresh === true ? "fresh-token" : "id-token",
+    );
+    const run = vi.fn(async () => unauthorized);
+    const result = await callWithIdToken(run);
+    expect(result).toBe(unauthorized);
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(run.mock.calls[1]).toEqual([
+      { apiUrl: "https://api.example.test", idToken: "fresh-token" },
+    ]);
+  });
+
+  it("no Firebase user: refused without a request", async () => {
+    sdk.getRestoredUser.mockResolvedValue(null);
+    const run = vi.fn(async () => ok);
+    const result = await callWithIdToken(run);
+    expect(result).toMatchObject({ ok: false, status: 401 });
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("never throws", async () => {
+    sdk.getRestoredUser.mockRejectedValue(new Error("boom"));
+    expect(await callWithIdToken(vi.fn(async () => ok))).toMatchObject({
+      ok: false,
+      status: 0,
+      message: accountsCopy.api.network,
+    });
+  });
 });
 
 describe("accounts session", () => {
@@ -710,5 +817,116 @@ describe("accounts delete account", () => {
     expect(await getReauthKind()).toBe("google");
     sdk.getRestoredUser.mockResolvedValue(null);
     expect(await getReauthKind()).toBeNull();
+  });
+});
+
+describe("accounts email action links", () => {
+  const firebaseError = (code: string): Error =>
+    Object.assign(new Error(`Firebase: raw text (${code}).`), { code });
+
+  beforeEach(() => {
+    sdk.checkPasswordResetCode.mockResolvedValue(undefined);
+    sdk.resetPassword.mockResolvedValue(undefined);
+    sdk.applyEmailActionCode.mockResolvedValue(undefined);
+    sdk.checkRecoverEmailCode.mockResolvedValue(undefined);
+  });
+
+  it("resetPassword: checks, then sets the new password", async () => {
+    expect(await checkResetLink("code1")).toEqual({ ok: true });
+    expect(sdk.checkPasswordResetCode).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "x" }),
+      "code1",
+    );
+    expect(await finishPasswordReset("code1", "longenough")).toEqual({
+      ok: true,
+    });
+    expect(sdk.resetPassword).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "x" }),
+      "code1",
+      "longenough",
+    );
+  });
+
+  it("a short new password is refused without touching Firebase", async () => {
+    const result = await finishPasswordReset("code1", "1234567");
+    expect(result).toMatchObject({ ok: false, code: WEAK_PASSWORD });
+    expect(sdk.resetPassword).not.toHaveBeenCalled();
+  });
+
+  it.each(["auth/invalid-action-code", "auth/expired-action-code"])(
+    "%s: the fixed link text, never Firebase's",
+    async (code) => {
+      sdk.checkPasswordResetCode.mockRejectedValue(firebaseError(code));
+      sdk.applyEmailActionCode.mockRejectedValue(firebaseError(code));
+      for (const result of [
+        await checkResetLink("c"),
+        await applyVerifyEmailLink("c"),
+        await applyRecoverEmailLink("c"),
+      ]) {
+        expect(result).toEqual({
+          ok: false,
+          code: LINK_INVALID,
+          message: accountsCopy.action.linkInvalid,
+        });
+      }
+    },
+  );
+
+  it("other errors get the fixed table text or the fallback", async () => {
+    sdk.resetPassword.mockRejectedValue(
+      firebaseError("auth/network-request-failed"),
+    );
+    expect(await finishPasswordReset("c", "longenough")).toEqual({
+      ok: false,
+      code: "",
+      message: accountsCopy.firebase["auth/network-request-failed"],
+    });
+    sdk.resetPassword.mockRejectedValue(firebaseError("auth/something-new"));
+    const result = await finishPasswordReset("c", "longenough");
+    expect(result).toEqual({
+      ok: false,
+      code: "",
+      message: accountsCopy.firebaseFallback,
+    });
+    expect(JSON.stringify(result)).not.toContain("raw text");
+  });
+
+  it("Firebase's own weak-password refusal maps to ours", async () => {
+    sdk.resetPassword.mockRejectedValue(firebaseError("auth/weak-password"));
+    expect(await finishPasswordReset("c", "longenough")).toMatchObject({
+      ok: false,
+      code: WEAK_PASSWORD,
+    });
+  });
+
+  it("verifyEmail: applies the code, refreshes a signed-in account", async () => {
+    sdk.getFreshUser.mockResolvedValue(fbUser);
+    api.getMe.mockResolvedValue({ ok: true, user });
+    expect(await applyVerifyEmailLink("c")).toEqual({ ok: true });
+    expect(sdk.applyEmailActionCode).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "x" }),
+      "c",
+    );
+    // signed out: nothing to refresh
+    expect(api.getMe).not.toHaveBeenCalled();
+    setAccountUser({ ...user, emailVerified: false });
+    await applyVerifyEmailLink("c");
+    expect(api.getMe).toHaveBeenCalledTimes(1);
+    expect(getAccountUser()?.emailVerified).toBe(true);
+  });
+
+  it("recoverEmail: checks the code is a recover code before applying", async () => {
+    expect(await applyRecoverEmailLink("c")).toEqual({ ok: true });
+    expect(sdk.checkRecoverEmailCode).toHaveBeenCalledBefore(
+      sdk.applyEmailActionCode,
+    );
+    sdk.checkRecoverEmailCode.mockRejectedValue(
+      firebaseError("auth/invalid-action-code"),
+    );
+    sdk.applyEmailActionCode.mockClear();
+    expect(await applyRecoverEmailLink("c")).toMatchObject({
+      code: LINK_INVALID,
+    });
+    expect(sdk.applyEmailActionCode).not.toHaveBeenCalled();
   });
 });

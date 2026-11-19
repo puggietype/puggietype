@@ -17,6 +17,10 @@ export const accountsCopy = {
     rateLimited: "Too many attempts, please wait and try again",
     unavailable: "Accounts aren't available right now. Please try again later.",
     badResponse: "Something went wrong. Please try again.",
+    // DRAFT FOR LEGAL: settings sync, personal bests, export (not yet reviewed)
+    invalidPb: "That result couldn't be saved as a personal best.",
+    pbLimit: "You've reached the limit of saved personal bests.",
+    tooLarge: "That's too much to save in one go.",
     failed: (status: number): string =>
       `Something went wrong (error ${status}). Please try again.`,
   },
@@ -103,6 +107,33 @@ export const accountsCopy = {
     stillUnverified: "Your email isn't verified yet",
     verified: "Email verified",
   },
+  // DRAFT FOR LEGAL: email action links, /account/action (not yet reviewed)
+  action: {
+    title: "account",
+    checking: "Checking your link...",
+    linkInvalid:
+      "This link has expired or has already been used. You can ask for a new one.",
+    notValid: "This link isn't valid.",
+    requestNewReset: "send a new reset link",
+    toSignIn: "go to sign in",
+    resetTitle: "choose a new password",
+    newPassword: "new password",
+    confirmPassword: "confirm new password",
+    // password.ts MIN_PASSWORD_LENGTH
+    passwordRule: "Use at least 8 characters.",
+    mismatch: "The passwords don't match.",
+    resetSubmit: "save new password",
+    resetDone: "Your password has been changed. You can now sign in with it.",
+    verifyDone: "Your email is verified. Thanks!",
+    recoverDone:
+      "Your sign-in email has been changed back. If you didn't ask for the change, reset your password now to keep your account safe.",
+  },
+  // DRAFT FOR LEGAL: data export (not yet reviewed)
+  exportData: {
+    button: "Download my data",
+    busy: "Preparing your data...",
+    fileName: "puggietype-data.json",
+  },
   account: {
     delete: "delete account",
     warning:
@@ -119,5 +150,32 @@ export const accountsCopy = {
   signedIn: {
     title: "signed in",
     signOut: "sign out",
+  },
+  // DRAFT FOR LEGAL: personal bests list (not yet reviewed)
+  personalBests: {
+    title: "Your personal bests",
+    loading: "Loading your personal bests...",
+    empty:
+      "No personal bests yet. Finish a time or words test to set your first one.",
+    error: "We couldn't load your personal bests. Please try again later.",
+    retry: "try again",
+    /** e.g. "time 60 english, 85.4 wpm, 97.2% acc" */
+    row: (pb: {
+      mode: string;
+      mode2: string;
+      language: string;
+      punctuation: boolean;
+      numbers: boolean;
+      wpm: number;
+      acc: number;
+    }): string => {
+      const one = (n: number): string => String(Math.round(n * 10) / 10);
+      const extras = [
+        pb.punctuation ? " punctuation" : "",
+        pb.numbers ? " numbers" : "",
+      ].join("");
+      const language = pb.language.replace(/_/g, " ");
+      return `${pb.mode} ${pb.mode2} ${language}${extras}, ${one(pb.wpm)} wpm, ${one(pb.acc)}% acc`;
+    },
   },
 } as const;

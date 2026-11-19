@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { MIN_PASSWORD_LENGTH } from "../../src/ts/accounts/password";
 import { accountsCopy } from "../../src/ts/accounts/strings";
 
 // Legal review of PR #28 (2026-11-04), table (a): exact copy
@@ -86,5 +87,29 @@ describe("accountsCopy (Legal-approved)", () => {
       "By creating an account, you agree to our Terms and confirm you've read our Privacy Policy.",
     );
     expect([l.termsHref, l.privacyHref]).toEqual(["/terms", "/privacy"]);
+  });
+});
+
+function allStrings(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (typeof value !== "object" || value === null) return [];
+  return Object.values(value).flatMap(allStrings);
+}
+
+describe("accountsCopy (drafts)", () => {
+  it("no em or en dashes anywhere", () => {
+    for (const text of allStrings(accountsCopy)) {
+      expect(text).not.toMatch(/[\u2013\u2014]/);
+    }
+  });
+
+  it("every password rule says the same minimum", () => {
+    const rule = `at least ${MIN_PASSWORD_LENGTH} characters`;
+    expect(accountsCopy.firebase["auth/weak-password"]).toContain(rule);
+    expect(accountsCopy.action.passwordRule).toContain(rule);
+    const lengths = allStrings(accountsCopy)
+      .flatMap((t) => [...t.matchAll(/(\d+) characters/g)])
+      .map((m) => Number(m[1]));
+    expect(new Set(lengths)).toEqual(new Set([MIN_PASSWORD_LENGTH]));
   });
 });
