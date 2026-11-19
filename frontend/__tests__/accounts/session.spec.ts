@@ -771,13 +771,13 @@ describe("accounts delete account", () => {
     expect(getAccountUser()).toEqual(user);
   });
 
-  it("Firebase delete failing after the API: signed out, told so", async () => {
+  it("Firebase delete failing after the API: deleted, signed out, with a notice", async () => {
     sdk.deleteFirebaseUser.mockRejectedValue({
       code: "auth/requires-recent-login",
     });
     expect(await deleteAccount("pw")).toEqual({
-      ok: false,
-      message: accountsCopy.account.partiallyDeleted,
+      ok: true,
+      notice: accountsCopy.account.partiallyDeleted,
     });
     expect(sdk.signOutFirebase).toHaveBeenCalledTimes(1);
     expect(getAccountUser()).toBeNull();

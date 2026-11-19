@@ -3,6 +3,7 @@ import { createResource, createSignal, JSXElement, Show } from "solid-js";
 import { Button } from "../../components/common/Button";
 import {
   showErrorNotification,
+  showNoticeNotification,
   showSuccessNotification,
 } from "../../states/notifications";
 import { deleteAccount, getReauthKind } from "../session";
@@ -26,8 +27,14 @@ export function DeleteAccount(): JSXElement {
       const result = await deleteAccount(
         kind() === "password" ? password() : undefined,
       );
-      if (result.ok) showSuccessNotification(accountsCopy.account.deleted);
-      else showErrorNotification(result.message);
+      if (!result.ok) {
+        showErrorNotification(result.message);
+      } else if (result.notice !== undefined) {
+        // deleted, but the sign-in is removed later: news, not an error
+        showNoticeNotification(result.notice);
+      } else {
+        showSuccessNotification(accountsCopy.account.deleted);
+      }
     } finally {
       setPassword("");
       setBusy(false);

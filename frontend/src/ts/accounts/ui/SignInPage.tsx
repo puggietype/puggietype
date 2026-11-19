@@ -17,6 +17,7 @@ import { AGE_BLOCKED, AuthResult, preloadSdk } from "../session";
 import { getAccountUser } from "../state";
 import { accountsCopy } from "../strings";
 import { AgeCheckPrompt } from "./AgeCheckPrompt";
+import { takeResetQuery } from "./reset-query";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 import { SignedInPanel } from "./SignedInPanel";
 import { SignInForm } from "./SignInForm";
@@ -26,7 +27,9 @@ type Mode = "signIn" | "signUp" | "reset" | "age";
 
 /** accounts milestone A (VITE_FEATURE_ACCOUNTS) /login, replaces LoginPage */
 export function SignInPage(): JSXElement {
-  const [mode, setMode] = createSignal<Mode>("signIn");
+  const [mode, setMode] = createSignal<Mode>(
+    takeResetQuery() ? "reset" : "signIn",
+  );
   const [ageBlocked, setAgeBlocked] = createSignal(isAgeBlocked(localStorage));
 
   const onResult = (result: AuthResult): void => {

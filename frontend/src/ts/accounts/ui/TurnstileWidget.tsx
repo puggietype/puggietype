@@ -7,12 +7,16 @@ import {
   TurnstileApi,
   TurnstileRenderOptions,
 } from "../turnstile";
+import { NewTabLink } from "./NewTabLink";
+
+const notice = accountsCopy.turnstile.notice;
 
 export type TurnstileControl = { reset: () => void };
 
 /**
  * Cloudflare Turnstile, script loaded on mount only. Reports a token, or null
- * when it expires, errors or is reset (tokens are single use).
+ * when it expires, errors or is reset (tokens are single use). Always
+ * followed by the Turnstile notice (Legal C7: notice at the point of use).
  */
 export function TurnstileWidget(props: {
   siteKey: string;
@@ -66,7 +70,12 @@ export function TurnstileWidget(props: {
       <div
         ref={(el) => (containerRef = el)}
         class={cn("min-h-16.25", { hidden: problem() !== null })}
+        data-testid="turnstile"
       ></div>
+      <p class="text-xs text-sub" data-testid="turnstile-notice">
+        {notice.text}
+        <NewTabLink href={notice.privacyHref} text={notice.privacy} />
+      </p>
       <Show when={problem() === "unconfigured"}>
         <p class="text-sm text-sub">{accountsCopy.turnstile.unconfigured}</p>
       </Show>

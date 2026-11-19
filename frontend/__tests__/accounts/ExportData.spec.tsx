@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const session = vi.hoisted(() => ({ callWithIdToken: vi.fn() }));
 vi.mock("../../src/ts/accounts/authed-call", () => session);
+const notify = vi.hoisted(() => ({ showSuccessNotification: vi.fn() }));
+vi.mock("../../src/ts/states/notifications", () => notify);
 
 import { exportMyData } from "../../src/ts/accounts/api";
 import { accountsCopy } from "../../src/ts/accounts/strings";
@@ -81,6 +83,13 @@ describe("ExportData", () => {
     );
     // the temporary link is gone
     expect(document.body.getElementsByTagName("a")).toHaveLength(0);
+    expect(notify.showSuccessNotification).toHaveBeenCalledWith(copy.done);
+  });
+
+  it("describes what the file holds, above the button", () => {
+    const { container, getByText } = render(() => <ExportData />);
+    const description = getByText(copy.description);
+    expect(description.nextElementSibling).toBe(button(container));
   });
 
   it("busy while the export loads; one request per click", async () => {
@@ -111,6 +120,7 @@ describe("ExportData", () => {
     expect(createObjectURL).not.toHaveBeenCalled();
     expect(clicked).toEqual([]);
     expect(button(container).disabled).toBe(false);
+    expect(notify.showSuccessNotification).not.toHaveBeenCalled();
   });
 
   it("a throw shows the generic message", async () => {

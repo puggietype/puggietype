@@ -94,6 +94,34 @@ curl -sI http://127.0.0.1:3300/r/ABCD2345   # 200, app
 curl -sI http://127.0.0.1:3300/robots.txt   # 200, text/plain
 ```
 
+## Abuse controls: what is and isn't protected
+
+Only matters with `VITE_FEATURE_ACCOUNTS=true`. Be plain about this in any copy:
+Turnstile does **not** protect sign-in.
+
+- **Turnstile gates only `POST /v1/auth/session`**, which creates or refreshes our
+  account record. The API verifies the token server-side (siteverify, hostname,
+  action). The widget is on sign in, create account and the birth-year prompt.
+- **Firebase sign-in, sign-up and password reset are called straight from the
+  browser** with the public API key, so anyone can call them directly (Identity
+  Toolkit). That is inherent to Firebase. The reset form has no Turnstile widget:
+  its token could never be verified, so it only looked like protection (and it was
+  a Cloudflare data flow for nothing). The reset form answers the same way whether
+  or not an account exists.
+- **Firebase-side mitigations** (console, per project):
+  - **Email enumeration protection: ON** (Authentication > Settings > User actions).
+  - **No reCAPTCHA Enterprise / Identity Platform**: it needs a billing account, so we
+    don't use it. If it is ever turned on, the privacy notice must name Google
+    reCAPTCHA first.
+  - Firebase's built-in per-project and per-user rate limits and email-send quotas.
+    When they trigger, the user sees `auth/too-many-requests` with the C2 copy
+    ("Too many attempts. Please wait a bit and try again.").
+  - Email verification is required before anything reaches a leaderboard.
+  - Watch the **Firebase Auth usage dashboard** (sign-ups, emails sent) for spikes.
+- **Accepted residual risk**: password sign-up reveals whether an email already
+  has an account (`auth/email-already-in-use`, shown with neutral wording). Firebase
+  password sign-up can't avoid this.
+
 ## Local preview against a local WS server
 
 Build without `VITE_WS_URL`, then `vite preview` proxies `/ws` to

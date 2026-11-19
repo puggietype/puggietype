@@ -8,6 +8,7 @@ const session = vi.hoisted(() => ({
 vi.mock("../../src/ts/accounts/session", () => session);
 const notify = vi.hoisted(() => ({
   showErrorNotification: vi.fn(),
+  showNoticeNotification: vi.fn(),
   showSuccessNotification: vi.fn(),
 }));
 vi.mock("../../src/ts/states/notifications", () => notify);
@@ -71,6 +72,25 @@ describe("DeleteAccount", () => {
       expect(notify.showErrorNotification).toHaveBeenCalledWith("nope"),
     );
     expect(session.deleteAccount).toHaveBeenCalledWith(undefined);
+  });
+
+  it("partly deleted (sign-in removed later): a notice, never an error", async () => {
+    session.getReauthKind.mockResolvedValue("google");
+    session.deleteAccount.mockResolvedValue({
+      ok: true,
+      notice: accountsCopy.account.partiallyDeleted,
+    });
+    const { container, findByText } = render(() => <DeleteAccount />);
+    fireEvent.click(button(container, accountsCopy.account.delete));
+    await findByText(accountsCopy.account.confirmGoogle);
+    fireEvent.click(button(container, accountsCopy.account.confirm));
+    await vi.waitFor(() =>
+      expect(notify.showNoticeNotification).toHaveBeenCalledWith(
+        accountsCopy.account.partiallyDeleted,
+      ),
+    );
+    expect(notify.showErrorNotification).not.toHaveBeenCalled();
+    expect(notify.showSuccessNotification).not.toHaveBeenCalled();
   });
 
   it("cancel goes back", async () => {

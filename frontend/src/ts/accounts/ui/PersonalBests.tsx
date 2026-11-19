@@ -28,6 +28,7 @@ export function PersonalBests(): JSXElement {
   return (
     <section class="grid gap-2" aria-label={copy.title}>
       <H3 text={copy.title} fa={{ icon: "fa-crown" }} class="p-0" />
+      <p class="text-sm text-sub">{copy.note}</p>
       <Switch>
         <Match when={list.loading}>
           <p class="text-sub">{copy.loading}</p>

@@ -22,6 +22,7 @@ import { ga4CspSources, mergeCspSources } from "./vite-plugins/ga4-csp";
 import { firebaseStub } from "./vite-plugins/firebase-stub";
 import {
   accountsCspSources,
+  accountsKidsBlockedSources,
   accountsRedirects,
   accountsTailwindSources,
   checkAccountsEnv,
@@ -238,6 +239,9 @@ function getPlugins({
     pagesHeaders({
       wsUrl: env["VITE_WS_URL"],
       ...(extraCsp === undefined ? {} : { extraCsp }),
+      kidsBlocked: isAccountsEnabled(env)
+        ? accountsKidsBlockedSources(env)
+        : [],
     }),
   ];
 
