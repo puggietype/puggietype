@@ -26,14 +26,14 @@ const ACCOUNTS_SECTION_LINES = [
   "## Accounts (ages 13+)",
   "You can use PuggieType without an account. Accounts are only for people aged 13 and over. If you create one, we process:",
   "- **Sign-in details:** if you use email and password, your email address and password (we never see your password; Google Firebase Authentication stores it only in hashed form). If you sign in with Google, Google gives Firebase Authentication your Google account ID, your email address, whether it's verified, and your Google profile name and picture link. We don't use or copy your name or picture, and we don't receive your Google password, contacts or other Google data. Firebase Authentication also records when your sign-in was created and last used, and Google may log technical data such as your IP address when you sign in.",
-  "- **Account record:** a random account ID, a generated pug name, whether your email address is verified, that you passed the age check and when (never your birth year), whether your scores may be listed on leaderboards (off by default), and when you created the account. Our database does not store your email address. To limit abuse, our database also keeps short-lived request counters for your account ID (how many requests of each kind, such as sign-in, saving or download, you made in the current hour or day; no content, no IP address or email). They are deleted with your account and otherwise within about 3 days.",
+  "- **Account record:** a random account ID, a generated pug name, whether your email address is verified, that you passed the age check and when (never your birth year), whether your scores may be listed on leaderboards (off by default, and it can't be changed yet), when you created the account, and when the record was last updated (this changes when your signed-in session is set up with our service, for example when you sign in). The record also has fields we don't use yet, so they hold only their starting value for every account: seconds typed (0), a verified-typist mark and its date (off and empty), and an account status (active for everyone) with a reason and notice reference that stay empty unless the status is changed. Our database does not store your email address. To limit abuse, our database also keeps short-lived request counters for your account ID (how many requests of each kind, such as sign-in, saving or download, you made in the current hour or day; no content, no IP address or email). They are deleted with your account and otherwise within about 3 days.",
   "- **Settings sync:** while you're signed in, a fixed list of your PuggieType preference settings is saved to your account and restored when you sign in on another device. Free-text and link settings, such as a custom background link, stay on your device.",
   "- **Personal bests:** while you're signed in, after a finished standard test we save your best speed, raw speed, accuracy and consistency for that test mode, length, language and punctuation/numbers setting, with the date. These are sent from your browser, are not verified, are shown only to you, and are not used for leaderboards.",
   "- **Age check:** we ask for your birth year once, only to check that you're old enough. It isn't sent to our servers or stored; only a yes/no result is used. If the answer means you can't have an account, we delete the sign-in that was just made and keep only a note in your browser (with the time) that stops the question being asked again for 12 months. If that deletion fails, an automatic daily cleanup removes it within about 2 days.",
   "- **Security check:** the sign-in, create-account and age-check steps use Cloudflare Turnstile. When you open one, your browser loads Turnstile from Cloudflare, which looks at signals such as your IP address, browser and device details to tell people from bots, and keeps a small item in your browser. We use the result to protect sign-in and sign-up from abuse. Cloudflare does this for us as our processor; separately, Cloudflare also uses these signals as an independent controller to improve Turnstile, as described in the [Turnstile Privacy Addendum](https://www.cloudflare.com/turnstile-privacy-policy/). Turnstile isn't used to show ads.",
-  "- **Account emails:** Firebase sends you an email to verify your address and, if you ask, to reset your password or confirm an email change. These are only account emails, not marketing.",
+  "- **Account emails:** Firebase sends you an email to verify your address and, if you ask, to reset your password or confirm an email change. These are only account emails, not marketing. We may also use your sign-in email to reply to your requests and to tell you about a decision on your account (see Decisions about your account below); we never use it for marketing.",
   "",
-  "**Why (legal basis):** to provide the account you ask for, including sign-in, sync, personal bests, account emails, data download and deletion (performance of a contract, GDPR Art 6(1)(b)); to keep sign-in and sign-up secure and stop abuse, and to keep accounts to people aged 13 and over (legitimate interests, Art 6(1)(f)).",
+  "**Why (legal basis):** to provide the account you ask for, including sign-in, sync, personal bests, account emails, data download and deletion (performance of a contract, GDPR Art 6(1)(b)); to answer your rights requests and give you notices the law requires (legal obligation, Art 6(1)(c)); to keep sign-in and sign-up secure, apply request limits, stop abuse, enforce our Terms (including any decision on your account status) and keep accounts to people aged 13 and over (legitimate interests, Art 6(1)(f)). Where we rely on legitimate interests you can object (see Your rights).",
   "",
   "**Who processes it for us:** Google (Firebase Authentication, and Google sign-in if you use it), Cloudflare (Turnstile, and hosting of our accounts service and website) and Neon (our account database, hosted in the US, Oregon). They act as our processors under their data processing terms.",
   "",
@@ -41,13 +41,15 @@ const ACCOUNTS_SECTION_LINES = [
   "",
   "**What's in your browser:** while you're signed in, your browser keeps your sign-in in Google's Firebase storage (IndexedDB), a marker that you're signed in (\"ptAccountsSession\", localStorage), and, if saving settings hasn't finished, your account ID (\"ptAccountsSettingsDirty\", localStorage). After an under-13 answer it keeps \"ptAccountsAgeBlock\" (localStorage, 12 months). Cloudflare Turnstile keeps an item in its own frame in your browser's storage. We use these only to sign you in and protect sign-in, not for advertising, so we don't ask for consent for them.",
   "",
-  "**How long we keep it:** for as long as you have an account. When you delete your account we delete your account record, settings and personal bests from our database and your sign-in from Firebase straight away; if Firebase can't be reached, we keep only your account ID until it is removed, within 30 days. Our database's short-term restore copies are overwritten within about 6 hours. Google and Cloudflare keep limited security logs and backups as described in their own policies.",
+  "**How long we keep it:** for as long as you have an account. When you delete your account we delete your account record and everything saved to it, such as settings and personal bests, from our database and your sign-in from Firebase straight away; if Firebase can't be reached, we keep only your account ID until it is removed, within 30 days. Our database provider keeps short-term restore copies, and anything you delete drops out of them within about 6 hours; we don't restore deleted accounts. Google and Cloudflare keep limited security logs and backups as described in their own policies.",
   "",
   '**Deleting your account:** sign in, open the sign-in page and choose "delete account". You can also email support@puggietype.com and we\'ll do it within 30 days (we may ask you to confirm you control the account).',
   "",
-  '**Download your data:** when signed in, choose "Download my data" to get a JSON file of your account details, settings, personal bests and recent results and your sign-in email address.',
+  "**Decisions about your account:** if we ever suspend or end your account, or hide or remove a personal best, a person makes that decision, not an automated process alone. We'll tell you why and how to appeal (see our Terms). If you think we got it wrong, email support@puggietype.com.",
   "",
-  "**Your rights:** depending on where you live (including under the GDPR, UK GDPR and the California Consumer Privacy Act as amended), you can ask to access, correct, delete or export your data, to object to or restrict how we use it, and to complain to your data protection authority. Use the in-account download and delete, or email support@puggietype.com. We'll answer within one month (45 days for California requests). We don't sell or share your personal information as those terms are defined in California law, and we won't treat you differently for using your rights. California residents: in the last 12 months we collected identifiers (account ID, email address), internet activity (settings, personal bests) and the age-check result, from you and from Google if you use Google sign-in, to run your account; we disclose it only to the processors listed above.",
+  "**Download your data:** when signed in, choose \"Download my data\" to get a JSON file with what our database holds for your account, plus your sign-in email address and sign-in method (email and password, or Google), which come from your sign-in and aren't stored in our database. The file has your account record (every field listed above, including your account ID, pug name, status, when you passed the age check and when the record was last updated), your settings and when they were last saved, and your personal bests. It also has two lists that are empty today because we don't record that data yet: recent results (each with the average and spread of your keystroke timing and the app version saved with it) and runs flagged for review (with the keystroke timings of those runs). Our short-lived abuse counters aren't included. We create the file when you ask and don't keep a copy. You can download it up to 3 times per UTC day; if you reach that limit, email support@puggietype.com and we'll send you a copy.",
+  "",
+  `**Your rights:** depending on where you live (including under the GDPR, UK GDPR and the California Consumer Privacy Act as amended), you can ask to access, correct, delete or export your data, to object to or restrict how we use it, and to complain to your data protection authority. Use the in-account download and delete, or email support@puggietype.com. To protect the service, in-account actions are limited per account (for example, up to 3 downloads per day), and a request over a limit is refused with a "too many requests" message. These limits never stop you using your rights: you can always email us instead. We'll answer within one month (45 days for California requests). We don't sell or share your personal information as those terms are defined in California law, and we won't treat you differently for using your rights. California residents: in the last 12 months we collected identifiers (account ID, email address), internet activity (settings, personal bests) and the age-check result, from you and from Google if you use Google sign-in, to run your account; we disclose it only to the processors listed above.`,
   "",
   "**Children:** accounts are only for people aged 13 and over, and the age check is a first line of defence, not a guarantee. If you're a parent or guardian and think a child under 13 has an account, email support@puggietype.com and we'll delete it.",
 ];
@@ -55,7 +57,7 @@ const ACCOUNTS_SECTION = ACCOUNTS_SECTION_LINES.join("\n");
 const ACCOUNTS_NOT_IN_EFFECT =
   '<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Pre-launch text for the "Accounts (ages 13+)" section, from Legal\'s PR #28 review (2026-11-04, section (d)). Accounts are behind a flag that is off; this section describes no processing that happens today. -->';
 const ACCOUNTS_RETENTION_ROWS = [
-  "| Account data (account ID, pug name, verified flag, age-check result, settings, personal bests) in the Neon database | until you delete your account (then deleted; restore copies overwritten within about 6 hours) |",
+  "| Account data (account record including its status fields, settings, personal bests) in the Neon database | until you delete your account (then deleted; restore copies drop it within about 6 hours) |",
   "| Firebase sign-in (email address, password hash or Google ID, Google name and picture link) | until you delete your account; deleted with it, within 30 days at most if Firebase can't be reached |",
   "| Account ID kept after a failed Firebase deletion | until Firebase confirms the deletion, within 30 days |",
   "| Sign-in created before an under-13 answer | deleted straight away; if that fails, within about 2 days |",
@@ -67,7 +69,7 @@ const ACCOUNTS_RETENTION_ROWS = [
 ].join("\n");
 const ACCOUNTS_LEGAL_BASES = [
   "- To provide the account you ask for: sign-in, settings sync, personal bests, account emails, data download and deletion (Art. 6(1)(b), performance of a contract).",
-  "- To keep sign-in and sign-up secure with Cloudflare Turnstile and to check that account holders are aged 13 and over (Art. 6(1)(f), legitimate interests).",
+  "- To keep sign-in and sign-up secure with Cloudflare Turnstile, to limit abusive request rates, to enforce our Terms on accounts, and to check that account holders are aged 13 and over (Art. 6(1)(f), legitimate interests).",
 ].join("\n");
 const SOLO_ACCOUNTS =
   "this data never leaves your device unless you export it yourself or sign in to an account (see Accounts (ages 13+)).";
@@ -80,7 +82,7 @@ const CHILDREN_ACCOUNTS = [
 
 // Legal accounts review 2026-11-19, section 3c, service providers (D2 applied) (exact copy)
 const NEON_PROVIDER =
-  "- Neon, LLC (a Databricks company), USA: database hosting for account records (account ID, generated pug name, email-verified status, age-check result, settings and personal bests) and leaderboard scores (AWS us-west-2, Oregon). Our database doesn't store your email address. Covered by Neon's Data Processing Addendum; transfers from the EU/UK/Switzerland rely on the Data Privacy Framework certification of Databricks, Inc., which covers Neon, LLC.";
+  "- Neon, LLC (a Databricks company), USA: database hosting for account records (see Accounts (ages 13+)), settings, personal bests and leaderboard scores (AWS us-west-2, Oregon). Our database doesn't store your email address. Covered by Neon's Data Processing Addendum; transfers from the EU/UK/Switzerland rely on the Data Privacy Framework certification of Databricks, Inc., which covers Neon, LLC.";
 const ACCOUNTS_PROVIDERS = [
   "- **Google LLC**, USA, sign-in with Google Firebase Authentication, including Google sign-in if you use it. Google acts as our processor under its data processing terms; transfers from the EU/UK/Switzerland rely on its Data Privacy Framework certification.",
   "- **Cloudflare, Inc.** also hosts our accounts service and runs Cloudflare Turnstile, the bot check on the sign-in, create-account and age-check steps. For the check itself Cloudflare acts as our processor; it also uses Turnstile signals as an independent controller to improve Turnstile (see the Accounts section).",
@@ -246,6 +248,41 @@ describe("legal-markdown", () => {
     expect(md).not.toContain(
       "| Firebase sign-in (email address, password hash or Google account ID) | deleted with the account (within 30 days at most) |",
     );
+  });
+
+  it("ships no bracketed placeholders (Legal G6/G7: [W], [VERIFY: ...])", () => {
+    for (const name of ["terms", "privacy"]) {
+      const md = readFileSync(path.join(legalDir, `${name}.md`), "utf-8");
+      expect(md, name).not.toMatch(/\[W\]|\[VERIFY/);
+    }
+  });
+
+  it("states the verified Neon restore window (6 hours, both projects, 2026-11-19) in all three places", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+
+    // leaderboard row (already live on main) and the two accounts places
+    expect(md).toContain(
+      "Deleted scores may persist in Neon restore copies for up to 6 hours |",
+    );
+    expect(md).toContain(
+      "anything you delete drops out of them within about 6 hours; we don't restore deleted accounts.",
+    );
+    expect(md).toContain(
+      "| until you delete your account (then deleted; restore copies drop it within about 6 hours) |",
+    );
+    expect(md.match(/6 hours/g)).toHaveLength(3);
+    expect(md).not.toContain("restore copies overwritten within about 6 hours");
+    expect(md).not.toContain("short-term restore copies are overwritten");
+  });
+
+  it("does not ship Tier B text (anti-cheat keystroke summary, verified typist) until a writer exists", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+
+    expect(md).not.toContain("**Anti-cheat checks on your results:**");
+    expect(md).not.toContain("**Verified typist:**");
+    expect(md).not.toContain("keystroke timings and the reason");
+    expect(md).not.toContain("Keystroke timings of a flagged run");
+    expect(md).not.toContain("keystroke timings for up to 7 days");
   });
 
   it("keeps the accounts not-in-effect note out of the visible page", () => {
