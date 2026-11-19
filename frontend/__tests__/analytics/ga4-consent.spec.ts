@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ACCOUNTS_ONLY_PATHS } from "../../vite-plugins/accounts-env";
 
 const env = vi.hoisted(() => ({
   ga4MeasurementId: "",
@@ -1420,7 +1421,13 @@ describe("sanitized single page view", () => {
     let spaMatch = spaRe.exec(routes);
     while (spaMatch !== null) {
       const route = spaMatch[1];
-      if (route !== undefined && !route.includes(":")) {
+      // accounts-only routes (flag-gated) stay out of the off bundle, so
+      // they report as /404; the email action page has nothing to measure
+      if (
+        route !== undefined &&
+        !route.includes(":") &&
+        !ACCOUNTS_ONLY_PATHS.includes(route)
+      ) {
         expect(known.has(route), route).toBe(true);
       }
       spaMatch = spaRe.exec(routes);

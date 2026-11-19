@@ -27,7 +27,7 @@ describe("accounts password rule", () => {
       accountsCopy.firebase["auth/weak-password"],
     );
     expect(weakPasswordMessage()).toBe(
-      "Please choose a stronger password (at least 8 characters).",
+      "Please choose a password with at least 8 characters.",
     );
   });
 });

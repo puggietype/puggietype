@@ -11,6 +11,8 @@ export type PageName =
   | "about"
   | "account"
   | "login"
+  // accounts email action links (VITE_FEATURE_ACCOUNTS only)
+  | "accountAction"
   | "profile"
   | "profileSearch"
   | "404"

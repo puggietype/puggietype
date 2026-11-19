@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { notFoundPage, toNotFoundHtml } from "../vite-plugins/not-found-page";
+import { ACCOUNTS_ONLY_PATHS } from "../vite-plugins/accounts-env";
 
 type Hooks = {
   configResolved: (c: unknown) => void;
@@ -81,7 +82,10 @@ describe("not-found-page plugin", () => {
     );
     const paths = [...router.matchAll(/path: "(\/[^"]*)"/g)]
       .map((m) => (m[1] as string).replace(/\/:[^/]+/g, "/*"))
-      .filter((p) => p !== "/");
+      .filter((p) => p !== "/")
+      // flag-on only: dist/_redirects gets these at build time
+      // (__tests__/vite-plugins/accounts-build.spec.ts)
+      .filter((p) => !ACCOUNTS_ONLY_PATHS.includes(p));
     expect(paths.length).toBeGreaterThan(5);
     // /about is a real static page, not an SPA rewrite
     const static301 = new Map([["/about", "/guide/about"]]);

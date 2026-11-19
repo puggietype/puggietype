@@ -2,10 +2,14 @@ import type { User } from "firebase/auth";
 
 import { blockAge, isAgeBlocked } from "./age";
 import { AccountUser, createSession, deleteMe, getMe } from "./api";
-import { getAccountsConfig, missingAccountsConfig } from "./config";
-import { SESSION_HINT_KEY } from "./flag";
+import {
+  AccountsConfig,
+  getAccountsConfig,
+  missingAccountsConfig,
+} from "./config";
+import { SESSION_HINT_KEY, SETTINGS_DIRTY_KEY } from "./flag";
 import { isPasswordOk, WEAK_PASSWORD, weakPasswordMessage } from "./password";
-import { setAccountUser } from "./state";
+import { getAccountUser, setAccountUser } from "./state";
 import { accountsCopy } from "./strings";
 
 export type AuthMethod =
@@ -51,9 +55,22 @@ export function firebaseErrorMessage(error: unknown): string {
 }
 
 function setSignedIn(user: AccountUser | null): void {
+  const before = getAccountUser();
   setAccountUser(user);
-  if (user === null) localStorage.removeItem(SESSION_HINT_KEY);
-  else localStorage.setItem(SESSION_HINT_KEY, "1");
+  if (user === null) {
+    localStorage.removeItem(SESSION_HINT_KEY);
+    // unsynced settings stay on this device only
+    localStorage.removeItem(SETTINGS_DIRTY_KEY);
+  } else {
+    localStorage.setItem(SESSION_HINT_KEY, "1");
+  }
+  // settings sync starts on sign-in or restore, stops on sign-out
+  if (__FEATURE_ACCOUNTS__ && (user !== null || before !== null)) {
+    const uid = user?.uid ?? null;
+    void import("./settings-sync")
+      .then((m) => m.onAccountChange(uid))
+      .catch(() => undefined);
+  }
 }
 
 function error(code: string, message: string): AuthResult {
@@ -264,7 +281,10 @@ export async function signOut(): Promise<void> {
   }
 }
 
-export type ActionResult = { ok: true } | { ok: false; message: string };
+/** `notice`: it worked, but the user should read this (not an error) */
+export type ActionResult =
+  | { ok: true; notice?: string }
+  | { ok: false; message: string };
 
 /**
  * Firebase password reset email. Unknown addresses count as sent, so the
@@ -350,7 +370,7 @@ const USER_GONE_CODES = new Set([
  * with the fresh token, then Firebase deleteUser. Signed out afterwards.
  * The server deletes the Firebase user too, so the client deleteUser usually
  * fails with a gone-user code (USER_GONE_CODES): that's a full success.
- * partiallyDeleted only for other client errors.
+ * Other client errors: still deleted, with the partiallyDeleted notice.
  */
 export async function deleteAccount(password?: string): Promise<ActionResult> {
   const config = getAccountsConfig();
@@ -377,8 +397,95 @@ export async function deleteAccount(password?: string): Promise<ActionResult> {
     await sdk.signOutFirebase(config.firebase).catch(() => undefined);
     setSignedIn(null);
     if (USER_GONE_CODES.has(firebaseCode(e))) return { ok: true };
-    return { ok: false, message: accountsCopy.account.partiallyDeleted };
+    return { ok: true, notice: accountsCopy.account.partiallyDeleted };
   }
   setSignedIn(null);
   return { ok: true };
+}
+
+/** the email action link was invalid, expired or already used */
+export const LINK_INVALID = "link_invalid";
+
+export type ActionCodeResult =
+  | { ok: true }
+  | { ok: false; code: string; message: string };
+
+/** fixed text for an email action failure; never Firebase's own text */
+function actionFailure(e: unknown): ActionCodeResult {
+  const code = firebaseCode(e);
+  if (
+    code === "auth/invalid-action-code" ||
+    code === "auth/expired-action-code" ||
+    code === "auth/user-not-found" ||
+    code === "auth/user-disabled"
+  ) {
+    return {
+      ok: false,
+      code: LINK_INVALID,
+      message: accountsCopy.action.linkInvalid,
+    };
+  }
+  if (code === "auth/weak-password") {
+    return { ok: false, code: WEAK_PASSWORD, message: weakPasswordMessage() };
+  }
+  return { ok: false, code: "", message: firebaseErrorMessage(e) };
+}
+
+/** one email action with the accounts Firebase config; never throws */
+async function runAction(
+  action: (sdk: Sdk, config: AccountsConfig["firebase"]) => Promise<void>,
+): Promise<ActionCodeResult> {
+  const config = getAccountsConfig();
+  if (missingAccountsConfig(config).length > 0) {
+    return { ok: false, code: "", message: accountsCopy.notConfigured };
+  }
+  try {
+    await action(await loadSdk(), config.firebase);
+    return { ok: true };
+  } catch (e) {
+    return actionFailure(e);
+  }
+}
+
+/** mode=resetPassword: is the code still good? (before asking for a password) */
+export async function checkResetLink(code: string): Promise<ActionCodeResult> {
+  return runAction(async (sdk, config) =>
+    sdk.checkPasswordResetCode(config, code),
+  );
+}
+
+/** mode=resetPassword: sets the new password; refuses a short one locally */
+export async function finishPasswordReset(
+  code: string,
+  newPassword: string,
+): Promise<ActionCodeResult> {
+  if (!isPasswordOk(newPassword)) {
+    return { ok: false, code: WEAK_PASSWORD, message: weakPasswordMessage() };
+  }
+  return runAction(async (sdk, config) =>
+    sdk.resetPassword(config, code, newPassword),
+  );
+}
+
+/** mode=verifyEmail; a signed-in tab picks the new state up right away */
+export async function applyVerifyEmailLink(
+  code: string,
+): Promise<ActionCodeResult> {
+  const result = await runAction(async (sdk, config) =>
+    sdk.applyEmailActionCode(config, code),
+  );
+  if (result.ok && getAccountUser() !== null) {
+    await refreshVerification().catch(() => false);
+  }
+  return result;
+}
+
+/** mode=recoverEmail: puts the old address back */
+export async function applyRecoverEmailLink(
+  code: string,
+): Promise<ActionCodeResult> {
+  return runAction(async (sdk, config) => {
+    await sdk.checkRecoverEmailCode(config, code);
+    await sdk.applyEmailActionCode(config, code);
+  });
 }

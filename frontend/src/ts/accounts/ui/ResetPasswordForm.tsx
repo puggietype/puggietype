@@ -7,30 +7,30 @@ import { InputField } from "../../components/ui/form/InputField";
 import { SubmitButton } from "../../components/ui/form/SubmitButton";
 import { allFieldsMandatory } from "../../components/ui/form/utils";
 import { showErrorNotification } from "../../states/notifications";
-import { getAccountsConfig } from "../config";
 import { requestPasswordReset } from "../session";
 import { accountsCopy } from "../strings";
-import { TurnstileControl, TurnstileWidget } from "./TurnstileWidget";
 
-/** Firebase password reset email, behind Turnstile */
+/**
+ * Firebase password reset email. No Turnstile (Legal M2): the request goes
+ * straight to Firebase with the public API key, so a token here was never
+ * verified anywhere. Firebase's own rate limits and email quotas apply (see
+ * DEPLOY.md "Abuse controls"). Same "sent" text whether or not the account
+ * exists.
+ */
 export function ResetPasswordForm(props: { onBack: () => void }): JSXElement {
-  const config = getAccountsConfig();
-  const [turnstileToken, setTurnstileToken] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
   const [sent, setSent] = createSignal(false);
-  let turnstile: TurnstileControl | undefined;
 
   const form = createForm(() => ({
     defaultValues: { email: "" },
     onSubmit: async ({ value }) => {
-      if (turnstileToken() === null || busy()) return;
+      if (busy()) return;
       setBusy(true);
       try {
         const result = await requestPasswordReset(value.email);
         if (result.ok) setSent(true);
         else showErrorNotification(result.message);
       } finally {
-        turnstile?.reset();
         setBusy(false);
       }
     },
@@ -63,17 +63,11 @@ export function ResetPasswordForm(props: { onBack: () => void }): JSXElement {
               />
             )}
           />
-          <TurnstileWidget
-            siteKey={config.turnstileSiteKey}
-            action="reset"
-            onToken={setTurnstileToken}
-            control={(c) => (turnstile = c)}
-          />
           <SubmitButton
             form={form}
             fa={{ icon: "fa-paper-plane" }}
             text={accountsCopy.reset.submit}
-            disabled={busy() || turnstileToken() === null}
+            disabled={busy()}
           />
         </form>
       </Show>

@@ -59,6 +59,13 @@ describe("accounts flag gating", () => {
     expect(isRouteHidden("/leaderboards")).toBe(false);
   });
 
+  it("on: /account/action (email links) is not hidden, standalone or not", () => {
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
+    expect(isRouteHidden("/account/action")).toBe(false);
+    env.standalone = false;
+    expect(isRouteHidden("/account/action")).toBe(false);
+  });
+
   it("on with a backend: /login is not hidden either", () => {
     vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
     env.standalone = false;

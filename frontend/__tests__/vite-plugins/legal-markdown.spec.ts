@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import {
   renderLegalMarkdown,
   slugify,
+  wrapTables,
 } from "../../vite-plugins/legal-markdown";
 
 const legalDir = path.resolve(__dirname, "../../src/legal");
@@ -107,9 +108,140 @@ describe("legal-markdown", () => {
       );
 
       expect(html).not.toContain("legal-markdown:");
-      expect(html).toContain(expected);
+      // the only change to the rendered text is the table scroll wrapper
+      expect(html).toContain(wrapTables(expected));
+      const unwrapped = html
+        .replace(/<div class="tableWrap"[^>]*>(<table>)/g, "$1")
+        .replace(/(<\/table>)<\/div>/g, "$1");
+      expect(unwrapped).toContain(expected);
     });
   }
+
+  describe("table scroll wrappers", () => {
+    const WRAP_OPEN =
+      /<div class="tableWrap" tabindex="0" role="region" aria-label="([^"]+)"><table>/g;
+
+    it("wraps every table in the privacy page in a focusable labelled region", () => {
+      const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+      const html = renderLegalMarkdown(page, legalDir);
+      const tables = html.match(/<table>/g) ?? [];
+      const wraps = [...html.matchAll(WRAP_OPEN)];
+
+      expect(tables.length).toBeGreaterThan(0);
+      expect(wraps).toHaveLength(tables.length);
+      expect(wraps[0]?.[1]).toBe("table: Retention summary");
+      expect((html.match(/<\/table><\/div>/g) ?? []).length).toBe(
+        tables.length,
+      );
+    });
+
+    it("never leaves a bare table in either legal page", () => {
+      for (const name of ["terms", "privacy"]) {
+        const page = readFileSync(path.join(srcDir, `${name}.html`), "utf-8");
+        const html = renderLegalMarkdown(page, legalDir);
+        const bare = html.replace(WRAP_OPEN, "");
+        expect(bare).not.toContain("<table>");
+      }
+    });
+
+    it("labels each table after the heading above it, with a generic fallback", () => {
+      const out = wrapTables(
+        '<table><tr><td>0</td></tr></table>\n<h2 id="a">Data &amp; <em>use</em></h2>\n<table><tr><td>1</td></tr></table>\n<h3>Second</h3>\n<table><tr><td>2</td></tr></table>',
+      );
+      const labels = [...out.matchAll(WRAP_OPEN)].map((m) => m[1]);
+      expect(labels).toEqual([
+        "table: scrollable",
+        "table: Data &amp; use",
+        "table: Second",
+      ]);
+    });
+
+    it("keeps the scroll wrapper and the narrow-screen main column in the stylesheet", () => {
+      const scss = readFileSync(
+        path.join(srcDir, "styles/static-page.scss"),
+        "utf-8",
+      );
+      expect(scss).toMatch(/\.tableWrap \{\s*overflow-x: auto;/);
+      expect(scss).toContain(".tableWrap:focus-visible");
+      // main is a grid; its column must be allowed to shrink below the widest
+      // child, or wide tables and long URLs push the text off a phone screen
+      expect(scss).toMatch(
+        /\nmain \{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*overflow-wrap: anywhere;/,
+      );
+    });
+
+    it("escapes quotes, angle brackets and ampersands in the aria-label", () => {
+      const out = wrapTables(
+        '<h2>Say "hi" <b>&lt;now&gt;</b> &amp; x <y</h2><table><tr><td>1</td></tr></table>',
+      );
+      const label = /aria-label="([^"]*)"/.exec(out)?.[1];
+      expect(label).toBe("table: Say &quot;hi&quot; &lt;now&gt; &amp; x &lt;y");
+      // the attribute cannot be broken out of, and no raw markup leaks in
+      expect(out).toMatch(/^<h2>[^]*<\/h2><div class="tableWrap"/);
+      expect(label).not.toMatch(/["<>]/);
+      expect(out.match(/<div /g)).toHaveLength(1);
+    });
+
+    it("decodes then re-encodes entities once (no double escaping)", () => {
+      const out = wrapTables(
+        "<h2>A &amp; B &#39;c&#39; &#x26;</h2><table></table>",
+      );
+      expect(out).toContain("aria-label=\"table: A &amp; B 'c' &amp;\"");
+    });
+
+    it("does not throw on out-of-range numeric entities", () => {
+      const out = wrapTables("<h2>A &#99999999; B</h2><table></table>");
+      expect(out).toContain('aria-label="table: A &amp;#99999999; B"');
+    });
+
+    it("trims the heading text used for the label", () => {
+      const out = wrapTables(
+        "<h2>   Spaced out \n </h2><table><tr><td>1</td></tr></table>",
+      );
+      expect(out).toContain('aria-label="table: Spaced out"');
+    });
+
+    it("falls back to the generic label for a heading with no text", () => {
+      const out = wrapTables(
+        '<h2> <img src="x.png" alt=""> </h2><table></table>',
+      );
+      expect(out).toContain('aria-label="table: scrollable"');
+    });
+
+    it("suffixes repeated labels under one heading and restarts per heading", () => {
+      const t = "<table><tr><td>x</td></tr></table>";
+      const out = wrapTables(
+        `<h2>Retention</h2>${t}<p>a</p>${t}${t}<h2>Other</h2>${t}${t}<h2>Retention</h2>${t}`,
+      );
+      expect(
+        [...out.matchAll(/aria-label="([^"]+)"/g)].map((m) => m[1]),
+      ).toEqual([
+        "table: Retention",
+        "table: Retention (2)",
+        "table: Retention (3)",
+        "table: Other",
+        "table: Other (2)",
+        "table: Retention",
+      ]);
+    });
+
+    it("keeps table cells from breaking words mid-word", () => {
+      const scss = readFileSync(
+        path.join(srcDir, "styles/static-page.scss"),
+        "utf-8",
+      );
+      // main's overflow-wrap: anywhere would otherwise shrink table cells to
+      // one character and split words (Workma|n) on the guide pages
+      expect(scss).toMatch(
+        /\ntable \{\s*border-collapse: collapse;[^}]*overflow-wrap: normal;/,
+      );
+    });
+
+    it("leaves html without tables unchanged", () => {
+      const html = "<h2>Hello</h2><p>no table</p>";
+      expect(wrapTables(html)).toBe(html);
+    });
+  });
 
   it("privacy page descriptions do not say leaderboards are memory-only", () => {
     const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");

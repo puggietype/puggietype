@@ -70,7 +70,8 @@ jobs:
           # CSP, so kids routes must serve exactly one header and it must not name
           # a Google host (analytics, tag manager, ads, google.com, gstatic). Other
           # routes keep the GA hosts. Kids img-src is same-origin only.
-          google_host='google-analytics|googletagmanager|analytics\.google|doubleclick|googleadservices|googlesyndication|googletagservices|fundingchoices|adservice\.google|google\.com|gstatic\.com'
+          # Accounts hosts too (Legal H4), so this OFF build guards them as well.
+          google_host='google-analytics|googletagmanager|analytics\.google|doubleclick|googleadservices|googlesyndication|googletagservices|fundingchoices|adservice\.google|google\.com|gstatic\.com|firebaseapp\.com|googleapis\.com|challenges\.cloudflare\.com|api\.puggietype\.com'
           check_csp() {
             path="$1"
             kids="$2"
@@ -176,3 +177,19 @@ jobs:
           check_kids_no_ads frontend/dist/guide/teaching-kids-to-type.html
           check_kids_no_ads frontend/dist/guide/typing-for-kids.html
       - run: BASE_URL=http://127.0.0.1:3300 pnpm exec playwright test e2e/kids-flow-ga.spec.ts e2e/kids-meta-csp-fail-open.spec.ts e2e/ga4-real-container.spec.ts
+      # Legal H4: a build with accounts ON (dummy public values) must keep
+      # Turnstile, Firebase and the API off the kids guides. Own outDir, so
+      # frontend/dist above stays the OFF build; packages were built by build-fe.
+      - name: accounts-on build, kids CSP
+        env:
+          VITE_FEATURE_ACCOUNTS: "true"
+          VITE_ACCOUNTS_API_URL: https://api.example.test
+          VITE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+          VITE_FIREBASE_API_KEY: dummy
+          VITE_FIREBASE_AUTH_DOMAIN: dummy-project.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: dummy-project
+          VITE_FIREBASE_APP_ID: "1:1:web:1"
+          GA4_MEASUREMENT_ID: G-QATEST0000
+        run: |
+          pnpm -C frontend exec vite build --outDir "$GITHUB_WORKSPACE/frontend/dist-accounts-on"
+          bash scripts/check-kids-csp-accounts.sh frontend/dist-accounts-on dummy-project.firebaseapp.com
