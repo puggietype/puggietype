@@ -50,6 +50,16 @@ export function accountsCspSources(
 }
 
 /**
+ * Every accounts CSP source: none of them may appear in the kids guides'
+ * CSP (pages-headers.ts kidsCspPolicy also blocks their hosts by pattern).
+ */
+export function accountsKidsBlockedSources(
+  env: Record<string, string>,
+): string[] {
+  return Object.values(accountsCspSources(env)).flat();
+}
+
+/**
  * Flag off: Tailwind must not scan the accounts UI (src/ts/accounts), or its
  * classes land in the CSS of a build that never renders them.
  */
