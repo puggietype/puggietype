@@ -107,6 +107,27 @@ export const accountsCopy = {
     stillUnverified: "Your email isn't verified yet",
     verified: "Email verified",
   },
+  // DRAFT FOR LEGAL: email action links, /account/action (not yet reviewed)
+  action: {
+    title: "account",
+    checking: "Checking your link...",
+    linkInvalid:
+      "This link has expired or has already been used. You can ask for a new one.",
+    notValid: "This link isn't valid.",
+    requestNewReset: "send a new reset link",
+    toSignIn: "go to sign in",
+    resetTitle: "choose a new password",
+    newPassword: "new password",
+    confirmPassword: "confirm new password",
+    // password.ts MIN_PASSWORD_LENGTH
+    passwordRule: "Use at least 8 characters.",
+    mismatch: "The passwords don't match.",
+    resetSubmit: "save new password",
+    resetDone: "Your password has been changed. You can now sign in with it.",
+    verifyDone: "Your email is verified. Thanks!",
+    recoverDone:
+      "Your sign-in email has been changed back. If you didn't ask for the change, reset your password now to keep your account safe.",
+  },
   // DRAFT FOR LEGAL: data export (not yet reviewed)
   exportData: {
     button: "Download my data",

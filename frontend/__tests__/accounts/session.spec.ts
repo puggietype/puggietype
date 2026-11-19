@@ -13,6 +13,10 @@ const sdk = vi.hoisted(() => ({
   getUserIdToken: vi.fn(),
   getRestoredUser: vi.fn(),
   signOutFirebase: vi.fn(),
+  checkPasswordResetCode: vi.fn(),
+  resetPassword: vi.fn(),
+  applyEmailActionCode: vi.fn(),
+  checkRecoverEmailCode: vi.fn(),
 }));
 vi.mock("../../src/ts/accounts/firebase-sdk", () => sdk);
 
@@ -54,7 +58,12 @@ import {
 } from "../../src/ts/accounts/age";
 import {
   AGE_BLOCKED,
+  applyRecoverEmailLink,
+  applyVerifyEmailLink,
   callWithIdToken,
+  checkResetLink,
+  finishPasswordReset,
+  LINK_INVALID,
   cancelAgeCheck,
   completeAgeCheck,
   deleteAccount,
@@ -808,5 +817,116 @@ describe("accounts delete account", () => {
     expect(await getReauthKind()).toBe("google");
     sdk.getRestoredUser.mockResolvedValue(null);
     expect(await getReauthKind()).toBeNull();
+  });
+});
+
+describe("accounts email action links", () => {
+  const firebaseError = (code: string): Error =>
+    Object.assign(new Error(`Firebase: raw text (${code}).`), { code });
+
+  beforeEach(() => {
+    sdk.checkPasswordResetCode.mockResolvedValue(undefined);
+    sdk.resetPassword.mockResolvedValue(undefined);
+    sdk.applyEmailActionCode.mockResolvedValue(undefined);
+    sdk.checkRecoverEmailCode.mockResolvedValue(undefined);
+  });
+
+  it("resetPassword: checks, then sets the new password", async () => {
+    expect(await checkResetLink("code1")).toEqual({ ok: true });
+    expect(sdk.checkPasswordResetCode).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "x" }),
+      "code1",
+    );
+    expect(await finishPasswordReset("code1", "longenough")).toEqual({
+      ok: true,
+    });
+    expect(sdk.resetPassword).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "x" }),
+      "code1",
+      "longenough",
+    );
+  });
+
+  it("a short new password is refused without touching Firebase", async () => {
+    const result = await finishPasswordReset("code1", "1234567");
+    expect(result).toMatchObject({ ok: false, code: WEAK_PASSWORD });
+    expect(sdk.resetPassword).not.toHaveBeenCalled();
+  });
+
+  it.each(["auth/invalid-action-code", "auth/expired-action-code"])(
+    "%s: the fixed link text, never Firebase's",
+    async (code) => {
+      sdk.checkPasswordResetCode.mockRejectedValue(firebaseError(code));
+      sdk.applyEmailActionCode.mockRejectedValue(firebaseError(code));
+      for (const result of [
+        await checkResetLink("c"),
+        await applyVerifyEmailLink("c"),
+        await applyRecoverEmailLink("c"),
+      ]) {
+        expect(result).toEqual({
+          ok: false,
+          code: LINK_INVALID,
+          message: accountsCopy.action.linkInvalid,
+        });
+      }
+    },
+  );
+
+  it("other errors get the fixed table text or the fallback", async () => {
+    sdk.resetPassword.mockRejectedValue(
+      firebaseError("auth/network-request-failed"),
+    );
+    expect(await finishPasswordReset("c", "longenough")).toEqual({
+      ok: false,
+      code: "",
+      message: accountsCopy.firebase["auth/network-request-failed"],
+    });
+    sdk.resetPassword.mockRejectedValue(firebaseError("auth/something-new"));
+    const result = await finishPasswordReset("c", "longenough");
+    expect(result).toEqual({
+      ok: false,
+      code: "",
+      message: accountsCopy.firebaseFallback,
+    });
+    expect(JSON.stringify(result)).not.toContain("raw text");
+  });
+
+  it("Firebase's own weak-password refusal maps to ours", async () => {
+    sdk.resetPassword.mockRejectedValue(firebaseError("auth/weak-password"));
+    expect(await finishPasswordReset("c", "longenough")).toMatchObject({
+      ok: false,
+      code: WEAK_PASSWORD,
+    });
+  });
+
+  it("verifyEmail: applies the code, refreshes a signed-in account", async () => {
+    sdk.getFreshUser.mockResolvedValue(fbUser);
+    api.getMe.mockResolvedValue({ ok: true, user });
+    expect(await applyVerifyEmailLink("c")).toEqual({ ok: true });
+    expect(sdk.applyEmailActionCode).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "x" }),
+      "c",
+    );
+    // signed out: nothing to refresh
+    expect(api.getMe).not.toHaveBeenCalled();
+    setAccountUser({ ...user, emailVerified: false });
+    await applyVerifyEmailLink("c");
+    expect(api.getMe).toHaveBeenCalledTimes(1);
+    expect(getAccountUser()?.emailVerified).toBe(true);
+  });
+
+  it("recoverEmail: checks the code is a recover code before applying", async () => {
+    expect(await applyRecoverEmailLink("c")).toEqual({ ok: true });
+    expect(sdk.checkRecoverEmailCode).toHaveBeenCalledBefore(
+      sdk.applyEmailActionCode,
+    );
+    sdk.checkRecoverEmailCode.mockRejectedValue(
+      firebaseError("auth/invalid-action-code"),
+    );
+    sdk.applyEmailActionCode.mockClear();
+    expect(await applyRecoverEmailLink("c")).toMatchObject({
+      code: LINK_INVALID,
+    });
+    expect(sdk.applyEmailActionCode).not.toHaveBeenCalled();
   });
 });

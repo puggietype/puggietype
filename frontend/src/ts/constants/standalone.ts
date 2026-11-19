@@ -38,8 +38,11 @@ const BACKEND_COMMAND_IDS: readonly string[] = [
   "signOut",
 ];
 
-/** routes the accounts sign-in (VITE_FEATURE_ACCOUNTS) brings back */
-const ACCOUNTS_ROUTES: readonly string[] = ["/login"];
+/**
+ * routes the accounts sign-in (VITE_FEATURE_ACCOUNTS) brings back or adds
+ * (/account/action is only in the router with the flag on)
+ */
+const ACCOUNTS_ROUTES: readonly string[] = ["/login", "/account/action"];
 
 export function isRouteHidden(path: string): boolean {
   if (__FEATURE_ACCOUNTS__ && ACCOUNTS_ROUTES.includes(path)) return false;

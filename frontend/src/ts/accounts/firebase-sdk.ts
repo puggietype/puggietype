@@ -3,7 +3,10 @@
 // must not load for visitors who never open sign-in.
 import { getApp, getApps, initializeApp } from "firebase/app";
 import {
+  applyActionCode,
   Auth,
+  checkActionCode,
+  confirmPasswordReset,
   createUserWithEmailAndPassword,
   deleteUser,
   EmailAuthProvider,
@@ -19,6 +22,7 @@ import {
   signInWithPopup,
   signOut,
   User,
+  verifyPasswordResetCode,
 } from "firebase/auth";
 
 import { FirebaseWebConfig } from "./config";
@@ -147,5 +151,45 @@ export async function reauthenticate(
     await reauthenticateWithCredential(user, credential);
   } else {
     await reauthenticateWithPopup(user, new GoogleAuthProvider());
+  }
+}
+
+// email action links (/account/action): the oobCode is the proof, so these
+// work signed out
+
+/** throws for an invalid, expired or used reset code */
+export async function checkPasswordResetCode(
+  config: FirebaseWebConfig,
+  code: string,
+): Promise<void> {
+  await verifyPasswordResetCode(getAccountsAuth(config), code);
+}
+
+export async function resetPassword(
+  config: FirebaseWebConfig,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  await confirmPasswordReset(getAccountsAuth(config), code, newPassword);
+}
+
+/** verifyEmail / recoverEmail: applies the change the link stands for */
+export async function applyEmailActionCode(
+  config: FirebaseWebConfig,
+  code: string,
+): Promise<void> {
+  await applyActionCode(getAccountsAuth(config), code);
+}
+
+/** throws unless `code` is a valid recoverEmail code */
+export async function checkRecoverEmailCode(
+  config: FirebaseWebConfig,
+  code: string,
+): Promise<void> {
+  const info = await checkActionCode(getAccountsAuth(config), code);
+  if (info.operation !== "RECOVER_EMAIL") {
+    throw Object.assign(new Error("wrong action"), {
+      code: "auth/invalid-action-code",
+    });
   }
 }

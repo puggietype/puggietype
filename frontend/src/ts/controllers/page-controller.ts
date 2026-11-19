@@ -95,6 +95,7 @@ const pages = {
     },
   }),
   login: page("login"),
+  accountAction: page("accountAction"),
   profile: page("profile", {
     beforeShow: async (options) => {
       setSelectedProfileName(options.params?.["uidOrName"]);

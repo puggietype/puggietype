@@ -2,7 +2,11 @@ import type { User } from "firebase/auth";
 
 import { blockAge, isAgeBlocked } from "./age";
 import { AccountUser, ApiFailure, createSession, deleteMe, getMe } from "./api";
-import { getAccountsConfig, missingAccountsConfig } from "./config";
+import {
+  AccountsConfig,
+  getAccountsConfig,
+  missingAccountsConfig,
+} from "./config";
 import { SESSION_HINT_KEY, SETTINGS_DIRTY_KEY } from "./flag";
 import { isPasswordOk, WEAK_PASSWORD, weakPasswordMessage } from "./password";
 import { getAccountUser, setAccountUser } from "./state";
@@ -432,4 +436,91 @@ export async function deleteAccount(password?: string): Promise<ActionResult> {
   }
   setSignedIn(null);
   return { ok: true };
+}
+
+/** the email action link was invalid, expired or already used */
+export const LINK_INVALID = "link_invalid";
+
+export type ActionCodeResult =
+  | { ok: true }
+  | { ok: false; code: string; message: string };
+
+/** fixed text for an email action failure; never Firebase's own text */
+function actionFailure(e: unknown): ActionCodeResult {
+  const code = firebaseCode(e);
+  if (
+    code === "auth/invalid-action-code" ||
+    code === "auth/expired-action-code" ||
+    code === "auth/user-not-found" ||
+    code === "auth/user-disabled"
+  ) {
+    return {
+      ok: false,
+      code: LINK_INVALID,
+      message: accountsCopy.action.linkInvalid,
+    };
+  }
+  if (code === "auth/weak-password") {
+    return { ok: false, code: WEAK_PASSWORD, message: weakPasswordMessage() };
+  }
+  return { ok: false, code: "", message: firebaseErrorMessage(e) };
+}
+
+/** one email action with the accounts Firebase config; never throws */
+async function runAction(
+  action: (sdk: Sdk, config: AccountsConfig["firebase"]) => Promise<void>,
+): Promise<ActionCodeResult> {
+  const config = getAccountsConfig();
+  if (missingAccountsConfig(config).length > 0) {
+    return { ok: false, code: "", message: accountsCopy.notConfigured };
+  }
+  try {
+    await action(await loadSdk(), config.firebase);
+    return { ok: true };
+  } catch (e) {
+    return actionFailure(e);
+  }
+}
+
+/** mode=resetPassword: is the code still good? (before asking for a password) */
+export async function checkResetLink(code: string): Promise<ActionCodeResult> {
+  return runAction(async (sdk, config) =>
+    sdk.checkPasswordResetCode(config, code),
+  );
+}
+
+/** mode=resetPassword: sets the new password; refuses a short one locally */
+export async function finishPasswordReset(
+  code: string,
+  newPassword: string,
+): Promise<ActionCodeResult> {
+  if (!isPasswordOk(newPassword)) {
+    return { ok: false, code: WEAK_PASSWORD, message: weakPasswordMessage() };
+  }
+  return runAction(async (sdk, config) =>
+    sdk.resetPassword(config, code, newPassword),
+  );
+}
+
+/** mode=verifyEmail; a signed-in tab picks the new state up right away */
+export async function applyVerifyEmailLink(
+  code: string,
+): Promise<ActionCodeResult> {
+  const result = await runAction(async (sdk, config) =>
+    sdk.applyEmailActionCode(config, code),
+  );
+  if (result.ok && getAccountUser() !== null) {
+    await refreshVerification().catch(() => false);
+  }
+  return result;
+}
+
+/** mode=recoverEmail: puts the old address back */
+export async function applyRecoverEmailLink(
+  code: string,
+): Promise<ActionCodeResult> {
+  return runAction(async (sdk, config) => {
+    await sdk.checkRecoverEmailCode(config, code);
+    await sdk.applyEmailActionCode(config, code);
+  });
 }

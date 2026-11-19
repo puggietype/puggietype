@@ -44,7 +44,10 @@ The WS server's Origin allowlist must include every host serving the frontend
   `index.html`), which turns Pages' SPA fallback **off**: unknown paths get the app's
   404 page with status 404, and a missing hashed `/js` or `/css` file is a 404, never
   `index.html` cached as JS for a year. Every router path must be listed here (a unit
-  test checks it).
+  test checks it). Exception: accounts-only paths (`/account/action`) are appended to
+  `dist/_redirects` at build time only when `VITE_FEATURE_ACCOUNTS=true`
+  (`accountsRedirects` in `frontend/vite-plugins/accounts-env.ts`), so an off build's
+  `_redirects` is unchanged.
 - `_routes.json`: asset prefixes (`/js`, `/css`, `/webfonts`, `/assets`, `/images`, ...)
   are excluded so they never invoke the Pages Function (free plan quota). The
   middleware does www -> apex and HSTS. It does not set a country cookie. Real static files are served as-is.
@@ -59,6 +62,29 @@ The WS server's Origin allowlist must include every host serving the frontend
   that CSP and set one policy with no Analytics, Tag Manager, or ads hosts.
   Pages comma-joins two values of the same header, so a second CSP without
   the detach would keep the Google origins.
+
+## Firebase setup for accounts
+
+Only matters with `VITE_FEATURE_ACCOUNTS=true`. In the Firebase console of the
+accounts project (staging and production each):
+
+- **Authentication > Templates**: for **Password reset**, **Email address
+  verification** and **Email address change**, edit the template, choose
+  **Customize action URL** and set it to `https://puggietype.com/account/action`
+  (staging: `https://<staging host>/account/action`). The setting is per project and
+  applies to all three templates.
+- Why: sign-up requires at least 8 characters (`frontend/src/ts/accounts/password.ts`),
+  but Firebase's own hosted reset page only enforces the project's password policy
+  (6 characters). Firebase can enforce a stronger policy itself only after the
+  Identity Platform upgrade, which needs a billing account, so we don't use it.
+  Our `/account/action` page checks the 8-character rule before calling
+  `confirmPasswordReset`, and also handles email verification and email-change
+  recovery. It reads only `mode` and `oobCode`, removes them from the address bar
+  right away, and ignores `continueUrl`, `apiKey` and `lang` (no redirects).
+- **Authentication > Settings > User actions**: keep **Email enumeration protection**
+  on. The reset form already answers the same way whether or not an account exists.
+- **Authentication > Settings > Authorized domains**: the production and staging hosts
+  must be listed, or the action links are refused.
 
 Check a build locally with Pages semantics:
 
