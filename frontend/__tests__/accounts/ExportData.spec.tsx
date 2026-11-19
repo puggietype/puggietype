@@ -2,7 +2,7 @@ import { fireEvent, render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const session = vi.hoisted(() => ({ callWithIdToken: vi.fn() }));
-vi.mock("../../src/ts/accounts/session", () => session);
+vi.mock("../../src/ts/accounts/authed-call", () => session);
 
 import { exportMyData } from "../../src/ts/accounts/api";
 import { accountsCopy } from "../../src/ts/accounts/strings";

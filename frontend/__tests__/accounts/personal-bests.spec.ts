@@ -4,7 +4,7 @@ const api = vi.hoisted(() => ({ submitPersonalBest: vi.fn() }));
 vi.mock("../../src/ts/accounts/api", () => api);
 
 const session = vi.hoisted(() => ({ callWithIdToken: vi.fn() }));
-vi.mock("../../src/ts/accounts/session", () => session);
+vi.mock("../../src/ts/accounts/authed-call", () => session);
 
 import {
   submitIfPersonalBest,

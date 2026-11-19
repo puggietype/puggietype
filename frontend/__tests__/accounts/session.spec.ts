@@ -60,7 +60,6 @@ import {
   AGE_BLOCKED,
   applyRecoverEmailLink,
   applyVerifyEmailLink,
-  callWithIdToken,
   checkResetLink,
   finishPasswordReset,
   LINK_INVALID,
@@ -77,6 +76,7 @@ import {
   signOut,
   signUp,
 } from "../../src/ts/accounts/session";
+import { callWithIdToken } from "../../src/ts/accounts/authed-call";
 import { getAccountUser, setAccountUser } from "../../src/ts/accounts/state";
 import { accountsCopy } from "../../src/ts/accounts/strings";
 

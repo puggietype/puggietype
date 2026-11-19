@@ -4,7 +4,7 @@
 import { getPbEligibility } from "../test/result-pb";
 import { CompletedResult } from "../states/test";
 import { PersonalBestSubmission, submitPersonalBest } from "./api";
-import { callWithIdToken } from "./session";
+import { callWithIdToken } from "./authed-call";
 import { getAccountUser, setPersonalBestsVersion } from "./state";
 
 /** the server refuses anything outside these (POST /v1/me/personal-bests) */

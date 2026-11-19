@@ -9,9 +9,11 @@ const session = vi.hoisted(() => ({
   signOut: vi.fn(),
   completeAgeCheck: vi.fn(),
   cancelAgeCheck: vi.fn(),
-  callWithIdToken: vi.fn(async () => ({ ok: true, personalBests: [] })),
 }));
 vi.mock("../../src/ts/accounts/session", () => session);
+vi.mock("../../src/ts/accounts/authed-call", () => ({
+  callWithIdToken: vi.fn(async () => ({ ok: true, personalBests: [] })),
+}));
 vi.mock("../../src/ts/accounts/ui/TurnstileWidget", () => ({
   TurnstileWidget: (props: { onToken: (t: string) => void }) => {
     props.onToken("ts-token");

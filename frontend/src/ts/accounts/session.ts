@@ -1,7 +1,7 @@
 import type { User } from "firebase/auth";
 
 import { blockAge, isAgeBlocked } from "./age";
-import { AccountUser, ApiFailure, createSession, deleteMe, getMe } from "./api";
+import { AccountUser, createSession, deleteMe, getMe } from "./api";
 import {
   AccountsConfig,
   getAccountsConfig,
@@ -268,44 +268,6 @@ export async function restoreSession(): Promise<void> {
     }
   } catch {
     setSignedIn(null);
-  }
-}
-
-type ApiCallOptions = { apiUrl: string; idToken: string };
-
-/**
- * One accounts API call with the signed-in user's ID token. A 401 gets one
- * retry with a refreshed token; never more. Never throws.
- */
-export async function callWithIdToken<R extends { ok: true } | ApiFailure>(
-  run: (options: ApiCallOptions) => Promise<R>,
-): Promise<R | ApiFailure> {
-  const config = getAccountsConfig();
-  const failed = (status: number, message: string): ApiFailure => ({
-    ok: false,
-    status,
-    code: "",
-    message,
-  });
-  if (missingAccountsConfig(config).length > 0) {
-    return failed(0, accountsCopy.notConfigured);
-  }
-  try {
-    const sdk = await loadSdk();
-    const user = await sdk.getRestoredUser(config.firebase);
-    if (user === null) return failed(401, accountsCopy.sessionExpired);
-    const apiUrl = config.apiUrl;
-    const first = await run({
-      apiUrl,
-      idToken: await sdk.getUserIdToken(user),
-    });
-    if (first.ok || first.status !== 401) return first;
-    return await run({
-      apiUrl,
-      idToken: await sdk.getUserIdToken(user, true),
-    });
-  } catch {
-    return failed(0, accountsCopy.api.network);
   }
 }
 

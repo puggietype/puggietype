@@ -16,7 +16,7 @@ import { Config } from "../config/store";
 import { migrateConfig } from "../config/utils";
 import { getSettings, putSettings } from "./api";
 import { SETTINGS_DIRTY_KEY } from "./flag";
-import { callWithIdToken } from "./session";
+import { callWithIdToken } from "./authed-call";
 import { getAccountUser } from "./state";
 
 /** config saves within this window become one PUT */

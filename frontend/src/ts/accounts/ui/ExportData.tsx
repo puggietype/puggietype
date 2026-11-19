@@ -2,7 +2,7 @@ import { createSignal, JSXElement, Show } from "solid-js";
 
 import { Button } from "../../components/common/Button";
 import { exportMyData } from "../api";
-import { callWithIdToken } from "../session";
+import { callWithIdToken } from "../authed-call";
 import { accountsCopy } from "../strings";
 
 /** hands `data` to the browser as a JSON download */

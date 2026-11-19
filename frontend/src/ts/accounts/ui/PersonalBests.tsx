@@ -4,7 +4,7 @@ import { createResource, For, JSXElement, Match, Switch } from "solid-js";
 import { Button } from "../../components/common/Button";
 import { H3 } from "../../components/common/Headers";
 import { getPersonalBests, PersonalBest } from "../api";
-import { callWithIdToken } from "../session";
+import { callWithIdToken } from "../authed-call";
 import { getPersonalBestsVersion } from "../state";
 import { accountsCopy } from "../strings";
 
