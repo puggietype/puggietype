@@ -20,12 +20,13 @@ import {
   LINK_INVALID,
 } from "../session";
 import { accountsCopy } from "../strings";
+import { RESET_LOGIN_PATH } from "./reset-query";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 
 type View =
   | { kind: "checking" }
   | { kind: "resetForm" }
-  | { kind: "done"; message: string }
+  | { kind: "done"; message: string; offerReset?: boolean }
   | { kind: "failed"; message: string; canRequestReset: boolean }
   | { kind: "requestReset" };
 
@@ -38,6 +39,15 @@ function SignInLink(): JSXElement {
   return (
     <a class={linkClass} href="/login" router-link>
       {copy.toSignIn}
+    </a>
+  );
+}
+
+/** /login opened on the reset form (SignInPage reads ?reset=1 once) */
+function ResetPasswordLink(): JSXElement {
+  return (
+    <a class={linkClass} href={RESET_LOGIN_PATH} router-link>
+      {copy.resetPassword}
     </a>
   );
 }
@@ -75,8 +85,9 @@ export function AccountActionPage(): JSXElement {
     result: ActionCodeResult,
     message: string,
     isReset: boolean,
+    offerReset = false,
   ): void => {
-    if (result.ok) setView({ kind: "done", message });
+    if (result.ok) setView({ kind: "done", message, offerReset });
     else failed(result, isReset);
   };
 
@@ -99,7 +110,13 @@ export function AccountActionPage(): JSXElement {
       } else if (mode === "verifyEmail") {
         finish(await applyVerifyEmailLink(code), copy.verifyDone, false);
       } else {
-        finish(await applyRecoverEmailLink(code), copy.recoverDone, false);
+        // someone else may have changed it: offer the reset right here
+        finish(
+          await applyRecoverEmailLink(code),
+          copy.recoverDone,
+          false,
+          true,
+        );
       }
     })();
   });
@@ -202,7 +219,12 @@ export function AccountActionPage(): JSXElement {
               <>
                 <H3 text={copy.title} fa={{ icon: "fa-user" }} class="p-0" />
                 <p>{v().message}</p>
-                <SignInLink />
+                <div class="flex flex-wrap gap-4">
+                  <SignInLink />
+                  <Show when={v().offerReset === true}>
+                    <ResetPasswordLink />
+                  </Show>
+                </div>
               </>
             )}
           </Match>

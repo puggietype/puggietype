@@ -1,6 +1,7 @@
 import { createSignal, JSXElement, Show } from "solid-js";
 
 import { Button } from "../../components/common/Button";
+import { showSuccessNotification } from "../../states/notifications";
 import { exportMyData } from "../api";
 import { callWithIdToken } from "../authed-call";
 import { accountsCopy } from "../strings";
@@ -37,8 +38,12 @@ export function ExportData(): JSXElement {
     setError(null);
     try {
       const result = await callWithIdToken(exportMyData);
-      if (result.ok) saveJson(result.data, copy.fileName);
-      else setError(result.message);
+      if (result.ok) {
+        saveJson(result.data, copy.fileName);
+        showSuccessNotification(copy.done);
+      } else {
+        setError(result.message);
+      }
     } catch {
       setError(accountsCopy.api.badResponse);
     } finally {
@@ -48,6 +53,7 @@ export function ExportData(): JSXElement {
 
   return (
     <div class="grid gap-2">
+      <p class="text-sm text-sub">{copy.description}</p>
       <Button
         text={busy() ? copy.busy : copy.button}
         fa={{ icon: "fa-download" }}

@@ -6,11 +6,13 @@ import { getAccountsConfig } from "../config";
 import { AuthResult, cancelAgeCheck, completeAgeCheck } from "../session";
 import { accountsCopy } from "../strings";
 import { BirthYearField } from "./BirthYearField";
+import { LegalNotice } from "./LegalNotice";
 import { TurnstileControl, TurnstileWidget } from "./TurnstileWidget";
 
 /**
  * The API wants the age answer for a new account (a first Google sign-in):
  * same neutral question, a fresh Turnstile token, then the session retry.
+ * It can create the account, so it shows the Terms/Privacy notice too.
  */
 export function AgeCheckPrompt(props: {
   onResult: (result: AuthResult) => void;
@@ -64,6 +66,7 @@ export function AgeCheckPrompt(props: {
         onToken={setTurnstileToken}
         control={(c) => (turnstile = c)}
       />
+      <LegalNotice copy={accountsCopy.age.legalNotice} testId="age-legal" />
       <Button
         text={accountsCopy.age.continue}
         onClick={() => void submit()}

@@ -66,6 +66,13 @@ describe("PersonalBests", () => {
     expect(container.textContent).not.toContain(copy.loading);
   });
 
+  it("says under the title that they're self-reported and private", async () => {
+    const { container, findByText } = render(() => <PersonalBests />);
+    const note = await findByText(copy.note);
+    expect(note.previousElementSibling).toBe(container.querySelector("h3"));
+    expect(note.previousElementSibling?.textContent).toContain(copy.title);
+  });
+
   it("empty", async () => {
     const { findByText } = render(() => <PersonalBests />);
     await findByText(copy.empty);

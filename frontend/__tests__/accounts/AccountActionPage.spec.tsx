@@ -218,12 +218,21 @@ describe("AccountActionPage: verifyEmail and recoverEmail", () => {
     expect(container.textContent).not.toContain(copy.requestNewReset);
   });
 
-  it("recoverEmail: success tells them to reset their password if needed", async () => {
+  it("recoverEmail: success tells them to reset their password, with a link to do it", async () => {
     session.applyRecoverEmailLink.mockResolvedValue({ ok: true });
-    const { findByText } = openLink(link("recoverEmail"));
+    const { container, findByText } = openLink(link("recoverEmail"));
     await findByText(copy.recoverDone);
     expect(copy.recoverDone).toMatch(/reset your password/);
     expect(session.applyRecoverEmailLink).toHaveBeenCalledWith(SECRET);
+    const links = [...container.querySelectorAll("a")].map((a) => [
+      a.textContent,
+      a.getAttribute("href"),
+      a.hasAttribute("router-link"),
+    ]);
+    expect(links).toEqual([
+      [copy.toSignIn, "/login", true],
+      [copy.resetPassword, "/login?reset=1", true],
+    ]);
   });
 
   it("recoverEmail failure: the fixed message", async () => {

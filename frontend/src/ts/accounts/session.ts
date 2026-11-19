@@ -281,7 +281,10 @@ export async function signOut(): Promise<void> {
   }
 }
 
-export type ActionResult = { ok: true } | { ok: false; message: string };
+/** `notice`: it worked, but the user should read this (not an error) */
+export type ActionResult =
+  | { ok: true; notice?: string }
+  | { ok: false; message: string };
 
 /**
  * Firebase password reset email. Unknown addresses count as sent, so the
@@ -367,7 +370,7 @@ const USER_GONE_CODES = new Set([
  * with the fresh token, then Firebase deleteUser. Signed out afterwards.
  * The server deletes the Firebase user too, so the client deleteUser usually
  * fails with a gone-user code (USER_GONE_CODES): that's a full success.
- * partiallyDeleted only for other client errors.
+ * Other client errors: still deleted, with the partiallyDeleted notice.
  */
 export async function deleteAccount(password?: string): Promise<ActionResult> {
   const config = getAccountsConfig();
@@ -394,7 +397,7 @@ export async function deleteAccount(password?: string): Promise<ActionResult> {
     await sdk.signOutFirebase(config.firebase).catch(() => undefined);
     setSignedIn(null);
     if (USER_GONE_CODES.has(firebaseCode(e))) return { ok: true };
-    return { ok: false, message: accountsCopy.account.partiallyDeleted };
+    return { ok: true, notice: accountsCopy.account.partiallyDeleted };
   }
   setSignedIn(null);
   return { ok: true };

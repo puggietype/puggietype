@@ -102,6 +102,57 @@ describe("SignInPage", () => {
     expect(container.textContent).not.toContain("u1");
   });
 
+  it("signed in: sync note under the title, data links at the bottom", () => {
+    setAccountUser({
+      uid: "u1",
+      displayName: "Sleepy Pug 42",
+      emailVerified: true,
+      ageOk: true,
+      lbListed: false,
+      verifiedTypist: false,
+      status: "active",
+      createdAt: "2026-11-04T00:00:00.000Z",
+    });
+    const { container, getByText, getByTestId } = render(() => <SignInPage />);
+    const note = getByText(accountsCopy.signedIn.syncNote);
+    expect(note.previousElementSibling?.textContent).toBe(
+      accountsCopy.signedIn.title,
+    );
+    const footer = getByTestId("signed-in-footer");
+    expect(footer.textContent).toBe(
+      "Your data: Privacy Policy · Terms · support@puggietype.com",
+    );
+    expect(
+      [...footer.querySelectorAll("a")].map((a) => [
+        a.getAttribute("href"),
+        a.getAttribute("target"),
+      ]),
+    ).toEqual([
+      ["/privacy", "_blank"],
+      ["/terms", "_blank"],
+      ["mailto:support@puggietype.com", null],
+    ]);
+    // last thing on the page
+    expect(footer.nextElementSibling).toBeNull();
+    expect(container.contains(footer)).toBe(true);
+  });
+
+  it("?reset=1 opens the reset form once and strips the query", () => {
+    history.replaceState(null, "", "/login?reset=1");
+    const { getByText } = render(() => <SignInPage />);
+    expect(getByText(accountsCopy.reset.submit)).toBeTruthy();
+    expect(location.pathname).toBe("/login");
+    expect(location.search).toBe("");
+    history.replaceState(null, "", "/");
+  });
+
+  it("without the query it opens on sign in", () => {
+    history.replaceState(null, "", "/login");
+    const { queryByText } = render(() => <SignInPage />);
+    expect(queryByText(accountsCopy.reset.submit)).toBeNull();
+    history.replaceState(null, "", "/");
+  });
+
   it("other errors go to a notification", async () => {
     session.signIn.mockResolvedValue({
       status: "error",
