@@ -91,6 +91,73 @@ describe("legal-markdown", () => {
       );
     });
 
+    it("escapes quotes, angle brackets and ampersands in the aria-label", () => {
+      const out = wrapTables(
+        '<h2>Say "hi" <b>&lt;now&gt;</b> &amp; x <y</h2><table><tr><td>1</td></tr></table>',
+      );
+      const label = /aria-label="([^"]*)"/.exec(out)?.[1];
+      expect(label).toBe("table: Say &quot;hi&quot; &lt;now&gt; &amp; x &lt;y");
+      // the attribute cannot be broken out of, and no raw markup leaks in
+      expect(out).toMatch(/^<h2>[^]*<\/h2><div class="tableWrap"/);
+      expect(label).not.toMatch(/["<>]/);
+      expect(out.match(/<div /g)).toHaveLength(1);
+    });
+
+    it("decodes then re-encodes entities once (no double escaping)", () => {
+      const out = wrapTables(
+        "<h2>A &amp; B &#39;c&#39; &#x26;</h2><table></table>",
+      );
+      expect(out).toContain("aria-label=\"table: A &amp; B 'c' &amp;\"");
+    });
+
+    it("does not throw on out-of-range numeric entities", () => {
+      const out = wrapTables("<h2>A &#99999999; B</h2><table></table>");
+      expect(out).toContain('aria-label="table: A &amp;#99999999; B"');
+    });
+
+    it("trims the heading text used for the label", () => {
+      const out = wrapTables(
+        "<h2>   Spaced out \n </h2><table><tr><td>1</td></tr></table>",
+      );
+      expect(out).toContain('aria-label="table: Spaced out"');
+    });
+
+    it("falls back to the generic label for a heading with no text", () => {
+      const out = wrapTables(
+        '<h2> <img src="x.png" alt=""> </h2><table></table>',
+      );
+      expect(out).toContain('aria-label="table: scrollable"');
+    });
+
+    it("suffixes repeated labels under one heading and restarts per heading", () => {
+      const t = "<table><tr><td>x</td></tr></table>";
+      const out = wrapTables(
+        `<h2>Retention</h2>${t}<p>a</p>${t}${t}<h2>Other</h2>${t}${t}<h2>Retention</h2>${t}`,
+      );
+      expect(
+        [...out.matchAll(/aria-label="([^"]+)"/g)].map((m) => m[1]),
+      ).toEqual([
+        "table: Retention",
+        "table: Retention (2)",
+        "table: Retention (3)",
+        "table: Other",
+        "table: Other (2)",
+        "table: Retention",
+      ]);
+    });
+
+    it("keeps table cells from breaking words mid-word", () => {
+      const scss = readFileSync(
+        path.join(srcDir, "styles/static-page.scss"),
+        "utf-8",
+      );
+      // main's overflow-wrap: anywhere would otherwise shrink table cells to
+      // one character and split words (Workma|n) on the guide pages
+      expect(scss).toMatch(
+        /\ntable \{\s*border-collapse: collapse;[^}]*overflow-wrap: normal;/,
+      );
+    });
+
     it("leaves html without tables unchanged", () => {
       const html = "<h2>Hello</h2><p>no table</p>";
       expect(wrapTables(html)).toBe(html);

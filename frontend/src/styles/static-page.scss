@@ -345,6 +345,9 @@ kbd,
 
 table {
   border-collapse: collapse;
+  // keep table min-content at whole words: main's overflow-wrap: anywhere must
+  // not shrink cells to one character (breaks words mid-word in guide tables)
+  overflow-wrap: normal;
 }
 
 th,
