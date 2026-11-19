@@ -38,7 +38,11 @@ const BACKEND_COMMAND_IDS: readonly string[] = [
   "signOut",
 ];
 
+/** routes the accounts sign-in (VITE_FEATURE_ACCOUNTS) brings back */
+const ACCOUNTS_ROUTES: readonly string[] = ["/login"];
+
 export function isRouteHidden(path: string): boolean {
+  if (__FEATURE_ACCOUNTS__ && ACCOUNTS_ROUTES.includes(path)) return false;
   return isStandalone() && BACKEND_ROUTES.includes(path);
 }
 

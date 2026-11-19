@@ -22,6 +22,7 @@ function stubVirtualEnvConfig(): Plugin {
           recaptchaSiteKey: "",
           quickLoginEmail: undefined,
           quickLoginPassword: undefined,
+          ga4MeasurementId: "",
         })};`;
       }
     },

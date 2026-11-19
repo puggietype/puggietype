@@ -4,9 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="google-adsense-account" content="ca-pub-8233445679738428" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
-      How WPM, raw, accuracy and consistency are calculated | PuggieType
-    </title>
+    <title>WPM and accuracy: how typing speed is measured | PuggieType</title>
     <link rel="stylesheet" href="/styles/static-page.scss" />
     <link
       rel="preload"
@@ -26,17 +24,17 @@
     <link rel="icon" href="/images/favicon/favicon.svg" type="image/svg+xml" />
     <meta
       name="description"
-      content="The exact formulas PuggieType uses for WPM, raw speed, accuracy and consistency, with worked examples you can check yourself."
+      content="What WPM means and how typing speed, raw speed, accuracy and consistency are calculated, with worked examples and a way to check your own result."
     />
     <link rel="canonical" href="https://puggietype.com/guide/wpm-accuracy" />
     <meta property="og:site_name" content="puggietype" />
     <meta
       property="og:title"
-      content="How WPM, raw, accuracy and consistency are calculated | PuggieType"
+      content="WPM and accuracy: how typing speed is measured | PuggieType"
     />
     <meta
       property="og:description"
-      content="The exact formulas PuggieType uses for WPM, raw speed, accuracy and consistency, with worked examples you can check yourself."
+      content="What WPM means and how typing speed, raw speed, accuracy and consistency are calculated, with worked examples and a way to check your own result."
     />
     <meta
       property="og:url"
@@ -57,11 +55,11 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="How WPM, raw, accuracy and consistency are calculated | PuggieType"
+      content="WPM and accuracy: how typing speed is measured | PuggieType"
     />
     <meta
       name="twitter:description"
-      content="The exact formulas PuggieType uses for WPM, raw speed, accuracy and consistency, with worked examples you can check yourself."
+      content="What WPM means and how typing speed, raw speed, accuracy and consistency are calculated, with worked examples and a way to check your own result."
     />
     <meta
       name="twitter:image"
@@ -71,12 +69,14 @@
       name="twitter:image:alt"
       content="PuggieType: the pug mascot typing on a keyboard, with the tagline typing tests and multiplayer races"
     />
+    <!--email_off-->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "Article",
-        "headline": "How WPM, raw, accuracy and consistency are calculated",
-        "description": "The exact formulas PuggieType uses for WPM, raw speed, accuracy and consistency, with worked examples you can check yourself.",
+        "dateModified": "2026-11-17",
+        "headline": "What WPM means and how speed and accuracy are calculated",
+        "description": "What WPM means and how typing speed, raw speed, accuracy and consistency are calculated, with worked examples and a way to check your own result.",
         "url": "https://puggietype.com/guide/wpm-accuracy",
         "mainEntityOfPage": "https://puggietype.com/guide/wpm-accuracy",
         "image": "https://puggietype.com/images/og/puggietype-share.png",
@@ -95,6 +95,63 @@
         }
       }
     </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What does WPM stand for?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Words per minute. Typing tests count every five characters, including spaces, as one word, so texts with long and short words can be compared fairly."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How is WPM calculated?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Take the characters of the words you typed correctly, plus the space after each one, divide by 5, then divide by the test length in minutes. 150 correct characters in a 30-second test is 30 words in half a minute, which is 60 WPM."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between WPM and raw?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "WPM counts only words you typed completely correctly. Raw counts every character you typed, including mistakes and extra letters. A big gap between them means many words were lost to small slips."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why is my accuracy below 100% when my text is correct?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Accuracy is measured keypress by keypress, as you type. If you pressed a wrong key and then fixed it, the text ends up correct but the wrong keypress still counts against your accuracy."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does backspace lower accuracy?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Not by itself. Backspace is not counted as a correct or incorrect keypress. What lowers accuracy is the wrong key you pressed before deleting it."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why is my result marked invalid?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The result screen marks a test invalid in cases such as these: it was too short (a timed test under 15 seconds or a word test under 10 words), you stopped typing for the last five seconds, accuracy was below 75%, the speed was implausibly high, or it was a repeat of the same test. You still see the numbers, but the result isn't used for the speed estimate that places you in Quick Match."
+            }
+          }
+        ]
+      }
+    </script>
+    <!--/email_off-->
   </head>
 
   <body>
@@ -103,11 +160,31 @@
       <!-- prose: oxfmt's htmlWhitespaceSensitivity "ignore" would split "</a>." -->
       <!-- prettier-ignore -->
       <main>
-        <h1>How WPM, raw, accuracy and consistency are calculated</h1>
+        <h1>What WPM means and how speed and accuracy are calculated</h1>
+        <p class="last-updated">Last updated <time datetime="2026-11-17">November 17, 2026</time></p>
         <p class="lede">
-          The result screen shows four main numbers. Here is exactly what each one
-          measures, how PuggieType computes it, and a worked example you can check
-          with a calculator.
+          WPM means words per minute. In a typing test, a "word" is any five
+          characters, spaces included, so WPM measures how many characters of correctly typed words you type in a minute, divided by five. Accuracy is the share of
+          your keypresses that were right. This page explains exactly how
+          PuggieType works out WPM, raw speed, accuracy and consistency, with
+          worked examples you can check with a calculator.
+        </p>
+
+        <h2>Calculate your WPM by hand</h2>
+        <p>
+          If you want to check a speed yourself, for example from a passage you
+          copied out against a stopwatch, the steps are:
+        </p>
+        <ol>
+          <li>Count the characters you typed correctly, including the spaces between words.</li>
+          <li>Divide by 5 to turn characters into standard words.</li>
+          <li>Convert the time to minutes: seconds divided by 60.</li>
+          <li>Divide the words by the minutes. The answer is your speed in words per minute.</li>
+        </ol>
+        <p>
+          For example, 200 correct characters in 45 seconds is 40 words in 0.75
+          minutes, or about 53 WPM. The sections below show how PuggieType
+          decides which characters count as correct.
         </p>
 
         <h2>The basic unit: five characters</h2>
@@ -250,10 +327,8 @@ consistency = 100 x (1 - tanh(0.174 + 0.0018 + 0.00003)) ≈ 82.6%</pre>
         </p>
         <h3>Invalid results</h3>
         <p>
-          The result screen warns you when a test cannot be taken seriously: if it
-          was too short (timed tests under 15 seconds, word tests under 10 words), if
-          you stopped typing for the last five seconds, if accuracy was below 75%, or
-          if the speed was implausibly high. On PuggieType these results are still
+          The result screen warns you when a test cannot be taken seriously, for example: if it was too short (timed tests under 15 seconds, word tests under 10 words), if
+          you stopped typing for the last five seconds, if accuracy was below 75%, if the speed was implausibly high, or if it was a repeat of the same test. On PuggieType these results are still
           shown to you, but they do not feed the speed estimate used to place you in
           <a href="/guide/multiplayer">Quick Match</a>.
         </p>
@@ -263,10 +338,12 @@ consistency = 100 x (1 - tanh(0.174 + 0.0018 + 0.00003)) ≈ 82.6%</pre>
           solo test. Our server also receives what each player typed, recomputes the
           speed against the shared word list with the same formula, and flags results
           that do not match. In timed races, players are ranked by the server's
-          number.
+          number. The <a href="/guide/multiplayer">multiplayer typing race guide</a>
+          covers private rooms, Open Rooms and Quick Match; multiplayer is for ages
+          13 and over.
         </p>
 
-        <h2>What to do with these numbers</h2>
+        <h2>Reading your results</h2>
         <p>
           Watch accuracy first. Above about 96%, raw and WPM stay close together and
           speed becomes the thing to train. Below that, slowing down by a few words
@@ -276,12 +353,81 @@ consistency = 100 x (1 - tanh(0.174 + 0.0018 + 0.00003)) ≈ 82.6%</pre>
           settings</a> shows which options make the numbers stricter or more
           forgiving.
         </p>
+        <p>
+          For a fair everyday baseline, take a 60-second English time test without
+          punctuation and compare results over several tests, not one.
+          <a href="/">Take a 60-second test</a> to check your own numbers.
+        </p>
+
+        <h3>What counts as a good speed?</h3>
+        <p>
+          The most useful comparison is with yourself. A single test can swing by
+          several words per minute depending on the words you got, how warmed up
+          you were and how a couple of mistakes landed, so take the average of
+          your last few baseline tests as your current speed. A good result is
+          one that beats that average at the same accuracy or better. If your
+          speed rises but accuracy drops, you have mostly traded one number for
+          the other.
+        </p>
+        <p>
+          Test settings matter as much as effort. A 15-second sprint and a
+          120-second test ask different things of you, and punctuation,
+          numbers and quotes change the text you type, so only compare results
+          taken with the same settings.
+        </p>
+        <p>
+          If you are still looking at the keyboard, the biggest gain usually
+          comes from technique rather than speed drills: the
+          <a href="/guide/touch-typing-beginners">guide to learning touch typing</a>
+          and the <a href="/guide/home-row-finger-placement">home row finger placement guide</a>
+          are the place to start.
+        </p>
+
+        <h2>Frequently asked questions</h2>
+        <h3>What does WPM stand for?</h3>
+        <p>
+          Words per minute. Typing tests count every five characters, including
+          spaces, as one word, so texts with long and short words can be compared
+          fairly.
+        </p>
+        <h3>How is WPM calculated?</h3>
+        <p>
+          Take the characters of the words you typed correctly, plus the space
+          after each one, divide by 5, then divide by the test length in minutes.
+          150 correct characters in a 30-second test is 30 words in half a minute,
+          which is 60 WPM.
+        </p>
+        <h3>What is the difference between WPM and raw?</h3>
+        <p>
+          WPM counts only words you typed completely correctly. Raw counts every
+          character you typed, including mistakes and extra letters. A big gap between them means many words
+          were lost to small slips.
+        </p>
+        <h3>Why is my accuracy below 100% when my text is correct?</h3>
+        <p>
+          Accuracy is measured keypress by keypress, as you type. If you pressed a
+          wrong key and then fixed it, the text ends up correct but the wrong
+          keypress still counts against your accuracy.
+        </p>
+        <h3>Does backspace lower accuracy?</h3>
+        <p>
+          Not by itself. Backspace is not counted as a correct or incorrect
+          keypress. What lowers accuracy is the wrong key you pressed before
+          deleting it.
+        </p>
+        <h3>Why is my result marked invalid?</h3>
+        <p>
+          The result screen marks a test invalid in cases such as these: it was too short (a timed test under 15 seconds or a word test under 10 words), you stopped typing for the last five seconds, accuracy was below 75%, the speed was implausibly high, or it was a repeat of the same test. You still see the numbers, but the result isn't used for the speed estimate that places you in Quick Match.
+        </p>
 
         <h2>Related guides</h2>
         <ul>
           <li><a href="/guide/typing-test-math">Typing test math in depth</a></li>
           <li><a href="/guide/improve-accuracy">How to improve typing accuracy</a></li>
           <li><a href="/guide/type-faster">How to type faster</a></li>
+          <li><a href="/guide/touch-typing-beginners">Touch typing: how to learn it, step by step</a></li>
+          <li><a href="/guide/home-row-finger-placement">Home row keys and finger placement</a></li>
+          <li><a href="/guide/multiplayer">Multiplayer typing races (ages 13+)</a></li>
         </ul>
       </main>
       <load src="html/static-page/footer.html" />

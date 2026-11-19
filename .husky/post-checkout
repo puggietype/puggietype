@@ -1,8 +1,14 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+# a fresh worktree has no .husky/_ until `pnpm i` runs husky install: skip quietly
+husky_sh="$(dirname -- "$0")/_/husky.sh"
+[ -f "$husky_sh" ] || exit 0
+. "$husky_sh"
 
 # branch checkouts only, not file checkouts
 [ "$3" = "1" ] || exit 0
+
+# the previous HEAD may not be a commit here (new worktree, or a ref that was pruned): nothing to compare
+git rev-parse -q --verify "$1^{commit}" >/dev/null || exit 0
 
 # skip if the lockfile and .nvmrc didn't change
 git diff --quiet "$1" "$2" -- pnpm-lock.yaml .nvmrc && exit 0
@@ -14,7 +20,8 @@ if [ -n "$SANDBOX_RUNTIME" ]; then
   exit 0
 fi
 
-# Load nvm
+# Load nvm (an inherited NPM_CONFIG_PREFIX makes nvm refuse to run)
+unset NPM_CONFIG_PREFIX
 export NVM_DIR="$HOME/.nvm"
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
   # nvm not available, quietly exit

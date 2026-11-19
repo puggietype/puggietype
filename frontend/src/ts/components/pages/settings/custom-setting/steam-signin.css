@@ -1,0 +1,6 @@
+/* Steam sign-in (lazy, steam build only). The live region stays mounted and
+   displayed while empty; pull the next control up over the grid gap the
+   empty region adds (a utility class would land in the shared web CSS). */
+#steam-signin-status:empty + * {
+  margin-top: -0.5rem;
+}

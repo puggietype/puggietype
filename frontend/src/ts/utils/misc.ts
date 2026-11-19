@@ -474,7 +474,7 @@ export function updateTitle(title?: string): void {
   const local = isDevEnvironment() ? "localhost - " : "";
 
   if (title === undefined || title === "") {
-    document.title = `${local}puggietype | a minimalist typing test`;
+    document.title = `${local}Free minimalist typing test, no account | PuggieType`;
   } else {
     document.title = local + title;
   }
@@ -485,7 +485,8 @@ export function isObject(obj: unknown): obj is Record<string, unknown> {
 }
 
 export function prefersReducedMotion(): boolean {
-  return matchMedia?.("(prefers-reduced-motion)")?.matches;
+  // globalThis: a bare matchMedia throws where it doesn't exist (jsdom)
+  return globalThis.matchMedia?.("(prefers-reduced-motion)")?.matches ?? false;
 }
 
 /**

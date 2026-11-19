@@ -7,6 +7,11 @@
  */
 import { z } from "zod";
 
+import {
+  QUICK_CHAT_ID_MAX_LENGTH,
+  type QuickChatId,
+} from "./quick-chat-presets";
+
 export const PROTOCOL_VERSION = 1;
 /** Server protocols this client can talk to (welcome.protocol). */
 export const MIN_SERVER_PROTOCOL = 1;
@@ -146,7 +151,7 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     ageConfirmed: z.boolean().optional(),
     /** Starting dog. Bad or unknown values fall back to "puggie" rather than erroring, for older clients. */
     character: CharacterSchema.catch(DEFAULT_CHARACTER).optional(),
-    /** This browser session started from /guide/typing-for-kids. The server refuses leaderboard scores. */
+    /** This browser session started from /guide/typing-for-kids or /guide/teaching-kids-to-type. The server refuses leaderboard scores. */
     kidsGuide: z.literal(true).optional(),
     /** Client wire protocol (servers treat a missing value as 1). */
     protocol: z.number().int().min(0).optional(),
@@ -196,6 +201,14 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("report:player"),
     playerId: z.string().min(1).max(64),
     reason: ReportReasonSchema,
+  }),
+  /**
+   * Quick-chat (flagged): send one fixed preset. Strict: any extra key (text, a name, a player id)
+   * makes the message invalid. `presetId` must be on the server's whitelist (quick-chat-presets.ts).
+   */
+  z.strictObject({
+    type: z.literal("chat:preset"),
+    presetId: z.string().min(1).max(QUICK_CHAT_ID_MAX_LENGTH),
   }),
   /** Open rooms (flagged): fetch the listing immediately and keep receiving rate-limited updates. */
   z.object({ type: z.literal("rooms:list") }),
@@ -367,6 +380,8 @@ export interface Features {
   quickMatch: boolean;
   /** Disabled: `report:player` returns FEATURE_DISABLED and the report control is hidden. */
   report: boolean;
+  /** Disabled or absent: `chat:preset` returns FEATURE_DISABLED and the quick-chat UI is hidden. */
+  quickChat?: boolean;
   /** Ready / start from the results screen (`player:toLobby`); absent on older servers. */
   resultsReady?: boolean;
   /** Absent or false: leaderboard UI stays hidden and scores are not published. */
@@ -408,6 +423,11 @@ export type ServerMessage =
   | { type: "queue:left"; reason: "left" | "timeout" }
   /** Player reports: acknowledgement that the report went through. */
   | { type: "report:received" }
+  /**
+   * Quick-chat relay: `playerId` sent preset `presetId`. The server builds it from its whitelist; it
+   * never carries text. Sent to every connected human in a private room, the sender included.
+   */
+  | { type: "chat:preset"; playerId: string; presetId: QuickChatId }
   /** Room shut down for inactivity; you've been removed and the code no longer exists. */
   | { type: "room:closed"; reason: "idle" }
   /** You were kicked by the host. */

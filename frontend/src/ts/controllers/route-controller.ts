@@ -1,3 +1,4 @@
+import { onSpaRouteChange } from "../analytics/ga4";
 import * as PageController from "./page-controller";
 import { onDOMReady } from "../utils/dom";
 import { isAuthAvailable } from "../firebase";
@@ -87,6 +88,11 @@ const routes: Route[] = [
   {
     path: "/login",
     load: async (_params, options) => {
+      // accounts sign-in page shows its own signed-in state
+      if (__FEATURE_ACCOUNTS__) {
+        await PageController.change("login", options);
+        return;
+      }
       if (!isAuthAvailable()) {
         await navigate("/", options);
         return;
@@ -178,12 +184,20 @@ const routes: Route[] = [
   },
 ];
 
+function sameOriginPathUrl(url: string): string {
+  // `//r//X` is a path, but pushState treats a leading `//` as a
+  // protocol-relative URL and throws SecurityError.
+  if (url.startsWith("//")) return `/${url.replace(/^\/+/, "")}`;
+  return url;
+}
+
 export async function navigate(
   url = window.location.pathname +
     window.location.search +
     window.location.hash,
   options = {} as NavigateOptions,
 ): Promise<void> {
+  url = sameOriginPathUrl(url);
   if (
     !options.force &&
     (isTestRestarting() ||
@@ -280,10 +294,10 @@ async function router(options = {} as NavigateOptions): Promise<void> {
         force: true,
       },
     );
-    return;
+  } else {
+    await match.route.load(getParams(match), options);
   }
-
-  await match.route.load(getParams(match), options);
+  onSpaRouteChange();
 }
 
 window.addEventListener("popstate", () => {
@@ -318,7 +332,8 @@ onDOMReady(() => {
     const target = e?.target as HTMLLinkElement;
     if (target.matches("[router-link]") && target?.href) {
       e.preventDefault();
-      void navigate(target.href);
+      // data-app-path: in-app route of a link whose href is a crawlable url
+      void navigate(target.dataset["appPath"] ?? target.href);
     }
   });
 });

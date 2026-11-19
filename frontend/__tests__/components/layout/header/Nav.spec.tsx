@@ -47,6 +47,31 @@ describe("Nav", () => {
   afterEach(() => {
     setActivePage("loading");
     setServerFeatures(undefined);
+    vi.unstubAllGlobals();
+  });
+
+  it("accounts off: no sign-in button", () => {
+    const { container } = render(() => <Nav />);
+    expect(container.querySelector('[data-nav-item="login"]')).toBe(null);
+  });
+
+  it("accounts on (standalone): sign-in button is the last nav item", () => {
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
+    const { container } = render(() => <Nav />);
+    const nav = container.querySelector("nav");
+    expect(nav?.lastElementChild?.getAttribute("data-nav-item")).toBe("login");
+    expect(nav?.lastElementChild?.getAttribute("href")).toBe("/login");
+  });
+
+  it("accounts on with a backend: no extra sign-in button", () => {
+    standalone.value = false;
+    const logins = (): number =>
+      render(() => <Nav />).container.querySelectorAll(
+        '[data-nav-item="login"]',
+      ).length;
+    const off = logins();
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
+    expect(logins()).toBe(off);
   });
 
   const item = (container: HTMLElement, name: string): HTMLElement => {
@@ -76,7 +101,7 @@ describe("Nav", () => {
     const expected: [string, string, string][] = [
       ["test", "solo", "/"],
       ["race", "multiplayer", "/race"],
-      ["about", "guides", "/about"],
+      ["about", "guides", "/guide/about"],
       ["settings", "settings", "/settings"],
     ];
     for (const [navItem, label, href] of expected) {
@@ -89,6 +114,11 @@ describe("Nav", () => {
       expect(el.querySelector("i.fa-fw")).not.toBeNull();
     }
     expect(item(container, "race").dataset["testid"]).toBe("nav-race");
+    // crawlable href is the canonical page, in-app clicks keep the /about route
+    expect(item(container, "about").dataset["appPath"]).toBe("/about");
+    expect(item(container, "about").hasAttribute("router-link")).toBe(true);
+    expect(item(container, "about").hasAttribute("target")).toBe(false);
+    expect(item(container, "test").hasAttribute("data-app-path")).toBe(false);
   });
 
   it("never hides a label on small screens; short labels below 849px", () => {

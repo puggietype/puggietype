@@ -1,5 +1,6 @@
 import { Plugin } from "vite";
 import { EnvConfig } from "virtual:env-config";
+import { resolveGa4MeasurementId } from "../src/ts/analytics/consent";
 import { getSourceLinks, SourceLinks } from "./source-links";
 
 const virtualModuleId = "virtual:env-config";
@@ -8,6 +9,14 @@ const resolvedVirtualModuleId = `\0${virtualModuleId}`;
 function fallback(value: string | undefined | null, fallback: string): string {
   if (value === null || value === undefined || value === "") return fallback;
   return value;
+}
+
+function analyticsConfig(
+  env: Record<string, string>,
+): Pick<EnvConfig, "ga4MeasurementId"> {
+  return {
+    ga4MeasurementId: resolveGa4MeasurementId(env["GA4_MEASUREMENT_ID"]),
+  };
 }
 
 export function envConfig(options: {
@@ -43,6 +52,7 @@ export function envConfig(options: {
           recaptchaSiteKey: "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
           quickLoginEmail: options.env["QUICK_LOGIN_EMAIL"],
           quickLoginPassword: options.env["QUICK_LOGIN_PASSWORD"],
+          ...analyticsConfig(options.env),
         };
 
         const prodConfig: EnvConfig = {
@@ -55,6 +65,7 @@ export function envConfig(options: {
           clientVersion: options.clientVersion,
           sourceUrl,
           licenseUrl,
+          ...analyticsConfig(options.env),
         };
 
         const envConfig = options.isDevelopment ? devConfig : prodConfig;

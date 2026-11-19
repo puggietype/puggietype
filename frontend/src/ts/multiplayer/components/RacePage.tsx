@@ -12,16 +12,12 @@ import { Button } from "../../components/common/Button";
 import { Fa } from "../../components/common/Fa";
 import { ageConfirmed } from "../age-gate";
 import { MULTIPLAYER_ENABLED } from "../flags";
-import { leaderboardSubmitBlocked, showRaceLeaderboard } from "../leaderboards";
 import {
   connect,
   joinRoom,
-  leaderboardConsentOpen,
-  leaderboardConsentWpm,
   leaveQueue,
   leaveRoom,
   resumeSession,
-  submitLeaderboardConsent,
 } from "../race";
 import {
   connectionStatus,
@@ -29,15 +25,12 @@ import {
   queue,
   race,
   raceFinished,
-  leaderboardsOn,
   meInLobby,
   results,
   room,
   setInviteCode,
 } from "../store";
 import { AgeGate } from "./AgeGate";
-import { LeaderboardConsent } from "./LeaderboardConsent";
-import { LeaderboardView } from "./LeaderboardView";
 import { Lobby } from "./Lobby";
 import { Podium } from "./Podium";
 import { QuickMatchQueue } from "./QuickMatchQueue";
@@ -94,19 +87,6 @@ export function RacePage(): JSXElement {
           >
             {(r) => (
               <div class="grid gap-6">
-                <Show when={leaderboardConsentOpen()}>
-                  <LeaderboardConsent
-                    wpm={leaderboardConsentWpm()}
-                    onSubmit={(show) => {
-                      const kids = leaderboardSubmitBlocked(
-                        window.location.pathname,
-                        document.referrer,
-                        sessionStorage,
-                      );
-                      submitLeaderboardConsent(kids ? false : show);
-                    }}
-                  />
-                </Show>
                 <Switch fallback={<Lobby room={r()} />}>
                   <Match when={meInLobby()}>
                     <Lobby room={r()} />
@@ -138,30 +118,6 @@ export function RacePage(): JSXElement {
                     </div>
                   </Match>
                 </Switch>
-                <Show
-                  when={showRaceLeaderboard({
-                    leaderboards: leaderboardsOn(),
-                    kids: leaderboardSubmitBlocked(
-                      window.location.pathname,
-                      document.referrer,
-                      sessionStorage,
-                    ),
-                    inRaceOrResults:
-                      results() !== undefined || race() !== undefined,
-                  })}
-                >
-                  <LeaderboardView
-                    variant="compact"
-                    initial={{
-                      period: "daily",
-                      mode: r().settings.mode,
-                      mode2: r().settings.mode2,
-                      language: r().settings.language,
-                      punctuation: r().settings.punctuation,
-                      numbers: r().settings.numbers,
-                    }}
-                  />
-                </Show>
               </div>
             )}
           </Show>

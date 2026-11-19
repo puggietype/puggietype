@@ -139,6 +139,11 @@ export function AboutPage(): JSXElement {
           under the same license.
         </p>
         <p data-testid="quote-credits">{QUOTE_CREDITS_LINE}</p>
+        <p data-testid="music-credits">
+          {
+            'music: "Sherwood" by Chris Murphy (zesona) and "calm theme" by pebonius (pebonius.itch.io), from OpenGameArt.org, released under CC0 1.0.'
+          }
+        </p>
         {
           // steam flavor only (define compared inline so web is unchanged):
           // licenses and source offer bundled by desktop/scripts/package.mjs

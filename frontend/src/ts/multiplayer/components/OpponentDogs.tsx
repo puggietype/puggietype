@@ -80,7 +80,7 @@ function OpponentDog(props: {
             "animation-duration": `${prefersReducedMotion() ? 0 : steppedShakeDuration(wpm())}s`,
           }}
         >
-          <div class="absolute inset-0 text-(--pug-ink)">
+          <div class="dog-color absolute inset-0 text-(--pug-ink)">
             <For each={FRAMES}>
               {(name) => (
                 // hidden frames skip rendering but keep their layout

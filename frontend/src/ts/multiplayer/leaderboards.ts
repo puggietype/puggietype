@@ -1,4 +1,3 @@
-import { createSignal } from "solid-js";
 import { z } from "zod";
 
 import { CONFIGURED_WS_URL } from "./flags";
@@ -14,7 +13,10 @@ export const LEADERBOARD_PERIODS = [
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number];
 
 export const LEADERBOARD_LIMIT = 50;
-const KIDS_GUIDE_PATH = "/guide/typing-for-kids";
+const KIDS_GUIDE_PATHS = [
+  "/guide/typing-for-kids",
+  "/guide/teaching-kids-to-type",
+] as const;
 /** set for the rest of the tab when this visit came from the kids guide */
 export const KIDS_FLOW_KEY = "puggie-kids-flow";
 
@@ -48,6 +50,8 @@ export type LeaderboardOk = {
   periodKey: string;
   startsAt: number;
   endsAt: number | null;
+  /** earliest record on this board. Null when the server does not send it. */
+  earliestAt: number | null;
   mode: LeaderboardMode;
   mode2: number;
   accuracyFloor: number;
@@ -74,6 +78,7 @@ const OkSchema = z.object({
   periodKey: z.string(),
   startsAt: z.number(),
   endsAt: z.number().nullable().optional(),
+  earliestAt: z.number().nullable().optional(),
   mode: z.enum(["time", "words"]),
   mode2: z.number(),
   accuracyFloor: z.number(),
@@ -115,21 +120,12 @@ export function scoreConsentElapsed(shownAtMs: number, nowMs: number): boolean {
   return nowMs - shownAtMs >= SCORE_CONSENT_MS;
 }
 
-export type SoloSubmitAction = "next" | "retry" | "submit";
-
-type SoloSubmitListener = (action: SoloSubmitAction) => void;
-let soloSubmitListener: SoloSubmitListener | undefined;
-
-/** the mounted results toggle; Next and Retry call this */
-export function registerSoloSubmit(listener: SoloSubmitListener): () => void {
-  soloSubmitListener = listener;
-  return () => {
-    if (soloSubmitListener === listener) soloSubmitListener = undefined;
-  };
-}
-
-export function requestSoloSubmit(action: SoloSubmitAction): void {
-  soloSubmitListener?.(action);
+/**
+ * Next, repeat, retry, and restart do not post a score. The only send is the
+ * Submit score button on the finished solo test.
+ */
+export function requestSoloSubmit(_action: "next" | "retry" | "submit"): void {
+  return;
 }
 
 /**
@@ -155,39 +151,13 @@ export function leaderboardConsentMessage(raceId: string): {
   return { type: "leaderboard:consent", raceId, show: true };
 }
 
-const [soloScoreWillPost, setSoloScoreWillPostSignal] = createSignal(false);
-/** Next / Retry will also post the leaderboard score */
-export { soloScoreWillPost };
-
-export function setSoloScoreWillPost(will: boolean): void {
-  setSoloScoreWillPostSignal(will);
-}
-
-/**
- * Visible label for a control that posts the score and also starts another
- * test. A generic Next is only used when the click will not post.
- */
-export function soloAdvanceLabel(
-  action: "next" | "repeat" | "retry",
-  willPost: boolean,
-): string {
-  if (!willPost) {
-    if (action === "next") return "Next test";
-    if (action === "repeat") return "Repeat test";
-    return "Retry saving result";
-  }
-  if (action === "next") return "Submit score & next test";
-  if (action === "repeat") return "Submit score & repeat";
-  return "Submit score & retry saving";
-}
-
-/** compact Multiplayer board on the race screen: hidden for kids-guide sessions */
-export function showRaceLeaderboard(options: {
+/** Casual races do not show or submit a leaderboard. Ranks are solo-only. */
+export function showRaceLeaderboard(_options: {
   leaderboards: boolean;
   kids: boolean;
   inRaceOrResults: boolean;
 }): boolean {
-  return options.leaderboards && !options.kids && options.inRaceOrResults;
+  return false;
 }
 
 /** http(s) origin for the game server that serves GET /leaderboards */
@@ -236,6 +206,88 @@ export function defaultLeaderboardQuery(
   };
 }
 
+function periodFromParam(value: string): LeaderboardPeriod | undefined {
+  if (
+    value === "daily" ||
+    value === "weekly" ||
+    value === "monthly" ||
+    value === "all-time"
+  ) {
+    return value;
+  }
+  if (value === "allTime" || value === "alltime") return "all-time";
+  return undefined;
+}
+
+function flagParam(value: string | null): boolean | undefined {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return undefined;
+}
+
+/**
+ * Ranks is solo-only. Old multiplayer links (`verified=true`, `board=race`)
+ * stay on this page and browse the solo board. They do not open a submit path.
+ */
+export function ranksQueryFromSearch(search: string): {
+  query: Partial<LeaderboardQuery>;
+  removedMultiplayer: boolean;
+} {
+  const params = new URLSearchParams(
+    search.startsWith("?") ? search.slice(1) : search,
+  );
+  const board = (params.get("board") ?? params.get("kind") ?? "").toLowerCase();
+  const removedMultiplayer =
+    params.get("verified") === "true" ||
+    board === "multiplayer" ||
+    board === "race" ||
+    board === "verified" ||
+    board === "mp";
+
+  const query: Partial<LeaderboardQuery> = { verified: false };
+  const period = periodFromParam(
+    params.get("period") ?? params.get("type") ?? "",
+  );
+  if (period !== undefined) query.period = period;
+
+  const modeRaw = params.get("mode");
+  const mode = modeRaw === "time" || modeRaw === "words" ? modeRaw : undefined;
+  if (mode !== undefined) {
+    query.mode = mode;
+    const mode2 = leaderboardMode2(mode, params.get("mode2") ?? "");
+    if (mode2 !== undefined) query.mode2 = mode2;
+  }
+
+  const language = params.get("language") ?? "";
+  if (/^[a-z0-9_]{1,64}$/.test(language)) query.language = language;
+
+  const punctuation = flagParam(params.get("punctuation"));
+  if (punctuation !== undefined) query.punctuation = punctuation;
+  const numbers = flagParam(params.get("numbers"));
+  if (numbers !== undefined) query.numbers = numbers;
+
+  return { query, removedMultiplayer };
+}
+
+/** Browse link for the solo board that matches one finished test. Not a submit. */
+export function soloRanksHref(score: {
+  mode: string;
+  mode2: number;
+  language: string;
+  punctuation: boolean;
+  numbers: boolean;
+}): string {
+  const params = new URLSearchParams({
+    period: "daily",
+    mode: score.mode,
+    mode2: String(score.mode2),
+    language: score.language,
+    punctuation: String(score.punctuation),
+    numbers: String(score.numbers),
+  });
+  return `/leaderboards?${params.toString()}`;
+}
+
 /** mode2 the game server accepts for a mode, else undefined */
 export function leaderboardMode2(
   mode: string,
@@ -251,7 +303,7 @@ export function leaderboardMode2(
 export function isKidsGuidePath(pathname: string): boolean {
   const path = pathname.split("?")[0]?.split("#")[0] ?? pathname;
   const trimmed = path.length > 1 ? path.replace(/\/+$/, "") : path;
-  return trimmed === KIDS_GUIDE_PATH;
+  return KIDS_GUIDE_PATHS.some((path) => path === trimmed);
 }
 
 function referrerPath(referrer: string): string | undefined {
@@ -264,8 +316,9 @@ function referrerPath(referrer: string): string | undefined {
 }
 
 /**
- * True on /guide/typing-for-kids and for the rest of a tab that arrived from
- * that page. Those visits never submit a leaderboard score.
+ * True on /guide/typing-for-kids and /guide/teaching-kids-to-type, with or
+ * without a trailing slash, and for the rest of a tab that arrived from
+ * either page. Those visits never submit a leaderboard score.
  */
 export function leaderboardSubmitBlocked(
   pathname: string,
@@ -303,6 +356,7 @@ export function parseLeaderboardBody(body: unknown): LeaderboardResult {
     periodKey: ok.data.periodKey,
     startsAt: ok.data.startsAt,
     endsAt: ok.data.endsAt ?? null,
+    earliestAt: ok.data.earliestAt ?? null,
     mode: ok.data.mode,
     mode2: ok.data.mode2,
     accuracyFloor: ok.data.accuracyFloor,
@@ -417,11 +471,33 @@ export function scoreFromResult(result: {
   };
 }
 
+export type ScorePostOk = { ok: true; recorded?: boolean };
+
+/** `retry` is false only for a 4xx body that matched ErrSchema. */
+export type ScorePostErr = { ok: false; error: string; retry: boolean };
+
+const SCORE_POST_FAILED = "Couldn't submit your score.";
+
+function scorePostFailed(
+  retry: boolean,
+  error = SCORE_POST_FAILED,
+): ScorePostErr {
+  return { ok: false, error, retry };
+}
+
+function recordedFlag(body: unknown): boolean | undefined {
+  if (typeof body !== "object" || body === null || !("recorded" in body)) {
+    return undefined;
+  }
+  const recorded = (body as { recorded?: unknown }).recorded;
+  return typeof recorded === "boolean" ? recorded : undefined;
+}
+
 export async function postLeaderboardScore(
   base: string,
   submission: ScoreSubmission,
   fetchImpl: typeof fetch = fetch,
-): Promise<LeaderboardErr | { ok: true }> {
+): Promise<ScorePostErr | ScorePostOk> {
   try {
     const response = await fetchImpl(
       new URL("/leaderboards", `${base}/`).toString(),
@@ -436,26 +512,27 @@ export async function postLeaderboardScore(
     );
     const text = await response.text();
     if (text === "") {
-      return response.ok
-        ? { ok: true }
-        : { ok: false, error: "Couldn't submit your score." };
+      return response.ok ? { ok: true } : scorePostFailed(true);
     }
     let json: unknown;
     try {
       json = JSON.parse(text) as unknown;
     } catch {
-      return response.ok
-        ? { ok: true }
-        : { ok: false, error: "Couldn't submit your score." };
+      return response.ok ? { ok: true } : scorePostFailed(true);
     }
     const err = ErrSchema.safeParse(json);
-    if (err.success) return { ok: false, error: err.data.error };
-    if (!response.ok) {
-      return { ok: false, error: "Couldn't submit your score." };
+    if (err.success) {
+      // 4xx is the server's own sentence (rate limit, validation). 5xx is retried.
+      if (response.status >= 400 && response.status < 500) {
+        return scorePostFailed(false, err.data.error);
+      }
+      return scorePostFailed(true);
     }
-    return { ok: true };
+    if (!response.ok) return scorePostFailed(true);
+    const recorded = recordedFlag(json);
+    return recorded === undefined ? { ok: true } : { ok: true, recorded };
   } catch {
-    return { ok: false, error: "Couldn't submit your score." };
+    return scorePostFailed(true);
   }
 }
 

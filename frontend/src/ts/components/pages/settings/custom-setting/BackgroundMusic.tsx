@@ -17,7 +17,7 @@ export function BackgroundMusic(): JSXElement {
       <SearchableSetting
         key="bgMusic"
         title="background music"
-        description="Loop a quiet track while you type. Off by default and saved only in this browser. It stays silent until you click or press a key."
+        description="Play quiet background music while you type. Off by default and saved only in this browser. It stays silent until you click or press a key."
         extraSearchKeywords="music volume loop audio soundtrack"
         fa={{ icon: "fa-music" }}
         inputs={

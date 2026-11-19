@@ -43,7 +43,7 @@ export function Logo(): JSXElement {
         >
           {isDevEnvironment() ? "localhost" : "type fast. stay cute."}
         </div>
-        <h1
+        <span
           class={cn(
             "text-[2rem] leading-[0.75] text-text transition-colors duration-250",
             {
@@ -53,7 +53,7 @@ export function Logo(): JSXElement {
           data-ui-element="logoText"
         >
           puggietype
-        </h1>
+        </span>
       </div>
     </a>
   );

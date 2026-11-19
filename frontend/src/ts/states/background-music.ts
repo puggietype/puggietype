@@ -4,6 +4,7 @@ import {
   BackgroundMusic,
   BG_MUSIC_SRC,
   BG_MUSIC_STORAGE_KEY,
+  BG_MUSIC_TRACKS,
   BgMusicAudio,
   BgMusicSettings,
   BgMusicSettingsSchema,
@@ -25,6 +26,10 @@ function createHtmlAudio(src: string): BgMusicAudio {
   audio.preload = "none";
   audio.loop = true;
   audio.src = src;
+  // in the DOM (hidden, no controls) so it shows with the page's media
+  audio.hidden = true;
+  audio.dataset["bgMusic"] = "";
+  document.body.append(audio);
   return audio;
 }
 
@@ -40,8 +45,8 @@ export const backgroundMusic = new BackgroundMusic({
   },
   getPathname: () => window.location.pathname,
   createAudio: createHtmlAudio,
-  // TODO: see BG_MUSIC_SRC. No Monkeytype audio, and no network until that is set.
   src: BG_MUSIC_SRC,
+  tracks: BG_MUSIC_TRACKS,
 });
 
 const [settings, setSettings] = createSignal<BgMusicSettings>(

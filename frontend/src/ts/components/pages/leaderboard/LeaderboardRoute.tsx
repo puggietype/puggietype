@@ -65,7 +65,7 @@ function StandaloneFallback(props: { onConfirm: () => void }): JSXElement {
       class="grid justify-items-start gap-3 rounded-lg bg-sub-alt p-6"
       data-testid="lb-unavailable"
     >
-      <h1 class="text-3xl text-text">leaderboard</h1>
+      <h1 class="text-3xl text-text">solo ranks</h1>
       <Show
         when={ageConfirmed()}
         fallback={

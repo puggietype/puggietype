@@ -83,3 +83,38 @@ describe("About: desktop licenses and source (GPL bundling)", () => {
     expect(shell.LEGAL_FILES.map((f) => `/legal/${f}`)).toEqual(LEGAL);
   });
 });
+
+describe("About: music credits (Legal, PR #30)", () => {
+  const CREDIT =
+    'music: "Sherwood" by Chris Murphy (zesona) and "calm theme" by pebonius (pebonius.itch.io), from OpenGameArt.org, released under CC0 1.0.';
+
+  it("steam: shows the exact credit", async () => {
+    vi.stubGlobal("__PLATFORM__", "steam");
+    const el = await renderAbout();
+    expect(
+      norm(el.querySelector('[data-testid="music-credits"]')?.textContent),
+    ).toBe(CREDIT);
+    expect(el.querySelectorAll('[data-testid="music-credits"]')).toHaveLength(
+      1,
+    );
+  });
+
+  it("web: the same music credit, once, right after the quote credits", async () => {
+    const el = await renderAbout();
+    const credits = el.querySelectorAll('[data-testid="music-credits"]');
+    expect(credits).toHaveLength(1);
+    expect(norm(credits[0]?.textContent)).toBe(CREDIT);
+    expect(
+      credits[0]?.previousElementSibling?.getAttribute("data-testid"),
+    ).toBe("quote-credits");
+  });
+
+  it("steam: right after the quote credits too", async () => {
+    vi.stubGlobal("__PLATFORM__", "steam");
+    const el = await renderAbout();
+    const credit = el.querySelector('[data-testid="music-credits"]');
+    expect(credit?.previousElementSibling?.getAttribute("data-testid")).toBe(
+      "quote-credits",
+    );
+  });
+});

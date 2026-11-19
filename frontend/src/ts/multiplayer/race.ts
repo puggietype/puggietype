@@ -1,5 +1,5 @@
 import { terminatedMessage } from "./terminated";
-import { batch, createSignal } from "solid-js";
+import { batch } from "solid-js";
 
 import { setConfig } from "../config/setters";
 import { Config } from "../config/store";
@@ -36,11 +36,8 @@ import {
 } from "./engine-hooks";
 import { isFlagEnabled } from "./feature-flags";
 import {
-  CONSENT_AFTER_RESULTS_MS,
   finishLeaderboardFields,
-  leaderboardConsentMessage,
   leaderboardSubmitBlocked,
-  scoreConsentElapsed,
 } from "./leaderboards";
 import { MULTIPLAYER_ENABLED } from "./flags";
 import {
@@ -66,14 +63,34 @@ import type {
   ServerMessage,
   SettingsPatch,
 } from "./protocol";
+import {
+  appendFeed,
+  dropPlayerFromFeed,
+  quickChatWaitMs,
+  saveHidden,
+  saveMuted,
+  shouldShowRelay,
+  toggleMuted,
+  type QuickChatEntry,
+} from "./quick-chat";
+import {
+  isQuickChatId,
+  QUICK_CHAT_REPEAT_MS,
+  type QuickChatId,
+} from "./quick-chat-presets";
 import { applyQueueStatus, startQueue } from "./quick-match";
 import {
+  browserStorage,
   characterSelectOn,
   leaderboardsOn,
+  mutedPlayers,
   myId,
   openRoomsOn,
   opponentProgress,
   queue,
+  quickChatCanSendNow,
+  quickChatContext,
+  quickChatFeed,
   quickMatchOn,
   race,
   reportOn,
@@ -84,9 +101,16 @@ import {
   setLastError,
   setMyId,
   setMyName,
+  setMutedPlayersSignal,
   setOpenRooms,
   setOpponentProgress,
   setQueue,
+  setQuickChatCooldownUntil,
+  setQuickChatFeed,
+  setQuickChatHiddenSignal,
+  setQuickChatLatest,
+  setQuickChatRepeatLocked,
+  setQuickChatSlowHint,
   setRace,
   setRaceFinished,
   setReports,
@@ -120,6 +144,21 @@ let roomsSubscribed = false;
 /** players we sent report:player for, oldest first; the server answers in order */
 let pendingReports: string[] = [];
 
+/** quick-chat sends not yet answered (our own relay or an error), oldest first */
+let pendingQuickChats = 0;
+/** accepted send times and last send per id, for the cooldown (memory only) */
+let quickChatSends: number[] = [];
+let quickChatLastById = new Map<QuickChatId, number>();
+let quickChatSeq = 0;
+let quickChatCoolTimer: ReturnType<typeof setTimeout> | undefined;
+let quickChatSlowTimer: ReturnType<typeof setTimeout> | undefined;
+const quickChatRepeatTimers = new Map<
+  QuickChatId,
+  ReturnType<typeof setTimeout>
+>();
+/** the "slow down" hint stays up this long */
+const QUICK_CHAT_SLOW_HINT_MS = 3000;
+
 /** errors that end a queue:join that hasn't been answered yet */
 const QUEUE_JOIN_ERRORS = new Set<ErrorCode>([
   "QUEUE_FULL",
@@ -135,6 +174,15 @@ const REPORT_ERRORS = new Set<ErrorCode>([
   "NOT_IN_ROOM",
   "RATE_LIMITED",
   "FEATURE_DISABLED",
+]);
+
+/** errors that answer a pending chat:preset (all silent: no toast for a phase flip) */
+const QUICK_CHAT_ERRORS = new Set<ErrorCode>([
+  "WRONG_PHASE",
+  "FEATURE_DISABLED",
+  "BAD_MESSAGE",
+  "NOT_IN_ROOM",
+  "RATE_LIMITED",
 ]);
 
 /** room:create asked for an open room: list it once we're the host */
@@ -259,6 +307,140 @@ export function reportPlayer(playerId: string, reason: ReportReason): void {
   send({ type: "report:player", playerId, reason });
 }
 
+/**
+ * Send one quick-chat preset. A no-op unless the picker may send now (flag, private room, lobby or
+ * results, not hidden, not kids) and the cooldown has passed. Nothing is shown locally: our own
+ * message comes back from the server like everyone else's.
+ */
+export function sendQuickChat(id: QuickChatId): boolean {
+  if (!isQuickChatId(id) || !quickChatCanSendNow()) return false;
+  const now = Date.now();
+  if (quickChatWaitMs(quickChatSends, quickChatLastById, id, now) > 0) {
+    return false;
+  }
+  quickChatSends = [...quickChatSends, now].slice(-10);
+  quickChatLastById.set(id, now);
+  pendingQuickChats++;
+  startQuickChatCooldown(now);
+  lockQuickChatId(id);
+  send({ type: "chat:preset", presetId: id });
+  return true;
+}
+
+function startQuickChatCooldown(now: number): void {
+  const wait = quickChatWaitMs(
+    quickChatSends,
+    quickChatLastById,
+    undefined,
+    now,
+  );
+  clearTimeout(quickChatCoolTimer);
+  setQuickChatCooldownUntil(now + wait);
+  quickChatCoolTimer = setTimeout(() => setQuickChatCooldownUntil(0), wait);
+}
+
+function lockQuickChatId(id: QuickChatId): void {
+  clearTimeout(quickChatRepeatTimers.get(id));
+  setQuickChatRepeatLocked((prev) => new Set(prev).add(id));
+  quickChatRepeatTimers.set(
+    id,
+    setTimeout(() => {
+      quickChatRepeatTimers.delete(id);
+      setQuickChatRepeatLocked((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, QUICK_CHAT_REPEAT_MS),
+  );
+}
+
+/** the server refused a send as too fast: show the hint for a few seconds */
+function showQuickChatSlowHint(): void {
+  clearTimeout(quickChatSlowTimer);
+  setQuickChatSlowHint(true);
+  quickChatSlowTimer = setTimeout(
+    () => setQuickChatSlowHint(false),
+    QUICK_CHAT_SLOW_HINT_MS,
+  );
+}
+
+/** forget everything quick-chat knows about the room we were in (feed, latest, cooldowns, pending sends) */
+function resetQuickChat(): void {
+  pendingQuickChats = 0;
+  quickChatSends = [];
+  quickChatLastById = new Map();
+  clearTimeout(quickChatCoolTimer);
+  clearTimeout(quickChatSlowTimer);
+  for (const t of quickChatRepeatTimers.values()) clearTimeout(t);
+  quickChatRepeatTimers.clear();
+  batch(() => {
+    setQuickChatFeed([]);
+    setQuickChatLatest(new Map());
+    setQuickChatCooldownUntil(0);
+    setQuickChatRepeatLocked(new Set<QuickChatId>());
+    setQuickChatSlowHint(false);
+  });
+}
+
+/** mute or unmute one player's quick-chat for us (this tab only); their shown messages go away at once */
+export function toggleQuickChatMute(playerId: string): void {
+  const next = toggleMuted([...mutedPlayers()], playerId);
+  saveMuted(browserStorage("session"), next);
+  batch(() => {
+    setMutedPlayersSignal(new Set(next));
+    if (next.includes(playerId)) {
+      setQuickChatFeed((feed) => dropPlayerFromFeed(feed, playerId));
+      setQuickChatLatest((m) => {
+        const copy = new Map(m);
+        copy.delete(playerId);
+        return copy;
+      });
+    }
+  });
+}
+
+/** "hide quick-chat": the panel collapses, nothing is shown or sent, and the choice is remembered in this browser */
+export function setQuickChatHidden(hidden: boolean): void {
+  saveHidden(browserStorage("local"), hidden);
+  batch(() => {
+    setQuickChatHiddenSignal(hidden);
+    if (hidden) {
+      setQuickChatFeed([]);
+      setQuickChatLatest(new Map());
+    }
+  });
+}
+
+/** an incoming chat:preset: our own relay settles a pending send, then the checks decide whether it is shown */
+function onQuickChatRelay(playerId: unknown, presetId: unknown): void {
+  if (playerId === myId() && pendingQuickChats > 0) pendingQuickChats--;
+  const r = room();
+  if (r === undefined || !isQuickChatId(presetId)) return;
+  const humanIds = new Set(r.players.filter((p) => !p.isBot).map((p) => p.id));
+  if (
+    !shouldShowRelay({
+      ctx: quickChatContext(),
+      playerId,
+      presetId,
+      humanIds,
+      muted: mutedPlayers(),
+    })
+  ) {
+    return;
+  }
+  const entry: QuickChatEntry = {
+    seq: ++quickChatSeq,
+    playerId: playerId as string,
+    presetId,
+    at: Date.now(),
+  };
+  batch(() => {
+    setQuickChatFeed(appendFeed(quickChatFeed(), entry));
+    setQuickChatLatest((m) => new Map(m).set(entry.playerId, entry));
+  });
+}
+
 function setReportStatus(
   playerId: string,
   status: "sending" | "received" | undefined,
@@ -352,6 +534,7 @@ function dropRoom(): void {
   syncRaceUrl(undefined);
   endRace();
   pendingReports = [];
+  resetQuickChat();
   batch(() => {
     setRoom(undefined);
     setResults(undefined);
@@ -382,6 +565,8 @@ function handleMessage(msg: ServerMessage): void {
         );
       }
       pendingReports = [];
+      // a fresh socket: a send still in flight on the old one is gone
+      pendingQuickChats = 0;
       return;
     case "queue:status":
       // ignore a status that crossed our queue:leave
@@ -405,6 +590,9 @@ function handleMessage(msg: ServerMessage): void {
     case "report:received":
       settleReport(true);
       return;
+    case "chat:preset":
+      onQuickChatRelay(msg.playerId, msg.presetId);
+      return;
     case "rooms:list":
       if (roomsWatched) setOpenRooms(parseRoomsList(msg));
       return;
@@ -413,6 +601,11 @@ function handleMessage(msg: ServerMessage): void {
       if (prev?.code !== msg.code) {
         pendingReports = [];
         setReports(new Map());
+        resetQuickChat();
+      }
+      // a new race starts: last race's quick-chat bubbles go
+      if (msg.phase === "countdown" && prev?.phase !== "countdown") {
+        setQuickChatLatest(new Map());
       }
       setQueue(undefined);
       setRoom(withRoomDefaults(msg));
@@ -462,6 +655,12 @@ function handleMessage(msg: ServerMessage): void {
         // already reported counts as done: the button stays settled
         settleReport(msg.code === "ALREADY_REPORTED");
         if (msg.code === "ALREADY_REPORTED") return;
+      }
+      if (pendingQuickChats > 0 && QUICK_CHAT_ERRORS.has(msg.code)) {
+        // answers our oldest quick-chat send; silent (a phase flip is not an error worth a toast)
+        pendingQuickChats--;
+        if (msg.code === "RATE_LIMITED") showQuickChatSlowHint();
+        return;
       }
       if (queue()?.phase === "joining" && QUEUE_JOIN_ERRORS.has(msg.code)) {
         setQueue(undefined);
@@ -740,24 +939,8 @@ function sendProgress(): void {
   client.send({ type: "race:progress", ...next });
 }
 
-const [leaderboardConsentOpen, setLeaderboardConsentOpen] = createSignal(false);
-const [leaderboardConsentWpm, setLeaderboardConsentWpm] = createSignal<
-  number | undefined
->();
-export { leaderboardConsentOpen, leaderboardConsentWpm };
-
-/** when the results-screen toggle was shown */
-let consentShownAt: number | undefined;
-/** from race:countdown or race:results; required on leaderboard:consent */
+/** from race:countdown or race:results. Casual races do not submit it. */
 let consentRaceId: string | undefined;
-/** race id for the next race, held while an earlier Submit is still in flight */
-let nextConsentRaceId: string | undefined;
-/** when race:results arrived; the server accepts consent for 60s after that */
-let consentResultsAt: number | undefined;
-/** explicit Submit with the toggle on, possibly waiting for results */
-let consentArmed = false;
-let consentClosed = false;
-let consentTimer: ReturnType<typeof setTimeout> | undefined;
 
 function scoreIsBlocked(): boolean {
   return leaderboardSubmitBlocked(
@@ -769,78 +952,33 @@ function scoreIsBlocked(): boolean {
 
 /** leave, kick, or the room ending: do not send leaderboard:consent */
 function cancelLeaderboardConsent(): void {
-  clearTimeout(consentTimer);
-  consentTimer = undefined;
-  consentShownAt = undefined;
-  consentResultsAt = undefined;
   consentRaceId = undefined;
-  nextConsentRaceId = undefined;
-  consentArmed = false;
-  consentClosed = true;
-  setLeaderboardConsentOpen(false);
 }
 
 /**
- * A new countdown. Do not carry the previous race's submit window forward.
- * "start next race" and rematch do not post; the score stays off the board
- * unless Submit already happened.
+ * A new countdown. Do not carry a previous race forward. Rematch and the
+ * next race do not post a score.
  */
 function openConsentForRace(raceId: string | undefined): void {
-  if (consentArmed && !consentClosed) {
-    nextConsentRaceId = raceId;
-    return;
-  }
   cancelLeaderboardConsent();
   consentRaceId = raceId;
 }
 
 function flushLeaderboardConsent(): void {
-  if (!consentArmed || consentClosed) return;
-  if (!leaderboardsOn() || scoreIsBlocked()) return;
-  if (consentResultsAt === undefined || consentRaceId === undefined) return;
-  if (Date.now() - consentResultsAt > CONSENT_AFTER_RESULTS_MS) {
-    cancelLeaderboardConsent();
-    return;
-  }
-  client.send(leaderboardConsentMessage(consentRaceId));
-  consentArmed = false;
-  consentClosed = true;
-  clearTimeout(consentTimer);
-  consentTimer = undefined;
-  setLeaderboardConsentOpen(false);
-  if (nextConsentRaceId !== undefined) {
-    consentRaceId = nextConsentRaceId;
-    nextConsentRaceId = undefined;
-    consentResultsAt = undefined;
-  }
+  // Casual races are not submitted. This never sends leaderboard:consent.
 }
 
-/** race:results opened the 60s window. A Submit from before results goes out now. */
+/** race:results is not a submit. */
 function noteConsentResults(): void {
-  consentResultsAt = Date.now();
-  clearTimeout(consentTimer);
-  consentTimer = setTimeout(() => {
-    cancelLeaderboardConsent();
-  }, CONSENT_AFTER_RESULTS_MS);
   flushLeaderboardConsent();
 }
 
 /**
- * Explicit Submit. Before the toggle has been visible for 2s this does not
- * send, so the player can still submit once the button unlocks. No message
- * means the server leaves the score off the board. show:true is sent only
- * after race:results, and only when this server has leaderboards.
+ * Casual multiplayer has no score submission. Ranked play is not in this
+ * build. Calling this does not send leaderboard:consent.
  */
-export function submitLeaderboardConsent(show: boolean): void {
-  if (consentClosed || consentShownAt === undefined) return;
-  if (!scoreConsentElapsed(consentShownAt, Date.now())) return;
-  if (scoreIsBlocked() || !show) {
-    cancelLeaderboardConsent();
-    return;
-  }
-  consentArmed = true;
-  flushLeaderboardConsent();
-  if (!consentClosed) setLeaderboardConsentOpen(false);
+export function submitLeaderboardConsent(_show: boolean): void {
+  return;
 }
 
 function sendFinish(data: RaceFinishData): void {
@@ -865,13 +1003,6 @@ function sendFinish(data: RaceFinishData): void {
   // finish is not held for consent; one idle player must not stall the room.
   releaseEngine({ finished: true });
   goTo(`/r/${room()?.code ?? ""}`);
-  if (leaderboardsOn() && !scoreIsBlocked()) {
-    consentShownAt = Date.now();
-    consentArmed = false;
-    consentClosed = false;
-    setLeaderboardConsentWpm(data.wpm);
-    setLeaderboardConsentOpen(true);
-  }
 }
 
 // ---------------------------------------------------------------- config

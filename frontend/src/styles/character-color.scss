@@ -1,0 +1,38 @@
+// full-colour dogs in every theme: the picker, lobby, podium and race dogs carry
+// .dog-color; the typing mascot (Pug.tsx) does not, so it stays mono. Every token
+// :root[data-pug="mono"] overrides (character-mono.scss, pug-mono.scss) is put back
+// on the dog: pug tokens to their core.scss defaults, the rest to `initial` so the
+// art's own var(--x, #fallback) colours apply. A spec keeps this list complete.
+:root[data-pug="mono"] .dog-color {
+  --pug-fill: #f0d9b5;
+  --pug-paw: #f6e6cc;
+  --pug-mask: #3b2b23;
+  --pug-bean: #f09aa2;
+  --pug-blush: #f4a6a6;
+  --pug-thumb: #8a5e3c;
+  --chow-fill: initial;
+  --chow-ear: initial;
+  --chow-shade: initial;
+  --chow-tongue: initial;
+  --frenchie-fill: initial;
+  --frenchie-ear: initial;
+  --frenchie-pied: initial;
+  --frenchie-muzzle: initial;
+  --frenchie-patch: initial;
+  --tuckie-fill: initial;
+  --tuckie-ear: initial;
+  --huskie-fill: initial;
+  --huskie-ear: initial;
+  --huskie-eye: initial;
+  --corgie-fill: initial;
+  --corgie-ear: initial;
+  --shibie-fill: initial;
+  --shibie-cream: initial;
+  --goldie-fill: initial;
+  --goldie-ear: initial;
+  --goldie-muzzle: initial;
+  --mark-white: initial;
+  --mark-line: initial;
+  --eye-iris: initial;
+  --dog-mouth: initial;
+}

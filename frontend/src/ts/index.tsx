@@ -1,6 +1,9 @@
 // Import sorting is disabled for this file (.oxfmtrc.json): many imports run
 // side effects on load, so their order matters.
 
+// steam: master gain before any AudioContext can exist (empty on web)
+import "./steam/early-audio";
+
 // register signal tracking hook before any signals are created
 import "./dev/signal-tracker";
 
@@ -24,7 +27,7 @@ import "./test/tts";
 import { addToGlobal } from "./utils/misc";
 import * as Focus from "./test/focus";
 import { getBuildVersion } from "./utils/version";
-import * as Cookies from "./cookies";
+import { installAnalyticsConsent } from "./analytics/install";
 import "./elements/psa";
 import "./controllers/url-handler";
 import { applyEngineSettings } from "./anim";
@@ -40,7 +43,6 @@ import {
   installBackgroundMusic,
 } from "./states/background-music";
 import "./input/hotkeys";
-import { showModal } from "./states/modals";
 import { getLastEventLog, isTestActive } from "./states/test";
 import { buildEventLog } from "./test/events/data";
 
@@ -94,18 +96,38 @@ const buildVersion = getBuildVersion();
 if (buildVersion !== null) setVersion(buildVersion);
 
 Focus.set(true, true);
-const accepted = Cookies.getAcceptedCookies();
-// standalone builds have no backend, so no captcha and nothing to consent to
+// Prod puggietype.com is the standalone build (no BACKEND_URL). Analytics
+// consent still has to install so the banner stays down during a test or race.
+installAnalyticsConsent();
+// standalone builds have no backend, so no captcha
 if (!__STANDALONE__) {
-  if (accepted === null) showModal("Cookies");
   const recaptcha = document.createElement("script");
   recaptcha.src = "https://www.google.com/recaptcha/api.js?render=explicit";
   recaptcha.async = true;
   document.body.appendChild(recaptcha);
 }
 void init(onAuthStateChanged);
+// accounts sign-in (VITE_FEATURE_ACCOUNTS); an off build drops the import
+if (__FEATURE_ACCOUNTS__) {
+  void import("./accounts/boot").then(async (m) => m.initAccounts());
+}
+
+// steam: silent sign-in with the kept session token (OpenID stays the
+// fallback). The inline check folds away on web, with the chunk.
+if (typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") {
+  void import("./steam/steam-session").then(async (m) =>
+    m.startSilentSteamSignIn(),
+  );
+}
 
 installBackgroundMusic();
+// steam flavor: UI scale, reduced motion, master volume and its own music
+// player (inline define check: nothing of this is in the web build)
+if (typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") {
+  void import("./steam/game-settings").then((m) => {
+    m.installSteamGameSettings();
+  });
+}
 bindBackgroundMusicHold({
   isTestActive,
   isRaceActive,

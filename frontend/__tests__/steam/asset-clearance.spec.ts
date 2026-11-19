@@ -162,7 +162,13 @@ describe("steam build output stripping", () => {
       JSON.stringify(quotes),
     );
 
-    expect(stripSteamAssets(dir)).toEqual({ sounds: 2, quotes: 1 });
+    expect(stripSteamAssets(dir)).toEqual({
+      sounds: 2,
+      quotes: 1,
+      adsTxt: false,
+      adMetaTags: 0,
+      fontAwesomeLicense: false,
+    });
     expect(existsSync(path.join(dir, "sounds/click14"))).toBe(false);
     expect(existsSync(path.join(dir, "sounds/click1/1.wav"))).toBe(true);
     expect(existsSync(path.join(dir, "sounds/timeWarning.wav"))).toBe(false);

@@ -35,7 +35,7 @@ describe("creators page", () => {
     expect(text).toContain("Multiplayer races are for ages 13+.");
     expect(text).toContain("only share links where your audience is 13+.");
     expect(text).toContain(
-      "That license covers the code and our current pug artwork. It doesn't give you any trademark rights in the PuggieType name, logo or pug mascot",
+      "PuggieType's website code is open source under the GPL-3.0 license. That license covers the code and our current pug artwork. It doesn't give you any trademark rights in the PuggieType name, logo or pug mascot",
     );
     expect(text).toContain(
       "PuggieType is an independent project and is not affiliated with or endorsed by Monkeytype.",

@@ -16,10 +16,11 @@ import {
   leaderboardConsentMessage,
   leaderboardMatchesBoard,
   postLeaderboardScore,
+  ranksQueryFromSearch,
   showRaceLeaderboard,
+  soloRanksHref,
   scoreConsentElapsed,
   scoreFromResult,
-  soloAdvanceLabel,
 } from "../../src/ts/multiplayer/leaderboards";
 import {
   loadShowOnLeaderboard,
@@ -92,7 +93,7 @@ describe("parseLeaderboardBody", () => {
   };
 
   it("accepts a board and an explicit error", () => {
-    expect(parseLeaderboardBody(ok)).toEqual(ok);
+    expect(parseLeaderboardBody(ok)).toEqual({ ...ok, earliestAt: null });
     expect(parseLeaderboardBody({ ok: false, error: "nope" })).toEqual({
       ok: false,
       error: "nope",
@@ -102,6 +103,16 @@ describe("parseLeaderboardBody", () => {
   it("treats a missing endsAt as open-ended", () => {
     const { endsAt: _endsAt, ...rest } = ok;
     expect(parseLeaderboardBody(rest)).toMatchObject({ endsAt: null });
+  });
+
+  it("keeps earliestAt when the server sends it", () => {
+    const earliestAt = Date.UTC(2026, 9, 17, 12);
+    expect(parseLeaderboardBody({ ...ok, earliestAt })).toMatchObject({
+      earliestAt,
+    });
+    expect(parseLeaderboardBody({ ...ok, earliestAt: null })).toMatchObject({
+      earliestAt: null,
+    });
   });
 
   it("keeps a Solo board off the Multiplayer tab", () => {
@@ -199,9 +210,13 @@ describe("fetchLeaderboard", () => {
 });
 
 describe("kids guide", () => {
-  it("recognises the kids guide path", () => {
+  it("recognises both kids guide slugs, with or without a trailing slash", () => {
     expect(isKidsGuidePath("/guide/typing-for-kids")).toBe(true);
     expect(isKidsGuidePath("/guide/typing-for-kids/")).toBe(true);
+    expect(isKidsGuidePath("/guide/teaching-kids-to-type")).toBe(true);
+    expect(isKidsGuidePath("/guide/teaching-kids-to-type/")).toBe(true);
+    expect(isKidsGuidePath("/guide/teaching-kids-to-type/extra")).toBe(false);
+    expect(isKidsGuidePath("/guide/typing-tips")).toBe(false);
     expect(isKidsGuidePath("/")).toBe(false);
   });
 
@@ -214,6 +229,19 @@ describe("kids guide", () => {
       leaderboardSubmitBlocked(
         "/",
         "https://puggietype.com/guide/typing-for-kids",
+        storage(),
+      ),
+    ).toBe(true);
+    expect(
+      leaderboardSubmitBlocked("/guide/teaching-kids-to-type", "", storage()),
+    ).toBe(true);
+    expect(
+      leaderboardSubmitBlocked("/guide/teaching-kids-to-type/", "", storage()),
+    ).toBe(true);
+    expect(
+      leaderboardSubmitBlocked(
+        "/",
+        "https://puggietype.com/guide/teaching-kids-to-type/",
         storage(),
       ),
     ).toBe(true);
@@ -424,6 +452,60 @@ describe("scores", () => {
     });
     expect(body).not.toHaveProperty("playerId");
   });
+
+  it("keeps recorded:false distinct from an accepted score", async () => {
+    const fetchImpl = vi.fn(async () => {
+      return new Response(JSON.stringify({ ok: true, recorded: false }), {
+        status: 200,
+      });
+    });
+    await expect(
+      postLeaderboardScore(
+        "https://ws.puggietype.com",
+        {
+          showOnLeaderboard: false,
+          mode: "words",
+          mode2: 10,
+          language: "english",
+          punctuation: false,
+          numbers: false,
+          wpm: 196,
+          acc: 100,
+          raw: 196,
+          chars: 50,
+          durationMs: 2949,
+        },
+        fetchImpl,
+      ),
+    ).resolves.toEqual({ ok: true, recorded: false });
+  });
+
+  it("reports recorded:true when the server added the score", async () => {
+    const fetchImpl = vi.fn(async () => {
+      return new Response(JSON.stringify({ ok: true, recorded: true }), {
+        status: 200,
+      });
+    });
+    await expect(
+      postLeaderboardScore(
+        "https://ws.puggietype.com",
+        {
+          showOnLeaderboard: true,
+          mode: "words",
+          mode2: 10,
+          language: "english",
+          punctuation: false,
+          numbers: false,
+          wpm: 196,
+          acc: 100,
+          raw: 196,
+          chars: 50,
+          durationMs: 2949,
+        },
+        fetchImpl,
+      ),
+    ).resolves.toEqual({ ok: true, recorded: true });
+  });
 });
 
 describe("score consent and kids finish fields", () => {
@@ -463,15 +545,14 @@ describe("leaderboard consent message", () => {
     });
   });
 
-  it("names a button that posts and advances", () => {
-    expect(soloAdvanceLabel("next", false)).toBe("Next test");
-    expect(soloAdvanceLabel("next", true)).toBe("Submit score & next test");
-    expect(soloAdvanceLabel("repeat", true)).toBe("Submit score & repeat");
-    expect(soloAdvanceLabel("retry", true)).toBe("Submit score & retry saving");
-    expect(soloAdvanceLabel("retry", false)).toBe("Retry saving result");
-  });
-
-  it("hides the compact Multiplayer board for a kids-guide session", () => {
+  it("never shows a casual multiplayer board", () => {
+    expect(
+      showRaceLeaderboard({
+        leaderboards: true,
+        kids: false,
+        inRaceOrResults: true,
+      }),
+    ).toBe(false);
     expect(
       showRaceLeaderboard({
         leaderboards: true,
@@ -479,13 +560,56 @@ describe("leaderboard consent message", () => {
         inRaceOrResults: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("ranks links", () => {
+  it("defaults to the solo board", () => {
+    expect(ranksQueryFromSearch("")).toEqual({
+      query: { verified: false },
+      removedMultiplayer: false,
+    });
+    expect(ranksQueryFromSearch("?board=solo&period=weekly")).toEqual({
+      query: { verified: false, period: "weekly" },
+      removedMultiplayer: false,
+    });
+  });
+
+  it("keeps old multiplayer links on the solo board", () => {
+    expect(ranksQueryFromSearch("?verified=true&period=daily")).toMatchObject({
+      query: { verified: false, period: "daily" },
+      removedMultiplayer: true,
+    });
+    expect(ranksQueryFromSearch("?board=race&mode=words&mode2=50")).toEqual({
+      query: { verified: false, mode: "words", mode2: 50 },
+      removedMultiplayer: true,
+    });
     expect(
-      showRaceLeaderboard({
-        leaderboards: true,
-        kids: false,
-        inRaceOrResults: true,
+      ranksQueryFromSearch("?kind=multiplayer&type=allTime&language=english"),
+    ).toMatchObject({
+      query: { verified: false, period: "all-time", language: "english" },
+      removedMultiplayer: true,
+    });
+  });
+
+  it("drops a mode2 the server would reject", () => {
+    expect(ranksQueryFromSearch("?mode=time&mode2=99").query.mode2).toBe(
+      undefined,
+    );
+  });
+
+  it("builds a browse link from the finished test, without verified=true", () => {
+    expect(
+      soloRanksHref({
+        mode: "time",
+        mode2: 15,
+        language: "english",
+        punctuation: true,
+        numbers: false,
       }),
-    ).toBe(true);
+    ).toBe(
+      "/leaderboards?period=daily&mode=time&mode2=15&language=english&punctuation=true&numbers=false",
+    );
   });
 });
 

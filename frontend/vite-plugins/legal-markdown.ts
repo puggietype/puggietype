@@ -3,6 +3,8 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 import { marked } from "marked";
 
+import { EMAIL_OFF, EMAIL_ON } from "./email-off";
+
 const MARKER = /<!-- legal-markdown:([a-z-]+) -->/g;
 
 function renderFile(file: string): string {
@@ -11,10 +13,15 @@ function renderFile(file: string): string {
   return html;
 }
 
-/** Replaces `<!-- legal-markdown:<name> -->` with `<dir>/<name>.md` rendered verbatim. */
+/**
+ * Replaces `<!-- legal-markdown:<name> -->` with `<dir>/<name>.md` rendered
+ * verbatim, inside email_off (the legal text has plain email addresses).
+ */
 export function renderLegalMarkdown(html: string, dir: string): string {
-  return html.replace(MARKER, (_, name: string) =>
-    renderFile(path.join(dir, `${name}.md`)),
+  return html.replace(
+    MARKER,
+    (_, name: string) =>
+      `${EMAIL_OFF}${renderFile(path.join(dir, `${name}.md`))}${EMAIL_ON}`,
   );
 }
 

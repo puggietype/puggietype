@@ -16,3 +16,163 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test-fe
+  desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      # electron 45 has no postinstall: fetch the binary explicitly, then
+      # fail if it is missing
+      - run: npx install-electron --no
+      # check the path without require("electron"), which would download it
+      - run: test -x "node_modules/electron/dist/$(cat node_modules/electron/path.txt)"
+      - run: npm test
+  kids-flow-csp:
+    # Playwright 1.59.1 cannot install Chromium on ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Test id only. Does not change the Pages project env.
+      - run: GA4_MEASUREMENT_ID=G-QATEST0000 pnpm build-fe
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: pages dev with _headers CSP
+        run: |
+          npx --yes wrangler@4.45.0 pages dev frontend/dist --port 3300 --ip 127.0.0.1 > /tmp/wrangler-pages.log 2>&1 &
+          ready=0
+          for i in $(seq 1 60); do
+            if curl -sf -D - -o /dev/null http://127.0.0.1:3300/guide/teaching-kids-to-type | grep -qi 'content-security-policy:'; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then
+            cat /tmp/wrangler-pages.log
+            exit 1
+          fi
+          # Build used GA4_MEASUREMENT_ID=G-QATEST0000. Pages comma-joins a repeated
+          # CSP, so kids routes must serve exactly one header and it must not name
+          # a Google host (analytics, tag manager, ads, google.com, gstatic). Other
+          # routes keep the GA hosts. Kids img-src is same-origin only.
+          google_host='google-analytics|googletagmanager|analytics\.google|doubleclick|googleadservices|googlesyndication|googletagservices|fundingchoices|adservice\.google|google\.com|gstatic\.com'
+          check_csp() {
+            path="$1"
+            kids="$2"
+            hdr=$(curl -sS -D - -o /dev/null "http://127.0.0.1:3300$path")
+            count=$(printf '%s\n' "$hdr" | grep -ci '^content-security-policy:' || true)
+            csp=$(printf '%s\n' "$hdr" | grep -i '^content-security-policy:' || true)
+            if [ "$count" != "1" ]; then
+              echo "expected 1 CSP on $path, got $count"
+              printf '%s\n' "$hdr"
+              exit 1
+            fi
+            if [ "$kids" = kids ]; then
+              if printf '%s\n' "$csp" | grep -Eiq "$google_host"; then
+                echo "kids CSP names a Google host on $path"
+                echo "$csp"
+                exit 1
+              fi
+              printf '%s\n' "$csp" | grep -q "'self'" || exit 1
+              printf '%s\n' "$csp" | grep -Eq "img-src 'self'(;|\r?$)" || {
+                echo "expected img-src 'self' only on $path"
+                echo "$csp"
+                exit 1
+              }
+            else
+              printf '%s\n' "$csp" | grep -q 'googletagmanager' || {
+                echo "expected GA host on $path"
+                echo "$csp"
+                exit 1
+              }
+            fi
+          }
+          check_csp / home
+          check_csp /guide/teaching-kids-to-type kids
+          check_csp /guide/teaching-kids-to-type/ kids
+          check_csp /guide/typing-for-kids kids
+          check_csp /guide/typing-for-kids/ kids
+          check_csp /privacy home
+          # Kids html also carries the policy as a meta CSP (pages-headers.ts), so
+          # it holds if the header rule is not applied: exactly one, no Google
+          # host, img-src 'self'. No other page has one.
+          check_meta() {
+            metas=$(grep -o '<meta http-equiv="Content-Security-Policy"[^>]*>' || true)
+            count=$(printf '%s' "$metas" | grep -c . || true)
+            if [ "$count" != "1" ] || printf '%s\n' "$metas" | grep -Eiq "$google_host" ||
+              ! printf '%s\n' "$metas" | grep -q "img-src 'self';"; then
+              echo "bad meta CSP in $1: $count"
+              printf '%s\n' "$metas"
+              exit 1
+            fi
+          }
+          curl -sS http://127.0.0.1:3300/guide/teaching-kids-to-type | check_meta /guide/teaching-kids-to-type
+          for f in frontend/dist/guide/teaching-kids-to-type.html frontend/dist/guide/typing-for-kids.html; do
+            check_meta "$f" < "$f"
+          done
+          others=$(grep -rli 'http-equiv="Content-Security-Policy"' frontend/dist --include='*.html' | grep -Ev '/guide/(teaching-kids-to-type|typing-for-kids)\.html$' || true)
+          if [ -n "$others" ]; then
+            echo "meta CSP outside the kids guides: $others"
+            exit 1
+          fi
+          # Non-canonical kids spellings: functions/_middleware.ts 301s them to the
+          # apex URL (hard-coded, so Location names puggietype.com even here; curl
+          # does not follow it). Exact trailing-slash/old-slug paths stay with
+          # _redirects (relative Location). Encoded slash: 404, not the kids page.
+          check_status() {
+            path="$1"
+            want_status="$2"
+            want_location="$3"
+            hdr=$(curl -sS -D - -o /dev/null "http://127.0.0.1:3300$path" | tr -d '\r')
+            status=$(printf '%s\n' "$hdr" | sed -n 1p | awk '{print $2}')
+            location=$(printf '%s\n' "$hdr" | grep -i '^location:' | sed 's/^[Ll]ocation: *//' || true)
+            if [ "$status" != "$want_status" ] || [ "$location" != "$want_location" ]; then
+              echo "$path: expected $want_status '$want_location', got $status '$location'"
+              printf '%s\n' "$hdr"
+              exit 1
+            fi
+          }
+          kids_url=https://puggietype.com/guide/teaching-kids-to-type
+          check_status /guide//teaching-kids-to-type 301 "$kids_url"
+          check_status /guide/teaching-kids-to-typ%65 301 "$kids_url"
+          check_status '/guide//teaching-kids-to-typ%65?ref=a' 301 "$kids_url?ref=a"
+          check_status /guide/typing-for-kid%73 301 "$kids_url"
+          check_status /guide/teaching-kids-to-type/ 301 /guide/teaching-kids-to-type
+          check_status /guide/typing-for-kids 301 /guide/teaching-kids-to-type
+          check_status /guide%2Fteaching-kids-to-type 404 ""
+          check_status /guide/teaching-kids-to-type 200 ""
+          # ADS-KIDS01: kids HTML must not name an AdSense account or ad slot,
+          # served or in dist. Other pages keep the google-adsense-account meta.
+          ads_marker='google-adsense-account|adsbygoogle|ca-pub-'
+          check_kids_no_ads() {
+            file="$1"
+            if [ ! -s "$file" ]; then
+              echo "missing or empty kids HTML: $file"
+              exit 1
+            fi
+            if grep -Eiq "$ads_marker" "$file"; then
+              echo "AdSense marker in kids HTML: $file"
+              grep -Eion "$ads_marker" "$file"
+              exit 1
+            fi
+          }
+          curl -sSf -o /tmp/kids-served.html http://127.0.0.1:3300/guide/teaching-kids-to-type
+          check_kids_no_ads /tmp/kids-served.html
+          check_kids_no_ads frontend/dist/guide/teaching-kids-to-type.html
+          check_kids_no_ads frontend/dist/guide/typing-for-kids.html
+      - run: BASE_URL=http://127.0.0.1:3300 pnpm exec playwright test e2e/kids-flow-ga.spec.ts e2e/kids-meta-csp-fail-open.spec.ts e2e/ga4-real-container.spec.ts

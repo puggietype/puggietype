@@ -18,6 +18,14 @@ import { resolvePlatform } from "./vite-plugins/platform";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
+import { ga4CspSources, mergeCspSources } from "./vite-plugins/ga4-csp";
+import { firebaseStub } from "./vite-plugins/firebase-stub";
+import {
+  accountsCspSources,
+  accountsTailwindSources,
+  checkAccountsEnv,
+  isAccountsEnabled,
+} from "./vite-plugins/accounts-env";
 import { versionFile } from "./vite-plugins/version-file";
 import { oxlintChecker } from "./vite-plugins/oxlint-checker";
 import { injectPreload } from "./vite-plugins/inject-preload";
@@ -25,6 +33,8 @@ import { inlineStaticPageCss } from "./vite-plugins/inline-static-css";
 import { steamAssetClearance } from "./vite-plugins/steam-asset-clearance";
 import { notFoundPage } from "./vite-plugins/not-found-page";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
+import { KEEP_COMMENTS } from "./vite-plugins/email-off";
+import { staticConsentScript } from "./vite-plugins/static-consent-script";
 import {
   getCommitHash,
   getSourceLinks,
@@ -116,9 +126,14 @@ function getPlugins({
     sourceTarball(sourceLinks),
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
+    staticConsentScript(),
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     // PLATFORM from the build script shell only, never .env (see 432d097)
     steamAssetClearance({ platform: resolvePlatform(process.env) }),
+    accountsTailwindSources({
+      enabled: isAccountsEnabled(env),
+      cssFile: path.resolve(__dirname, "src/styles/tailwind.css"),
+    }),
     tailwindcss(),
 
     solidPlugin(),
@@ -143,11 +158,16 @@ function getPlugins({
     Inspect(),
   ];
 
+  const extraCsp = mergeCspSources([
+    isAccountsEnabled(env) ? accountsCspSources(env) : undefined,
+    ga4CspSources(env["GA4_MEASUREMENT_ID"]),
+  ]);
   const prodPlugins: PluginOption[] = [
     fontPreview(),
     fontawesomeSubset(),
     versionFile({ clientVersion }),
-    ViteMinifyPlugin(),
+    // keeps cloudflare's email_off comments (see vite-plugins/email-off.ts)
+    ViteMinifyPlugin({ ignoreCustomComments: KEEP_COMMENTS }),
     VitePWA({
       // injectRegister: "networkfirst",
       injectRegister: null,
@@ -213,7 +233,10 @@ function getPlugins({
     inlineStaticPageCss(),
     notFoundPage(),
     minifyJson(),
-    pagesHeaders({ wsUrl: env["VITE_WS_URL"] }),
+    pagesHeaders({
+      wsUrl: env["VITE_WS_URL"],
+      ...(extraCsp === undefined ? {} : { extraCsp }),
+    }),
   ];
 
   return [...plugins, ...(isDevelopment ? devPlugins : prodPlugins)].filter(
@@ -246,6 +269,8 @@ function getBuildOptions({
         faq: path.resolve(__dirname, "src/faq.html"),
         contact: path.resolve(__dirname, "src/contact.html"),
         creators: path.resolve(__dirname, "src/creators.html"),
+        // directory index: dist/guide/index.html is served at /guide/
+        "guide/index": path.resolve(__dirname, "src/guide/index.html"),
         "guide/about": path.resolve(__dirname, "src/guide/about.html"),
         "guide/wpm-accuracy": path.resolve(
           __dirname,
@@ -295,6 +320,10 @@ function getBuildOptions({
           __dirname,
           "src/guide/typing-for-kids.html",
         ),
+        "guide/teaching-kids-to-type": path.resolve(
+          __dirname,
+          "src/guide/teaching-kids-to-type.html",
+        ),
         // no 404.html: its absence turns on cloudflare pages' spa fallback
       },
       output: {
@@ -332,9 +361,11 @@ function getBuildOptions({
               name: "preload-helper",
               test: /preload-helper/,
             },
+            // incl. the firebase/* wrappers: their registerVersion side effect
+            // would otherwise sit in (boot-loaded) vendor and pull this in
             {
               name: "vendor-firebase",
-              test: /node_modules\/@firebase\//,
+              test: /node_modules\/@?firebase\//,
             },
             {
               name: "puggietype-packages",
@@ -426,6 +457,7 @@ export default defineConfig(({ mode }): UserConfig => {
     ) {
       throw new Error(`${mode}: RECAPTCHA_SITE_KEY is not defined`);
     }
+    if (isAccountsEnabled(env)) checkAccountsEnv(env);
   }
 
   // no BACKEND_URL => no auth/api: swap the Firebase SDK for a stub and let
@@ -439,22 +471,41 @@ export default defineConfig(({ mode }): UserConfig => {
   if (platform === "steam" && (env["VITE_WS_URL"] ?? "") === "") {
     process.env["VITE_WS_URL"] = STEAM_DEFAULT_WS_URL;
   }
-  const firebaseStub = path.resolve(
+  const firebaseStubPath = path.resolve(
     __dirname,
     "src/ts/standalone/firebase-stub.ts",
   );
 
+  // accounts sign-in (VITE_FEATURE_ACCOUNTS) keeps the real SDK for its own
+  // lazy module; everything else still gets the stub
+  const firebaseSdkModule = isAccountsEnabled(env)
+    ? path.resolve(__dirname, "src/ts/accounts/firebase-sdk.ts")
+    : undefined;
+
   return {
-    plugins: getPlugins({ isDevelopment, env }),
+    plugins: [
+      ...(standalone
+        ? [
+            firebaseStub({
+              stub: firebaseStubPath,
+              allowImporter: firebaseSdkModule,
+            }),
+          ]
+        : []),
+      ...getPlugins({ isDevelopment, env }),
+    ],
     define: {
       __STANDALONE__: JSON.stringify(standalone),
       __PLATFORM__: JSON.stringify(platform),
+      __FEATURE_ACCOUNTS__: JSON.stringify(isAccountsEnabled(env)),
     },
     resolve: {
       alias: standalone
         ? [
-            { find: /^firebase\/(app|auth)$/, replacement: firebaseStub },
-            { find: /^.*\/load-firebase-config$/, replacement: firebaseStub },
+            {
+              find: /^.*\/load-firebase-config$/,
+              replacement: firebaseStubPath,
+            },
           ]
         : [],
     },

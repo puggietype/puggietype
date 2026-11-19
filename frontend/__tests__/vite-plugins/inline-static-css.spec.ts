@@ -13,6 +13,14 @@ describe("inlineStaticCss", () => {
     );
   });
 
+  it("inlines the consent entry stylesheet", () => {
+    const html =
+      '<head><link rel="stylesheet" crossorigin href="/css/static-boot.O5jIkwnw.css"></head>';
+    expect(inlineStaticCss(html, css)).toBe(
+      "<head><style>/*/css/static-boot.O5jIkwnw.css*/body{margin:0}</style></head>",
+    );
+  });
+
   it("leaves other stylesheets alone", () => {
     const html =
       '<link rel="stylesheet" crossorigin href="/css/puggietype.B8Gx7oxZ.css">';

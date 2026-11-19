@@ -11,12 +11,41 @@ export type DesktopBridge = {
     toggle: () => void;
   };
   storage: PlatformStorage;
+  /** Steam Graphics settings: live display mode and resolution */
+  display?: {
+    apply: (settings: {
+      displayMode: string;
+      resolution: string;
+      vsync: boolean;
+    }) => { restartRequired: boolean };
+  };
   /** Steam M3, only when the shell runs with PUGGIE_STEAM_OPENID=1 */
   steam?: {
-    /** system-browser Steam OpenID; resolves null on cancel or timeout */
-    signIn: () => Promise<{ openid: Record<string, string> } | null>;
+    /**
+     * System-browser Steam OpenID. Resolves with the signed openid.* params,
+     * or with why there are none. Older shells resolved null on cancel.
+     */
+    signIn: () => Promise<SteamBridgeSignInResult>;
+    /**
+     * Session token (server FEATURE_STEAM_SESSION), kept by the shell in
+     * the OS secure storage (Electron safeStorage) only. `set` returns false
+     * when there is no secure storage; then nothing is kept. Older shells
+     * have no `session`.
+     */
+    session?: {
+      get: () => string | null;
+      set: (token: string) => boolean;
+      clear: () => void;
+      /** false without real secure storage (then nothing can be kept) */
+      canKeep?: () => boolean;
+    };
   };
 };
+
+export type SteamBridgeSignInResult =
+  | { openid: Record<string, string> }
+  | { error: "cancelled" | "timeout" | "busy" | "failed" }
+  | null;
 
 export function getDesktopBridge(
   target: unknown = globalThis,

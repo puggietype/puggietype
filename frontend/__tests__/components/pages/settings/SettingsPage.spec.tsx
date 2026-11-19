@@ -143,43 +143,51 @@ describe("SettingsPage", () => {
     ).toContain('key="showAverage"');
   });
 
-  it("hides background music controls while no track is bundled", () => {
-    expect(BG_MUSIC_SRC).toBeNull();
+  it("shows the background music toggle in Sound, off by default, and persists it", () => {
+    expect(BG_MUSIC_SRC).toBe("/music/sherwood.ogg");
+    localStorage.removeItem("bgMusic");
+    // jsdom has no media playback
+    const play = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockResolvedValue(undefined);
+    const pause = vi
+      .spyOn(HTMLMediaElement.prototype, "pause")
+      .mockImplementation(() => undefined);
     const { container } = render(() => <SettingsPage />);
     const soundTab = document.getElementById("settings-tab-sound");
     if (soundTab === null) throw new Error("missing sound tab");
     fireEvent.click(soundTab);
-    expect(container.querySelector('[data-setting-key="bgMusic"]')).toBeNull();
+    const setting = container.querySelector('[data-setting-key="bgMusic"]');
+    expect(setting).not.toBeNull();
+    // Legal's exact copy
+    expect(setting?.textContent).toContain(
+      "Play quiet background music while you type. Off by default and saved only in this browser. It stays silent until you click or press a key.",
+    );
+    const buttons = [...(setting?.querySelectorAll("button") ?? [])];
+    const pressed = (): string | undefined =>
+      buttons.find((b) => b.getAttribute("aria-pressed") === "true")
+        ?.textContent ?? undefined;
+    expect(pressed()).toBe("off");
     expect(
       container.querySelector('[aria-label="background music volume"]'),
-    ).toBeNull();
-    expect(container.textContent?.toLowerCase()).not.toContain(
-      "background music",
-    );
-    expect(container.textContent?.toLowerCase()).not.toContain(
-      "loop a quiet track",
-    );
-    expect(container.textContent?.toLowerCase()).not.toContain("coming soon");
-    expect(
-      container.querySelector('[data-setting-key="soundVolume"]'),
     ).not.toBeNull();
-
-    const input = container.querySelector<HTMLInputElement>(
-      'input[placeholder="search settings"]',
-    );
-    if (input === null) throw new Error("missing search");
-    fireEvent.input(input, { target: { value: "quiet track" } });
-    expect(container.querySelector('[data-setting-key="bgMusic"]')).toBeNull();
-    expect(container.textContent?.toLowerCase()).not.toContain(
-      "loop a quiet track",
-    );
-    fireEvent.input(input, { target: { value: "background music" } });
-    expect(
-      container.querySelector('[aria-label="background music volume"]'),
-    ).toBeNull();
-    expect(container.textContent?.toLowerCase()).not.toContain(
-      "background music",
-    );
+    const on = buttons.find((b) => b.textContent === "on");
+    if (on === undefined) throw new Error("missing on");
+    fireEvent.click(on);
+    expect(pressed()).toBe("on");
+    expect(JSON.parse(localStorage.getItem("bgMusic") ?? "{}")).toMatchObject({
+      enabled: true,
+    });
+    const off = buttons.find((b) => b.textContent === "off");
+    if (off === undefined) throw new Error("missing off");
+    fireEvent.click(off);
+    expect(JSON.parse(localStorage.getItem("bgMusic") ?? "{}")).toMatchObject({
+      enabled: false,
+    });
+    // turning it on is a click (a gesture), so it plays once
+    expect(play).toHaveBeenCalledTimes(1);
+    play.mockRestore();
+    pause.mockRestore();
   });
 
   it("shows one tab panel at a time and switches with the keyboard", () => {
@@ -220,7 +228,6 @@ describe("SettingsPage", () => {
     fireEvent.input(input, { target: { value: "sound volume" } });
     const volume = container.querySelector('[data-setting-key="soundVolume"]');
     expect(volume).not.toHaveClass("hidden");
-    expect(container.querySelector('[data-setting-key="bgMusic"]')).toBeNull();
     expect(document.getElementById("settings-panel-sound")).not.toHaveClass(
       "hidden",
     );

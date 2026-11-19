@@ -17,7 +17,12 @@ function lazyPage<T extends Record<string, unknown>>(
 }
 
 const SettingsPage = lazyPage(
-  async () => import("./settings/SettingsPage"),
+  async () =>
+    // steam flavor: the shared page plus steam-only game settings. Inline
+    // define check so the web build keeps only the shared page.
+    typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
+      ? import("./settings/SteamSettingsPage")
+      : import("./settings/SettingsPage"),
   "SettingsPage",
 );
 const AboutPage = lazyPage(async () => import("./AboutPage"), "AboutPage");
@@ -65,7 +70,15 @@ export const pageRegistry: PageRegistry = {
   settings: { component: SettingsPage },
   about: { component: AboutPage, class: "full-width" },
   account: { component: AccountPage, needsAuthentication: true },
-  login: { component: LoginPage },
+  // inline so an off build drops the import (and the chunk) entirely
+  login: {
+    component: __FEATURE_ACCOUNTS__
+      ? lazyPage(
+          async () => import("../../accounts/ui/SignInPage"),
+          "SignInPage",
+        )
+      : LoginPage,
+  },
   profile: { component: ProfilePage },
   profileSearch: { component: ProfileSearchPage },
   404: { component: NotFoundPage },
