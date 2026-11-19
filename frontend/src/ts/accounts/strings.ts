@@ -121,7 +121,7 @@ export const accountsCopy = {
   },
   verify: {
     notice:
-      "Please verify your email address. We sent you a link. We only use your email for account emails like this one.",
+      "Please verify your email address. We sent you a link. We use your email only for account emails like this one and to contact you about your account.",
     resend: "resend email",
     resent: "Verification email sent",
     check: "I've verified it",
@@ -158,7 +158,7 @@ export const accountsCopy = {
     fileName: "puggietype-data.json",
     // shown above the button (the export includes the sign-in email)
     description:
-      "Download a copy of the data we hold for your account: your account details and sign-in email, settings, personal bests and recent results, as a JSON file. The file isn't password protected, so keep it somewhere private.",
+      "Download a copy of the data we hold for your account: your account details and sign-in email, settings and personal bests, as a JSON file. It also has lists for recent results and flagged runs, which are empty because we don't record those yet. The file isn't password protected, so keep it somewhere private.",
     done: "Your data was downloaded.",
   },
   account: {
