@@ -9,6 +9,7 @@ const session = vi.hoisted(() => ({
   signOut: vi.fn(),
   completeAgeCheck: vi.fn(),
   cancelAgeCheck: vi.fn(),
+  callWithIdToken: vi.fn(async () => ({ ok: true, personalBests: [] })),
 }));
 vi.mock("../../src/ts/accounts/session", () => session);
 vi.mock("../../src/ts/accounts/ui/TurnstileWidget", () => ({
@@ -73,7 +74,7 @@ describe("SignInPage", () => {
     expect(container.querySelector("select")).toBeNull();
   });
 
-  it("signed in: verify notice, sign out and delete account", () => {
+  it("signed in: verify notice, personal bests, sign out and delete account", () => {
     session.signOut.mockResolvedValue(undefined);
     setAccountUser({
       uid: "u1",
@@ -87,6 +88,10 @@ describe("SignInPage", () => {
     });
     const { container, getByText } = render(() => <SignInPage />);
     expect(getByText(accountsCopy.verify.notice)).toBeTruthy();
+    const text = container.textContent ?? "";
+    expect(text.indexOf(accountsCopy.personalBests.title)).toBeGreaterThan(
+      text.indexOf(accountsCopy.verify.notice),
+    );
     expect(button(container, accountsCopy.account.delete)).toBeTruthy();
     fireEvent.click(button(container, accountsCopy.signedIn.signOut));
     expect(session.signOut).toHaveBeenCalledTimes(1);

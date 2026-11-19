@@ -124,4 +124,31 @@ export const accountsCopy = {
     title: "signed in",
     signOut: "sign out",
   },
+  // DRAFT FOR LEGAL: personal bests list (not yet reviewed)
+  personalBests: {
+    title: "Your personal bests",
+    loading: "Loading your personal bests...",
+    empty:
+      "No personal bests yet. Finish a time or words test to set your first one.",
+    error: "We couldn't load your personal bests. Please try again later.",
+    retry: "try again",
+    /** e.g. "time 60 english, 85.4 wpm, 97.2% acc" */
+    row: (pb: {
+      mode: string;
+      mode2: string;
+      language: string;
+      punctuation: boolean;
+      numbers: boolean;
+      wpm: number;
+      acc: number;
+    }): string => {
+      const one = (n: number): string => String(Math.round(n * 10) / 10);
+      const extras = [
+        pb.punctuation ? " punctuation" : "",
+        pb.numbers ? " numbers" : "",
+      ].join("");
+      const language = pb.language.replace(/_/g, " ");
+      return `${pb.mode} ${pb.mode2} ${language}${extras}, ${one(pb.wpm)} wpm, ${one(pb.acc)}% acc`;
+    },
+  },
 } as const;
