@@ -34,6 +34,7 @@ import { JSXElement } from "solid-js";
 
 import { accountsCopy } from "../../src/ts/accounts/strings";
 import { AgeCheckPrompt } from "../../src/ts/accounts/ui/AgeCheckPrompt";
+import { ResetPasswordForm } from "../../src/ts/accounts/ui/ResetPasswordForm";
 import { SignInForm } from "../../src/ts/accounts/ui/SignInForm";
 import { SignUpForm } from "../../src/ts/accounts/ui/SignUpForm";
 
@@ -87,5 +88,15 @@ describe("Turnstile notice (Legal C7)", () => {
     expect(
       container.querySelectorAll('[data-testid="turnstile-notice"]'),
     ).toHaveLength(widgets.length);
+  });
+
+  it("reset password: no widget, so no notice (Legal M2)", async () => {
+    const { container } = render(() => <ResetPasswordForm onBack={vi.fn()} />);
+    await Promise.resolve();
+    expect(turnstile.loadTurnstile).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-testid="turnstile"]')).toBeNull();
+    expect(
+      container.querySelector('[data-testid="turnstile-notice"]'),
+    ).toBeNull();
   });
 });
