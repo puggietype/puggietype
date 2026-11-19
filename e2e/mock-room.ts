@@ -38,7 +38,29 @@ export function player(
   };
 }
 
-export type MockState = { phase: Phase; myDog: string; guestDog: string };
+/**
+ * players 3..8 for the crowded-room variants (distinct ids, colours, picker
+ * dogs); two 20-char names prove long names still truncate
+ */
+export const EXTRA_PLAYERS = [
+  { id: "p-3", name: "Sleepy Corgi", color: "opp3", dog: "frenchie" },
+  { id: "p-4", name: "Captain Fluffybottom", color: "opp4", dog: "tuckie" },
+  { id: "p-5", name: "Zoomie Husky", color: "opp5", dog: "huskie" },
+  { id: "p-6", name: "Sir Wigglesworth III", color: "opp6", dog: "corgie" },
+  { id: "p-7", name: "Tiny Shiba", color: "opp7", dog: "shibie" },
+  { id: "p-8", name: "Golden Snoot", color: "opp8", dog: "goldie" },
+] as const;
+
+export type MockState = {
+  phase: Phase;
+  myDog: string;
+  guestDog: string;
+  /** room size, 2 (default) to 8: you, the guest, then EXTRA_PLAYERS */
+  players?: number;
+};
+
+const extras = (count = 2): (typeof EXTRA_PLAYERS)[number][] =>
+  EXTRA_PLAYERS.slice(0, Math.max(0, count - 2));
 
 export function roomState(s: MockState): Record<string, unknown> {
   return {
@@ -59,7 +81,32 @@ export function roomState(s: MockState): Record<string, unknown> {
     players: [
       player(ME, ME_NAME, "opp1", s.myDog),
       player(GUEST, GUEST_NAME, "opp2", s.guestDog),
+      ...extras(s.players).map((x) => player(x.id, x.name, x.color, x.dog)),
     ],
+  };
+}
+
+/** race:results for a room of `count` players (you win, then the guest, ...) */
+export function results(count = 2): Record<string, unknown> {
+  return {
+    type: "race:results",
+    results: [
+      [ME, ME_NAME],
+      [GUEST, GUEST_NAME],
+      ...extras(count).map((x) => [x.id, x.name]),
+    ].map(([playerId, name], i) => ({
+      playerId,
+      name,
+      isBot: false,
+      place: i + 1,
+      wpm: 62 - i * 7,
+      raw: 64 - i * 7,
+      acc: 97,
+      testMs: 30000,
+      finished: true,
+      flagged: false,
+      reasons: [],
+    })),
   };
 }
 
@@ -86,6 +133,8 @@ export const RESULTS = {
 export type Mock = {
   received: Record<string, unknown>[];
   state: MockState;
+  /** answer every chat:preset send with RATE_LIMITED instead of relaying it */
+  rate: boolean;
   push: (msg: unknown) => void;
   /** push room:state for the current `state` */
   sync: () => void;
@@ -95,10 +144,17 @@ export type Mock = {
 export async function mockServer(
   page: Page,
   features: Record<string, boolean>,
+  opts: { players?: number } = {},
 ): Promise<Mock> {
   const mock: Mock = {
     received: [],
-    state: { phase: "lobby", myDog: "puggie", guestDog: "chowie" },
+    state: {
+      phase: "lobby",
+      myDog: "puggie",
+      guestDog: "chowie",
+      players: opts.players,
+    },
+    rate: false,
     push: () => undefined,
     sync: () => mock.push(roomState(mock.state)),
   };
@@ -127,6 +183,12 @@ export async function mockServer(
       } else if (type === "player:character") {
         mock.state.myDog = String(msg["character"]);
         mock.sync();
+      } else if (type === "chat:preset" && mock.rate) {
+        mock.push({
+          type: "error",
+          code: "RATE_LIMITED",
+          message: "Too many messages",
+        });
       } else if (type === "chat:preset") {
         mock.push({
           type: "chat:preset",

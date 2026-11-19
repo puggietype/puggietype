@@ -90,8 +90,9 @@ export function QuickChatBubble(props: { playerId: string }): JSXElement {
         <span
           aria-hidden="true"
           class={cn(
-            // shrinks (ellipsis) well before the name does, never below ~2 letters
-            "qc-bubble pointer-events-none relative inline-flex max-w-48 min-w-12 shrink-[100] items-center pl-1.5 transition-opacity duration-250 ease-out",
+            // never squeezes the name: wraps under it instead (parent flex-wrap);
+            // ellipsis only when the bubble alone is wider than the row
+            "qc-bubble pointer-events-none relative inline-flex max-w-full shrink-0 items-center pl-1.5 transition-opacity duration-250 ease-out",
             fading() && "opacity-0",
           )}
           // text + outline: theme text, or black/white where text misses AA on sub-alt

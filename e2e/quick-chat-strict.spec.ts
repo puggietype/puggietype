@@ -6,6 +6,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   byTestId,
   dismissBanner,
+  EXTRA_PLAYERS,
   GUEST,
   GUEST_NAME,
   maxFillChroma,
@@ -13,6 +14,7 @@ import {
   ME_NAME,
   mockServer,
   openLobby,
+  results,
   RESULTS,
   type Mock,
 } from "./mock-room";
@@ -29,7 +31,17 @@ const THEMES = [
   ["puggie_dark", false],
   ["serika", true],
   ["nord", true],
+  // text #fff misses 3:1 on bg and 4.5:1 on sub-alt: ring and bubble fall back to black
+  ["darling", true],
 ] as const;
+
+/** themes whose ring/bubble colour falls back to black/white (computed rgb); the rest use --text-color */
+const FALLBACK: Record<string, string> = { darling: "rgb(0, 0, 0)" };
+/**
+ * themes whose own text colour misses AA on bg: the panel's text-text can't
+ * reach 4.5:1 there, so only the colour identity is checked
+ */
+const LOW_TEXT = new Set(["darling"]);
 
 const FEATURES = { quickChat: true, characterSelect: true };
 
@@ -57,6 +69,10 @@ async function expectPlacement(
   await expect(bubble).toHaveCount(1);
   await expect(bubble).toHaveAttribute("data-preset-id", presetId);
   await expect(bubble).toHaveAttribute("aria-hidden", "true");
+  // measure after the pop (its scale overshoots, which briefly inflates the box)
+  await bubble.evaluate(async (el) => {
+    await Promise.all(el.getAnimations().map(async (a) => a.finished));
+  });
   expect(
     await bubble.evaluate((el) => getComputedStyle(el).pointerEvents),
   ).toBe("none");
@@ -175,6 +191,47 @@ async function measureText(
   }, selector);
 }
 
+/** the theme's --text-color as a computed colour (probe element) */
+async function textColor(p: Page): Promise<string> {
+  return p.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--text-color)";
+    document.body.append(probe);
+    const c = getComputedStyle(probe).color;
+    probe.remove();
+    return c;
+  });
+}
+
+/** WCAG ratio of css colour `fg` (alpha-composited) over opaque `bg` */
+async function contrastOf(p: Page, fg: string, bg: string): Promise<number> {
+  return p.evaluate(
+    ([f, b]) => {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 1;
+      const cx = cv.getContext("2d", { willReadFrequently: true });
+      if (cx === null) throw new Error("no 2d context");
+      // drawing fg over bg composites the alpha for us
+      cx.fillStyle = b;
+      cx.fillRect(0, 0, 1, 1);
+      const bd = [...cx.getImageData(0, 0, 1, 1).data];
+      cx.fillStyle = f;
+      cx.fillRect(0, 0, 1, 1);
+      const fd = [...cx.getImageData(0, 0, 1, 1).data];
+      const lum = (d: number[]): number => {
+        const [r, g, bl] = [0, 1, 2].map((i) => {
+          const v = (d[i] ?? 0) / 255;
+          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (bl ?? 0);
+      };
+      const [hi, lo] = [lum(fd), lum(bd)].sort((x, y) => y - x);
+      return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+    },
+    [fg, bg] as [string, string],
+  );
+}
+
 /** count of non-empty texts the live region takes on (installed once per page) */
 async function watchLive(p: Page): Promise<void> {
   await byTestId(p, "mp-quickchat-live").evaluate((live) => {
@@ -252,6 +309,34 @@ for (const [theme, mono] of THEMES) {
       expect(await maxFillChroma(tile)).toBeGreaterThan(20);
     }
 
+    // selected ring + check: --text-color, or black/white where text misses 3:1 (QA F04)
+    await p.addStyleTag({
+      content: "*, *::before, *::after { transition: none !important; }",
+    });
+    const text = await textColor(p);
+    const wantPick = FALLBACK[theme] ?? text;
+    const tile = picker.locator('[role="radio"][aria-checked="true"]');
+    const ring = await tile.evaluate((el) => {
+      const s = getComputedStyle(el);
+      const badge = el.querySelector('[data-testid="mp-character-check"]');
+      return {
+        border: s.borderTopColor,
+        bg: s.backgroundColor,
+        badge: badge === null ? "" : getComputedStyle(badge).backgroundColor,
+        pick: getComputedStyle(el).getPropertyValue("--dog-pick").trim(),
+      };
+    });
+    expect(ring.border, `${theme} ring colour`).toBe(wantPick);
+    expect(ring.badge, `${theme} check colour`).toBe(wantPick);
+    expect(
+      await contrastOf(p, ring.border, ring.bg),
+      `${theme} ring vs tile`,
+    ).toBeGreaterThanOrEqual(3);
+    if (theme in FALLBACK) {
+      expect(ring.pick).toMatch(/^#(000|fff)$/);
+      expect(ring.border, `${theme} ring is not --text-color`).not.toBe(text);
+    }
+
     // baseline axe before any bubble
     const before = await axeFindings(p);
 
@@ -271,10 +356,44 @@ for (const [theme, mono] of THEMES) {
         4.5,
       );
     }
+    // bubble text + outline: --text-color, or black/white where text misses AA on sub-alt
+    const wantBubble = FALLBACK[theme] ?? text;
+    const bub = await bubbleOf(guest)
+      .locator(":scope > span")
+      .first()
+      .evaluate((el) => {
+        const s = getComputedStyle(el);
+        return {
+          color: s.color,
+          border: s.borderTopColor,
+          bg: s.backgroundColor,
+          fg: getComputedStyle(el.parentElement as Element)
+            .getPropertyValue("--qc-fg")
+            .trim(),
+        };
+      });
+    expect(bub.color, `${theme} bubble text colour`).toBe(wantBubble);
+    expect(bub.border, `${theme} bubble outline colour`).toBe(wantBubble);
+    expect(
+      await contrastOf(p, bub.color, bub.bg),
+      `${theme} bubble text vs fill`,
+    ).toBeGreaterThanOrEqual(4.5);
+    if (theme in FALLBACK) {
+      expect(bub.fg).toMatch(/^#(000|fff)$/);
+      expect(bub.color, `${theme} bubble is not --text-color`).not.toBe(text);
+    }
     // axe with the bubble up: nothing new, and no colour-contrast on it
     const after = await axeFindings(p);
     const key = (f: AxeFinding): string => `${f.id} ${f.target}`;
-    const fresh = after.filter((f) => !before.map(key).includes(key(f)));
+    // LOW_TEXT: the theme's own text-text misses AA everywhere, and axe flags
+    // those non-bubble texts inconsistently between runs
+    const themeOwn = (f: AxeFinding): boolean =>
+      LOW_TEXT.has(theme) &&
+      f.id === "color-contrast" &&
+      !f.target.includes("bubble");
+    const fresh = after.filter(
+      (f) => !before.map(key).includes(key(f)) && !themeOwn(f),
+    );
     expect(fresh).toEqual([]);
     expect(
       after.filter(
@@ -320,7 +439,7 @@ for (const [theme, mono] of THEMES) {
     await p.waitForTimeout(400);
     const panelText = await measureText(p, '[data-testid="mp-quickchat"]');
     expect(panelText.length).toBeGreaterThan(5);
-    for (const r of panelText) {
+    for (const r of LOW_TEXT.has(theme) ? [] : panelText) {
       expect(r.ratio, `${theme} quick-chat "${r.text}"`).toBeGreaterThanOrEqual(
         4.5,
       );
@@ -370,9 +489,9 @@ for (const [theme, mono] of THEMES) {
     await expectPlacement(row, byTestId(row, "mp-result-name"), "rematch");
     await p.waitForTimeout(400);
     const after2 = await axeFindings(p);
-    expect(after2.filter((f) => !before2.map(key).includes(key(f)))).toEqual(
-      [],
-    );
+    expect(
+      after2.filter((f) => !before2.map(key).includes(key(f)) && !themeOwn(f)),
+    ).toEqual([]);
     for (const r of await measureText(
       p,
       '[data-testid="mp-quickchat-bubble"]',
@@ -409,6 +528,241 @@ for (const [theme, mono] of THEMES) {
       path: `${SCREENS}/qc-strict-${theme}-podium-390.png`,
     });
   });
+
+  // QA F05 (M03-B): slow-down hint, results collapsed and expanded, each text >= 4.5:1
+  for (const vp of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    test(`STRICT quick-chat states: ${theme} ${vp.width}`, async ({
+      page: p,
+    }) => {
+      await p.setViewportSize(vp);
+      const mock = await mockServer(p, FEATURES);
+      await openLobby(p, theme);
+      await dismissBanner(p);
+      const text = await textColor(p);
+      const colorOf = async (l: Locator): Promise<string> =>
+        l.evaluate((el) => getComputedStyle(el).color);
+      /** settled read of the panel; `el` must be among the measured rows */
+      const measure = async (state: string, el: Locator): Promise<void> => {
+        await p.mouse.move(1, 1);
+        await p.waitForTimeout(600); // the 125 ms colour/opacity transitions
+        const rows = await measureText(p, '[data-testid="mp-quickchat"]');
+        expect(rows.length, `${state}: measured some text`).toBeGreaterThan(1);
+        for (const r of LOW_TEXT.has(theme) ? [] : rows) {
+          expect(
+            r.ratio,
+            `${theme} ${state} "${r.text}"`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+        const want = ((await el.textContent()) ?? "").trim().slice(0, 28);
+        expect(want, `${state}: probe has text`).not.toBe("");
+        expect(
+          rows.map((r) => r.text),
+          `${state}: "${want}" measured`,
+        ).toContain(want);
+        expect(await colorOf(el), `${state}: colour is --text-color`).toBe(
+          text,
+        );
+      };
+
+      // hide label: the theme text colour itself
+      const label = byTestId(p, "mp-quickchat-hide").locator(
+        "xpath=ancestor::label",
+      );
+      expect(await colorOf(label), "hide label colour").toBe(text);
+
+      // slow-down hint: the server answers RATE_LIMITED to a send
+      mock.rate = true;
+      await byTestId(p, "mp-quickchat-emote-e-paw").click();
+      const hint = byTestId(p, "mp-quickchat-hint");
+      await expect(hint).not.toHaveText("");
+      await measure("hint", hint);
+      await expect(hint).not.toHaveText(""); // still up after the settle
+      mock.rate = false;
+
+      // results, panel collapsed: the latest line stays visible
+      await toResults(mock);
+      await guestSays(mock, "gg");
+      const latest = byTestId(p, "mp-quickchat-latest");
+      await expect(latest).toBeVisible();
+      await measure("results-collapsed", latest.locator("span").first());
+
+      // results, panel expanded
+      const toggle = byTestId(p, "mp-quickchat-toggle");
+      await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-expanded", "true");
+      await measure("results-expanded", toggle);
+    });
+  }
+}
+
+// QA F02/F03: a bubble wraps under the name instead of squeezing it (or itself)
+type NameFit = { id: string; width: number; cut: boolean };
+const LAYOUT_PRESETS = ["close-one", "e-handshake"]; // the longest line, an emote
+
+/** every listed row's name element: rendered width and whether it is ellipsised */
+async function nameFits(
+  p: Page,
+  rowSel: string,
+  nameSel: string,
+): Promise<NameFit[]> {
+  return p.evaluate(
+    ([rs, ns]) =>
+      [...document.querySelectorAll(rs)].map((row) => {
+        const n = row.querySelector(ns) as HTMLElement;
+        return {
+          id: row.getAttribute("data-player-id") ?? "",
+          width: n.getBoundingClientRect().width,
+          cut: n.scrollWidth > n.clientWidth + 1,
+        };
+      }),
+    [rowSel, nameSel] as [string, string],
+  );
+}
+
+/** bubble text never ellipsised; nothing wider than the viewport */
+async function expectBubblesFit(p: Page, label: string): Promise<void> {
+  const r = await p.evaluate(() => {
+    const cut: string[] = [];
+    let right = 0;
+    for (const b of document.querySelectorAll(
+      '[data-testid="mp-quickchat-bubble"]',
+    )) {
+      right = Math.max(right, b.getBoundingClientRect().right);
+      for (const e of [b, ...b.querySelectorAll("*")] as HTMLElement[]) {
+        const s = getComputedStyle(e);
+        const clips =
+          s.overflowX !== "visible" || s.textOverflow === "ellipsis";
+        if (clips && e.scrollWidth > e.clientWidth + 1) {
+          cut.push(
+            `${b.getAttribute("data-player-id")}: ${e.scrollWidth}>${e.clientWidth}`,
+          );
+        }
+      }
+    }
+    return {
+      cut,
+      right,
+      docW: document.documentElement.scrollWidth,
+      vw: window.innerWidth,
+    };
+  });
+  expect(r.cut, `${label}: bubble text ellipsised`).toEqual([]);
+  expect(r.right, `${label}: bubble past the viewport`).toBeLessThanOrEqual(
+    r.vw + 0.5,
+  );
+  expect(r.docW, `${label}: horizontal scroll`).toBeLessThanOrEqual(r.vw);
+}
+
+/** with bubbles up, names are no narrower than without, and a name that fit still fits */
+function expectNamesKept(
+  before: NameFit[],
+  after: NameFit[],
+  label: string,
+): void {
+  expect(after.map((a) => a.id)).toEqual(before.map((b) => b.id));
+  for (const [i, b] of before.entries()) {
+    const a = after[i] as NameFit;
+    expect(a.width, `${label}: ${b.id} name width`).toBeGreaterThanOrEqual(
+      b.width - 0.5,
+    );
+    if (!b.cut) expect(a.cut, `${label}: ${b.id} name cut`).toBe(false);
+  }
+}
+
+for (const vp of [
+  { width: 390, height: 844 },
+  { width: 1280, height: 900 },
+]) {
+  for (const players of [2, 8]) {
+    test(`STRICT bubble layout ${vp.width}px, ${players} players`, async ({
+      page: p,
+    }) => {
+      test.setTimeout(120_000);
+      await p.setViewportSize(vp);
+      const mock = await mockServer(p, FEATURES, { players });
+      await openLobby(p, "serika_dark");
+      await dismissBanner(p);
+      const ids = [ME, GUEST, ...EXTRA_PLAYERS.map((x) => x.id)].slice(
+        0,
+        players,
+      );
+      const everyoneSays = (presetId: string): void => {
+        for (const playerId of ids) {
+          mock.push({ type: "chat:preset", playerId, presetId });
+        }
+      };
+      const lobbyRows = '[data-testid="mp-player"]';
+      // the name, not the dog head's title wrapper
+      const lobbyName = "span.leading-tight[title]";
+      const resultRows = '[data-testid="mp-result-row"]';
+      const resultName = '[data-testid="mp-result-name"]';
+      const tag = `${vp.width} ${players}p`;
+
+      const lobbyBase = await nameFits(p, lobbyRows, lobbyName);
+      expect(lobbyBase).toHaveLength(players);
+      // short names fit untruncated without a bubble (the long ones are allowed to cut)
+      for (const n of lobbyBase.filter((x) => x.id === ME || x.id === GUEST)) {
+        expect(n.cut, `${tag} lobby ${n.id} base`).toBe(false);
+      }
+      for (const presetId of LAYOUT_PRESETS) {
+        everyoneSays(presetId);
+        await expect(byTestId(p, "mp-quickchat-bubble")).toHaveCount(players);
+        await p.waitForTimeout(400); // past the pop
+        await p.screenshot({
+          path: `${SCREENS}/qc-layout-lobby-${vp.width}-${players}p-${presetId}.png`,
+          fullPage: true,
+        });
+        for (const id of [ME, GUEST]) {
+          const row = lobbyRow(p, id);
+          const name = row
+            .locator(`span[title="${id === ME ? ME_NAME : GUEST_NAME}"]`)
+            .first();
+          await expectPlacement(row, name, presetId);
+        }
+        await expectBubblesFit(p, `${tag} lobby ${presetId}`);
+        expectNamesKept(
+          lobbyBase,
+          await nameFits(p, lobbyRows, lobbyName),
+          `${tag} lobby ${presetId}`,
+        );
+      }
+      await expect(byTestId(p, "mp-quickchat-bubble")).toHaveCount(0, {
+        timeout: 6000,
+      });
+
+      mock.state.phase = "results";
+      mock.push(results(players));
+      mock.sync();
+      await expect(byTestId(p, "mp-podium")).toBeVisible();
+      const podiumBase = await nameFits(p, resultRows, resultName);
+      expect(podiumBase).toHaveLength(players);
+      for (const n of podiumBase.filter((x) => x.id === ME || x.id === GUEST)) {
+        expect(n.cut, `${tag} podium ${n.id} base`).toBe(false);
+      }
+      for (const presetId of LAYOUT_PRESETS) {
+        everyoneSays(presetId);
+        await expect(byTestId(p, "mp-quickchat-bubble")).toHaveCount(players);
+        await p.waitForTimeout(400);
+        await p.screenshot({
+          path: `${SCREENS}/qc-layout-podium-${vp.width}-${players}p-${presetId}.png`,
+          fullPage: true,
+        });
+        for (const id of [ME, GUEST]) {
+          const row = resultRow(p, id);
+          await expectPlacement(row, byTestId(row, "mp-result-name"), presetId);
+        }
+        await expectBubblesFit(p, `${tag} podium ${presetId}`);
+        expectNamesKept(
+          podiumBase,
+          await nameFits(p, resultRows, resultName),
+          `${tag} podium ${presetId}`,
+        );
+      }
+    });
+  }
 }
 
 test("STRICT reduced motion: no pop/fade, removed at ~4s", async ({
@@ -432,18 +786,18 @@ test("STRICT reduced motion: no pop/fade, removed at ~4s", async ({
 });
 
 test("STRICT typing mascot stays mono in a mono theme", async ({ page: p }) => {
+  // saved config before load (no dev-only window.__mt): works on dev and built previews
+  await p.addInitScript(
+    ([k, v]) => {
+      if (localStorage.getItem(k) === null) localStorage.setItem(k, v);
+    },
+    ["config", JSON.stringify({ theme: "serika_dark", monkey: true })] as [
+      string,
+      string,
+    ],
+  );
   await p.goto("/");
   await p.locator("#words .word").first().waitFor({ timeout: 180_000 });
-  await p.waitForFunction(() => "__mt" in window);
-  await p.evaluate(() => {
-    const mt = (
-      window as unknown as {
-        __mt: { setConfig: (k: string, v: unknown) => void };
-      }
-    ).__mt;
-    mt.setConfig("theme", "serika_dark");
-    mt.setConfig("monkey", true);
-  });
   const words = await p.$$eval("#words .word", (els) =>
     els.slice(0, 3).map((el) => el.textContent ?? ""),
   );

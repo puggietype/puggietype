@@ -411,7 +411,12 @@ describe("QuickChatBubble", () => {
     say("them", "e-heart");
     const b = bubble(r) as HTMLElement;
     expect(b).toHaveAttribute("aria-hidden", "true");
-    expect(b).toHaveClass("pointer-events-none", "qc-bubble", "min-w-12");
+    expect(b).toHaveClass(
+      "pointer-events-none",
+      "qc-bubble",
+      "max-w-full",
+      "shrink-0",
+    );
     expect(b).toHaveAttribute("data-player-id", "them");
     expect(b).toHaveAttribute("data-preset-id", "e-heart");
     expect(b).toHaveTextContent("heart");
