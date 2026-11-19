@@ -266,6 +266,11 @@ header {
 }
 
 main {
+  // main is a grid (see above); without this its implicit auto column grows to
+  // the widest child's min-content and pushes the text past the viewport
+  grid-template-columns: minmax(0, 1fr);
+  // long URLs in the legal text wrap instead of running off the page
+  overflow-wrap: anywhere;
   color: var(--text-color);
   font-weight: 400;
   max-width: 48rem;
@@ -340,6 +345,9 @@ kbd,
 
 table {
   border-collapse: collapse;
+  // keep table min-content at whole words: main's overflow-wrap: anywhere must
+  // not shrink cells to one character (breaks words mid-word in guide tables)
+  overflow-wrap: normal;
 }
 
 th,
