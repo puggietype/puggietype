@@ -23,7 +23,7 @@ If you submit a score, you let us show it publicly with your random nickname on 
 ## 5. Accounts
 You can create an account with your email address and a password, or with Google. Give accurate information, keep your sign-in details to yourself, and tell us at support@puggietype.com if you think someone else has used your account. You're responsible for what happens under your account. One account per person; don't create accounts to get around a suspension or limit.
 
-Settings and personal bests saved to your account come from your browser. We don't verify them, and they aren't leaderboard scores. Our service may refuse to save a value that is outside realistic limits, and we reserve the right to change or delete any saved personal best that we reasonably believe is wrong or was not achieved by typing by hand. We aren't required to review them.
+Settings and personal bests saved to your account come from your browser. We don't verify them, and they aren't leaderboard scores. Our service may automatically refuse to save a value that is outside realistic limits (that is not a decision to restrict your account), and we reserve the right to change or delete any saved personal best that we reasonably believe is wrong or was not achieved by typing by hand. We aren't required to review them.
 
 You can delete your account at any time from the sign-in page ("delete account"), or by emailing support@puggietype.com; see the Privacy Policy for what is deleted. We may suspend or end an account that breaks these Terms or is used to cheat, abuse others or attack the service, and we may change or stop account features. Account data download is provided as a convenience copy of the data described in the Privacy Policy and doesn't limit your legal rights.
 
