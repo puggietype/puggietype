@@ -9,17 +9,22 @@ const loaded = {
   firebaseApp: false,
   firebaseAuth: false,
   turnstile: false,
+  settingsSync: false,
 };
+
+// the Firebase user boot restores; null = signed out
+let restoredUser: { uid: string } | null = null;
 
 function mockLoadDetectors(): void {
   loaded.sdk = false;
   loaded.firebaseApp = false;
   loaded.firebaseAuth = false;
   loaded.turnstile = false;
+  loaded.settingsSync = false;
   vi.doMock("../../src/ts/accounts/firebase-sdk", () => {
     loaded.sdk = true;
     return {
-      getRestoredUser: vi.fn(async () => null),
+      getRestoredUser: vi.fn(async () => restoredUser),
       getUserIdToken: vi.fn(async () => "id-token"),
       signOutFirebase: vi.fn(async () => undefined),
     };
@@ -35,6 +40,10 @@ function mockLoadDetectors(): void {
   vi.doMock("../../src/ts/accounts/turnstile", () => {
     loaded.turnstile = true;
     return { loadTurnstile: vi.fn() };
+  });
+  vi.doMock("../../src/ts/accounts/settings-sync", () => {
+    loaded.settingsSync = true;
+    return { onAccountChange: vi.fn() };
   });
 }
 
@@ -115,6 +124,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   localStorage.clear();
+  restoredUser = null;
   document.head.innerHTML = "";
   history.replaceState(null, "", "/");
 });
@@ -128,6 +138,7 @@ describe("accounts boot, signed-out visitor", () => {
       expect(loaded.firebaseApp).toBe(false);
       expect(loaded.firebaseAuth).toBe(false);
       expect(loaded.turnstile).toBe(false);
+      expect(loaded.settingsSync).toBe(false);
 
       const urls = [...requests, ...scriptSrcs()];
       expect(urls.filter((u) => FIREBASE_HOSTS.test(u))).toEqual([]);
@@ -153,5 +164,49 @@ describe("accounts boot, returning signed-in user", () => {
     expect(loaded.sdk).toBe(true);
     // restoring a session never needs a captcha
     expect(loaded.turnstile).toBe(false);
+  });
+});
+
+describe("accounts boot, settings sync", () => {
+  const me = {
+    uid: "u1",
+    displayName: "Sleepy Pug 42",
+    emailVerified: true,
+    ageOk: true,
+    lbListed: false,
+    verifiedTypist: false,
+    status: "active",
+    createdAt: "2026-11-04T00:00:00.000Z",
+  };
+
+  beforeEach(() => {
+    restoredUser = { uid: "u1" };
+    localStorage.setItem(SESSION_HINT_KEY, "1");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ user: me }))),
+    );
+  });
+
+  it("flag on: a restored session loads the sync module", async () => {
+    await boot("/");
+    expect(loaded.settingsSync).toBe(true);
+  });
+
+  it("flag off: a signed-in session never imports it", async () => {
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", false);
+    const { restoreSession } = await import("../../src/ts/accounts/session");
+    await restoreSession();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(loaded.sdk).toBe(true);
+    expect(loaded.settingsSync).toBe(false);
+  });
+
+  it("the config code never imports it on its own", async () => {
+    const persistence = await import("../../src/ts/config/persistence");
+    persistence.saveToLocalStorage("theme");
+    persistence.saveFullConfigToLocalStorage();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(loaded.settingsSync).toBe(false);
   });
 });

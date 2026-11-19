@@ -23,6 +23,9 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock("../../src/ts/accounts/api", () => api);
 
+const settingsSync = vi.hoisted(() => ({ onAccountChange: vi.fn() }));
+vi.mock("../../src/ts/accounts/settings-sync", () => settingsSync);
+
 vi.mock("../../src/ts/accounts/config", async (importOriginal) => {
   const real =
     await importOriginal<typeof import("../../src/ts/accounts/config")>();
@@ -39,7 +42,10 @@ vi.mock("../../src/ts/accounts/config", async (importOriginal) => {
   };
 });
 
-import { SESSION_HINT_KEY } from "../../src/ts/accounts/flag";
+import {
+  SESSION_HINT_KEY,
+  SETTINGS_DIRTY_KEY,
+} from "../../src/ts/accounts/flag";
 import { WEAK_PASSWORD } from "../../src/ts/accounts/password";
 import {
   AGE_BLOCK_KEY,
@@ -48,6 +54,7 @@ import {
 } from "../../src/ts/accounts/age";
 import {
   AGE_BLOCKED,
+  callWithIdToken,
   cancelAgeCheck,
   completeAgeCheck,
   deleteAccount,
@@ -93,6 +100,97 @@ afterEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   setAccountUser(null);
+  vi.unstubAllGlobals();
+});
+
+/** lets the gated import("./settings-sync") resolve */
+async function settle(): Promise<void> {
+  await new Promise((r) => setTimeout(r, 0));
+}
+
+describe("accounts settings sync hook", () => {
+  beforeEach(() => {
+    sdk.getRestoredUser.mockResolvedValue(fbUser);
+    api.getMe.mockResolvedValue({ ok: true, user });
+  });
+
+  it("flag on: starts after restore, stops on sign-out", async () => {
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
+    await restoreSession();
+    await settle();
+    expect(settingsSync.onAccountChange).toHaveBeenCalledWith("u1");
+    localStorage.setItem(SETTINGS_DIRTY_KEY, "u1");
+    await signOut();
+    await settle();
+    expect(settingsSync.onAccountChange).toHaveBeenLastCalledWith(null);
+    expect(localStorage.getItem(SETTINGS_DIRTY_KEY)).toBeNull();
+  });
+
+  it("flag on: a signed-out boot never starts it", async () => {
+    vi.stubGlobal("__FEATURE_ACCOUNTS__", true);
+    sdk.getRestoredUser.mockResolvedValue(null);
+    await restoreSession();
+    await settle();
+    expect(settingsSync.onAccountChange).not.toHaveBeenCalled();
+  });
+
+  it("flag off: never reached", async () => {
+    await restoreSession();
+    await signOut();
+    await settle();
+    expect(settingsSync.onAccountChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("accounts callWithIdToken", () => {
+  const ok = { ok: true as const };
+  const unauthorized = {
+    ok: false as const,
+    status: 401,
+    code: "unauthorized",
+    message: "x",
+  };
+
+  it("passes the API url and the user's ID token", async () => {
+    sdk.getRestoredUser.mockResolvedValue(fbUser);
+    const run = vi.fn(async () => ok);
+    expect(await callWithIdToken(run)).toBe(ok);
+    expect(run).toHaveBeenCalledWith({
+      apiUrl: "https://api.example.test",
+      idToken: "id-token",
+    });
+  });
+
+  it("a 401 refreshes the token once, never more", async () => {
+    sdk.getRestoredUser.mockResolvedValue(fbUser);
+    sdk.getUserIdToken.mockImplementation(async (_u, refresh?: boolean) =>
+      refresh === true ? "fresh-token" : "id-token",
+    );
+    const run = vi.fn(async () => unauthorized);
+    const result = await callWithIdToken(run);
+    expect(result).toBe(unauthorized);
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(run.mock.calls[1]).toEqual([
+      { apiUrl: "https://api.example.test", idToken: "fresh-token" },
+    ]);
+  });
+
+  it("no Firebase user: refused without a request", async () => {
+    sdk.getRestoredUser.mockResolvedValue(null);
+    const run = vi.fn(async () => ok);
+    const result = await callWithIdToken(run);
+    expect(result).toMatchObject({ ok: false, status: 401 });
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("never throws", async () => {
+    sdk.getRestoredUser.mockRejectedValue(new Error("boom"));
+    expect(await callWithIdToken(vi.fn(async () => ok))).toMatchObject({
+      ok: false,
+      status: 0,
+      message: accountsCopy.api.network,
+    });
+  });
 });
 
 describe("accounts session", () => {
