@@ -2,7 +2,8 @@
 
 _Effective date: November 18, 2026. Last updated: November 18, 2026._
 
-Who we are: PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email privacy@puggietype.com.
+## Who we are
+PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email privacy@puggietype.com.
 
 ## Solo typing tests
 The solo typing test needs no account. Your settings, themes, custom text, tags and test results are stored only in your browser (localStorage). For Quick Match, your browser also keeps a short list (key "puggie-mp-recent-pace") of the speed, test mode, length and language of your last 10 solo 30-second English tests, with no dates or text; it is only used to send your average speed when you join Quick Match. Your browser also keeps a random Quick Match ID (key "puggie-mp-client-id", in localStorage and IndexedDB). It isn't linked to your nickname or account and is sent to our server only when you join Quick Match, so we never match you against yourself (for example, from a second tab). The server holds it in memory only while you're in the queue and never logs or stores it. Apart from that average speed, this ID, and a leaderboard score you choose to submit (see Leaderboards), this data never leaves your device unless you export it yourself or sign in to an account (see Accounts (ages 13+)). Clearing your browser data deletes them. Some optional features make your browser contact a third party directly, which then receives your IP address: opening the release notes (GitHub's public API), the poetry and Wikipedia text modes (poetrydb.org and Wikipedia), and an optional easter-egg video (YouTube, which may set its own cookies).
