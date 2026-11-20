@@ -23,6 +23,12 @@ describe("contact page", () => {
     );
   });
 
+  it("names support@ in the security issues section", () => {
+    expect(text).toContain(
+      "If you find a security vulnerability, please email us privately at support@puggietype.com rather than opening a public issue",
+    );
+  });
+
   it("no longer claims one address covers everything", () => {
     expect(html).not.toMatch(/one\s+address covers everything/i);
     expect(html).not.toContain("the same address");

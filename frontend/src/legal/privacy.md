@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Effective date: November 18, 2026. Last updated: November 18, 2026._
+_Effective date: November 20, 2026. Last updated: November 20, 2026._
 
 ## Who we are
 PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email privacy@puggietype.com.
@@ -45,7 +45,6 @@ We don't keep your IP address itself, player IDs, nicknames, messages or any oth
 ## Steam sign-in (desktop app)
 The PuggieType desktop app on Steam can let you sign in with your Steam account. Sign-in happens on Steam's own website in your browser; we never see your Steam password. When you sign in, Steam tells our game server your public Steam ID, and our server asks Steam whether your account owns PuggieType (and any supporter pack) and what your Steam display name is. We use this only to sign you in, unlock what you own, and show your display name if it passes our name filter and you haven't hidden it. Our server does not store or log your Steam ID or display name; it holds them in memory only while handling the sign-in request. We don't sell or share Steam data, or use it for marketing. Our game server runs on Fly.io; see Service providers. Steam data is provided by Valve 'as is', without warranty. Valve's own handling of your data is described in Valve's Privacy Policy (https://store.steampowered.com/privacy_agreement/).
 
-<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Pre-launch text for the "Accounts (ages 13+)" section, from Legal's PR #28 review (2026-11-04, section (d)). Accounts are behind a flag that is off; this section describes no processing that happens today. -->
 ## Accounts (ages 13+)
 You can use PuggieType without an account. Accounts are only for people aged 13 and over. If you create one, we process:
 - **Sign-in details:** if you use email and password, your email address and password (we never see your password; Google Firebase Authentication stores it only in hashed form). If you sign in with Google, Google gives Firebase Authentication your Google account ID, your email address, whether it's verified, and your Google profile name and picture link. We don't use or copy your name or picture, and we don't receive your Google password, contacts or other Google data. Firebase Authentication also records when your sign-in was created and last used, and Google may log technical data such as your IP address when you sign in.
@@ -85,7 +84,6 @@ You can use PuggieType without an account. Accounts are only for people aged 13 
 - To keep sign-in and sign-up secure with Cloudflare Turnstile, to limit abusive request rates, to enforce our Terms on accounts, and to check that account holders are aged 13 and over (Art. 6(1)(f), legitimate interests).
 
 ## Service providers
-<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. The Google (Firebase Authentication) and Cloudflare Turnstile entries, and the account data in the Neon entry, are pre-launch text for the "Accounts (ages 13+)" section. Accounts are behind a flag that is off; these entries describe no processing that happens today. -->
 - **Cloudflare, Inc.** hosts the website (Cloudflare Pages) and provides DNS and security.
 - **Fly.io, Inc.** hosts the game server on a single server in its San Jose, California (US) region. Fly.io processes this data on our behalf as our service provider, under a data processing agreement with us that includes the EU Standard Contractual Clauses.
 - **Google LLC**, USA, sign-in with Google Firebase Authentication, including Google sign-in if you use it. Google acts as our processor under its data processing terms; transfers from the EU/UK/Switzerland rely on its Data Privacy Framework certification.

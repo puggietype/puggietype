@@ -57,8 +57,6 @@ const ACCOUNTS_SECTION_LINES = [
   "**Children:** accounts are only for people aged 13 and over, and the age check is a first line of defence, not a guarantee. If you're a parent or guardian and think a child under 13 has an account, email privacy@puggietype.com and we'll delete it.",
 ];
 const ACCOUNTS_SECTION = ACCOUNTS_SECTION_LINES.join("\n");
-const ACCOUNTS_NOT_IN_EFFECT =
-  '<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Pre-launch text for the "Accounts (ages 13+)" section, from Legal\'s PR #28 review (2026-11-04, section (d)). Accounts are behind a flag that is off; this section describes no processing that happens today. -->';
 const ACCOUNTS_RETENTION_ROWS = [
   "| Account data (account record including its status fields, settings, personal bests) in the Neon database | until you delete your account (then deleted; restore copies drop it within about 6 hours) |",
   "| Firebase sign-in (email address, password hash or Google ID, Google name and picture link) | until you delete your account; deleted with it, within 30 days at most if Firebase can't be reached |",
@@ -91,8 +89,6 @@ const ACCOUNTS_PROVIDERS = [
   "- **Cloudflare, Inc.** also hosts our accounts service and runs Cloudflare Turnstile, the bot check on the sign-in, create-account and age-check steps. For the check itself Cloudflare acts as our processor; it also uses Turnstile signals as an independent controller to improve Turnstile (see the Accounts section).",
   NEON_PROVIDER,
 ].join("\n");
-const PROVIDERS_NOT_IN_EFFECT =
-  '<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. The Google (Firebase Authentication) and Cloudflare Turnstile entries, and the account data in the Neon entry, are pre-launch text for the "Accounts (ages 13+)" section. Accounts are behind a flag that is off; these entries describe no processing that happens today. -->';
 // Legal review 2026-11-19 (accounts-p1), section 4 items 1-4 (exact copy)
 const TERMS_AGE =
   "PuggieType's solo typing test needs no account. You must be **at least 13 years old** to create an account or use multiplayer. If you are under 18, or under the age of majority where you live, use accounts and multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.";
@@ -120,9 +116,9 @@ const TERMS_HEADINGS = [
   "11. Changes to these Terms",
   "12. Contact",
 ];
-// unchanged from main (edb2095); bumped only at the accounts flag-on publish
+// bumped at the accounts flag-on publish; November 20, 2026 is a placeholder and must equal the real flip date
 const TERMS_DATE_LINE =
-  '_Effective date: November 18, 2026. Last updated: November 18, 2026. "We", "us" and "our" mean the PuggieType team._';
+  '_Effective date: November 20, 2026. Last updated: November 20, 2026. "We", "us" and "our" mean the PuggieType team._';
 
 const renderTerms = (): string =>
   renderLegalMarkdown(
@@ -318,7 +314,7 @@ describe("legal-markdown", () => {
     expect(md).not.toContain("server rejects");
     expect(md).not.toContain("no longer accepted");
     expect(md).not.toContain("separate 'Solo' board");
-    expect(md).toContain("Last updated: November 18, 2026.");
+    expect(md).toContain("Last updated: November 20, 2026.");
     const faq = readFileSync(path.join(srcDir, "faq.html"), "utf8");
     const faqAnswer =
       "Your settings stay in your browser. Ranks shows solo test scores that players chose to submit: after a completed solo test, the score is sent only when you press Submit score. A score the server adds shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends. Scores from an ended period stop showing right away, and the stored rows are deleted automatically, usually within an hour. All-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
@@ -362,19 +358,17 @@ describe("legal-markdown", () => {
     expect(md).not.toContain("random session token");
   });
 
-  it("includes Legal's accounts section verbatim, marked not in effect", () => {
+  it("includes Legal's accounts section verbatim", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     for (const line of ACCOUNTS_SECTION_LINES.filter(Boolean)) {
       expect(md).toContain(`\n${line}\n`);
     }
-    expect(md).toContain(
-      `\n\n${ACCOUNTS_NOT_IN_EFFECT}\n${ACCOUNTS_SECTION}\n\n## Why we use this data`,
-    );
+    expect(md).toContain(`\n\n${ACCOUNTS_SECTION}\n\n## Why we use this data`);
     expect(md).toContain(
       `\n${STEAM_RETENTION_ROW_A}\n${ACCOUNTS_RETENTION_ROWS}\n| Player reports`,
     );
     expect(md).toContain(
-      "_Effective date: November 18, 2026. Last updated: November 18, 2026._",
+      "_Effective date: November 20, 2026. Last updated: November 20, 2026._",
     );
   });
 
@@ -427,6 +421,37 @@ describe("legal-markdown", () => {
     );
   });
 
+  it("has no NOT IN EFFECT comments in either legal source or either built page (Legal F3)", () => {
+    for (const file of ["privacy.md", "terms.md"]) {
+      const md = readFileSync(path.join(legalDir, file), "utf-8");
+      expect(md, file).not.toMatch(/NOT IN EFFECT/i);
+      expect(md, file).not.toContain("<!--");
+    }
+    for (const file of ["privacy.html", "terms.html"]) {
+      const page = readFileSync(path.join(srcDir, file), "utf-8");
+      expect(
+        renderLegalMarkdown(page, legalDir),
+        `${file} (built)`,
+      ).not.toMatch(/not in effect|flag that is off/i);
+    }
+  });
+
+  it("describes accounts in the terms and privacy meta, og, twitter and JSON-LD descriptions (Legal F4/F5)", () => {
+    const TERMS_DESC =
+      "The rules for using PuggieType: age requirement for accounts and multiplayer, accounts, nicknames, fair play and acceptable use, enforcement, copyright notices and the GPL-3.0 license.";
+    const PRIVACY_DESC =
+      "What data PuggieType handles: solo tests stay in your browser, leaderboard scores (nickname, wpm, accuracy, raw) are saved in a Neon database in Oregon, USA, reports are deleted after 7 days. Optional accounts (ages 13+) store settings and personal bests in the same database; the sign-in email stays with Google Firebase Authentication.";
+    for (const [file, desc] of [
+      ["terms.html", TERMS_DESC],
+      ["privacy.html", PRIVACY_DESC],
+    ] as const) {
+      const page = readFileSync(path.join(srcDir, file), "utf-8");
+      // meta description, og:description, twitter:description and JSON-LD
+      expect(page.split(desc).length - 1, file).toBe(4);
+      expect(page, file).not.toContain("multiplayer age requirement");
+    }
+  });
+
   it("ships no bracketed placeholders (Legal G6/G7: [W], [VERIFY: ...])", () => {
     const placeholder = /\[W\]|\[VERIFY/;
     for (const file of ["privacy.md", "terms.md"]) {
@@ -475,23 +500,21 @@ describe("legal-markdown", () => {
     );
   });
 
-  it("keeps the accounts not-in-effect note out of the visible page", () => {
+  it("renders the accounts section with no not-in-effect or pre-launch wording", () => {
     const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
     const html = renderLegalMarkdown(page, legalDir);
     const visible = html.replace(/<!--[\s\S]*?-->/g, "");
 
-    expect(html).toContain(ACCOUNTS_NOT_IN_EFFECT);
+    expect(html).not.toMatch(/not in effect|pre-launch/i);
     expect(visible).not.toMatch(/not in effect|pre-launch/i);
     expect(visible).toContain(
       '<h2 id="accounts-ages-13">Accounts (ages 13+)</h2>',
     );
   });
 
-  it("lists the accounts service providers, marked not in effect", () => {
+  it("lists the accounts service providers", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
-    expect(md).toContain(
-      `## Service providers\n${PROVIDERS_NOT_IN_EFFECT}\n- **Cloudflare, Inc.** hosts`,
-    );
+    expect(md).toContain(`## Service providers\n- **Cloudflare, Inc.** hosts`);
     expect(md).toContain(
       `our service provider, under a data processing agreement with us that includes the EU Standard Contractual Clauses.\n${ACCOUNTS_PROVIDERS}\n\nThese providers`,
     );
@@ -504,7 +527,7 @@ describe("legal-markdown", () => {
     expect(md).not.toContain("| Firebase sign-in |");
   });
 
-  it("renders the service providers as one list, note hidden", () => {
+  it("renders the service providers as one list", () => {
     const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
     const html = renderLegalMarkdown(page, legalDir);
     const section = html.slice(
@@ -513,7 +536,6 @@ describe("legal-markdown", () => {
     );
     const visible = section.replace(/<!--[\s\S]*?-->/g, "");
 
-    expect(section).toContain(PROVIDERS_NOT_IN_EFFECT);
     expect(visible).not.toMatch(/not in effect|pre-launch/i);
     expect(visible.match(/<ul>/g)).toHaveLength(1);
     expect(visible.match(/<li>/g)).toHaveLength(5);
@@ -658,7 +680,7 @@ describe("legal-markdown", () => {
     }
   });
 
-  describe("terms: Legal's accounts review section 4 (not in effect)", () => {
+  describe("terms: Legal's accounts review section 4", () => {
     it("has the age requirement (item 1) verbatim", () => {
       const html = renderTerms();
       expect(html).toContain(
@@ -710,22 +732,16 @@ describe("legal-markdown", () => {
       );
     });
 
-    it("keeps the effective date line unchanged", () => {
+    it("has the flag-on effective date line (placeholder November 20, 2026: must equal the real flip date)", () => {
       const html = renderTerms();
       expect(html).toContain(`<p>${inline(TERMS_DATE_LINE)}</p>`);
       expect(stripComments(html).match(/Effective date:/g)).toHaveLength(1);
     });
 
-    it("hides the NOT IN EFFECT comments from the rendered page", async () => {
+    it("has no NOT IN EFFECT comments in the source or the rendered page (Legal F3)", async () => {
       const html = renderTerms();
-      // one per item: age, accounts, enforcement, changes
-      expect(
-        html.match(/<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH\./g),
-      ).toHaveLength(4);
-      expect(stripComments(html)).not.toMatch(
-        /not in effect|flag that is off/i,
-      );
-      // the build's html minifier drops them from the shipped page
+      expect(html).not.toMatch(/not in effect|flag that is off|#29/i);
+      // the built page, through the html minifier, too
       const plugin = ViteMinifyPlugin({ ignoreCustomComments: KEEP_COMMENTS });
       const hook = plugin.transformIndexHtml as {
         handler: (html: string) => Promise<string>;
@@ -771,8 +787,9 @@ describe("legal-markdown", () => {
     it("splits the terms contacts: privacy@ on the accounts lines, support@ only on the four general lines", () => {
       const md = readFileSync(path.join(legalDir, "terms.md"), "utf-8");
       const address = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+/g;
-      const withEmail = md.split("\n").filter((l) => address.test(l));
-      address.lastIndex = 0;
+      // non-global probe: a global regex with .test() keeps lastIndex between lines
+      const hasAddress = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+/;
+      const withEmail = md.split("\n").filter((l) => hasAddress.test(l));
       const startsOf = (a: string): string[] =>
         withEmail
           .filter((l) => (l.match(address) ?? []).every((e) => e === a))
