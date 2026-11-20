@@ -62,10 +62,48 @@ describe("optional accounts copy (Legal G7 condition 3)", () => {
     );
   });
 
-  it("kids guide is unchanged and does not invite kids to sign up", () => {
+  it("kids guide qualifies the browser claim and does not invite kids to sign up", () => {
     const kids = read("src/guide/typing-for-kids.html").replace(/\s+/g, " ");
-    expect(kids).toContain("Solo tests need no account");
+    expect(kids).toContain(
+      "Solo tests need no account, and without one the results stay in the browser.",
+    );
     expect(kids).not.toMatch(/sign[- ]?up|create an account|optional account/i);
+  });
+
+  it("faq analytics answer: JSON-LD and visible text both mention the optional account", () => {
+    const faq = read("src/faq.html");
+    const clause =
+      "Solo test data stays in your browser, except a leaderboard score you choose to submit, the average speed plus a random Quick Match ID sent when you join Quick Match, and, if you use an optional account (ages 13+), your settings and personal bests.";
+    expect(faq.split(clause).length - 1).toBe(2);
+  });
+
+  it("changed pages carry the 2026-11-20 date in JSON-LD, visible date and sitemap", () => {
+    const sitemap = read("static/sitemap.xml");
+    for (const [page, loc] of [
+      ["src/faq.html", "/faq"],
+      ["src/guide/about.html", "/guide/about"],
+      ["src/guide/modes-settings.html", "/guide/modes-settings"],
+    ] as const) {
+      const html = read(page);
+      expect(html).toContain('"dateModified": "2026-11-20"');
+      expect(html).toContain(
+        '<time datetime="2026-11-20">November 20, 2026</time>',
+      );
+      expect(sitemap).toContain(
+        `<loc>https://puggietype.com${loc}</loc>\n  <lastmod>2026-11-20</lastmod>`,
+      );
+    }
+  });
+
+  it("homepage title and descriptions say 'no account needed'", () => {
+    const index = read("src/index.html");
+    expect(index).toContain(
+      "<title>Free minimalist typing test, no account needed | PuggieType</title>",
+    );
+    expect(index).not.toMatch(/no account(?! needed)/);
+    expect(read("src/ts/utils/misc.ts")).toContain(
+      "Free minimalist typing test, no account needed | PuggieType",
+    );
   });
 
   it("sourcecode.txt uses the shared support address, not a personal one", () => {
