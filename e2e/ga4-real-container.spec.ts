@@ -294,9 +294,8 @@ test("real GA4 container sends one consented page view per route", async ({
         page_location: `${location.origin}${location.pathname}`,
         page_referrer: `${location.origin}/login`,
       };
-      const gtag = (
-        window as Window & { gtag?: (...args: unknown[]) => void }
-      ).gtag;
+      const gtag = (window as Window & { gtag?: (...args: unknown[]) => void })
+        .gtag;
       gtag?.("set", fields);
       gtag?.("event", "page_view", { ...fields, send_to: "G-B8GK1C9T6T" });
     });
@@ -346,8 +345,7 @@ function isGtmDiagnostics(url: string): boolean {
 function rawPathLeak(url: string): boolean {
   const text = decodeUrlText(url);
   return (
-    /\/r\/(?!:code)[^/?#]+/.test(text) ||
-    /\/profile\/(?!:id)[^/?#]+/.test(text)
+    /\/r\/(?!:code)[^/?#]+/.test(text) || /\/profile\/(?!:id)[^/?#]+/.test(text)
   );
 }
 

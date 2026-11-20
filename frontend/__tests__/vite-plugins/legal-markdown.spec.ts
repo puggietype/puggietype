@@ -5,6 +5,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   renderLegalMarkdown,
+  slugify,
   wrapTables,
 } from "../../vite-plugins/legal-markdown";
 
@@ -20,6 +21,77 @@ const STEAM_RETENTION_ROW_A =
 const STEAM_VARIANT_A =
   "The PuggieType desktop app on Steam can let you sign in with your Steam account. Sign-in happens on Steam's own website in your browser; we never see your Steam password. When you sign in, Steam tells our game server your public Steam ID, and our server asks Steam whether your account owns PuggieType (and any supporter pack) and what your Steam display name is. We use this only to sign you in, unlock what you own, and show your display name if it passes our name filter and you haven't hidden it. Our server does not store or log your Steam ID or display name; it holds them in memory only while handling the sign-in request. We don't sell or share Steam data, or use it for marketing. Our game server runs on Fly.io; see Service providers. Steam data is provided by Valve 'as is', without warranty. Valve's own handling of your data is described in Valve's Privacy Policy (https://store.steampowered.com/privacy_agreement/).";
 
+// Legal accounts review 2026-11-19, section 3c, as applied in 77ef668 (D1 settings sync, D2 Turnstile steps, download incl. email) (exact copy)
+// plus the per-account rate-limit counters sentence (Account record) and retention row, pending Legal check
+const ACCOUNTS_SECTION_LINES = [
+  "## Accounts (ages 13+)",
+  "You can use PuggieType without an account. Accounts are only for people aged 13 and over. If you create one, we process:",
+  "- **Sign-in details:** if you use email and password, your email address and password (we never see your password; Google Firebase Authentication stores it only in hashed form). If you sign in with Google, Google gives Firebase Authentication your Google account ID, your email address, whether it's verified, and your Google profile name and picture link. We don't use or copy your name or picture, and we don't receive your Google password, contacts or other Google data. Firebase Authentication also records when your sign-in was created and last used, and Google may log technical data such as your IP address when you sign in.",
+  "- **Account record:** a random account ID, a generated pug name, whether your email address is verified, that you passed the age check and when (never your birth year), whether your scores may be listed on leaderboards (off by default, and it can't be changed yet), when you created the account, and when the record was last updated (this changes when your signed-in session is set up with our service, for example when you sign in). The record also has fields we don't use yet, so they hold only their starting value for every account: seconds typed (0), a verified-typist mark and its date (off and empty), and an account status (active for everyone) with a reason and notice reference that stay empty unless the status is changed. Our database does not store your email address. To limit abuse, our database also keeps short-lived request counters for your account ID (how many requests of each kind, such as sign-in, saving or download, you made in the current hour or day; no content, no IP address or email). They are deleted with your account and otherwise within about 3 days.",
+  "- **Settings sync:** while you're signed in, our website saves a fixed list of your PuggieType preference settings to your account and restores it when you sign in on another device. Free-text and link settings, such as a custom background link, stay on your device.",
+  "- **Personal bests:** while you're signed in, after a finished standard test we save your best speed, raw speed, accuracy and consistency for that test mode, length, language and punctuation/numbers setting, with the date. These are sent from your browser, are not verified, are shown only to you, and are not used for leaderboards.",
+  "- **Age check:** we ask for your birth year once, only to check that you're old enough. It isn't sent to our servers or stored; only a yes/no result is used. If the answer means you can't have an account, we delete the sign-in that was just made and keep only a note in your browser (with the time) that stops the question being asked again for 12 months. If that deletion fails, an automatic daily cleanup removes it within about 2 days.",
+  "- **Security check:** the sign-in, create-account and age-check steps use Cloudflare Turnstile. When you open one, your browser loads Turnstile from Cloudflare, which looks at signals such as your IP address, browser and device details to tell people from bots, and keeps a small item in your browser. We use the result to protect sign-in and sign-up from abuse. Cloudflare does this for us as our processor; separately, Cloudflare also uses these signals as an independent controller to improve Turnstile, as described in the [Turnstile Privacy Addendum](https://www.cloudflare.com/turnstile-privacy-policy/). Turnstile isn't used to show ads.",
+  "- **Account emails:** Firebase sends you an email to verify your address and, if you ask, to reset your password or confirm an email change. These are only account emails, not marketing. We may also use your sign-in email to reply to your requests and to tell you about a decision on your account (see Decisions about your account below); we never use it for marketing.",
+  "",
+  "**Why (legal basis):** to provide the account you ask for, including sign-in, sync, personal bests, account emails, data download and deletion (performance of a contract, GDPR Art 6(1)(b)); to answer your rights requests and give you notices the law requires (legal obligation, Art 6(1)(c)); to keep sign-in and sign-up secure, apply request limits, stop abuse, enforce our Terms (including any decision on your account status) and keep accounts to people aged 13 and over (legitimate interests, Art 6(1)(f)). Where we rely on legitimate interests you can object (see Your rights).",
+  "",
+  "**Who processes it for us:** Google (Firebase Authentication, and Google sign-in if you use it), Cloudflare (Turnstile, and hosting of our accounts service and website) and Neon (our account database, hosted in the US, Oregon). They act as our processors under their data processing terms.",
+  "",
+  "**International transfers:** this data is stored and processed in the United States. For users in the EU, EEA, UK and Switzerland, transfers to Google LLC, Cloudflare, Inc. and Neon, LLC (through Databricks, Inc.'s certification) rely on their EU-U.S. Data Privacy Framework certifications and its UK Extension and the Swiss-U.S. equivalent. Where a certification doesn't cover a transfer (for example, to Neon, Inc., the importer named in Neon's data processing terms), it relies on the European Commission's Standard Contractual Clauses (and the UK and Swiss equivalents) in the provider's data processing terms.",
+  "",
+  "**What's in your browser:** while you're signed in, your browser keeps your sign-in in Google's Firebase storage (IndexedDB), a marker that you're signed in (\"ptAccountsSession\", localStorage), and, if saving settings hasn't finished, your account ID (\"ptAccountsSettingsDirty\", localStorage). After an under-13 answer it keeps \"ptAccountsAgeBlock\" (localStorage, 12 months). Cloudflare Turnstile keeps an item in its own frame in your browser's storage. We use these only to sign you in and protect sign-in, not for advertising, so we don't ask for consent for them.",
+  "",
+  "**How long we keep it:** for as long as you have an account. When you delete your account we delete your account record and everything saved to it, such as settings and personal bests, from our database and your sign-in from Firebase straight away; if Firebase can't be reached, we keep only your account ID until it is removed, within 30 days. Our database provider keeps short-term restore copies, and anything you delete drops out of them within about 6 hours; we don't restore deleted accounts. Google and Cloudflare keep limited security logs and backups as described in their own policies.",
+  "",
+  '**Deleting your account:** sign in, open the sign-in page and choose "delete account". You can also email privacy@puggietype.com and we\'ll do it within 30 days (we may ask you to confirm you control the account).',
+  "",
+  "**Decisions about your account:** if we ever suspend or end your account, or hide or remove a personal best, a person makes that decision, not an automated process alone. We'll tell you why and how to appeal (see our Terms). If you think we got it wrong, email privacy@puggietype.com.",
+  "",
+  "**Download your data:** when signed in, choose \"Download my data\" to get a JSON file with what our database holds for your account, plus your sign-in email address and sign-in method (email and password, or Google), which come from your sign-in and aren't stored in our database. The file has your account record (every field listed above, including your account ID, pug name, status, when you passed the age check and when the record was last updated), your settings and when they were last saved, and your personal bests. It also has two lists that are empty today because we don't record that data yet: recent results (each with the average and spread of your keystroke timing and the app version saved with it) and runs flagged for review (with the keystroke timings of those runs). Our short-lived abuse counters aren't included. We create the file when you ask and don't keep a copy. You can download it up to 3 times per UTC day; if you reach that limit, email privacy@puggietype.com and we'll send you a copy.",
+  "",
+  `**Your rights:** depending on where you live (including under the GDPR, UK GDPR and the California Consumer Privacy Act as amended), you can ask to access, correct, delete or export your data, to object to or restrict how we use it, and to complain to your data protection authority. Use the in-account download and delete, or email privacy@puggietype.com. To protect the service, in-account actions are limited per account (for example, up to 3 downloads per day), and a request over a limit is refused and you are asked to wait and try again. These limits never stop you using your rights: you can always email us instead. We'll answer within one month (45 days for California requests). We don't sell or share your personal information as those terms are defined in California law, and we won't treat you differently for using your rights. California residents: in the last 12 months we collected identifiers (account ID, email address), internet activity (settings, personal bests) and the age-check result, from you and from Google if you use Google sign-in, to run your account; we disclose it only to the processors listed above.`,
+  "",
+  "**Children:** accounts are only for people aged 13 and over, and the age check is a first line of defence, not a guarantee. If you're a parent or guardian and think a child under 13 has an account, email privacy@puggietype.com and we'll delete it.",
+];
+const ACCOUNTS_SECTION = ACCOUNTS_SECTION_LINES.join("\n");
+const ACCOUNTS_NOT_IN_EFFECT =
+  '<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Pre-launch text for the "Accounts (ages 13+)" section, from Legal\'s PR #28 review (2026-11-04, section (d)). Accounts are behind a flag that is off; this section describes no processing that happens today. -->';
+const ACCOUNTS_RETENTION_ROWS = [
+  "| Account data (account record including its status fields, settings, personal bests) in the Neon database | until you delete your account (then deleted; restore copies drop it within about 6 hours) |",
+  "| Firebase sign-in (email address, password hash or Google ID, Google name and picture link) | until you delete your account; deleted with it, within 30 days at most if Firebase can't be reached |",
+  "| Account ID kept after a failed Firebase deletion | until Firebase confirms the deletion, within 30 days |",
+  "| Sign-in created before an under-13 answer | deleted straight away; if that fails, within about 2 days |",
+  '| Browser: "ptAccountsSession", "ptAccountsSettingsDirty" (localStorage), Firebase sign-in (IndexedDB) | until you sign out, delete your account or clear site data |',
+  '| Browser: age-check block "ptAccountsAgeBlock" (localStorage; time only, no birth year) | 12 months, or until you clear site data |',
+  "| Cloudflare Turnstile item in your browser, and Turnstile signals | as described in Cloudflare's Turnstile Privacy Addendum |",
+  "| Account data download (file on your device) | on your device until you delete it |",
+  "| Abuse-limit request counters (account ID and counts) | until you delete your account, otherwise within about 3 days |",
+].join("\n");
+const ACCOUNTS_LEGAL_BASES = [
+  "- To provide the account you ask for: sign-in, settings sync, personal bests, account emails, data download and deletion (Art. 6(1)(b), performance of a contract).",
+  "- To keep sign-in and sign-up secure with Cloudflare Turnstile, to limit abusive request rates, to enforce our Terms on accounts, and to check that account holders are aged 13 and over (Art. 6(1)(f), legitimate interests).",
+].join("\n");
+const SOLO_ACCOUNTS =
+  "this data never leaves your device unless you export it yourself or sign in to an account (see Accounts (ages 13+)).";
+const COOKIES_ACCOUNTS =
+  "We do not sell or share personal information for cross-context behavioral advertising. If you sign in, we also store the items listed under Accounts (ages 13+); they're used only to sign you in and aren't advertising or analytics.";
+const CHILDREN_ACCOUNTS = [
+  "If a parent or guardian tells us at privacy@puggietype.com that a child under 13 used multiplayer or created an account, we will delete any information we hold.",
+  "and leaderboard scores are kept only as described under Leaderboards. Account data is deleted when the account is deleted.",
+];
+
+// Legal accounts review 2026-11-19, section 3c, service providers (D2 applied) (exact copy)
+const NEON_PROVIDER =
+  "- Neon, LLC (a Databricks company), USA: database hosting for account records (see Accounts (ages 13+)), settings, personal bests and leaderboard scores (AWS us-west-2, Oregon). Our database doesn't store your email address. Covered by Neon's Data Processing Addendum; transfers from the EU/UK/Switzerland rely on the Data Privacy Framework certification of Databricks, Inc., which covers Neon, LLC.";
+const ACCOUNTS_PROVIDERS = [
+  "- **Google LLC**, USA, sign-in with Google Firebase Authentication, including Google sign-in if you use it. Google acts as our processor under its data processing terms; transfers from the EU/UK/Switzerland rely on its Data Privacy Framework certification.",
+  "- **Cloudflare, Inc.** also hosts our accounts service and runs Cloudflare Turnstile, the bot check on the sign-in, create-account and age-check steps. For the check itself Cloudflare acts as our processor; it also uses Turnstile signals as an independent controller to improve Turnstile (see the Accounts section).",
+  NEON_PROVIDER,
+].join("\n");
+const PROVIDERS_NOT_IN_EFFECT =
+  '<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. The Google (Firebase Authentication) and Cloudflare Turnstile entries, and the account data in the Neon entry, are pre-launch text for the "Accounts (ages 13+)" section. Accounts are behind a flag that is off; these entries describe no processing that happens today. -->';
+
 describe("legal-markdown", () => {
   for (const name of ["terms", "privacy"]) {
     it(`renders src/legal/${name}.md verbatim into ${name}.html`, () => {
@@ -27,14 +99,21 @@ describe("legal-markdown", () => {
       const md = readFileSync(path.join(legalDir, `${name}.md`), "utf-8");
       const html = renderLegalMarkdown(page, legalDir);
 
+      const rendered = marked.parse(md, { async: false });
+      if (typeof rendered !== "string") throw new Error("marked is async");
+      // only the linked Accounts h2 gets an id
+      const expected = rendered.replace(
+        "<h2>Accounts (ages 13+)</h2>",
+        '<h2 id="accounts-ages-13">Accounts (ages 13+)</h2>',
+      );
+
       expect(html).not.toContain("legal-markdown:");
-      const rendered = marked.parse(md, { async: false }) as string;
       // the only change to the rendered text is the table scroll wrapper
-      expect(html).toContain(wrapTables(rendered));
+      expect(html).toContain(wrapTables(expected));
       const unwrapped = html
         .replace(/<div class="tableWrap"[^>]*>(<table>)/g, "$1")
         .replace(/(<\/table>)<\/div>/g, "$1");
-      expect(unwrapped).toContain(rendered);
+      expect(unwrapped).toContain(expected);
     });
   }
 
@@ -217,9 +296,7 @@ describe("legal-markdown", () => {
       expect(html).toContain(`<time datetime="${modified}">${human}</time>`);
       expect(html).not.toContain("November 4, 2026");
     }
-    expect(md).toContain(
-      "Neon, LLC (a Databricks company), USA, database hosting for leaderboard scores (AWS us-west-2, Oregon). Covered by Neon's Data Processing Addendum; transfers from the EU/UK rely on Neon's Data Privacy Framework certification.",
-    );
+    expect(md).toContain(`\n${NEON_PROVIDER}\n`);
     expect(md).not.toContain("account data once accounts launch");
     expect(md).not.toContain("your rank");
   });
@@ -238,6 +315,171 @@ describe("legal-markdown", () => {
     expect(md).not.toContain("Hosting providers");
     // variant B (session token) is not live yet
     expect(md).not.toContain("random session token");
+  });
+
+  it("includes Legal's accounts section verbatim, marked not in effect", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    for (const line of ACCOUNTS_SECTION_LINES.filter(Boolean)) {
+      expect(md).toContain(`\n${line}\n`);
+    }
+    expect(md).toContain(
+      `\n\n${ACCOUNTS_NOT_IN_EFFECT}\n${ACCOUNTS_SECTION}\n\n## Why we use this data`,
+    );
+    expect(md).toContain(
+      `\n${STEAM_RETENTION_ROW_A}\n${ACCOUNTS_RETENTION_ROWS}\n| Player reports`,
+    );
+    expect(md).toContain(
+      "_Effective date: November 18, 2026. Last updated: November 18, 2026._",
+    );
+  });
+
+  it("adds the accounts edits to Solo typing, legal bases, Cookies and Children", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    const section = (h2: string): string => {
+      const start = md.indexOf(`\n## ${h2}\n`);
+      expect(start, h2).toBeGreaterThan(-1);
+      return md.slice(start, md.indexOf("\n## ", start + 1));
+    };
+
+    expect(section("Solo typing tests")).toContain(SOLO_ACCOUNTS);
+    expect(section("Why we use this data (GDPR legal bases)")).toContain(
+      `\n${STEAM_LEGAL_BASIS}\n${ACCOUNTS_LEGAL_BASES}\n`,
+    );
+    expect(section("Cookies, analytics and error reporting")).toContain(
+      `${COOKIES_ACCOUNTS}\n`,
+    );
+    for (const sentence of CHILDREN_ACCOUNTS) {
+      expect(section("Children")).toContain(sentence);
+    }
+  });
+
+  it("drops the old wrong accounts statements", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    const accounts = md.slice(
+      md.indexOf("## Accounts (ages 13+)"),
+      md.indexOf("## Why we use this data"),
+    );
+
+    expect(accounts).toContain("Neon (our account database");
+    expect(accounts).not.toContain("Fly.io");
+    expect(md).not.toContain(
+      "the scores, personal bests and settings you save",
+    );
+    expect(md).not.toContain("keystroke timings for up to 7 days");
+    expect(md).not.toContain(
+      "transfers to Google LLC, Cloudflare, Inc., Fly.io, Inc. and Neon, LLC",
+    );
+    expect(md).not.toContain(
+      "rely on their certifications under the EU-U.S. Data Privacy Framework",
+    );
+    expect(md).not.toContain("settings, scores and personal bests");
+    expect(md).not.toContain("reset-password forms");
+    expect(md).not.toContain(
+      "| Account data | until you delete your account |",
+    );
+    expect(md).not.toContain(
+      "| Firebase sign-in (email address, password hash or Google account ID) | deleted with the account (within 30 days at most) |",
+    );
+  });
+
+  it("ships no bracketed placeholders (Legal G6/G7: [W], [VERIFY: ...])", () => {
+    const placeholder = /\[W\]|\[VERIFY/;
+    for (const file of ["privacy.md", "terms.md"]) {
+      const md = readFileSync(path.join(legalDir, file), "utf-8");
+      expect(md, file).not.toMatch(placeholder);
+    }
+    for (const file of ["privacy.html", "terms.html"]) {
+      const page = readFileSync(path.join(srcDir, file), "utf-8");
+      expect(page, file).not.toMatch(placeholder);
+      // and the page as built, with the legal markdown rendered in
+      expect(
+        renderLegalMarkdown(page, legalDir),
+        `${file} (built)`,
+      ).not.toMatch(placeholder);
+    }
+  });
+
+  it("states the verified Neon restore window (6 hours, both projects, 2026-11-19) in all three places", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+
+    // leaderboard row (already live on main) and the two accounts places
+    expect(md).toContain(
+      "Deleted scores may persist in Neon restore copies for up to 6 hours |",
+    );
+    expect(md).toContain(
+      "anything you delete drops out of them within about 6 hours; we don't restore deleted accounts.",
+    );
+    expect(md).toContain(
+      "| until you delete your account (then deleted; restore copies drop it within about 6 hours) |",
+    );
+    expect(md.match(/6 hours/g)).toHaveLength(3);
+    expect(md).not.toContain("restore copies overwritten within about 6 hours");
+    expect(md).not.toContain("short-term restore copies are overwritten");
+  });
+
+  it("does not ship Tier B text (anti-cheat keystroke summary, verified typist) until a writer exists", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+
+    expect(md).not.toContain("**Anti-cheat checks on your results:**");
+    expect(md).not.toContain("**Verified typist:**");
+    expect(md).not.toContain("keystroke timings and the reason");
+    expect(md).not.toContain("Keystroke timings of a flagged run");
+    expect(md).not.toContain("keystroke timings for up to 7 days");
+    expect(md).not.toMatch(
+      /Verified-typist mark and date|Solo results with their keystroke summary|verified-typist video link|Account status, reason and notice reference|seconds typed while signed in|keystroke timing summaries/,
+    );
+  });
+
+  it("keeps the accounts not-in-effect note out of the visible page", () => {
+    const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+    const html = renderLegalMarkdown(page, legalDir);
+    const visible = html.replace(/<!--[\s\S]*?-->/g, "");
+
+    expect(html).toContain(ACCOUNTS_NOT_IN_EFFECT);
+    expect(visible).not.toMatch(/not in effect|pre-launch/i);
+    expect(visible).toContain(
+      '<h2 id="accounts-ages-13">Accounts (ages 13+)</h2>',
+    );
+  });
+
+  it("lists the accounts service providers, marked not in effect", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    expect(md).toContain(
+      `## Service providers\n${PROVIDERS_NOT_IN_EFFECT}\n- **Cloudflare, Inc.** hosts`,
+    );
+    expect(md).toContain(
+      `our service provider, under a data processing agreement with us that includes the EU Standard Contractual Clauses.\n${ACCOUNTS_PROVIDERS}\n\nThese providers`,
+    );
+  });
+
+  it("drops the superseded accounts transfer and email wording", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    expect(md).not.toContain("transfers are covered as described in");
+    expect(md).not.toContain("Neon's Data Privacy Framework certification");
+    expect(md).not.toContain("| Firebase sign-in |");
+  });
+
+  it("renders the service providers as one list, note hidden", () => {
+    const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+    const html = renderLegalMarkdown(page, legalDir);
+    const section = html.slice(
+      html.indexOf("<h2>Service providers</h2>"),
+      html.indexOf("<h2>Cookies"),
+    );
+    const visible = section.replace(/<!--[\s\S]*?-->/g, "");
+
+    expect(section).toContain(PROVIDERS_NOT_IN_EFFECT);
+    expect(visible).not.toMatch(/not in effect|pre-launch/i);
+    expect(visible.match(/<ul>/g)).toHaveLength(1);
+    expect(visible.match(/<li>/g)).toHaveLength(5);
+    expect(visible).toContain("<li><strong>Google LLC</strong>, USA");
+    expect(visible).toContain(
+      "<li><strong>Cloudflare, Inc.</strong> also hosts our accounts service",
+    );
+    expect(visible).toContain("<li>Neon, LLC (a Databricks company), USA:");
+    expect(visible).toMatch(
+      /<ul>\n<li><strong>Cloudflare, Inc.<\/strong> hosts[\s\S]*<li><strong>Fly\.io[\s\S]*<li><strong>Google LLC[\s\S]*<li><strong>Cloudflare, Inc.<\/strong> also[\s\S]*<li>Neon, LLC[^<]*<\/li>\n<\/ul>/,
+    );
   });
 
   it("includes Legal's GA4 paragraph and retention row verbatim", () => {
@@ -336,5 +578,64 @@ describe("legal-markdown", () => {
     expect(privacy).toContain(
       'Your mutes are kept only in that browser tab and are dropped when the tab session ends, and your "hide quick-chat" choice stays in your browser until you turn it off or clear site data.',
     );
+  });
+
+  it("slugifies h2 text into ids", () => {
+    expect(slugify("Accounts (ages 13+)")).toBe("accounts-ages-13");
+    expect(slugify("Why we use this data (GDPR legal bases)")).toBe(
+      "why-we-use-this-data-gdpr-legal-bases",
+    );
+  });
+
+  it("gives the privacy Accounts h2 the id the app links to, and no other h2", () => {
+    for (const name of ["terms", "privacy"]) {
+      const page = readFileSync(path.join(srcDir, `${name}.html`), "utf-8");
+      const html = renderLegalMarkdown(page, legalDir);
+      const ids = [...html.matchAll(/<h2 id="([^"]+)">/g)].map((m) => m[1]);
+      expect(ids, name).toEqual(name === "privacy" ? ["accounts-ages-13"] : []);
+    }
+  });
+  describe("contact line (Legal M7)", () => {
+    const WHO_WE_ARE =
+      "PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email privacy@puggietype.com.";
+
+    it("has the Who we are h2 and the exact controller line right after the title and date lines", () => {
+      const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+      const lines = md.split("\n");
+      expect(lines[0]).toBe("# Privacy Policy");
+      expect(lines[2]).toMatch(/^_Effective date: .* Last updated: .*\._$/);
+      expect(lines[4]).toBe("## Who we are");
+      expect(lines[5]).toBe(WHO_WE_ARE);
+      expect(md.split(WHO_WE_ARE)).toHaveLength(2);
+      expect(md).not.toContain("PuggieType is run by the PuggieType team");
+      expect(md).not.toContain("Who we are:");
+      // the heading and line are in the rendered page, too (a plain h2, no id)
+      const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
+      const html = renderLegalMarkdown(page, legalDir);
+      expect(html).toContain(
+        "<h2>Who we are</h2>\n<p>PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email ",
+      );
+      expect(html).toContain('href="mailto:privacy@puggietype.com"');
+    });
+
+    it("uses only privacy@puggietype.com as an email address in the privacy policy", () => {
+      for (const name of ["privacy"]) {
+        const md = readFileSync(path.join(legalDir, `${name}.md`), "utf-8");
+        const emails = md.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+/g);
+        expect(emails, name).not.toBeNull();
+        expect(new Set(emails), name).toEqual(
+          new Set(["privacy@puggietype.com"]),
+        );
+        expect(md, name).not.toMatch(/support@|jakemegan/i);
+      }
+    });
+
+    it("names no people and gives no EU/UK representative", () => {
+      const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+      expect(md).not.toMatch(/\bJake\b|\bMegan\b/);
+      expect(md).not.toMatch(
+        /(EU|UK|European|United Kingdom)\s+(data protection\s+)?representative/i,
+      );
+    });
   });
 });
