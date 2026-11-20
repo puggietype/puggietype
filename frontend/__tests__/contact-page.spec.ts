@@ -23,6 +23,13 @@ describe("contact page", () => {
     );
   });
 
+  it("privacy paragraph accounts for optional accounts (Legal #73 review)", () => {
+    expect(text).toContain(
+      "Most of the data PuggieType handles never leaves your browser. If you have an optional account (ages 13+), your account record, settings and personal bests are stored on our side. Multiplayer data is deleted when your session or room ends, and player reports are deleted after 7 days, so without an account there is often nothing stored on our side.",
+    );
+    expect(text).not.toContain("in many cases there is nothing stored");
+  });
+
   it("names support@ in the security issues section", () => {
     expect(text).toContain(
       "If you find a security vulnerability, please email us privately at support@puggietype.com rather than opening a public issue",
