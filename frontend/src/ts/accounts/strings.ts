@@ -30,7 +30,7 @@ export const accountsCopy = {
     "auth/invalid-credential": "Email or password is incorrect",
     "auth/invalid-email": "Invalid email address",
     "auth/user-disabled":
-      "This account can't be used. Contact support@puggietype.com for help.",
+      "This account can't be used. Contact privacy@puggietype.com for help.",
     "auth/too-many-requests":
       "Too many attempts. Please wait a bit and try again.",
     "auth/popup-closed-by-user":
@@ -172,7 +172,7 @@ export const accountsCopy = {
     deleted: "Your account and saved data were deleted.",
     // the server finishes removing the sign-in (Legal review (f))
     partiallyDeleted:
-      "Your account and saved data have been deleted. We couldn't finish removing your sign-in details just now, so we'll remove them automatically within 30 days. You don't need to do anything. Questions? Email support@puggietype.com.",
+      "Your account and saved data have been deleted. We couldn't finish removing your sign-in details just now, so we'll remove them automatically within 30 days. You don't need to do anything. Questions? Email privacy@puggietype.com.",
   },
   signedIn: {
     title: "signed in",
@@ -188,8 +188,8 @@ export const accountsCopy = {
       separator: " · ",
       terms: "Terms",
       termsHref: "/terms",
-      email: "support@puggietype.com",
-      emailHref: "mailto:support@puggietype.com",
+      email: "privacy@puggietype.com",
+      emailHref: "mailto:privacy@puggietype.com",
     },
   },
   // personal bests list: Legal review 2026-11-19 (accounts-p1, 1b)

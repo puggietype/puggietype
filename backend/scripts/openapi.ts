@@ -28,7 +28,7 @@ export function getOpenApi(): OpenAPIObject {
         termsOfService: "https://monkeytype.com/terms-of-service",
         contact: {
           name: "Support",
-          email: "support@monkeytype.com",
+          email: "support@puggietype.com",
         },
         "x-logo": {
           url: "https://monkeytype.com/images/mtfulllogo.png",
