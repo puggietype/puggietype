@@ -3940,7 +3940,7 @@ backend/anticheat
           It seems like the CSS failed to load. Please clear your cache to
           redownload the styles. If that doesn't help contact support.
           <br />
-          (jack@puggietype.com or discord.gg/monkeytype)
+          (support@puggietype.com or discord.gg/monkeytype)
         </span>
         <span>(ctrl/cmd + shift + r on Chromium browsers)</span>
         <span>
@@ -4535,7 +4535,7 @@ backend/anticheat
       <div id="contactPopup">
         <div class="title">Contact</div>
         <div class="text">
-          Feel free to send an email to jack@puggietype.com (the buttons below
+          Feel free to send an email to support@puggietype.com (the buttons below
           will open the default mail client).
           <br />
           <br />
@@ -4548,7 +4548,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@puggietype.com?subject=[Question] "
+            href="mailto:support@puggietype.com?subject=[Question] "
           >
             <div class="icon"><i class="fas fa-question-circle"></i></div>
             <div class="textGroup">
@@ -4559,7 +4559,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@puggietype.com?subject=[Feedback] "
+            href="mailto:support@puggietype.com?subject=[Feedback] "
           >
             <div class="icon"><i class="fas fa-comment-dots"></i></div>
             <div class="textGroup">
@@ -4570,7 +4570,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@puggietype.com?subject=[Bug] "
+            href="mailto:support@puggietype.com?subject=[Bug] "
           >
             <div class="icon"><i class="fas fa-bug"></i></div>
             <div class="textGroup">
@@ -4581,7 +4581,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@puggietype.com?subject=[Account] "
+            href="mailto:support@puggietype.com?subject=[Account] "
           >
             <div class="icon"><i class="fas fa-user-circle"></i></div>
             <div class="textGroup">
@@ -4592,7 +4592,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@puggietype.com?subject=[Business] "
+            href="mailto:support@puggietype.com?subject=[Business] "
           >
             <div class="icon"><i class="fas fa-briefcase"></i></div>
             <div class="textGroup">
@@ -4603,7 +4603,7 @@ backend/anticheat
           <a
             class="button"
             target="_blank"
-            href="mailto:jack@puggietype.com?subject=[Other] "
+            href="mailto:support@puggietype.com?subject=[Other] "
           >
             <div class="icon"><i class="fas fa-ellipsis-h"></i></div>
             <div class="textGroup">
@@ -5507,7 +5507,7 @@ backend/anticheat
               <div class="contactButtons">
                 <a
                   class="button"
-                  href="mailto:jack@puggietype.com"
+                  href="mailto:support@puggietype.com"
                   target="_blank"
                 >
                   <div class="fas fa-envelope"></div>
@@ -8735,7 +8735,7 @@ backend/anticheat
             organization, or directly to you, under certain conditions.
           </li>
         </ul>
-        <!-- <p>If you make a request, we have one month to respond to you. If you would like to exercise any of these rights, please contact us at our email: jack@puggietype.com</p> -->
+        <!-- <p>If you make a request, we have one month to respond to you. If you would like to exercise any of these rights, please contact us at our email: support@puggietype.com</p> -->
 
         <h1 id="Log_Data">What log data do we collect?</h1>
         <p>
@@ -8820,11 +8820,11 @@ backend/anticheat
         <p>
           Email:
           <a
-            href="mailto: jack@puggietype.com"
+            href="mailto: support@puggietype.com"
             target="_blank"
             rel="noopener noreferrer"
           >
-            jack@puggietype.com
+            support@puggietype.com
           </a>
         </p>
         Discord:
@@ -8859,7 +8859,7 @@ backend/anticheat
 ==> ./monkeytype/static/.well-known <==
 
 ==> ./monkeytype/static/.well-known/security.txt <==
-Contact: mailto:jack@puggietype.com
+Contact: mailto:support@puggietype.com
 Contact: message @Miodec on discord.gg/monkeytype
 Expires: 2022-06-03T21:00:00.000Z
 Preferred-Languages: en
@@ -9759,11 +9759,11 @@ letter {
         <p>
           Email:
           <a
-            href="mailto:jack@puggietype.com"
+            href="mailto:support@puggietype.com"
             target="_blank"
             rel="noopener noreferrer"
           >
-            jack@puggietype.com
+            support@puggietype.com
           </a>
         </p>
         Discord:
@@ -9939,7 +9939,7 @@ Disallow:
           For vulnerabilities that impact the confidentiality, integrity, and
           availability of Monkeytype services, please send your disclosure via
           (1)
-          <a href="mailto:jack@puggietype.com">email</a>
+          <a href="mailto:support@puggietype.com">email</a>
           , or (2) ping
           <span
             aria-label="Click To Copy"
