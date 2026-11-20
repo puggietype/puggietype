@@ -120,7 +120,7 @@ describe("SignInPage", () => {
     );
     const footer = getByTestId("signed-in-footer");
     expect(footer.textContent).toBe(
-      "Your data: Privacy Policy · Terms · support@puggietype.com",
+      "Your data: Privacy Policy · Terms · privacy@puggietype.com",
     );
     expect(
       [...footer.querySelectorAll("a")].map((a) => [
@@ -130,7 +130,7 @@ describe("SignInPage", () => {
     ).toEqual([
       ["/privacy", "_blank"],
       ["/terms", "_blank"],
-      ["mailto:support@puggietype.com", null],
+      ["mailto:privacy@puggietype.com", null],
     ]);
     // last thing on the page
     expect(footer.nextElementSibling).toBeNull();

@@ -28,7 +28,7 @@ describe("accountsCopy (Legal-approved)", () => {
   it("firebase messages", () => {
     expect(accountsCopy.firebase).toMatchObject({
       "auth/user-disabled":
-        "This account can't be used. Contact support@puggietype.com for help.",
+        "This account can't be used. Contact privacy@puggietype.com for help.",
       "auth/popup-closed-by-user":
         "The sign-in window was closed before sign-in finished.",
       "auth/cancelled-popup-request":
@@ -63,7 +63,7 @@ describe("accountsCopy (Legal-approved)", () => {
 
   it("partiallyDeleted asks nothing of the user", () => {
     expect(accountsCopy.account.partiallyDeleted).toBe(
-      "Your account and saved data have been deleted. We couldn't finish removing your sign-in details just now, so we'll remove them automatically within 30 days. You don't need to do anything. Questions? Email support@puggietype.com.",
+      "Your account and saved data have been deleted. We couldn't finish removing your sign-in details just now, so we'll remove them automatically within 30 days. You don't need to do anything. Questions? Email privacy@puggietype.com.",
     );
   });
 
@@ -181,11 +181,11 @@ describe("accountsCopy (Legal 2026-11-19, C1-C18)", () => {
     const f = accountsCopy.signedIn.footer;
     expect(
       `${f.before}${f.privacy}${f.separator}${f.terms}${f.separator}${f.email}`,
-    ).toBe("Your data: Privacy Policy · Terms · support@puggietype.com");
+    ).toBe("Your data: Privacy Policy · Terms · privacy@puggietype.com");
     expect([f.privacyHref, f.termsHref, f.emailHref]).toEqual([
       "/privacy",
       "/terms",
-      "mailto:support@puggietype.com",
+      "mailto:privacy@puggietype.com",
     ]);
   });
 });
