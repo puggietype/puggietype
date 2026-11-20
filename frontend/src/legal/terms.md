@@ -11,7 +11,7 @@ Multiplayer races take place in rooms of up to 8 players. **Private lobbies:** w
 
 Quick Match may include computer-controlled Pug Bots. Bots are named "Pug Bot · ~NN wpm" (the number is the bot's approximate target pace, not its result), always carry a visible "Bot" label, and never count toward stats or leaderboards.
 
-**Quick-chat.** In private rooms (in the lobby and on the results screen) you can send quick-chat: friendly preset lines (such as "gg" or "good luck!") and emotes from a fixed list that we write. You can't type your own messages. Quick-chat isn't available in Quick Match or Open Rooms. The players in your lobby see what you send while you're in it. You can mute any player, or hide quick-chat altogether, for yourself. Muting happens on your device and the other player isn't told. Don't use quick-chat to spam or harass anyone, for example by sending the same line over and over. We may change or remove presets, limit how often you can send them, switch quick-chat off, or remove or suspend anyone who misuses it. Like the rest of multiplayer, quick-chat is only for players aged 13 and over. To report misuse, use the report button or email privacy@puggietype.com.
+**Quick-chat.** In private rooms (in the lobby and on the results screen) you can send quick-chat: friendly preset lines (such as "gg" or "good luck!") and emotes from a fixed list that we write. You can't type your own messages. Quick-chat isn't available in Quick Match or Open Rooms. The players in your lobby see what you send while you're in it. You can mute any player, or hide quick-chat altogether, for yourself. Muting happens on your device and the other player isn't told. Don't use quick-chat to spam or harass anyone, for example by sending the same line over and over. We may change or remove presets, limit how often you can send them, switch quick-chat off, or remove or suspend anyone who misuses it. Like the rest of multiplayer, quick-chat is only for players aged 13 and over. To report misuse, use the report button or email support@puggietype.com.
 
 ## 3. Nicknames
 In multiplayer, our server gives you a random nickname. You can't type your own. Your nickname is shown to the other players in your lobby. If you submit a leaderboard score, that nickname is also shown on the public leaderboard, as described in the privacy policy.
@@ -41,10 +41,10 @@ When you use PuggieType, you agree not to:
 
 <!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Accounts are behind a flag that is off. Legal 2026-11-19 section 4 item 3 (enforcement covers accounts). Merges together with the privacy accounts PR (#29) at flag-on; bump the effective date then. -->
 ## 7. Enforcement
-We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. We suspend or end accounts only as described in section 5. To report a player, use the in-game report button or email privacy@puggietype.com.
+We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. We suspend or end accounts only as described in section 5. To report a player, use the in-game report button or email support@puggietype.com.
 
 ## 8. Copyright complaints
-We respect intellectual property rights. If you believe content on PuggieType (for example, a quote or word list) infringes your copyright, send a written notice to privacy@puggietype.com that includes:
+We respect intellectual property rights. If you believe content on PuggieType (for example, a quote or word list) infringes your copyright, send a written notice to support@puggietype.com that includes:
 (a) your physical or electronic signature;
 (b) a description of the copyrighted work;
 (c) a description of the material you believe infringes and where it appears on the site;
@@ -65,4 +65,4 @@ The PuggieType website code is free software licensed under the GNU General Publ
 We may update these Terms. We'll change the date at the top, and if a change is significant we'll say so on the site. Using PuggieType after a change means you accept it.
 
 ## 12. Contact
-The PuggieType team: privacy@puggietype.com.
+The PuggieType team: support@puggietype.com.

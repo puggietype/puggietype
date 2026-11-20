@@ -103,7 +103,7 @@ const TERMS_ACCOUNTS = [
   "**If we restrict your account.** If we suspend or end your account, or hide or remove a personal best or other saved result because we believe you broke these Terms, a person at PuggieType makes that decision, not an automated process alone. We'll tell you what we did, why, and how to appeal, by email to the address you signed in with, unless the law or an urgent security reason stops us or we can't reach you; in an urgent case we may act first and tell you afterwards. To appeal, reply to that email or write to privacy@puggietype.com within 6 months. A person who wasn't involved in the first decision will look again where we can, and we'll answer within 30 days. If we find we got it wrong, we'll reverse the decision. Ending your account doesn't affect your right to ask for a copy of your data.",
 ];
 const TERMS_ENFORCEMENT =
-  "We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. We suspend or end accounts only as described in section 5. To report a player, use the in-game report button or email privacy@puggietype.com.";
+  "We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. We suspend or end accounts only as described in section 5. To report a player, use the in-game report button or email support@puggietype.com.";
 const TERMS_CHANGES =
   "We may update these Terms. We'll change the date at the top, and if a change is significant we'll say so on the site. Using PuggieType after a change means you accept it.";
 const TERMS_HEADINGS = [
@@ -564,7 +564,7 @@ describe("legal-markdown", () => {
     );
     expect(terms).not.toContain("In private lobbies you can send quick-chat");
     expect(terms).toContain(
-      "Like the rest of multiplayer, quick-chat is only for players aged 13 and over. To report misuse, use the report button or email privacy@puggietype.com.",
+      "Like the rest of multiplayer, quick-chat is only for players aged 13 and over. To report misuse, use the report button or email support@puggietype.com.",
     );
     // C3 + C4
     expect(privacy).toContain(
@@ -760,16 +760,46 @@ describe("legal-markdown", () => {
       expect(html).toContain('href="mailto:privacy@puggietype.com"');
     });
 
-    it("uses only privacy@puggietype.com as an email address in the privacy policy and the terms", () => {
-      for (const name of ["privacy", "terms"]) {
-        const md = readFileSync(path.join(legalDir, `${name}.md`), "utf-8");
-        const emails = md.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+/g);
-        expect(emails, name).not.toBeNull();
-        expect(new Set(emails), name).toEqual(
-          new Set(["privacy@puggietype.com"]),
-        );
-        expect(md, name).not.toMatch(/support@|jakemegan/i);
+    it("uses only privacy@puggietype.com as an email address in the privacy policy", () => {
+      const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+      const emails = md.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+/g);
+      expect(emails).not.toBeNull();
+      expect(new Set(emails)).toEqual(new Set(["privacy@puggietype.com"]));
+      expect(md).not.toMatch(/support@|jakemegan/i);
+    });
+
+    it("splits the terms contacts: privacy@ on the accounts lines, support@ only on the four general lines", () => {
+      const md = readFileSync(path.join(legalDir, "terms.md"), "utf-8");
+      const address = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+/g;
+      const withEmail = md.split("\n").filter((l) => address.test(l));
+      address.lastIndex = 0;
+      const startsOf = (a: string): string[] =>
+        withEmail
+          .filter((l) => (l.match(address) ?? []).every((e) => e === a))
+          .map((l) => l.slice(0, 24));
+      // every line with an address has exactly one distinct address
+      for (const l of withEmail) {
+        expect(new Set(l.match(address)).size, l.slice(0, 40)).toBe(1);
       }
+      expect(startsOf("privacy@puggietype.com")).toEqual([
+        "You can create an accoun",
+        "You can delete your acco",
+        "**If we restrict your ac",
+      ]);
+      expect(startsOf("support@puggietype.com")).toEqual([
+        "**Quick-chat.** In priva",
+        "We may, at our discretio",
+        "We respect intellectual ",
+        "The PuggieType team: sup",
+      ]);
+      expect(withEmail).toHaveLength(7);
+      // the four general lines
+      expect(md).toContain(
+        "To report misuse, use the report button or email support@puggietype.com.",
+      );
+      expect(md).toContain("The PuggieType team: support@puggietype.com.");
+      expect(md).not.toMatch(/jakemegan/i);
+      expect(md).not.toMatch(/\bJake\b|\bMegan\b/);
     });
 
     it("names no people and gives no EU/UK representative", () => {
