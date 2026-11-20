@@ -1,8 +1,7 @@
 # Terms of Service
 
-_Effective date: November 18, 2026. Last updated: November 18, 2026. "We", "us" and "our" mean the PuggieType team._
+_Effective date: November 20, 2026. Last updated: November 20, 2026. "We", "us" and "our" mean the PuggieType team._
 
-<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Accounts are behind a flag that is off. Legal 2026-11-19 section 4 item 1 (age requirement and accounts). Merges together with the privacy accounts PR (#29) at flag-on; bump the effective date then. -->
 ## 1. Age requirement
 PuggieType's solo typing test needs no account. You must be **at least 13 years old** to create an account or use multiplayer. If you are under 18, or under the age of majority where you live, use accounts and multiplayer only with the permission of a parent or guardian, who agrees to these Terms on your behalf.
 
@@ -19,7 +18,6 @@ In multiplayer, our server gives you a random nickname. You can't type your own.
 ## 4. Leaderboards
 If you submit a score, you let us show it publicly with your random nickname on PuggieType's leaderboards for the periods described in the privacy policy. We may remove any score, or block future scores, if it looks cheated, automated or otherwise breaks these terms. Leaderboards may be reset or changed at any time.
 
-<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Accounts are behind a flag that is off. Legal 2026-11-19 section 4 item 2 (new Accounts section). Merges together with the privacy accounts PR (#29) at flag-on; bump the effective date then. -->
 ## 5. Accounts
 You can create an account with your email address and a password, or with Google. Give accurate information, keep your sign-in details to yourself, and tell us at privacy@puggietype.com if you think someone else has used your account. You're responsible for what happens under your account. One account per person; don't create accounts to get around a suspension or limit.
 
@@ -39,7 +37,6 @@ When you use PuggieType, you agree not to:
 6. use PuggieType for anything illegal;
 7. file false or abusive player reports.
 
-<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Accounts are behind a flag that is off. Legal 2026-11-19 section 4 item 3 (enforcement covers accounts). Merges together with the privacy accounts PR (#29) at flag-on; bump the effective date then. -->
 ## 7. Enforcement
 We may, at our discretion and without notice, remove any player from a room, close a room, rate-limit or block IP addresses or devices, limit who you are matched with (for example, matching players who repeatedly cheat only with Pug Bots), or suspend access to multiplayer for anyone who breaks these Terms. We suspend or end accounts only as described in section 5. To report a player, use the in-game report button or email support@puggietype.com.
 
@@ -60,7 +57,6 @@ PuggieType is provided "as is", without warranty of any kind, to the extent perm
 ## 10. Open-source license
 The PuggieType website code is free software licensed under the GNU General Public License v3.0 (GPL-3.0). These Terms govern your use of the hosted service at puggietype.com and do not limit any rights you have under the GPL.
 
-<!-- NOT IN EFFECT UNTIL ACCOUNTS LAUNCH. Accounts are behind a flag that is off. Legal 2026-11-19 section 4 item 4 (changes to these Terms). Merges together with the privacy accounts PR (#29) at flag-on; bump the effective date then. -->
 ## 11. Changes to these Terms
 We may update these Terms. We'll change the date at the top, and if a change is significant we'll say so on the site. Using PuggieType after a change means you accept it.
 
