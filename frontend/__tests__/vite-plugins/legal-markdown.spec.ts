@@ -597,21 +597,23 @@ describe("legal-markdown", () => {
   });
   describe("contact line (Legal M7)", () => {
     const WHO_WE_ARE =
-      "Who we are: PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email privacy@puggietype.com.";
+      "PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email privacy@puggietype.com.";
 
-    it("has the exact Who-we-are line right after the title and date lines", () => {
+    it("has the Who we are h2 and the exact controller line right after the title and date lines", () => {
       const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
       const lines = md.split("\n");
       expect(lines[0]).toBe("# Privacy Policy");
       expect(lines[2]).toMatch(/^_Effective date: .* Last updated: .*\._$/);
-      expect(lines[4]).toBe(WHO_WE_ARE);
+      expect(lines[4]).toBe("## Who we are");
+      expect(lines[5]).toBe(WHO_WE_ARE);
       expect(md.split(WHO_WE_ARE)).toHaveLength(2);
       expect(md).not.toContain("PuggieType is run by the PuggieType team");
-      // the line is in the rendered page, too (as the first paragraph)
+      expect(md).not.toContain("Who we are:");
+      // the heading and line are in the rendered page, too (a plain h2, no id)
       const page = readFileSync(path.join(srcDir, "privacy.html"), "utf-8");
       const html = renderLegalMarkdown(page, legalDir);
       expect(html).toContain(
-        "<p>Who we are: PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email ",
+        "<h2>Who we are</h2>\n<p>PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email ",
       );
       expect(html).toContain('href="mailto:privacy@puggietype.com"');
     });
