@@ -11,7 +11,10 @@
     "start": "electron .",
     "smoke": "PUGGIE_SMOKE_TEST=1 electron .",
     "test": "node --test test/*.test.mjs",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "dist:linux:dev": "node scripts/package.mjs --dev && electron-builder --config electron-builder.config.cjs --publish never --linux dir AppImage --x64 && node scripts/check-installer.mjs dist-installers/linux-unpacked",
+    "dist:win:dev": "node scripts/package.mjs --dev && electron-builder --config electron-builder.config.cjs --publish never --win nsis dir --x64 && node scripts/check-installer.mjs dist-installers/win-unpacked",
+    "dist:mac:dev": "node scripts/package.mjs --dev && electron-builder --config electron-builder.config.cjs --publish never --mac dmg dir --x64 --arm64 && node scripts/check-installer.mjs dist-installers/mac dist-installers/mac-arm64"
   },
   "devDependencies": {
     "electron": "45.2.2",

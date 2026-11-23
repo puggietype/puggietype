@@ -64,8 +64,10 @@ const RENDER_DIR = "desktop/steam/build";
 const CONTENT_ROOT = "desktop/out";
 const DLC_ROOT = "assets/supporter";
 
-const forbidden = (rel) =>
+/** True for a path (posix) naming a held helper/SDK, app id or ads file. */
+export const isForbiddenDepotPath = (rel) =>
   rel.split("/").some((seg) => FORBIDDEN_SEGMENTS.some((re) => re.test(seg)));
+const forbidden = isForbiddenDepotPath;
 
 /**
  * Pure check of a depot file list. files: [{ path (posix, relative to the
