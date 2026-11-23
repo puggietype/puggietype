@@ -6,11 +6,11 @@ import { z } from "zod";
 export const GHOST_STORAGE_KEY = "puggie-ghost-race";
 export const GHOST_TOGGLE_KEY = "puggie-ghost-race-enabled";
 export const GHOST_VERSION = 1;
-export const MAX_GHOST_SAMPLES = 2000;
+export const MAX_GHOST_SAMPLES = 500;
 export const MAX_GHOST_ENTRIES = 20;
 export const MAX_GHOST_STORE_BYTES = 64 * 1024;
-/** finest sampling interval while recording */
-export const GHOST_SAMPLE_STEP_MS = 100;
+/** finest sampling interval while recording (a 120s run is ~480 samples, ~7 KB) */
+export const GHOST_SAMPLE_STEP_MS = 250;
 
 export type GhostStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 

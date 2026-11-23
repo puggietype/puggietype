@@ -6,6 +6,7 @@ import {
   charsToPosition,
   clearGhosts,
   downsampleSamples,
+  GHOST_SAMPLE_STEP_MS,
   GHOST_STORAGE_KEY,
   GHOST_TOGGLE_KEY,
   GhostEntry,
@@ -295,13 +296,13 @@ describe("caps", () => {
         ),
       });
     let store = {};
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 12; i++) {
       store = putGhost(store, `k${i}`, big(i)) ?? {};
       expect(storeBytes(store)).toBeLessThanOrEqual(MAX_GHOST_STORE_BYTES);
     }
-    expect(store).toHaveProperty("k5");
+    expect(store).toHaveProperty("k11");
     expect(store).not.toHaveProperty("k0");
-    expect(Object.keys(store).length).toBeLessThan(6);
+    expect(Object.keys(store).length).toBeLessThan(12);
   });
 
   it("a single entry that can't fit is not stored", () => {
@@ -399,16 +400,36 @@ describe("hint", () => {
 
 describe("buildSamples", () => {
   it("starts at 0, ends at durationMs, never goes backwards", () => {
-    const chars = (t: number): number => (t > 500 && t < 700 ? 1 : t / 100);
+    // dips at 750ms (a backspace), clamped to the best so far
+    const chars = (t: number): number => (t > 600 && t < 800 ? 1 : t / 100);
     const samples = buildSamples(1000, chars);
-    expect(samples[0]).toEqual([0, 0]);
-    expect(samples[samples.length - 1]).toEqual([1000, 10]);
+    expect(samples).toEqual([
+      [0, 0],
+      [250, 2],
+      [500, 5],
+      [750, 5],
+      [1000, 10],
+    ]);
     for (let i = 1; i < samples.length; i++) {
       const [t, c] = samples[i] as GhostSample;
       const [pt, pc] = samples[i - 1] as GhostSample;
       expect(t).toBeGreaterThanOrEqual(pt);
       expect(c).toBeGreaterThanOrEqual(pc);
     }
+  });
+
+  it("samples every 250ms: a 120s run stays under the cap and ~7 KB", () => {
+    expect(GHOST_SAMPLE_STEP_MS).toBe(250);
+    expect(MAX_GHOST_SAMPLES).toBe(500);
+    // ~100 wpm: 500 chars a minute
+    const samples = buildSamples(120_000, (t) => t / 120);
+    expect(samples).toHaveLength(481);
+    expect(samples[1]).toEqual([250, 2]);
+    expect(samples.at(-1)).toEqual([120_000, 1000]);
+    const bytes = storeBytes({
+      [KEY]: entry({ durationMs: 120_000, samples }),
+    });
+    expect(bytes).toBeLessThan(8 * 1024);
   });
 
   it("stays within the sample cap for long runs", () => {
