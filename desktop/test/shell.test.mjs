@@ -158,11 +158,17 @@ describe("no Steamworks, no ads", () => {
         assert.equal(text.includes(bad), false, `${f} mentions ${bad}`);
       }
     }
-    const deps = Object.keys({
-      ...JSON.parse(pkg).dependencies,
-      ...JSON.parse(pkg).devDependencies,
-    });
-    assert.deepEqual(deps, ["electron"]);
+    // build-time only: electron, plus electron-builder for dev installers
+    assert.equal(JSON.parse(pkg).dependencies, undefined);
+    assert.deepEqual(Object.keys(JSON.parse(pkg).devDependencies), [
+      "electron",
+      "electron-builder",
+    ]);
+    const lock = fs
+      .readFileSync(path.resolve(here, "../package-lock.json"), "utf8")
+      .toLowerCase();
+    for (const bad of ["steamworks", "greenworks", "electron-updater"])
+      assert.equal(lock.includes(bad), false, `package-lock has ${bad}`);
   });
 });
 
