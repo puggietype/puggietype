@@ -209,6 +209,8 @@ export function recordResult(
       existing,
     );
     if (!record) return;
+    // timer start (first keystroke) to end: the whole run in words mode,
+    // the test length in time mode
     const durationMs = Math.round(result.testDuration * 1000);
     if (durationMs <= 0) return;
     // off the result path: sampling replays the event log a few hundred times
@@ -220,9 +222,13 @@ export function recordResult(
           acc: result.acc,
           recordedAt: Date.now(),
           durationMs,
+          // the last sample reads the whole log: durationMs is rounded to
+          // 10ms and can cut the final keystroke
           samples: buildSamples(
             durationMs,
-            (t) => getChars(eventLog, true, t).correctWord,
+            (t) =>
+              getChars(eventLog, true, t < durationMs ? t : undefined)
+                .correctWord,
           ),
         });
       } catch (e) {

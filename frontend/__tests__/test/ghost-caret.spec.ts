@@ -244,6 +244,59 @@ describe("ghost caret runtime", () => {
         expect(localStorage.getItem(GHOST_STORAGE_KEY)).toBeNull();
       });
 
+      it("words mode: duration is the run time, last sample the total correct chars", async () => {
+        const ghost = await load();
+        // the final keystroke lands after the 10ms-rounded duration
+        fake.totalChars = 130;
+        ghost.recordResult(
+          result({ mode: "words", mode2: "25", testDuration: 12.345 }),
+          eventLog,
+        );
+        vi.runAllTimers();
+        const stored = JSON.parse(
+          localStorage.getItem(GHOST_STORAGE_KEY) ?? "{}",
+        ) as Record<
+          string,
+          { durationMs: number; samples: [number, number][] }
+        >;
+        const ghostEntry = stored["words|25|false|false|english|normal|false"];
+        expect(ghostEntry?.durationMs).toBe(12_345);
+        expect(ghostEntry?.samples.at(-1)).toEqual([12_345, 130]);
+        expect(ghostEntry?.samples.at(-2)).toEqual([12_250, 122]);
+      });
+
+      it("time mode: the replay stops at durationMs", async () => {
+        localStorage.setItem(GHOST_STORAGE_KEY, storedGhost(80));
+        const ghost = await load();
+        const { ElementWithUtils } = await import("../../src/ts/utils/dom");
+        const el = (id: string): InstanceType<typeof ElementWithUtils> => {
+          const div = document.createElement("div");
+          div.id = id;
+          document.body.append(div);
+          return new ElementWithUtils(div);
+        };
+        const controller = new AbortController();
+        ghost.initElement(
+          {
+            caret: el("ghostCaret"),
+            words: el("words"),
+            wordsWrapper: el("wordsWrapper"),
+          },
+          controller.signal,
+        );
+        ghost.init();
+        ghost.start(performance.now());
+        expect(ghost.caret?.isHidden()).toBe(false);
+        vi.advanceTimersByTime(29_000);
+        expect(vi.getTimerCount()).toBeGreaterThan(0);
+        vi.advanceTimersByTime(1_200);
+        expect(vi.getTimerCount()).toBe(0);
+        ghost.reset();
+        expect(ghost.caret?.isHidden()).toBe(true);
+        controller.abort();
+        document.body.innerHTML = "";
+      });
+
       it("clear ghosts removes stored ghosts", async () => {
         localStorage.setItem(GHOST_STORAGE_KEY, storedGhost(80));
         const ghost = await load();
