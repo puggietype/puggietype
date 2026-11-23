@@ -13,11 +13,12 @@ export const FEATURE_FLAGS = [
   "quickMatch",
   "report",
   "quickChat",
+  "ghostRace",
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
 /** off unless named in VITE_FLAGS or ?flags= (openRooms shipped Oct 18, 2026; still needs the server flag) */
-export const DEFAULT_OFF_FLAGS: readonly FeatureFlag[] = [];
+export const DEFAULT_OFF_FLAGS: readonly FeatureFlag[] = ["ghostRace"];
 
 export const FLAGS_SESSION_KEY = "puggie-flags";
 
