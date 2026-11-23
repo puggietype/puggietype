@@ -58,6 +58,12 @@ In `frontend/`: `npm run build` (web) or `npm run build:steam`.
 - `npm run package -- --dev` still stages without uploading; `npm run package` without `--dev` still tags and remains release-cutter only.
 - The hard rule above stands: no Steamworks SDK.
 
+## Installers (dev only)
+
+- `cd desktop && npm run dist:linux:dev`: stages with `package.mjs --dev`, then electron-builder builds a Linux dir + AppImage (x64) into `desktop/dist-installers/` (gitignored), then `scripts/check-installer.mjs` checks it against the depot rules. Details: `desktop/README.md`.
+- Every installer ships the GPL-3.0 bundle (`out/legal`) as `resources/legal/`. No publish config, no auto-update, nothing uploaded.
+- Verified on Linux only (build, installer check, smoke of the packaged app, 1280x800 Deck baseline under Xvfb). Windows/macOS builds, code signing and notarization (need Jake) and real Steam Deck hardware are **not verified**.
+
 ## M3: Steam sign-in and ownership (draft, HOLD for Legal review)
 
 - No Steamworks SDK. With `PUGGIE_STEAM_OPENID=1`, the shell exposes `puggieDesktop.steam.signIn()`. It opens Steam's OpenID 2.0 login page in the system browser, with `return_to` set to a one-shot listener on `http://127.0.0.1:<port>/steam/callback?state=<random>`.
