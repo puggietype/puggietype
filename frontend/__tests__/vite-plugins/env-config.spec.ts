@@ -39,6 +39,11 @@ describe("env-config production build", () => {
     expect(JSON.stringify(cfg)).not.toContain("BR");
   });
 
+  it("keeps the production GA4 measurement id", () => {
+    const cfg = load({ GA4_MEASUREMENT_ID: "G-B8GK1C9T6T" });
+    expect(cfg.ga4MeasurementId).toBe("G-B8GK1C9T6T");
+  });
+
   it("rejects a malformed GA4 measurement id", () => {
     expect(() => load({ GA4_MEASUREMENT_ID: "UA-1" })).toThrow(
       /GA4_MEASUREMENT_ID/,
