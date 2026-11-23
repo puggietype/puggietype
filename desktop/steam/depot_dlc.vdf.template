@@ -1,0 +1,59 @@
+// PuggieType Supporter Pack DLC depot (TEMPLATE, placeholders only).
+//
+// There is no App ID yet. __PUGGIE_STEAM_DEPOT_DLC_ID__ is a placeholder,
+// not a real depot id. Nothing may be uploaded until Lead and Jake give
+// an explicit go after real IDs exist.
+//
+// Root is assets/supporter/. Ships only the art licence and image artwork
+// (png, jpg, jpeg, webp, gif) into supporter/ in the install folder. No
+// program code, no Electron, no helper, no audio. Enforced by
+// scripts/depot-allowlist.mjs.
+"DepotBuild"
+{
+	"DepotID" "__PUGGIE_STEAM_DEPOT_DLC_ID__"
+	"ContentRoot" "../../../assets/supporter/"
+	"FileMapping"
+	{
+		"LocalPath" "LICENSE"
+		"DepotPath" "supporter"
+		"Recursive" "0"
+	}
+	"FileMapping"
+	{
+		"LocalPath" "*.png"
+		"DepotPath" "supporter"
+		"Recursive" "1"
+	}
+	"FileMapping"
+	{
+		"LocalPath" "*.jpg"
+		"DepotPath" "supporter"
+		"Recursive" "1"
+	}
+	"FileMapping"
+	{
+		"LocalPath" "*.jpeg"
+		"DepotPath" "supporter"
+		"Recursive" "1"
+	}
+	"FileMapping"
+	{
+		"LocalPath" "*.webp"
+		"DepotPath" "supporter"
+		"Recursive" "1"
+	}
+	"FileMapping"
+	{
+		"LocalPath" "*.gif"
+		"DepotPath" "supporter"
+		"Recursive" "1"
+	}
+	// debug symbols and OS junk
+	"FileExclusion" "*.pdb"
+	"FileExclusion" ".DS_Store"
+	"FileExclusion" "._*"
+	"FileExclusion" "Thumbs.db"
+	"FileExclusion" "desktop.ini"
+	"FileExclusion" "*.log"
+	"FileExclusion" "*.tmp"
+}
