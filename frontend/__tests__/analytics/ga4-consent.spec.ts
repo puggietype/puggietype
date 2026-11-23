@@ -75,10 +75,10 @@ import { injectStaticConsentScript } from "../../vite-plugins/static-consent-scr
 const src = path.resolve(__dirname, "../../src");
 
 const FAQ_INTERIM =
-  'PuggieType may load Google Analytics 4 so we can understand site traffic. We also see aggregate traffic totals from our host, Cloudflare. Solo test data stays in your browser, except a leaderboard score you choose to submit, the average speed plus a random Quick Match ID sent when you join Quick Match, and, if you use an optional account (ages 13+), your settings and personal bests. The <a href="/privacy">privacy policy</a> explains what is collected and for how long.';
+  'PuggieType loads Google Analytics 4 only if you accept analytics, so we can understand site traffic. We also see aggregate traffic totals from our host, Cloudflare. Solo test data stays in your browser, except a leaderboard score you choose to submit, the average speed plus a random Quick Match ID sent when you join Quick Match, and, if you use an optional account (ages 13+), your settings and personal bests. The <a href="/privacy">privacy policy</a> explains what is collected and for how long.';
 
 const ABOUT =
-  "We use privacy-preserving aggregate traffic tools from our host (Cloudflare) and, when enabled, Google Analytics 4. Details are in our";
+  "We use privacy-preserving aggregate traffic tools from our host (Cloudflare) and, if you accept analytics, Google Analytics 4. Details are in our";
 
 describe("GA collect transport gate", () => {
   const id = "G-TEST1234";
