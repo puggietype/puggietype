@@ -193,3 +193,27 @@ jobs:
         run: |
           pnpm -C frontend exec vite build --outDir "$GITHUB_WORKSPACE/frontend/dist-accounts-on"
           bash scripts/check-kids-csp-accounts.sh frontend/dist-accounts-on dummy-project.firebaseapp.com
+      # Production GA4 id (public, not a secret). Own outDir and port, so the
+      # G-QATEST0000 build above is untouched. Google is never contacted: the
+      # spec answers every Google host locally.
+      - name: ga4 production-id build, consent gating
+        env:
+          GA4_MEASUREMENT_ID: G-B8GK1C9T6T
+        run: |
+          pnpm -C frontend exec vite build --outDir "$GITHUB_WORKSPACE/frontend/dist-ga4-prod"
+          # the spec skips without the id, so fail here instead of skipping
+          grep -rlq "$GA4_MEASUREMENT_ID" frontend/dist-ga4-prod/js
+          npx --yes wrangler@4.45.0 pages dev frontend/dist-ga4-prod --port 3301 --ip 127.0.0.1 > /tmp/wrangler-ga4-prod.log 2>&1 &
+          ready=0
+          for i in $(seq 1 60); do
+            if curl -sf -D - -o /dev/null http://127.0.0.1:3301/ | grep -qi 'googletagmanager'; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then
+            cat /tmp/wrangler-ga4-prod.log
+            exit 1
+          fi
+          BASE_URL=http://127.0.0.1:3301 pnpm exec playwright test e2e/ga4-prod-build.spec.ts
