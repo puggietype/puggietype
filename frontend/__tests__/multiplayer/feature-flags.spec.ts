@@ -23,30 +23,40 @@ function memoryStorage(initial: Record<string, string> = {}): MemoryStorage {
 }
 
 describe("feature flags", () => {
-  it("default: everything but ghostRace on incl. quickMatch and report (prod: no VITE_FLAGS, no ?flags)", () => {
+  it("default: every flag on incl. quickMatch, report and ghostRace (prod: no VITE_FLAGS, no ?flags)", () => {
     const flags = resolveFlags("", memoryStorage(), undefined);
-    expect([...flags].sort()).toEqual(
-      FEATURE_FLAGS.filter((f) => f !== "ghostRace").sort(),
-    );
-    expect(DEFAULT_OFF_FLAGS).toEqual(["ghostRace"]);
+    expect([...flags].sort()).toEqual([...FEATURE_FLAGS].sort());
+    expect(DEFAULT_OFF_FLAGS).toEqual([]);
     expect(flags.has("quickMatch")).toBe(true);
     expect(flags.has("report")).toBe(true);
+    expect(flags.has("characterSelect")).toBe(true);
+    expect(flags.has("opponentDogs")).toBe(true);
+    expect(flags.has("openRooms")).toBe(true);
+    expect(flags.has("quickChat")).toBe(true);
   });
 
-  it("ghostRace is off by default, on only when listed", () => {
+  it("ghostRace is on by default, off via ?flags=none or a list without it", () => {
     expect(FEATURE_FLAGS).toContain("ghostRace");
     expect(resolveFlags("", memoryStorage(), undefined).has("ghostRace")).toBe(
-      false,
+      true,
     );
-    expect(resolveFlags("", memoryStorage(), "").has("ghostRace")).toBe(false);
+    expect(resolveFlags("", memoryStorage(), "").has("ghostRace")).toBe(true);
     expect(
-      resolveFlags("?flags=none", memoryStorage(), undefined).has("ghostRace"),
-    ).toBe(false);
-    expect(
-      resolveFlags("?flags=ghostRace", memoryStorage(), undefined).has(
+      resolveFlags("?flags=default", memoryStorage(), undefined).has(
         "ghostRace",
       ),
     ).toBe(true);
+    expect(
+      resolveFlags("?flags=none", memoryStorage(), undefined).has("ghostRace"),
+    ).toBe(false);
+    expect(resolveFlags("", memoryStorage(), "none").has("ghostRace")).toBe(
+      false,
+    );
+    expect(
+      resolveFlags("?flags=quickMatch", memoryStorage(), undefined).has(
+        "ghostRace",
+      ),
+    ).toBe(false);
     expect(
       resolveFlags("?flags=quickMatch,ghostRace", memoryStorage(), undefined),
     ).toEqual(new Set(["quickMatch", "ghostRace"]));
