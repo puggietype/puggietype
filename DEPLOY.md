@@ -36,8 +36,10 @@ Set them for **both** Production and Preview. All are optional.
 ### Turning GA4 on
 
 1. Production value: `GA4_MEASUREMENT_ID=G-B8GK1C9T6T` (GA4 property 562471846).
-   Set it in Pages > Settings > Environment variables for Production (and
-   Preview if wanted).
+   Set it in Pages > Settings > Environment variables for Production only.
+   Leave Preview empty so preview deploys never send hits to the production
+   property. In GA4 Admin, keep Google signals off, no Google Ads links, and
+   data retention at 2 months (the privacy policy relies on all three).
 2. Env vars are read at build time, so trigger a new production deployment
    (retry the latest deployment or push to the production branch).
 3. Verify on the live site: the `/` response CSP names
