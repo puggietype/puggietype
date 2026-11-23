@@ -3,3 +3,4 @@ out/
 steam/build/
 steam/*.vdf
 steam/ids.local.json
+dist-installers/
