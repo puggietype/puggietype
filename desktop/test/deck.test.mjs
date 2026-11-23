@@ -7,6 +7,7 @@ import vm from "node:vm";
 import {
   DECK_PROBE,
   DECK_SIZE,
+  deckMode,
   deckProbeProblems,
   padWalkProblems,
 } from "../src/deck.mjs";
@@ -39,6 +40,12 @@ function probe({
 describe("Steam Deck baseline (1280x800)", () => {
   it("is the Deck's screen size", () => {
     assert.deepEqual({ ...DECK_SIZE }, { width: 1280, height: 800 });
+  });
+
+  it("goes fullscreen on a Deck-sized display, else a 1280x800 window", () => {
+    assert.equal(deckMode({ width: 1280, height: 800 }), "fullscreen");
+    assert.equal(deckMode({ width: 1920, height: 1080 }), "window");
+    assert.equal(deckMode(undefined), "window");
   });
 
   it("passes a page that fits with the Gamepad API available", () => {
@@ -106,6 +113,7 @@ describe("Steam Deck baseline (1280x800)", () => {
       /const smokeDeckDir =\s+process\.env\["PUGGIE_SMOKE_TEST"\] === "1"\s+\? process\.env\["PUGGIE_SMOKE_DECK"\]/,
     );
     assert.match(src, /if \(smokeDeckDir\) deck = await runDeckSmoke\(win\);/);
+    assert.match(src, /deckMode\(screen\.getPrimaryDisplay\(\)\.size\)/);
     assert.match(
       src,
       /win\.setContentSize\(DECK_SIZE\.width, DECK_SIZE\.height\)/,

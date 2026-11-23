@@ -50,6 +50,7 @@ import {
 import {
   DECK_PROBE,
   DECK_SIZE,
+  deckMode,
   deckProbeProblems,
   padWalkProblems,
 } from "./deck.mjs";
@@ -914,9 +915,11 @@ async function runDeckSmoke(win) {
   const out = { ok: false, pages: [], shots: [] };
   try {
     fs.mkdirSync(smokeDeckDir, { recursive: true });
-    win.setFullScreen(false);
-    await sleep(1000);
-    win.setContentSize(DECK_SIZE.width, DECK_SIZE.height);
+    out.mode = deckMode(screen.getPrimaryDisplay().size);
+    win.setFullScreen(out.mode === "fullscreen");
+    await sleep(1500);
+    if (out.mode === "window")
+      win.setContentSize(DECK_SIZE.width, DECK_SIZE.height);
     out.contentSize = win.getContentSize();
     for (const [route, name] of [
       ["/", "deck-home.png"],

@@ -4,6 +4,18 @@
 // can be unit tested; main.mjs runs them with PUGGIE_SMOKE_DECK=<dir>.
 export const DECK_SIZE = Object.freeze({ width: 1280, height: 800 });
 
+/**
+ * How the smoke gets a 1280x800 viewport: on a Deck-sized display, true
+ * fullscreen (as in Steam game mode; a 1280x800 window can't fit there);
+ * on a bigger display, a window with a 1280x800 content area.
+ */
+export function deckMode(displaySize) {
+  return displaySize?.width === DECK_SIZE.width &&
+    displaySize?.height === DECK_SIZE.height
+    ? "fullscreen"
+    : "window";
+}
+
 /** Renderer probe (run with executeJavaScript); returns a plain object. */
 export const DECK_PROBE = `(() => {
   const de = document.documentElement;
