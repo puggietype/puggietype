@@ -12,7 +12,10 @@ export function GhostRaceNotice() {
       when={isFlagEnabled("ghostRace") && !isRaceActive() && getGhostHint()}
     >
       {(hint) => (
-        <div id="ghostRaceHint" class="flex items-center gap-2 text-sub-alt">
+        <div
+          id="ghostRaceHint"
+          class="flex items-center gap-2 text-sm text-sub"
+        >
           <Fa icon="fa-ghost" />
           {hint()}
         </div>
