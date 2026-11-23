@@ -14,6 +14,7 @@ import { isDevEnvironment } from "../utils/env";
 import { convertRemToPixels } from "../utils/numbers";
 import { findSingleActiveFunboxWithFunction } from "./funbox/list";
 import * as PaceCaret from "./pace-caret";
+import * as GhostCaret from "./ghost-caret";
 import {
   cancelPendingAnimationFramesStartingWith,
   requestDebouncedAnimationFrame,
@@ -457,6 +458,7 @@ function showWords(): void {
   });
   updateLayout();
   PaceCaret.resetCaretPosition();
+  GhostCaret.resetCaretPosition();
 }
 
 export function appendEmptyWordElement(index: number): void {
@@ -1018,6 +1020,7 @@ export async function scrollTape(noAnimation = false): Promise<void> {
     });
     Caret.caret?.handleTapeWordsRemoved(widthRemoved);
     PaceCaret.caret?.handleTapeWordsRemoved(widthRemoved);
+    GhostCaret.caret?.handleTapeWordsRemoved(widthRemoved);
   }
 
   /* calculate current word width to add to #words margin */
@@ -1064,6 +1067,7 @@ export async function scrollTape(noAnimation = false): Promise<void> {
 
   Caret.caret?.handleTapeScroll(caretScrollOptions);
   PaceCaret.caret?.handleTapeScroll(caretScrollOptions);
+  GhostCaret.caret?.handleTapeScroll(caretScrollOptions);
 
   if (Config.smoothLineScroll) {
     wordsEl().animate({
@@ -1151,6 +1155,7 @@ async function lineJump(currentTop: number, force = false): Promise<void> {
     };
     Caret.caret?.handleLineJump(caretLineJumpOptions);
     PaceCaret.caret?.handleLineJump(caretLineJumpOptions);
+    GhostCaret.caret?.handleLineJump(caretLineJumpOptions);
 
     if (Config.smoothLineScroll) {
       lineTransition = true;

@@ -20,6 +20,7 @@ import {
 } from "../../../controllers/sound-controller";
 import { isAuthAvailable } from "../../../firebase";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
+import { isFlagEnabled } from "../../../multiplayer/feature-flags";
 import { resetBackgroundMusic } from "../../../states/background-music";
 import { isAuthenticated } from "../../../states/core";
 import { showModal } from "../../../states/modals";
@@ -40,6 +41,7 @@ import { CustomLayoutfluid } from "./custom-setting/CustomLayoutfluid";
 import { CustomPolyglot } from "./custom-setting/CustomPolyglot";
 import { FontFamily } from "./custom-setting/FontFamily";
 import { Funbox } from "./custom-setting/Funbox";
+import { GhostRace } from "./custom-setting/GhostRace";
 import { ImportExport } from "./custom-setting/ImportExport";
 import { KeymapLayout } from "./custom-setting/KeymapLayout";
 import { KeymapSize } from "./custom-setting/KeymapSize";
@@ -247,6 +249,9 @@ export function SettingsPage(): JSXElement {
             <SearchableAutoSetting key="repeatQuotes" />
             <SearchableAutoSetting key="blindMode" />
             <SearchableAutoSetting key="alwaysShowWordsHistory" />
+            <Show when={isFlagEnabled("ghostRace")}>
+              <GhostRace />
+            </Show>
             <SearchableAutoSetting key="singleListCommandLine" />
             <MinSpeed />
             <MinAcc />

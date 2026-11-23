@@ -23,6 +23,7 @@ import {
 } from "../../../../utils/strings";
 import { Kbd } from "../../../common/Kbd";
 import { AverageNotice } from "./AverageNotice";
+import { GhostRaceNotice } from "./GhostRaceNotice";
 import { Notice } from "./Notice";
 import { PbNotice } from "./PbNotice";
 
@@ -49,6 +50,7 @@ export function TestModesNotice() {
       <PaceCaretNotice />
       <AverageNotice />
       <PbNotice />
+      <GhostRaceNotice />
       <MinSpeed />
       <MinAcc />
       <MinBurst />
