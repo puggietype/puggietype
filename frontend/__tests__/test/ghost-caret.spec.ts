@@ -11,6 +11,8 @@ const fake = vi.hoisted(() => ({
   flag: true,
   raceActive: false,
   pbEligible: true,
+  /** correct chars over the whole log (getChars without a time limit) */
+  totalChars: 300,
 }));
 
 vi.mock("../../src/ts/multiplayer/feature-flags", () => ({
@@ -24,8 +26,8 @@ vi.mock("../../src/ts/test/result-pb", () => ({
 }));
 vi.mock("../../src/ts/test/events/stats", () => ({
   // 10 correct chars per second
-  getChars: (_log: unknown, _partial: boolean, t: number) => ({
-    correctWord: t / 100,
+  getChars: (_log: unknown, _partial: boolean, t?: number) => ({
+    correctWord: t === undefined ? fake.totalChars : t / 100,
   }),
 }));
 
@@ -82,6 +84,7 @@ async function load(): Promise<typeof import("../../src/ts/test/ghost-caret")> {
     difficulty: "normal",
     lazyMode: false,
     funbox: [],
+    resultSaving: true,
   });
   return import("../../src/ts/test/ghost-caret");
 }
@@ -94,6 +97,7 @@ describe("ghost caret runtime", () => {
     fake.flag = true;
     fake.raceActive = false;
     fake.pbEligible = true;
+    fake.totalChars = 300;
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -227,6 +231,14 @@ describe("ghost caret runtime", () => {
         ghost.recordResult(result({ mode: "quote", mode2: "1" }), eventLog);
         ghost.recordResult(result({ mode: "zen", mode2: "zen" }), eventLog);
         fake.raceActive = true;
+        ghost.recordResult(result(), eventLog);
+        vi.runAllTimers();
+        expect(localStorage.getItem(GHOST_STORAGE_KEY)).toBeNull();
+      });
+
+      it("doesn't record while result saving is off", async () => {
+        const ghost = await load();
+        Config.resultSaving = false;
         ghost.recordResult(result(), eventLog);
         vi.runAllTimers();
         expect(localStorage.getItem(GHOST_STORAGE_KEY)).toBeNull();

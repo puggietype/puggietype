@@ -252,12 +252,15 @@ export function isGhostApplicable(g: GhostGate): boolean {
   );
 }
 
-/** recording: applicable, PB-eligible, and no ghost or a faster run */
+/**
+ * recording: applicable, PB-eligible, result saving on (the user hasn't
+ * opted out of keeping results), and no ghost or a faster run
+ */
 export function shouldRecordGhost(
-  g: GhostGate & { pbEligible: boolean; wpm: number },
+  g: GhostGate & { pbEligible: boolean; resultSaving: boolean; wpm: number },
   existing: GhostEntry | undefined,
 ): boolean {
-  if (!isGhostApplicable(g) || !g.pbEligible) return false;
+  if (!isGhostApplicable(g) || !g.pbEligible || !g.resultSaving) return false;
   if (!Number.isFinite(g.wpm) || g.wpm <= 0) return false;
   return existing === undefined || g.wpm > existing.wpm;
 }

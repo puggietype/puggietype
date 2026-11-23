@@ -203,6 +203,7 @@ export function recordResult(
         ...gate,
         funboxCount: result.funbox.length,
         pbEligible,
+        resultSaving: Config.resultSaving,
         wpm: result.wpm,
       },
       existing,

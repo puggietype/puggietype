@@ -317,7 +317,7 @@ describe("caps", () => {
 });
 
 describe("recording rules", () => {
-  const pb = { ...gate, pbEligible: true, wpm: 90 };
+  const pb = { ...gate, pbEligible: true, resultSaving: true, wpm: 90 };
 
   it("records the first eligible run", () => {
     expect(shouldRecordGhost(pb, undefined)).toBe(true);
@@ -341,6 +341,15 @@ describe("recording rules", () => {
       expect(shouldRecordGhost({ ...pb, mode }, undefined)).toBe(false);
     }
     expect(shouldRecordGhost({ ...pb, funboxCount: 1 }, undefined)).toBe(false);
+  });
+
+  it("skips runs while result saving is off", () => {
+    expect(shouldRecordGhost({ ...pb, resultSaving: false }, undefined)).toBe(
+      false,
+    );
+    expect(
+      shouldRecordGhost({ ...pb, resultSaving: false }, entry({ wpm: 10 })),
+    ).toBe(false);
   });
 
   it("skips multiplayer races", () => {
