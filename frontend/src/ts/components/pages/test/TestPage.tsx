@@ -7,6 +7,7 @@ import {
 } from "../../../input/input-element";
 import { initInputListeners } from "../../../input/listeners";
 import { RaceOverlay } from "../../../multiplayer/components/RaceOverlay";
+import { isFlagEnabled } from "../../../multiplayer/feature-flags";
 import { listenForModifierKeys } from "../../../states/modifiers";
 import { listenForMonkeyKeys } from "../../../states/monkey";
 import { getShowResult } from "../../../states/result";
@@ -29,6 +30,7 @@ import {
 } from "../../../states/test";
 import * as Caret from "../../../test/caret";
 import * as Funbox from "../../../test/funbox/funbox";
+import * as GhostCaret from "../../../test/ghost-caret";
 import * as PaceCaret from "../../../test/pace-caret";
 import {
   leaveTestPage,
@@ -79,6 +81,8 @@ export function TestPage(): JSXElement {
   let wordsRef: HTMLDivElement | undefined;
   let caretRef: HTMLDivElement | undefined;
   let paceCaretRef: HTMLDivElement | undefined;
+  // only rendered while the ghostRace flag is on
+  let ghostCaretRef: HTMLDivElement | undefined;
   let inputRef: HTMLTextAreaElement | undefined;
 
   onMount(() => {
@@ -111,6 +115,12 @@ export function TestPage(): JSXElement {
       { caret: new ElementWithUtils(paceCaretRef), words, wordsWrapper },
       signal,
     );
+    if (ghostCaretRef !== undefined) {
+      GhostCaret.initElement(
+        { caret: new ElementWithUtils(ghostCaretRef), words, wordsWrapper },
+        signal,
+      );
+    }
 
     initInputListeners(signal);
     TestUI.init(
@@ -253,6 +263,15 @@ export function TestPage(): JSXElement {
             class="full-width default hidden"
             style={{ "font-size": fontSize() }}
           ></div>
+          <Show when={isFlagEnabled("ghostRace")}>
+            <div
+              id="ghostCaret"
+              ref={(el) => (ghostCaretRef = el)}
+              class="full-width default hidden"
+              aria-hidden="true"
+              style={{ "font-size": fontSize() }}
+            ></div>
+          </Show>
           <div
             id="caret"
             ref={(el) => (caretRef = el)}

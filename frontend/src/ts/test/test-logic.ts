@@ -14,6 +14,7 @@ import * as CustomText from "./custom-text";
 import * as PractiseWords from "./practise-words";
 import * as Funbox from "./funbox/funbox";
 import * as PaceCaret from "./pace-caret";
+import * as GhostCaret from "./ghost-caret";
 import * as TestTimer from "./test-timer";
 import * as DB from "../db";
 import * as Replay from "../components/pages/test/result/replay";
@@ -178,6 +179,7 @@ export function startTest(now: number): boolean {
       PaceCaret.start();
     }
   } catch (e) {}
+  GhostCaret.start(now);
   //use a recursive self-adjusting timer to avoid time drift
   void TestTimer.start(now);
   TestUI.onTestStart();
@@ -208,6 +210,7 @@ function resetTestState(): void {
   Replay.pauseReplay();
   setBailedOut(false);
   PaceCaret.reset();
+  GhostCaret.reset();
   setKoreanStatus(false);
   clearQuoteStats();
   CompositionState.setComposing(false);
@@ -392,6 +395,7 @@ export async function restart(options = {} as RestartOptions): Promise<void> {
   }
 
   await PaceCaret.init();
+  GhostCaret.init();
 
   for (const fb of getActiveFunboxesWithFunction("restart")) {
     fb.functions.restart();
@@ -879,6 +883,7 @@ export async function finish(difficultyFailed = false): Promise<void> {
 
   setResultVisible(true);
   setTestActive(false);
+  GhostCaret.reset();
 
   cleanupData();
 
@@ -1037,6 +1042,9 @@ export async function finish(difficultyFailed = false): Promise<void> {
 
   // multiplayer hook: local pace history for Quick Match
   if (!dontSave) recordSoloPace(completedEvent);
+
+  // ghost race hook (ghostRace flag): local PB replay, races never get here
+  if (!dontSave) GhostCaret.recordResult(completedEvent, eventLog);
 
   // accounts hook (VITE_FEATURE_ACCOUNTS): personal best, fire and forget
   if (

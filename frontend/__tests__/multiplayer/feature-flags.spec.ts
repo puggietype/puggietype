@@ -23,12 +23,36 @@ function memoryStorage(initial: Record<string, string> = {}): MemoryStorage {
 }
 
 describe("feature flags", () => {
-  it("default: everything on incl. quickMatch and report (prod: no VITE_FLAGS, no ?flags)", () => {
+  it("default: everything but ghostRace on incl. quickMatch and report (prod: no VITE_FLAGS, no ?flags)", () => {
     const flags = resolveFlags("", memoryStorage(), undefined);
-    expect([...flags].sort()).toEqual([...FEATURE_FLAGS].sort());
-    expect(DEFAULT_OFF_FLAGS).toEqual([]);
+    expect([...flags].sort()).toEqual(
+      FEATURE_FLAGS.filter((f) => f !== "ghostRace").sort(),
+    );
+    expect(DEFAULT_OFF_FLAGS).toEqual(["ghostRace"]);
     expect(flags.has("quickMatch")).toBe(true);
     expect(flags.has("report")).toBe(true);
+  });
+
+  it("ghostRace is off by default, on only when listed", () => {
+    expect(FEATURE_FLAGS).toContain("ghostRace");
+    expect(resolveFlags("", memoryStorage(), undefined).has("ghostRace")).toBe(
+      false,
+    );
+    expect(resolveFlags("", memoryStorage(), "").has("ghostRace")).toBe(false);
+    expect(
+      resolveFlags("?flags=none", memoryStorage(), undefined).has("ghostRace"),
+    ).toBe(false);
+    expect(
+      resolveFlags("?flags=ghostRace", memoryStorage(), undefined).has(
+        "ghostRace",
+      ),
+    ).toBe(true);
+    expect(
+      resolveFlags("?flags=quickMatch,ghostRace", memoryStorage(), undefined),
+    ).toEqual(new Set(["quickMatch", "ghostRace"]));
+    expect(
+      resolveFlags("", memoryStorage(), "ghostRace").has("ghostRace"),
+    ).toBe(true);
   });
 
   it("?flags=none still turns quickMatch and report off (kill switch)", () => {
@@ -101,7 +125,7 @@ describe("feature flags", () => {
     ).toBe(false);
     expect(resolveFlags("", memoryStorage(), "none").size).toBe(0);
     expect(resolveFlags("", memoryStorage(), "").size).toBe(
-      FEATURE_FLAGS.length,
+      FEATURE_FLAGS.length - DEFAULT_OFF_FLAGS.length,
     );
   });
 
@@ -128,7 +152,7 @@ describe("feature flags", () => {
   it("?flags=default (or any unknown value) clears the override", () => {
     const storage = memoryStorage({ [FLAGS_SESSION_KEY]: "none" });
     expect(resolveFlags("?flags=default", storage, undefined).size).toBe(
-      FEATURE_FLAGS.length,
+      FEATURE_FLAGS.length - DEFAULT_OFF_FLAGS.length,
     );
     expect(storage.data.has(FLAGS_SESSION_KEY)).toBe(false);
   });

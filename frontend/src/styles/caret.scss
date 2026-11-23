@@ -18,6 +18,18 @@
   transform-origin: top left;
 }
 
+// ghost race: replay of the local pb, fainter and thinner than the pace caret
+#ghostCaret {
+  height: 1.2em;
+  width: 0.15em;
+  background: var(--text-color);
+  opacity: 0.35;
+  position: absolute;
+  border-radius: var(--roundness);
+  pointer-events: none;
+  transform-origin: top left;
+}
+
 #caret,
 #paceCaret {
   &.debug {

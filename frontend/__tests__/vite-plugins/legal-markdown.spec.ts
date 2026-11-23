@@ -314,7 +314,7 @@ describe("legal-markdown", () => {
     expect(md).not.toContain("server rejects");
     expect(md).not.toContain("no longer accepted");
     expect(md).not.toContain("separate 'Solo' board");
-    expect(md).toContain("Last updated: November 20, 2026.");
+    expect(md).toContain("Last updated: November 22, 2026.");
     const faq = readFileSync(path.join(srcDir, "faq.html"), "utf8");
     const faqAnswer =
       "Your settings stay in your browser, unless you use an optional account (ages 13+): then your settings and personal bests are also saved to your account, and only you can see them. Ranks shows solo test scores that players chose to submit: after a completed solo test, the score is sent only when you press Submit score. A score the server adds shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends. Scores from an ended period stop showing right away, and the stored rows are deleted automatically, usually within an hour. All-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
@@ -368,8 +368,29 @@ describe("legal-markdown", () => {
       `\n${STEAM_RETENTION_ROW_A}\n${ACCOUNTS_RETENTION_ROWS}\n| Player reports`,
     );
     expect(md).toContain(
-      "_Effective date: November 20, 2026. Last updated: November 20, 2026._",
+      "_Effective date: November 20, 2026. Last updated: November 22, 2026._",
     );
+  });
+
+  it("includes Legal's Ghost Race disclosure and retention row verbatim", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    const ghost =
+      'If you turn on Ghost Race, your browser also keeps a replay of your personal best for each test setup (key "puggie-ghost-race"): your speed, accuracy, the date, how long the run lasted, and a timing of how many characters you had correct — not the text you typed, and no account or device identifier. A second key ("puggie-ghost-race-enabled") remembers that the feature is on. This stays on your device only. You can delete it with "clear ghosts" in Settings, or by clearing site data.';
+    const row =
+      '| Ghost Race replay and on/off choice (localStorage "puggie-ghost-race" and "puggie-ghost-race-enabled") | in your browser only, until a faster run replaces an entry, the store reaches its size cap, you press "clear ghosts", or you clear site data |';
+    // right after the first Solo typing tests sentence
+    expect(md).toContain(
+      `## Solo typing tests\nThe solo typing test needs no account. Your settings, themes, custom text, tags and test results are stored only in your browser (localStorage). ${ghost} For Quick Match,`,
+    );
+    expect(md.split(ghost)).toHaveLength(2);
+    // right after the Solo settings and results row
+    const lines = md.split("\n");
+    const solo = lines.findIndex((l) =>
+      l.startsWith("| Solo settings and results"),
+    );
+    expect(solo).toBeGreaterThan(-1);
+    expect(lines[solo + 1]).toBe(row);
+    expect(md.split(row)).toHaveLength(2);
   });
 
   it("adds the accounts edits to Solo typing, legal bases, Cookies and Children", () => {
