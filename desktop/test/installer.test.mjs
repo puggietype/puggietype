@@ -26,8 +26,8 @@ const pkg = JSON.parse(
 );
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 
-const targets = (os) =>
-  config[os].target.map((t) => [t.target, [...t.arch].sort().join("+")]);
+const targets = (platform) =>
+  config[platform].target.map((t) => [t.target, [...t.arch].sort().join("+")]);
 
 describe("electron-builder config", () => {
   it("packages the staged app with the GPL bundle next to it", () => {
@@ -68,8 +68,8 @@ describe("electron-builder config", () => {
     assert.equal(config.publish, null);
     assert.equal(config.detectUpdateChannel, false);
     assert.equal(config.generateUpdatesFilesForAllChannels, false);
-    for (const os of ["linux", "win", "mac"])
-      assert.equal(config[os].publish, undefined, `${os}.publish`);
+    for (const platform of ["linux", "win", "mac"])
+      assert.equal(config[platform].publish, undefined, `${platform}.publish`);
     assert.equal(config.nsis.publish, undefined);
   });
 
