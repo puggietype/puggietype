@@ -47,6 +47,12 @@ import {
   windowOptionsFor,
   windowState,
 } from "./display.mjs";
+import {
+  DECK_PROBE,
+  DECK_SIZE,
+  deckProbeProblems,
+  padWalkProblems,
+} from "./deck.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // packaged (scripts/package.mjs): ../web next to src/; dev: ../../frontend/dist
@@ -116,6 +122,14 @@ const smokeSettingsDir =
 const smokeSteamUiDir =
   !app.isPackaged && process.env["PUGGIE_SMOKE_TEST"] === "1"
     ? process.env["PUGGIE_SMOKE_STEAM_UI"] || undefined
+    : undefined;
+// PUGGIE_SMOKE_TEST=1 plus PUGGIE_SMOKE_DECK=<dir>: Steam Deck baseline at
+// 1280x800 (src/deck.mjs), screenshots into <dir>. Read-only apart from the
+// screenshots, so unlike the checks above it also runs in a packaged build
+// (to smoke the installer output).
+const smokeDeckDir =
+  process.env["PUGGIE_SMOKE_TEST"] === "1"
+    ? process.env["PUGGIE_SMOKE_DECK"] || undefined
     : undefined;
 const SMOKE_OPENID = {
   "openid.ns": "http://specs.openid.net/auth/2.0",
@@ -225,8 +239,12 @@ function runSmokeTest(win) {
       if (smokeMusic) music = await runMusicSmoke(win);
       let steamUi = { ok: true };
       if (smokeSteamUiDir) steamUi = await runSteamUiSmoke(win);
-      const all = ok && settings.ok && music.ok && steamUi.ok;
-      console.log(JSON.stringify({ ok: all, ...r, settings, music, steamUi }));
+      let deck = { ok: true };
+      if (smokeDeckDir) deck = await runDeckSmoke(win);
+      const all = ok && settings.ok && music.ok && steamUi.ok && deck.ok;
+      console.log(
+        JSON.stringify({ ok: all, ...r, settings, music, steamUi, deck }),
+      );
       app.exit(all ? 0 : 1);
     } catch (e) {
       fail(String(e));
@@ -881,6 +899,51 @@ async function runSteamUiSmoke(win) {
       Math.abs(
         out.signedInLayout.buttonOffset - out.signedInLayout.regionBottom - 8,
       ) < 0.5;
+    return out;
+  } catch (e) {
+    return { ...out, reason: String(e) };
+  }
+}
+
+// Smoke only: Steam Deck baseline. At 1280x800 on / and /settings: no
+// horizontal overflow, the Gamepad API is usable, and a D-pad walk moves
+// focus onto visible controls. Not a controller UI test (see README).
+async function runDeckSmoke(win) {
+  const js = (code) => win.webContents.executeJavaScript(code);
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+  const out = { ok: false, pages: [], shots: [] };
+  try {
+    fs.mkdirSync(smokeDeckDir, { recursive: true });
+    win.setFullScreen(false);
+    await sleep(1000);
+    win.setContentSize(DECK_SIZE.width, DECK_SIZE.height);
+    out.contentSize = win.getContentSize();
+    for (const [route, name] of [
+      ["/", "deck-home.png"],
+      ["/settings", "deck-settings.png"],
+    ]) {
+      const loaded = new Promise((res) =>
+        win.webContents.once("did-finish-load", res),
+      );
+      void win.loadURL(`${APP_ORIGIN}${route}`);
+      await loaded;
+      await sleep(1500);
+      const probe = await js(DECK_PROBE);
+      const file = path.join(smokeDeckDir, name);
+      fs.writeFileSync(file, (await win.webContents.capturePage()).toPNG());
+      out.shots.push(file);
+      const pad = await padWalk(win, 15);
+      out.pages.push({
+        route,
+        probe,
+        pad: { stuck: pad.stuck, hidden: pad.hidden, distinct: pad.distinct },
+        problems: [...deckProbeProblems(probe), ...padWalkProblems(pad)],
+      });
+    }
+    out.ok =
+      out.contentSize[0] === DECK_SIZE.width &&
+      out.contentSize[1] === DECK_SIZE.height &&
+      out.pages.every((p) => p.problems.length === 0);
     return out;
   } catch (e) {
     return { ...out, reason: String(e) };
