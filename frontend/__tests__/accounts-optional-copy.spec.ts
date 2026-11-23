@@ -77,20 +77,28 @@ describe("optional accounts copy (Legal G7 condition 3)", () => {
     expect(faq.split(clause).length - 1).toBe(2);
   });
 
-  it("changed pages carry the 2026-11-20 date in JSON-LD, visible date and sitemap", () => {
+  it("changed pages carry their last-updated date in JSON-LD, visible date and sitemap", () => {
     const sitemap = read("static/sitemap.xml");
-    for (const [page, loc] of [
-      ["src/faq.html", "/faq"],
-      ["src/guide/about.html", "/guide/about"],
-      ["src/guide/modes-settings.html", "/guide/modes-settings"],
+    for (const [page, loc, iso, human] of [
+      ["src/faq.html", "/faq", "2026-11-23", "November 23, 2026"],
+      [
+        "src/guide/about.html",
+        "/guide/about",
+        "2026-11-23",
+        "November 23, 2026",
+      ],
+      [
+        "src/guide/modes-settings.html",
+        "/guide/modes-settings",
+        "2026-11-20",
+        "November 20, 2026",
+      ],
     ] as const) {
       const html = read(page);
-      expect(html).toContain('"dateModified": "2026-11-20"');
-      expect(html).toContain(
-        '<time datetime="2026-11-20">November 20, 2026</time>',
-      );
+      expect(html).toContain(`"dateModified": "${iso}"`);
+      expect(html).toContain(`<time datetime="${iso}">${human}</time>`);
       expect(sitemap).toContain(
-        `<loc>https://puggietype.com${loc}</loc>\n  <lastmod>2026-11-20</lastmod>`,
+        `<loc>https://puggietype.com${loc}</loc>\n  <lastmod>${iso}</lastmod>`,
       );
     }
   });
