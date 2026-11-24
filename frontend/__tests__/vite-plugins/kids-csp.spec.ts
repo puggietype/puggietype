@@ -243,6 +243,22 @@ describe("kids CSP rules", () => {
     }
   });
 
+  it("solo counter origin: main CSP lists https://ws.puggietype.com once, kids CSP not at all", () => {
+    for (const id of ["G-QATEST0000", undefined]) {
+      const rules = render(id);
+      const home = policies(rules, "/*")[0] ?? "";
+      const connect = directive(home, "connect-src").split(/\s+/);
+      expect(
+        connect.filter((s) => s === "https://ws.puggietype.com"),
+      ).toHaveLength(1);
+      for (const rulePath of KIDS_CSP_PATHS) {
+        const policy = policies(rules, rulePath)[0] ?? "";
+        expect(policy, rulePath).not.toContain("ws.puggietype.com");
+        expect(directive(policy, "connect-src")).toBe("connect-src 'self'");
+      }
+    }
+  });
+
   it("keeps every header line inside the Pages 2000 character limit", () => {
     const headers = renderHeaders(template, {
       ...values,

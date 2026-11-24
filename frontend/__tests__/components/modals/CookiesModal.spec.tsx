@@ -160,7 +160,9 @@ describe("CookiesModal", () => {
         ?.querySelector(".text-text")
         ?.textContent?.replace(/\s+/g, " ")
         .trim(),
-    ).toBe("Google Analytics 4. Uses cookies. Off until you accept.");
+    ).toBe(
+      "Google Analytics 4 (uses cookies, off until you accept) and an anonymous solo test count. Rejecting turns both off.",
+    );
     expect(note.querySelector("input")).toBeNull();
     expect(note.querySelector("a")?.getAttribute("href")).toBe("/privacy");
     const boxes = [
