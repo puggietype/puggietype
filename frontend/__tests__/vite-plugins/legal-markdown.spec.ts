@@ -408,6 +408,9 @@ describe("legal-markdown", () => {
       "the three anonymous daily quick-chat totals described above, the anonymous solo test totals described under Cookies, analytics and error reporting, and a note, with no details, each time a Quick Match starts.",
     );
     expect(md).toContain(
+      "| Game server logs | startup and error messages, 5-minute overall counts, the three anonymous daily quick-chat totals, the anonymous daily solo test totals and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |",
+    );
+    expect(md).toContain(
       "_Effective date: November 20, 2026. Last updated: November 24, 2026._",
     );
   });

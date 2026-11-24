@@ -133,7 +133,7 @@ Depending on where you live (for example under the EU or UK GDPR, or California'
 | Account data download (file on your device) | on your device until you delete it |
 | Abuse-limit request counters (account ID and counts) | until you delete your account, otherwise within about 3 days |
 | Player reports (report ID, room code, reason, time, hashed IP address) | 7 days, then deleted automatically |
-| Game server logs | startup and error messages, 5-minute overall counts, the three anonymous daily quick-chat totals and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |
+| Game server logs | startup and error messages, 5-minute overall counts, the three anonymous daily quick-chat totals, the anonymous daily solo test totals and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |
 | Cloudflare and Fly.io operational data, and Cloudflare's aggregate traffic statistics (totals only) | as described in each provider's own privacy policy |
 | Google Analytics 4 event data | per our GA4 property retention setting (we use the shortest available that still supports a 30-day traffic review, then auto-expire); deleted from our property when retention elapses or if we remove GA4 |
 | Google Analytics 4 cookies (`_ga`, `_ga_<ID>`) | Set only after you accept; tell browsers and visits apart; up to 13 months after your last visit with analytics on. Withdraw in Privacy and cookie settings (analytics off); we delete them, or clear cookies in your browser. |
