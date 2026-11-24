@@ -136,7 +136,7 @@ describe("test_completed params", () => {
       test_mode: "time",
       test_length: "30",
       wpm_bucket: "60-79",
-      language: "english",
+      test_language: "english",
     });
     expect(
       testCompletedParams({
@@ -149,7 +149,7 @@ describe("test_completed params", () => {
       test_mode: "words",
       test_length: "50",
       wpm_bucket: "40-59",
-      language: "english_1k",
+      test_language: "english_1k",
     });
     expect(
       testCompletedParams({
@@ -163,7 +163,7 @@ describe("test_completed params", () => {
       test_mode: "quote",
       test_length: "medium",
       wpm_bucket: "100-119",
-      language: "english",
+      test_language: "english",
     });
     for (const mode of ["zen", "custom"]) {
       expect(
@@ -177,7 +177,7 @@ describe("test_completed params", () => {
         test_mode: mode,
         test_length: "custom",
         wpm_bucket: "0-19",
-        language: "english",
+        test_language: "english",
       });
     }
   });
@@ -192,7 +192,7 @@ describe("test_completed params", () => {
     ]) {
       const params = testCompletedParams({ ...TIME_30, language });
       expect(params).not.toBeNull();
-      expect(params).not.toHaveProperty("language");
+      expect(params).not.toHaveProperty("test_language");
     }
   });
 
@@ -237,7 +237,7 @@ describe("sendTestCompleted consent gate", () => {
         test_mode: "time",
         test_length: "30",
         wpm_bucket: "60-79",
-        language: "english",
+        test_language: "english",
         send_to: id,
       },
     ]);
@@ -260,8 +260,8 @@ describe("sendTestCompleted consent gate", () => {
     ga.sendTestCompleted(full, true);
     const [params] = completions();
     expect(Object.keys(params ?? {}).sort()).toStrictEqual([
-      "language",
       "send_to",
+      "test_language",
       "test_length",
       "test_mode",
       "wpm_bucket",

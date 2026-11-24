@@ -40,7 +40,8 @@ export type TestCompletedParams = {
   test_mode: TestCompletedMode;
   test_length: string;
   wpm_bucket: string;
-  language?: string;
+  /** Not `language`: GA4 treats that name as reserved and drops it from /g/collect. */
+  test_language?: string;
 };
 
 function isTestCompletedMode(mode: string): mode is TestCompletedMode {
@@ -84,7 +85,7 @@ export function testCompletedParams(
     wpm_bucket: bucket,
   };
   const language = LanguageSchema.safeParse(result.language);
-  if (language.success) params.language = language.data;
+  if (language.success) params.test_language = language.data;
   return params;
 }
 
