@@ -13,7 +13,10 @@ const GOOGLE_HOST =
   /(?:^|\.)(?:google|googleapis|gstatic|google-analytics|googletagmanager|googletagservices|doubleclick|googlesyndication|googleadservices)\.[a-z.]+$/i;
 const ADS_URL = /doubleclick|googlesyndication|googleadservices|adservice/i;
 
-/** Stands in for gtag.js. Sets `_ga` cookies and beacons a fake collect per event. */
+/**
+ * Stands in for gtag.js. Sets `_ga` cookies and beacons a fake collect per
+ * event, with `dl` from the event's page_location (never the browser URL).
+ */
 const FAKE_GTAG = `(function () {
   var w = window;
   w.__fakeGtagLoads = (w.__fakeGtagLoads || 0) + 1;
@@ -22,9 +25,13 @@ const FAKE_GTAG = `(function () {
   document.cookie = "_ga_" + id.slice(2) + "=GS1.1.1; path=/; max-age=3600";
   function handle(args) {
     if (!args || args[0] !== "event") return;
+    var params = args[2];
+    var loc = params && typeof params.page_location === "string"
+      ? "&dl=" + encodeURIComponent(params.page_location)
+      : "";
     navigator.sendBeacon(
       "https://www.google-analytics.com/g/collect?v=2&tid=" + id + "&en=" +
-        encodeURIComponent(String(args[1])),
+        encodeURIComponent(String(args[1])) + loc,
     );
   }
   var dl = (w.dataLayer = w.dataLayer || []);
@@ -303,4 +310,55 @@ test("withdrawal through the footer stops GA for route changes and reloads", asy
   expect(await gtmScripts(page)).toBe(0);
   expect(pageViews(await dataLayer(page))).toBe(0);
   expect(await gaCookies(context)).toEqual([]);
+});
+
+test("landing UTM tags reach collect dl in order, tokens and hash do not", async ({
+  page,
+  context,
+}) => {
+  const google = await fenceGoogle(context);
+  await seedAnalyticsAccept(page);
+
+  await page.goto(
+    "/?UTM_SOURCE=YouTube&utm_medium=shorts&utm_campaign=video-name&utm_content=desc-1&utm_term=kw&access_token=sekret&email=ada@example.com#access_token=discord-token",
+  );
+  await page.locator("#words .word").first().waitFor({ timeout: 60_000 });
+  const origin = new URL(page.url()).origin;
+  const views = (): URL[] =>
+    google
+      .map((url) => new URL(url))
+      .filter(
+        (url) =>
+          url.pathname === "/g/collect" &&
+          url.searchParams.get("en") === "page_view",
+      );
+  await expect.poll(() => views().length).toBe(1);
+
+  const landing = views()[0];
+  expect(landing?.searchParams.get("dl")).toBe(
+    `${origin}/?utm_source=youtube&utm_medium=shorts&utm_campaign=video-name&utm_content=desc-1`,
+  );
+  const leaks = [
+    "access_token",
+    "sekret",
+    "ada@example.com",
+    "ada%40example.com",
+    "discord-token",
+    "utm_term",
+    "YouTube",
+  ];
+  for (const url of google) {
+    for (const leak of leaks) expect(url).not.toContain(leak);
+  }
+
+  // an early click can land before the router listens; retry until it routes
+  await expect(async () => {
+    await page.locator('[data-nav-item="settings"]').click();
+    await expect(page).toHaveURL(/\/settings$/, { timeout: 2000 });
+  }).toPass({ timeout: 30_000 });
+  await expect.poll(() => views().length).toBe(2);
+  expect(views()[1]?.searchParams.get("dl")).toBe(`${origin}/settings`);
+  for (const url of google) {
+    for (const leak of leaks) expect(url).not.toContain(leak);
+  }
 });

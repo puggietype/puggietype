@@ -366,6 +366,8 @@ async function bundleGa4Harness(): Promise<string> {
 }
 export function analyticsLoadAllowed(): boolean { return true; }
 export function noteKidsFlowVisit(): boolean { return false; }
+export function kidsAnalyticsExcluded(): boolean { return false; }
+export function readKidsFlow(): boolean { return false; }
 let record: { analytics: boolean; doNotSellOrShare: boolean } = {
   analytics: true,
   doNotSellOrShare: false,
@@ -660,6 +662,113 @@ test("em-on popstate stub sends one page_view on Back and Forward", async ({
     for (const hit of hits.filter((row) => row.en === "page_view")) {
       expect(hit.gcs, hit.dl).toBe("G101");
       expect(hit.npa, hit.dl).toBe("1");
+    }
+  } finally {
+    served.close();
+  }
+});
+
+test("landing UTM: only allowlisted tags reach Google, route change drops them", async ({
+  page,
+}) => {
+  const harness = await bundleGa4Harness();
+  const landing =
+    "/?utm_source=youtube&utm_medium=video&gclid=TESTGCLID&fbclid=x&email=ada@example.com&token=sekret#access_token=y";
+  const hits: Hit[] = [];
+  const googleTexts: string[] = [];
+  let servedFixture = false;
+  await page.route("**/*", async (route) => {
+    const url = route.request().url();
+    if (isAllowedGtagScript(url)) {
+      servedFixture = true;
+      googleTexts.push(url);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/javascript",
+        body: loadedGtag().bytes,
+      });
+      return;
+    }
+    if (isGtagJsPath(url)) {
+      googleTexts.push(url);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/javascript",
+        body: "",
+      });
+      return;
+    }
+    if (isGoogle(url)) {
+      googleTexts.push(url);
+      const body = route.request().postData();
+      if (body !== null && body !== undefined && body !== "") {
+        googleTexts.push(body);
+      }
+      hits.push(...hitsFrom(route.request()));
+      await route.fulfill({
+        status: 204,
+        headers: { "access-control-allow-origin": "*" },
+        body: "",
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  const served = await serveHarness(harness, landing);
+  const origin = new URL(served.url).origin;
+  const landingDl = `${origin}/?utm_source=youtube&utm_medium=video`;
+  try {
+    await page.goto(served.url, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(7000);
+    expect(servedFixture).toBe(true);
+    const landingViews = hits.filter((hit) => hit.en === "page_view");
+    expect(landingViews.map((hit) => hit.dl)).toEqual([landingDl]);
+
+    await page.evaluate(() => {
+      history.pushState({}, "", `/about${location.search}`);
+      (
+        window as unknown as { PtGa4: { onSpaRouteChange: () => void } }
+      ).PtGa4.onSpaRouteChange();
+    });
+    expect(new URL(page.url()).search).toContain("utm_source=youtube");
+    await page.waitForTimeout(6000);
+    const views = hits.filter((hit) => hit.en === "page_view");
+    expect(views.map((hit) => hit.dl)).toEqual([landingDl, `${origin}/about`]);
+
+    for (const hit of hits) {
+      expect(hit.gcs, hit.en).toBe("G101");
+      expect(hit.npa, hit.en).toBe("1");
+      expect(hit.dr, hit.en).not.toMatch(/[?#]/);
+      if (hit.dl !== landingDl) {
+        expect(hit.dl, hit.en).not.toMatch(/[?#]/);
+      }
+    }
+
+    expect(googleTexts.length).toBeGreaterThan(1);
+    const forbidden = [
+      "gclid",
+      "testgclid",
+      "fbclid",
+      "ada@example.com",
+      "ada%40example.com",
+      "sekret",
+      "access_token",
+    ];
+    for (const raw of googleTexts) {
+      const decoded = decodeUrlText(decodeUrlText(raw));
+      for (const text of [raw.toLowerCase(), decoded.toLowerCase()]) {
+        for (const needle of forbidden) {
+          expect(text, needle).not.toContain(needle);
+        }
+        const utm = text.match(/utm_[a-z]+=[^&\s#]*/g) ?? [];
+        for (const pair of utm) {
+          expect(["utm_source=youtube", "utm_medium=video"], raw).toContain(
+            pair,
+          );
+        }
+        expect(text, raw).not.toMatch(/[?&]email=|[?&]token=/);
+      }
     }
   } finally {
     served.close();

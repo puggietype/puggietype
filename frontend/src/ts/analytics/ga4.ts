@@ -4,8 +4,10 @@ import { loadAds } from "../ads/excluded-paths";
 import {
   analyticsLoadAllowed,
   isGa4MeasurementId,
+  kidsAnalyticsExcluded,
   noteKidsFlowVisit,
   readConsentRecord,
+  readKidsFlow,
   setGaWithdrawalHooks,
 } from "./consent";
 
@@ -512,12 +514,74 @@ function redactAnalyticsPath(pathname: string): string {
   return "/404";
 }
 
-/** Path only. Query and hash can carry tokens (email, reset, Discord access_token). */
+/** Campaign tags we forward, in this order. Nothing else in the query is sent. */
+const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content"];
+const UTM_VALUE = /^[a-z0-9_-]{1,40}$/;
+/** Phone-like digit runs and hex ids/tokens pass UTM_VALUE but are dropped. */
+const UTM_VALUE_REJECT = [/^\d{7,}$/, /^[0-9a-f]{20,}$/];
+
+/**
+ * `?utm_source=...` built from the allowlisted keys only, or "". Keys match
+ * case-insensitively; a repeated key is dropped. Values are lowercased and
+ * must be a plain word, so an email, URL, or token never passes; long digit
+ * runs and long hex strings are dropped too. Kids paths
+ * get nothing.
+ */
+export function allowedUtmQuery(search: string, pathname: string): string {
+  if (kidsAnalyticsExcluded({ pathname })) return "";
+  const seen = new Map<string, string | null>();
+  for (const [rawKey, rawValue] of new URLSearchParams(search)) {
+    const key = rawKey.toLowerCase();
+    if (!UTM_KEYS.includes(key)) continue;
+    seen.set(key, seen.has(key) ? null : rawValue.toLowerCase());
+  }
+  const kept: string[] = [];
+  for (const key of UTM_KEYS) {
+    const value = seen.get(key);
+    if (
+      typeof value === "string" &&
+      UTM_VALUE.test(value) &&
+      !UTM_VALUE_REJECT.some((reject) => reject.test(value))
+    ) {
+      kept.push(`${key}=${value}`);
+    }
+  }
+  return kept.length === 0 ? "" : `?${kept.join("&")}`;
+}
+
+function sessionKidsFlow(): boolean {
+  try {
+    return readKidsFlow(sessionStorage);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Campaign tags ride only on the landing page_view of this JS session (and
+ * the set/config queued just before it). GA4 takes session attribution from
+ * that first hit, so later route changes send the path alone.
+ */
+function landingUtmQuery(): string {
+  if (lastSentPath !== null) return "";
+  const excluded = kidsAnalyticsExcluded({
+    pathname: location.pathname,
+    referrer: document.referrer,
+    kidsFlow: sessionKidsFlow(),
+  });
+  if (excluded) return "";
+  return allowedUtmQuery(location.search, location.pathname);
+}
+
+/**
+ * Path only, plus allowlisted campaign tags on the landing hit. The rest of
+ * the query and the hash can carry tokens (email, reset, Discord access_token).
+ */
 function cleanPage(): { page_path: string; page_location: string } {
   const pagePath = redactAnalyticsPath(location.pathname);
   return {
     page_path: pagePath,
-    page_location: `${location.origin}${pagePath}`,
+    page_location: `${location.origin}${pagePath}${landingUtmQuery()}`,
   };
 }
 
