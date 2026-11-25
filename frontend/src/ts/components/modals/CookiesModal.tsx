@@ -490,7 +490,7 @@ function ConsentDetails(props: {
       />
       <SettingsSection
         title="analytics"
-        description="Google Analytics 4. Uses cookies. Off until you accept."
+        description="Google Analytics 4 (uses cookies, off until you accept) and an anonymous solo test count. Rejecting turns both off."
         checked={props.accepted.analytics}
         onChange={(checked) => {
           props.setAccepted({ ...props.accepted, analytics: checked });

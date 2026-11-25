@@ -61,6 +61,11 @@ export function isGhostRaceEnabled(): boolean {
   return isToggleOn();
 }
 
+/** whether this test is a ghost race (flag, toggle, solo time/words, no funbox) */
+export function isGhostRaceApplicable(): boolean {
+  return isGhostApplicable(currentGate());
+}
+
 export function setGhostRaceEnabled(on: boolean): void {
   if (!isFlagEnabled("ghostRace")) return;
   writeGhostToggle(storage(), on);

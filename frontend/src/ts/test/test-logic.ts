@@ -159,6 +159,7 @@ import {
   isRaceRestartLocked,
 } from "../multiplayer/engine-hooks";
 import { recordSoloPace } from "../multiplayer/recent-pace";
+import { sendSoloCompleted } from "../analytics/solo-completed";
 import { getAccountUser } from "../accounts/state";
 
 let failReason = "";
@@ -1044,6 +1045,8 @@ export async function finish(difficultyFailed = false): Promise<void> {
   // fail checks only. The logged-out branch below sets dontSave for guests
   // too, and a valid guest test still counts as a completion.
   const validResult = !dontSave;
+  // solo counter: snapshot before the logged-out branch sets dontSave
+  const soloCountable = !dontSave;
 
   // multiplayer hook: local pace history for Quick Match
   if (!dontSave) recordSoloPace(completedEvent);
@@ -1157,6 +1160,16 @@ export async function finish(difficultyFailed = false): Promise<void> {
   // analytics hook: consent-gated test_completed, never throws. Races returned
   // above. A ghost race is a solo test with a local PB overlay, so it counts.
   sendTestCompleted(completedEvent, validResult);
+
+  // anonymous solo counter: fire and forget, races returned early above
+  sendSoloCompleted({
+    mode: completedEvent.mode,
+    mode2: completedEvent.mode2,
+    quoteGroup: getCurrentQuote()?.group,
+    valid: soloCountable,
+    bailedOut: completedEvent.bailedOut,
+    ghostApplicable: GhostCaret.isGhostRaceApplicable(),
+  });
 
   const resultUpdatePromise = showResult(completedEvent, dontSave, {
     difficultyFailed,

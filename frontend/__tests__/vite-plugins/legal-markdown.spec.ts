@@ -393,6 +393,28 @@ describe("legal-markdown", () => {
     expect(md.split(row)).toHaveLength(2);
   });
 
+  it("includes Legal's solo test counter paragraph and Logs sentence verbatim (2026-11-24)", () => {
+    const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
+    const counter =
+      "**Solo test counter.** When you finish a solo typing test, your browser sends our game server the test mode and length (for example, \"time, 30\"). It sends no cookie, ID, nickname, score or text, and nothing is stored on your device for it. The server only adds one to an anonymous running total for that mode and length, and the totals appear in its daily usage log. It doesn't keep a record of individual tests. To limit abuse, it holds your IP address in memory for about a minute, without logging or storing it. The counter doesn't run if you reject analytics, or in a tab that's on a kids guide or has visited one. Our hosting providers' own technical logs are described below.";
+    expect(md.split(counter)).toHaveLength(2);
+    // right after the Google Analytics 4 paragraph
+    const lines = md.split("\n");
+    const ga = lines.findIndex((l) => l.startsWith("**Google Analytics 4.**"));
+    expect(ga).toBeGreaterThan(-1);
+    expect(lines[ga + 1]).toBe("");
+    expect(lines[ga + 2]).toBe(counter);
+    expect(md).toContain(
+      "the three anonymous daily quick-chat totals described above, the anonymous solo test totals described under Cookies, analytics and error reporting, and a note, with no details, each time a Quick Match starts.",
+    );
+    expect(md).toContain(
+      "| Game server logs | startup and error messages, 5-minute overall counts, the three anonymous daily quick-chat totals, the anonymous daily solo test totals and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |",
+    );
+    expect(md).toContain(
+      "_Effective date: November 20, 2026. Last updated: November 24, 2026._",
+    );
+  });
+
   it("adds the accounts edits to Solo typing, legal bases, Cookies and Children", () => {
     const md = readFileSync(path.join(legalDir, "privacy.md"), "utf-8");
     const section = (h2: string): string => {
