@@ -314,7 +314,7 @@ describe("legal-markdown", () => {
     expect(md).not.toContain("server rejects");
     expect(md).not.toContain("no longer accepted");
     expect(md).not.toContain("separate 'Solo' board");
-    expect(md).toContain("Last updated: November 24, 2026.");
+    expect(md).toContain("Last updated: November 25, 2026.");
     const faq = readFileSync(path.join(srcDir, "faq.html"), "utf8");
     const faqAnswer =
       "Your settings stay in your browser, unless you use an optional account (ages 13+): then your settings and personal bests are also saved to your account, and only you can see them. Ranks shows solo test scores that players chose to submit: after a completed solo test, the score is sent only when you press Submit score. A score the server adds shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends. Scores from an ended period stop showing right away, and the stored rows are deleted automatically, usually within an hour. All-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
@@ -368,7 +368,7 @@ describe("legal-markdown", () => {
       `\n${STEAM_RETENTION_ROW_A}\n${ACCOUNTS_RETENTION_ROWS}\n| Player reports`,
     );
     expect(md).toContain(
-      "_Effective date: November 20, 2026. Last updated: November 24, 2026._",
+      "_Effective date: November 20, 2026. Last updated: November 25, 2026._",
     );
   });
 
@@ -411,7 +411,7 @@ describe("legal-markdown", () => {
       "| Game server logs | startup and error messages, 5-minute overall counts, the three anonymous daily quick-chat totals, the anonymous daily solo test totals and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |",
     );
     expect(md).toContain(
-      "_Effective date: November 20, 2026. Last updated: November 24, 2026._",
+      "_Effective date: November 20, 2026. Last updated: November 25, 2026._",
     );
   });
 

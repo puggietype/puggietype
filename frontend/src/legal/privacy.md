@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Effective date: November 20, 2026. Last updated: November 24, 2026._
+_Effective date: November 20, 2026. Last updated: November 25, 2026._
 
 ## Who we are
 PuggieType (puggietype.com) is responsible for the personal data described in this policy. For any privacy question or request, email privacy@puggietype.com.
