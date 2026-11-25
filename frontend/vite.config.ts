@@ -14,7 +14,7 @@ import { Fonts } from "./src/ts/constants/fonts";
 import { fontawesomeSubset } from "./vite-plugins/fontawesome-subset";
 import { fontPreview } from "./vite-plugins/font-preview";
 import { envConfig } from "./vite-plugins/env-config";
-import { resolvePlatform } from "./vite-plugins/platform";
+import { resolvePlatform, type BuildPlatform } from "./vite-plugins/platform";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
@@ -37,6 +37,11 @@ import { notFoundPage } from "./vite-plugins/not-found-page";
 import { legalMarkdown } from "./vite-plugins/legal-markdown";
 import { KEEP_COMMENTS } from "./vite-plugins/email-off";
 import { staticConsentScript } from "./vite-plugins/static-consent-script";
+import {
+  isGithubSponsorsEnabled,
+  isKofiEnabled,
+  supportLinks,
+} from "./vite-plugins/support-links";
 import {
   getCommitHash,
   getSourceLinks,
@@ -112,9 +117,11 @@ function sassList(values) {
 function getPlugins({
   isDevelopment,
   env,
+  platform,
 }: {
   isDevelopment: boolean;
   env: Record<string, string>;
+  platform: BuildPlatform;
 }): PluginOption[] {
   const clientVersion = getClientVersion(isDevelopment);
   const sourceLinks = getSourceLinks({
@@ -129,6 +136,12 @@ function getPlugins({
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
     staticConsentScript(),
+    // Ko-fi / GitHub Sponsors footer link and About section (static pages)
+    supportLinks({
+      kofi: isKofiEnabled(env),
+      githubSponsors: isGithubSponsorsEnabled(env),
+      platform,
+    }),
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     // PLATFORM from the build script shell only, never .env (see 432d097)
     steamAssetClearance({ platform: resolvePlatform(process.env) }),
@@ -498,12 +511,14 @@ export default defineConfig(({ mode }): UserConfig => {
             }),
           ]
         : []),
-      ...getPlugins({ isDevelopment, env }),
+      ...getPlugins({ isDevelopment, env, platform }),
     ],
     define: {
       __STANDALONE__: JSON.stringify(standalone),
       __PLATFORM__: JSON.stringify(platform),
       __FEATURE_ACCOUNTS__: JSON.stringify(isAccountsEnabled(env)),
+      __FEATURE_KOFI__: JSON.stringify(isKofiEnabled(env)),
+      __FEATURE_GITHUB_SPONSORS__: JSON.stringify(isGithubSponsorsEnabled(env)),
     },
     resolve: {
       alias: standalone

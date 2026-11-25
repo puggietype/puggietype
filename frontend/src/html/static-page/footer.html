@@ -1,4 +1,5 @@
 <!-- shared footer of the static pages (guides, faq, contact, legal) -->
+<!-- support-* blocks: kept or stripped by vite-plugins/support-links.ts -->
 <footer class="siteFooter">
   <nav aria-label="site">
     <a href="/">Home</a>
@@ -18,6 +19,11 @@
     <a href="/guide/typing-test-math">Typing test math</a>
     <a href="/contact">Contact</a>
     <a href="/creators">Creators</a>
+    <!-- support-footer:start -->
+    <a href="/guide/about#support" data-testid="support-footer-link">
+      Support PuggieType
+    </a>
+    <!-- support-footer:end -->
     <a href="/privacy">Privacy</a>
     <button type="button" class="consentSettings" data-consent-settings>
       Privacy and cookie settings

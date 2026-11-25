@@ -6,6 +6,7 @@ import { H2, H3 } from "../common/Headers";
 import { PugHead } from "../common/PugHead";
 import { CommandlineHotkey } from "../hotkeys/CommandlineHotkey";
 import { QuickRestartHotkey } from "../hotkeys/QuickRestartHotkey";
+import { SupportSection } from "./about/SupportSection";
 
 export function AboutPage(): JSXElement {
   return (
@@ -107,6 +108,16 @@ export function AboutPage(): JSXElement {
           />
         </div>
       </section>
+      {
+        // flagged tip section; none on steam (this page is the only About
+        // there). Inline defines so flags-off and Steam builds can
+        // tree-shake SupportSection and the tip URLs out of this chunk.
+        // oxlint-disable-next-line solid/prefer-show -- build-time flags, not reactive
+        (__FEATURE_KOFI__ || __FEATURE_GITHUB_SPONSORS__) &&
+        !(typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam") ? (
+          <SupportSection />
+        ) : null
+      }
       <div></div>
       <section>
         <H2 fa={{ icon: "fa-users" }} text="credits" />

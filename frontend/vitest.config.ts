@@ -9,9 +9,13 @@ const plugins = [
   solidPlugin({ hot: false }),
 ];
 
-// build-time defines from vite.config.ts; accounts tests flip this with
-// vi.stubGlobal("__FEATURE_ACCOUNTS__", true)
-const define = { __FEATURE_ACCOUNTS__: "globalThis.__FEATURE_ACCOUNTS__" };
+// build-time defines from vite.config.ts; tests flip them with
+// vi.stubGlobal("__FEATURE_ACCOUNTS__", true). Unset means off.
+const define = {
+  __FEATURE_ACCOUNTS__: "globalThis.__FEATURE_ACCOUNTS__",
+  __FEATURE_KOFI__: "globalThis.__FEATURE_KOFI__",
+  __FEATURE_GITHUB_SPONSORS__: "globalThis.__FEATURE_GITHUB_SPONSORS__",
+};
 
 const tanstackSolidNoExternal: (string | RegExp)[] = [
   "@solidjs/meta",

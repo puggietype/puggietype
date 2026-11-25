@@ -1,7 +1,7 @@
 import { Plugin } from "vite";
 
 /** Kids guide HTML must not reference the analytics boot or GA4 chunks. */
-const KIDS_HTML = ["typing-for-kids.html", "teaching-kids-to-type.html"];
+export const KIDS_HTML = ["typing-for-kids.html", "teaching-kids-to-type.html"];
 
 export const STATIC_CONSENT_SCRIPT =
   '<script type="module" src="/ts/analytics/static-boot.ts"></script>';
