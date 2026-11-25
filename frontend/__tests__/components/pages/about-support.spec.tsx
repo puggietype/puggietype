@@ -14,7 +14,7 @@ vi.mock("../../../src/ts/components/hotkeys/QuickRestartHotkey", () => ({
 import { AboutPage } from "../../../src/ts/components/pages/AboutPage";
 
 const INTRO =
-  "PuggieType is a free typing test, made by a small team in our spare time. If you enjoy it and want to help with server and hosting costs, you can leave an optional tip on";
+  "PuggieType is a free typing test, made by a small team in our spare time. If you enjoy it and want to help keep it running, you can leave an optional tip on";
 const DISCLAIMER =
   "Tips are voluntary gifts to the PuggieType team. PuggieType is not a charity or nonprofit, and tips aren't tax-deductible as charitable donations. Tips don't unlock any features, perks or rewards. Tips go to the PuggieType team only, not to the Monkeytype project. Please ask a parent or guardian before tipping if you're under 18. Questions or a mistaken tip? Email support@puggietype.com.";
 const KOFI = ["Leave a tip on Ko-fi", "https://ko-fi.com/puggietype"];

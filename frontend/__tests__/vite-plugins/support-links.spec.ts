@@ -185,7 +185,7 @@ describe("support links: flags on, web", () => {
         expect(link[0]?.href).toBe("/guide/about#support");
         expect(link[0]?.tag).not.toContain("target=");
         expect(out).toMatch(
-          /<a href="\/guide\/about#support" data-testid="support-footer-link">Support PuggieType<\/a>/,
+          /<a href="\/guide\/about#support" data-testid="support-footer-link">\s*Support PuggieType\s*<\/a>/,
         );
         expect(out).not.toMatch(/<!-- support-[\w-]+:(?:start|end) -->/);
       }

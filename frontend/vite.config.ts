@@ -14,7 +14,7 @@ import { Fonts } from "./src/ts/constants/fonts";
 import { fontawesomeSubset } from "./vite-plugins/fontawesome-subset";
 import { fontPreview } from "./vite-plugins/font-preview";
 import { envConfig } from "./vite-plugins/env-config";
-import { resolvePlatform } from "./vite-plugins/platform";
+import { resolvePlatform, type BuildPlatform } from "./vite-plugins/platform";
 import { languageHashes } from "./vite-plugins/language-hashes";
 import { minifyJson } from "./vite-plugins/minify-json";
 import { pagesHeaders } from "./vite-plugins/pages-headers";
@@ -117,9 +117,11 @@ function sassList(values) {
 function getPlugins({
   isDevelopment,
   env,
+  platform,
 }: {
   isDevelopment: boolean;
   env: Record<string, string>;
+  platform: BuildPlatform;
 }): PluginOption[] {
   const clientVersion = getClientVersion(isDevelopment);
   const sourceLinks = getSourceLinks({
@@ -138,7 +140,7 @@ function getPlugins({
     supportLinks({
       kofi: isKofiEnabled(env),
       githubSponsors: isGithubSponsorsEnabled(env),
-      platform: resolvePlatform(process.env),
+      platform,
     }),
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     // PLATFORM from the build script shell only, never .env (see 432d097)
@@ -509,7 +511,7 @@ export default defineConfig(({ mode }): UserConfig => {
             }),
           ]
         : []),
-      ...getPlugins({ isDevelopment, env }),
+      ...getPlugins({ isDevelopment, env, platform }),
     ],
     define: {
       __STANDALONE__: JSON.stringify(standalone),

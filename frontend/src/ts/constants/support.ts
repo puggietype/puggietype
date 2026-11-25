@@ -47,7 +47,7 @@ export const TIP_LINKS: Record<TipPlatform, TipLink> = {
 };
 
 const INTRO_START =
-  "PuggieType is a free typing test, made by a small team in our spare time. If you enjoy it and want to help with server and hosting costs, you can leave an optional tip on";
+  "PuggieType is a free typing test, made by a small team in our spare time. If you enjoy it and want to help keep it running, you can leave an optional tip on";
 
 export const SUPPORT_DISCLAIMER_BEFORE_EMAIL =
   "Tips are voluntary gifts to the PuggieType team. PuggieType is not a charity or nonprofit, and tips aren't tax-deductible as charitable donations. Tips don't unlock any features, perks or rewards. Tips go to the PuggieType team only, not to the Monkeytype project. Please ask a parent or guardian before tipping if you're under 18. Questions or a mistaken tip? Email";
@@ -75,7 +75,7 @@ export function isKidsPath(pathOrFile: string): boolean {
     .replace(/\/+$/, "")
     .split("/")
     .pop();
-  return KIDS_SLUGS.includes((last ?? "").replace(/\.html$/, ""));
+  return KIDS_SLUGS.includes((last ?? "").replace(/\.html$/, "").toLowerCase());
 }
 
 export type SupportContext = {

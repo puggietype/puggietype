@@ -140,6 +140,13 @@ describe("isKidsPath", () => {
     for (const file of KIDS_HTML) expect(isKidsPath(file), file).toBe(true);
     expect(KIDS_HTML).toHaveLength(2);
   });
+
+  it("matches kids slugs case-insensitively", () => {
+    expect(isKidsPath("/guide/Teaching-Kids-To-Type")).toBe(true);
+    expect(isKidsPath("/guide/TYPING-FOR-KIDS/")).toBe(true);
+    expect(isKidsPath("guide/Typing-For-Kids.html")).toBe(true);
+    expect(isKidsPath("/GUIDE/about")).toBe(false);
+  });
 });
 
 describe("visibility", () => {
@@ -186,7 +193,7 @@ describe("visibility", () => {
 
 describe("support copy", () => {
   const START =
-    "PuggieType is a free typing test, made by a small team in our spare time. If you enjoy it and want to help with server and hosting costs, you can leave an optional tip on";
+    "PuggieType is a free typing test, made by a small team in our spare time. If you enjoy it and want to help keep it running, you can leave an optional tip on";
 
   it("intro names only the links shown", () => {
     expect(supportIntro([TIP_LINKS.kofi])).toBe(`${START} Ko-fi.`);
