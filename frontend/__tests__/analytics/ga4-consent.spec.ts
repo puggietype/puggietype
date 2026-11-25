@@ -1324,7 +1324,7 @@ describe("sanitized single page view", () => {
       get: () => `${location.origin}/r%2FQAEDGE4`,
     });
     try {
-      show("/profile%2Fx?utm_source=qa");
+      show("/profile%2Fx?token=qa");
       const ga = await freshGa();
       ga.loadGa4(id);
       const layer = dataLayer();
@@ -1383,6 +1383,272 @@ describe("sanitized single page view", () => {
     expect(
       views.map((entry) => (entry[2] as { page_path?: string }).page_path),
     ).toEqual(["/faq", "/guide/", "/privacy"]);
+  });
+
+  describe("landing UTM tags", () => {
+    const UTM_ALL =
+      "utm_source=youtube&utm_medium=shorts&utm_campaign=video-name&utm_content=desc-1";
+
+    function pagePayloads(layer: unknown[]): Record<string, unknown>[] {
+      return layer
+        .filter(
+          (entry): entry is IArguments =>
+            isCommand(entry, "config") ||
+            isCommand(entry, "event") ||
+            isCommand(entry, "set"),
+        )
+        .map((entry) => commandPayload(entry))
+        .filter((fields): fields is Record<string, unknown> => {
+          return fields?.["page_location"] !== undefined;
+        });
+    }
+
+    function landingLocation(path: string): string | undefined {
+      const view = pageViews(dataLayer())[0]?.[2] as {
+        page_location?: string;
+      };
+      expect(view.page_location?.startsWith(`${location.origin}${path}`)).toBe(
+        true,
+      );
+      return view.page_location;
+    }
+
+    it("keeps the four allowlisted tags in fixed order on the first load", async () => {
+      show(
+        `/?utm_content=desc-1&utm_campaign=video-name&utm_medium=shorts&utm_source=youtube`,
+      );
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      const layer = dataLayer();
+      const expected = `${location.origin}/?${UTM_ALL}`;
+      const views = pageViews(layer);
+      expect(views).toHaveLength(1);
+      expect(views[0]?.[2]).toMatchObject({
+        page_path: "/",
+        page_location: expected,
+      });
+      const config = layer.find((entry) => isCommand(entry, "config"));
+      expect(config?.[2]).toMatchObject({
+        page_path: "/",
+        page_location: expected,
+      });
+      const firstSet = (layer as IArguments[]).find((entry) => {
+        return (
+          isCommand(entry, "set") &&
+          commandPayload(entry)?.["page_location"] !== undefined
+        );
+      });
+      expect(commandPayload(firstSet as IArguments)).toMatchObject({
+        page_path: "/",
+        page_location: expected,
+      });
+      for (const fields of pagePayloads(layer)) {
+        expect(fields["page_path"]).toBe("/");
+      }
+    });
+
+    it("lowercases values and sends no mixed-case original", async () => {
+      show("/?UTM_SOURCE=YouTube&utm_Medium=Shorts");
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      expect(landingLocation("/")).toBe(
+        `${location.origin}/?utm_source=youtube&utm_medium=shorts`,
+      );
+      const text = JSON.stringify(dataLayer());
+      expect(text).not.toContain("YouTube");
+      expect(text).not.toContain("UTM_SOURCE");
+    });
+
+    it("drops an email-looking value and leaves no query", async () => {
+      show("/?utm_source=ada@example.com");
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      expect(landingLocation("/")).toBe(`${location.origin}/`);
+      assertCleanPagePayloads(dataLayer());
+      expect(JSON.stringify(dataLayer())).not.toContain("ada@example.com");
+      expect(JSON.stringify(dataLayer())).not.toContain("ada%40example.com");
+    });
+
+    it("keeps utm_source next to tokens and drops the rest and the hash", async () => {
+      show(
+        "/?utm_source=youtube&access_token=sekret&email=ada@example.com&token=reset-link&utm_term=kw&gclid=abc123#access_token=discord-token",
+      );
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      expect(landingLocation("/")).toBe(
+        `${location.origin}/?utm_source=youtube`,
+      );
+      const text = JSON.stringify(dataLayer());
+      for (const secret of [
+        ...PAGE_SECRETS,
+        "reset-link",
+        "utm_term",
+        "gclid",
+        "abc123",
+        "#",
+      ]) {
+        expect(text).not.toContain(secret);
+      }
+    });
+
+    it("drops a repeated key entirely, including mixed-case repeats", async () => {
+      show("/?utm_source=youtube&utm_source=other&utm_medium=shorts");
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      expect(landingLocation("/")).toBe(
+        `${location.origin}/?utm_medium=shorts`,
+      );
+      expect(ga.allowedUtmQuery("?utm_source=a&UTM_SOURCE=a", "/")).toBe("");
+    });
+
+    it("keeps a 40-character value and drops a 41-character one", async () => {
+      const forty = `${"a".repeat(20)}${"0-_".repeat(6)}zz`;
+      expect(forty).toHaveLength(40);
+      const fortyOne = `${forty}x`;
+      show(`/?utm_campaign=${forty}&utm_content=${fortyOne}`);
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      expect(landingLocation("/")).toBe(
+        `${location.origin}/?utm_campaign=${forty}`,
+      );
+      expect(JSON.stringify(dataLayer())).not.toContain(fortyOne);
+    });
+
+    it("parses only plain allowlisted values", async () => {
+      const ga = await freshGa();
+      const q = ga.allowedUtmQuery;
+      expect(q("", "/")).toBe("");
+      expect(q("?utm_source=", "/")).toBe("");
+      expect(q("?utm_source=a.b", "/")).toBe("");
+      expect(q("?utm_source=a/b", "/")).toBe("");
+      expect(q("?utm_source=a+b", "/")).toBe("");
+      expect(q("?utm_source=a%20b", "/")).toBe("");
+      expect(q("?utm_source=a@b", "/")).toBe("");
+      expect(q("?utm_source=caf%C3%A9", "/")).toBe("");
+      expect(q("?utm_id=1&utm_term=x&fbclid=y&code=z", "/")).toBe("");
+      expect(q("?utm_medium=b&utm_source=a", "/about")).toBe(
+        "?utm_source=a&utm_medium=b",
+      );
+      for (const kids of [
+        "/guide/typing-for-kids",
+        "/guide/typing-for-kids/",
+        "/guide/teaching-kids-to-type",
+        "/guide/teaching-kids-to-type/",
+      ]) {
+        expect(q("?utm_source=youtube", kids)).toBe("");
+      }
+    });
+
+    it("drops 7+ digit values and keeps 6 digits", async () => {
+      const ga = await freshGa();
+      const q = ga.allowedUtmQuery;
+      expect(q("?utm_source=1234567", "/")).toBe("");
+      expect(q("?utm_source=5551234567", "/")).toBe("");
+      expect(q("?utm_source=123456", "/")).toBe("?utm_source=123456");
+      expect(q("?utm_source=youtube&utm_campaign=5551234567", "/")).toBe(
+        "?utm_source=youtube",
+      );
+    });
+
+    it("drops 20+ character hex values and keeps 19", async () => {
+      const ga = await freshGa();
+      const q = ga.allowedUtmQuery;
+      const hex20 = "0123456789abcdef0123";
+      const hex19 = hex20.slice(0, 19);
+      const hex40 = hex20.repeat(2);
+      expect(hex20).toHaveLength(20);
+      expect(hex19).toHaveLength(19);
+      expect(q(`?utm_content=${hex20}`, "/")).toBe("");
+      expect(q(`?utm_content=${hex20.toUpperCase()}`, "/")).toBe("");
+      expect(q(`?utm_content=${hex40}`, "/")).toBe("");
+      expect(q(`?utm_content=${hex19}`, "/")).toBe(`?utm_content=${hex19}`);
+    });
+
+    it("keeps a 20+ character value that is not pure hex", async () => {
+      const ga = await freshGa();
+      const q = ga.allowedUtmQuery;
+      const withG = "0123456789abcdef012g";
+      const withHyphen = "0123456789-abcdef012";
+      expect(withG).toHaveLength(20);
+      expect(withHyphen).toHaveLength(20);
+      expect(q(`?utm_content=${withG}`, "/")).toBe(`?utm_content=${withG}`);
+      expect(q(`?utm_content=${withHyphen}`, "/")).toBe(
+        `?utm_content=${withHyphen}`,
+      );
+    });
+
+    it("never loads GA4 or queues UTM on a kids guide landing", async () => {
+      for (const kids of [
+        "/guide/teaching-kids-to-type?utm_source=youtube",
+        "/guide/teaching-kids-to-type/?utm_source=youtube",
+        "/guide/typing-for-kids?utm_source=youtube",
+      ]) {
+        sessionStorage.removeItem("puggie-kids-flow");
+        show(kids);
+        const ga = await freshGa();
+        ga.syncGa4();
+        expect(document.head.appendChild).not.toHaveBeenCalled();
+        expect(pageViews(dataLayer())).toHaveLength(0);
+        expect(JSON.stringify(dataLayer())).not.toContain("utm_");
+        expect(JSON.stringify(dataLayer())).not.toContain("youtube");
+      }
+    });
+
+    it("omits UTM in a kids-flow session even if the tag is already loaded", async () => {
+      sessionStorage.setItem("puggie-kids-flow", "1");
+      show(`/?${UTM_ALL}`);
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      assertCleanPagePayloads(dataLayer());
+      expect(JSON.stringify(dataLayer())).not.toContain("youtube");
+    });
+
+    it("sends nothing without an analytics accept", async () => {
+      for (const choice of [REJECTED, null] as const) {
+        if (choice === null) {
+          localStorage.removeItem("acceptedCookies");
+        } else {
+          writeConsentRecord(choice);
+        }
+        show(`/?${UTM_ALL}`);
+        const ga = await freshGa();
+        ga.syncGa4();
+        ga.onSpaRouteChange();
+        expect(document.head.appendChild).not.toHaveBeenCalled();
+        expect(pageViews(dataLayer())).toHaveLength(0);
+        expect(JSON.stringify(dataLayer())).not.toContain("utm_");
+      }
+    });
+
+    it("does not repeat UTM on later SPA route changes", async () => {
+      show(`/?${UTM_ALL}`);
+      const ga = await freshGa();
+      ga.loadGa4(id);
+      const layer = dataLayer();
+      const landingEnd = layer.length;
+      expect(landingLocation("/")).toBe(`${location.origin}/?${UTM_ALL}`);
+
+      show(`/about?${UTM_ALL}`);
+      expect(location.search).toContain("utm_source=youtube");
+      ga.onSpaRouteChange();
+      const views = pageViews(layer);
+      expect(views).toHaveLength(2);
+      expect(views[1]?.[2]).toMatchObject({
+        page_path: "/about",
+        page_location: `${location.origin}/about`,
+      });
+      const later = layer.slice(landingEnd);
+      expect(later.length).toBeGreaterThan(0);
+      assertCleanPagePayloads(later);
+      expect(JSON.stringify(later)).not.toContain("utm_");
+
+      show(`/?${UTM_ALL}`);
+      ga.onSpaRouteChange();
+      expect(pageViews(layer)[2]?.[2]).toMatchObject({
+        page_location: `${location.origin}/`,
+      });
+      assertCleanPagePayloads(layer.slice(landingEnd));
+    });
   });
 
   it("keeps the known-path list in step with the sitemap and spa routes", () => {

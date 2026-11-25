@@ -314,7 +314,7 @@ describe("legal-markdown", () => {
     expect(md).not.toContain("server rejects");
     expect(md).not.toContain("no longer accepted");
     expect(md).not.toContain("separate 'Solo' board");
-    expect(md).toContain("Last updated: November 24, 2026.");
+    expect(md).toContain("Last updated: November 25, 2026.");
     const faq = readFileSync(path.join(srcDir, "faq.html"), "utf8");
     const faqAnswer =
       "Your settings stay in your browser, unless you use an optional account (ages 13+): then your settings and personal bests are also saved to your account, and only you can see them. Ranks shows solo test scores that players chose to submit: after a completed solo test, the score is sent only when you press Submit score. A score the server adds shows your random nickname, wpm, accuracy and raw speed, with that test's settings. Solo scores are lightly checked by our server for impossible speeds, and we may remove any score that looks cheated. The current website no longer submits multiplayer race results to Ranks. Daily, weekly and monthly boards reset on UTC time and clear when the period ends. Scores from an ended period stop showing right away, and the stored rows are deleted automatically, usually within an hour. All-time scores, including earlier multiplayer scores, are kept for up to 12 months. PuggieType also keeps the speeds of your last 10 valid 30-second English tests in your browser, to estimate your pace for Quick Match.";
@@ -368,7 +368,7 @@ describe("legal-markdown", () => {
       `\n${STEAM_RETENTION_ROW_A}\n${ACCOUNTS_RETENTION_ROWS}\n| Player reports`,
     );
     expect(md).toContain(
-      "_Effective date: November 20, 2026. Last updated: November 24, 2026._",
+      "_Effective date: November 20, 2026. Last updated: November 25, 2026._",
     );
   });
 
@@ -411,7 +411,7 @@ describe("legal-markdown", () => {
       "| Game server logs | startup and error messages, 5-minute overall counts, the three anonymous daily quick-chat totals, the anonymous daily solo test totals and a detail-free note per Quick Match only; no personal data. Kept by Fly.io for 7 days |",
     );
     expect(md).toContain(
-      "_Effective date: November 20, 2026. Last updated: November 24, 2026._",
+      "_Effective date: November 20, 2026. Last updated: November 25, 2026._",
     );
   });
 
@@ -598,7 +598,7 @@ describe("legal-markdown", () => {
       "Apart from that average speed, this ID, a leaderboard score you choose to submit (see Leaderboards), and the anonymous solo test count and, if you accept analytics, the limited test details described under Cookies, analytics and error reporting, this data never leaves your device unless you export it yourself or sign in to an account (see Accounts (ages 13+)).",
     );
     expect(md).toContain(
-      "**Google Analytics 4.** We use Google Analytics 4 (Google LLC) to understand how people use puggietype.com (for example page views, rough geography, and finished solo tests with the test mode, length, language and a rough speed range). Google may process technical data such as IP address, device/browser type, and page URLs on our behalf. We configure GA4 with Google signals off and without using Analytics for ads personalization. We ask before GA4 runs, wherever you are. If you reject or don't choose, it doesn't load. Google Analytics 4 sets first-party cookies `_ga` and `_ga_<ID>` only after you accept; they are used to tell browsers and visits apart; they last up to 13 months after your last visit with analytics on. To withdraw, open Privacy and cookie settings and turn analytics off. GA stops right away in that tab, and in other open PuggieType tabs when they reload. PuggieType deletes its GA cookies, and you can also clear cookies in your browser. See [Google's privacy policy](https://policies.google.com/privacy) and [how Google uses data when you use our partners' sites](https://policies.google.com/technologies/partner-sites). You can also use [Google Analytics opt-out](https://tools.google.com/dlpage/gaoptout) where available.",
+      "**Google Analytics 4.** We use Google Analytics 4 (Google LLC) to understand how people use puggietype.com (for example page views, rough geography, and finished solo tests with the test mode, length, language and a rough speed range). Google may process technical data such as IP address, device/browser type, and page URLs on our behalf. For the page address, we send only puggietype.com and the page path, with room codes and profile names replaced. We never send the rest of the address, such as sign-in or password-reset codes or anything after #. If you arrive from a tagged promotional link (for example from our YouTube videos), the page view where you land also includes up to four short campaign labels from that link (source, medium, campaign and content), each only if it is a single word of up to 40 letters, numbers, hyphens or underscores. For the page you came from, we send only that site's address (for example youtube.com), or the page path if it was a PuggieType page. We never send any other query or link details. We configure GA4 with Google signals off and without using Analytics for ads personalization. We ask before GA4 runs, wherever you are. If you reject or don't choose, it doesn't load. Google Analytics 4 sets first-party cookies `_ga` and `_ga_<ID>` only after you accept; they are used to tell browsers and visits apart; they last up to 13 months after your last visit with analytics on. To withdraw, open Privacy and cookie settings and turn analytics off. GA stops right away in that tab, and in other open PuggieType tabs when they reload. PuggieType deletes its GA cookies, and you can also clear cookies in your browser. See [Google's privacy policy](https://policies.google.com/privacy) and [how Google uses data when you use our partners' sites](https://policies.google.com/technologies/partner-sites). You can also use [Google Analytics opt-out](https://tools.google.com/dlpage/gaoptout) where available.",
     );
     expect(md).toContain(
       "| Google Analytics 4 event data | per our GA4 property retention setting (we use the shortest available that still supports a 30-day traffic review, then auto-expire); deleted from our property when retention elapses or if we remove GA4 |",
