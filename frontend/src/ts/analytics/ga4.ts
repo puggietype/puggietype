@@ -517,11 +517,14 @@ function redactAnalyticsPath(pathname: string): string {
 /** Campaign tags we forward, in this order. Nothing else in the query is sent. */
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content"];
 const UTM_VALUE = /^[a-z0-9_-]{1,40}$/;
+/** Phone-like digit runs and hex ids/tokens pass UTM_VALUE but are dropped. */
+const UTM_VALUE_REJECT = [/^\d{7,}$/, /^[0-9a-f]{20,}$/];
 
 /**
  * `?utm_source=...` built from the allowlisted keys only, or "". Keys match
  * case-insensitively; a repeated key is dropped. Values are lowercased and
- * must be a plain word, so an email, URL, or token never passes. Kids paths
+ * must be a plain word, so an email, URL, or token never passes; long digit
+ * runs and long hex strings are dropped too. Kids paths
  * get nothing.
  */
 export function allowedUtmQuery(search: string, pathname: string): string {
@@ -535,7 +538,11 @@ export function allowedUtmQuery(search: string, pathname: string): string {
   const kept: string[] = [];
   for (const key of UTM_KEYS) {
     const value = seen.get(key);
-    if (typeof value === "string" && UTM_VALUE.test(value)) {
+    if (
+      typeof value === "string" &&
+      UTM_VALUE.test(value) &&
+      !UTM_VALUE_REJECT.some((reject) => reject.test(value))
+    ) {
       kept.push(`${key}=${value}`);
     }
   }

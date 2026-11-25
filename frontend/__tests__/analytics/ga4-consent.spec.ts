@@ -1539,6 +1539,44 @@ describe("sanitized single page view", () => {
       }
     });
 
+    it("drops 7+ digit values and keeps 6 digits", async () => {
+      const ga = await freshGa();
+      const q = ga.allowedUtmQuery;
+      expect(q("?utm_source=1234567", "/")).toBe("");
+      expect(q("?utm_source=5551234567", "/")).toBe("");
+      expect(q("?utm_source=123456", "/")).toBe("?utm_source=123456");
+      expect(q("?utm_source=youtube&utm_campaign=5551234567", "/")).toBe(
+        "?utm_source=youtube",
+      );
+    });
+
+    it("drops 20+ character hex values and keeps 19", async () => {
+      const ga = await freshGa();
+      const q = ga.allowedUtmQuery;
+      const hex20 = "0123456789abcdef0123";
+      const hex19 = hex20.slice(0, 19);
+      const hex40 = hex20.repeat(2);
+      expect(hex20).toHaveLength(20);
+      expect(hex19).toHaveLength(19);
+      expect(q(`?utm_content=${hex20}`, "/")).toBe("");
+      expect(q(`?utm_content=${hex20.toUpperCase()}`, "/")).toBe("");
+      expect(q(`?utm_content=${hex40}`, "/")).toBe("");
+      expect(q(`?utm_content=${hex19}`, "/")).toBe(`?utm_content=${hex19}`);
+    });
+
+    it("keeps a 20+ character value that is not pure hex", async () => {
+      const ga = await freshGa();
+      const q = ga.allowedUtmQuery;
+      const withG = "0123456789abcdef012g";
+      const withHyphen = "0123456789-abcdef012";
+      expect(withG).toHaveLength(20);
+      expect(withHyphen).toHaveLength(20);
+      expect(q(`?utm_content=${withG}`, "/")).toBe(`?utm_content=${withG}`);
+      expect(q(`?utm_content=${withHyphen}`, "/")).toBe(
+        `?utm_content=${withHyphen}`,
+      );
+    });
+
     it("never loads GA4 or queues UTM on a kids guide landing", async () => {
       for (const kids of [
         "/guide/teaching-kids-to-type?utm_source=youtube",
