@@ -1,5 +1,5 @@
-import { render } from "@solidjs/testing-library";
-import { describe, it, expect, vi } from "vitest";
+import { cleanup, render } from "@solidjs/testing-library";
+import { afterEach, describe, it, expect, vi } from "vitest";
 
 vi.mock("../../../../src/ts/states/test", () => ({
   getFocus: () => false,
@@ -77,5 +77,42 @@ describe("Footer", () => {
       expect(a.hasAttribute("router-link")).toBe(false);
       expect(a.getAttribute("target")).toBeNull();
     }
+  });
+});
+
+describe("Footer: Support PuggieType link", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  const supportLink = (): HTMLElement | null =>
+    render(() => <Footer />).queryByTestId("support-footer-link");
+
+  it("flags off (default): no support link", () => {
+    expect(supportLink()).toBeNull();
+    const { container } = render(() => <Footer />);
+    expect(container.textContent).not.toContain("Support PuggieType");
+    expect(container.innerHTML).not.toMatch(/ko-fi|sponsors/);
+  });
+
+  for (const flag of ["__FEATURE_KOFI__", "__FEATURE_GITHUB_SPONSORS__"]) {
+    it(`${flag} on: a quiet link to the About section`, () => {
+      vi.stubGlobal(flag, true);
+      const { getByTestId } = render(() => <Footer />);
+      const link = getByTestId("support-footer-link");
+      expect(link.textContent).toBe("Support PuggieType");
+      expect(link.getAttribute("href")).toBe("/guide/about#support");
+      expect(link.getAttribute("target")).toBeNull();
+      expect(link.hasAttribute("router-link")).toBe(false);
+      expect(link.closest('[data-testid="guide-links"]')).not.toBeNull();
+    });
+  }
+
+  it("steam: hidden even with both flags on", () => {
+    vi.stubGlobal("__FEATURE_KOFI__", true);
+    vi.stubGlobal("__FEATURE_GITHUB_SPONSORS__", true);
+    vi.stubGlobal("__PLATFORM__", "steam");
+    expect(supportLink()).toBeNull();
   });
 });

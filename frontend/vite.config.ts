@@ -38,6 +38,11 @@ import { legalMarkdown } from "./vite-plugins/legal-markdown";
 import { KEEP_COMMENTS } from "./vite-plugins/email-off";
 import { staticConsentScript } from "./vite-plugins/static-consent-script";
 import {
+  isGithubSponsorsEnabled,
+  isKofiEnabled,
+  supportLinks,
+} from "./vite-plugins/support-links";
+import {
   getCommitHash,
   getSourceLinks,
   parseSourceUrlMode,
@@ -129,6 +134,12 @@ function getPlugins({
     languageHashes({ skip: isDevelopment }),
     injectHTML() as PluginOption,
     staticConsentScript(),
+    // Ko-fi / GitHub Sponsors footer link and About section (static pages)
+    supportLinks({
+      kofi: isKofiEnabled(env),
+      githubSponsors: isGithubSponsorsEnabled(env),
+      platform: resolvePlatform(process.env),
+    }),
     legalMarkdown({ dir: path.resolve(__dirname, "src/legal") }),
     // PLATFORM from the build script shell only, never .env (see 432d097)
     steamAssetClearance({ platform: resolvePlatform(process.env) }),
@@ -504,6 +515,8 @@ export default defineConfig(({ mode }): UserConfig => {
       __STANDALONE__: JSON.stringify(standalone),
       __PLATFORM__: JSON.stringify(platform),
       __FEATURE_ACCOUNTS__: JSON.stringify(isAccountsEnabled(env)),
+      __FEATURE_KOFI__: JSON.stringify(isKofiEnabled(env)),
+      __FEATURE_GITHUB_SPONSORS__: JSON.stringify(isGithubSponsorsEnabled(env)),
     },
     resolve: {
       alias: standalone

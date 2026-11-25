@@ -109,6 +109,12 @@ const ALLOWED: { page: string; phrase: string; why: string }[] = [
     phrase: "is not affiliated with or endorsed by Monkeytype",
     why: "non-affiliation disclaimer",
   },
+  // flagged Support section (stripped when the tip flags are off)
+  {
+    page: "/guide/about",
+    phrase: "not to the Monkeytype project",
+    why: "Legal's tip disclaimer",
+  },
   // a reader's own results, not a claim about PuggieType
   {
     page: "/guide/type-faster",

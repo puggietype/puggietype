@@ -104,6 +104,26 @@ export function Footer(): JSXElement {
             <a class={linkClass} href="/creators">
               creators
             </a>
+            {
+              // flagged tip entry, never on steam. Literals + inline defines
+              // so flags-off and Steam builds can drop this (no support.ts
+              // import, no Ko-fi/Sponsors URLs in the footer chunk). The
+              // href is the About section so the disclaimer sits next to
+              // the tip links.
+              // oxlint-disable-next-line solid/prefer-show -- build-time flags, not reactive
+              (__FEATURE_KOFI__ || __FEATURE_GITHUB_SPONSORS__) &&
+              !(
+                typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"
+              ) ? (
+                <a
+                  class={linkClass}
+                  href="/guide/about#support"
+                  data-testid="support-footer-link"
+                >
+                  Support PuggieType
+                </a>
+              ) : null
+            }
           </nav>
         </div>
         <div class="flex flex-col items-end text-right lg:flex-row">
