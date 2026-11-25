@@ -118,6 +118,7 @@ import {
 import { blurInputElement, setInputElementValue } from "../input/input-element";
 import { debounce } from "throttle-debounce";
 import { qs } from "../utils/dom";
+import { sendTestCompleted } from "../analytics/test-completed";
 import { setAccountButtonSpinner } from "../states/header";
 import { Config } from "../config/store";
 import { setQuoteLengthAll, toggleFunbox, setConfig } from "../config/setters";
@@ -1040,6 +1041,10 @@ export async function finish(difficultyFailed = false): Promise<void> {
 
   // test is valid
 
+  // fail checks only. The logged-out branch below sets dontSave for guests
+  // too, and a valid guest test still counts as a completion.
+  const validResult = !dontSave;
+
   // multiplayer hook: local pace history for Quick Match
   if (!dontSave) recordSoloPace(completedEvent);
 
@@ -1148,6 +1153,10 @@ export async function finish(difficultyFailed = false): Promise<void> {
     }
     dontSave = true;
   }
+
+  // analytics hook: consent-gated test_completed, never throws. Races returned
+  // above. A ghost race is a solo test with a local PB overlay, so it counts.
+  sendTestCompleted(completedEvent, validResult);
 
   const resultUpdatePromise = showResult(completedEvent, dontSave, {
     difficultyFailed,

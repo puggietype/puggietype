@@ -764,6 +764,38 @@ export function onSpaRouteChange(): void {
   sendPageView(id);
 }
 
+/**
+ * Queue a custom GA4 event with the same consent, kids, Steam, and
+ * collection-disabled gates as page_view. No-ops when the tag is not
+ * loaded. Never throws.
+ */
+export function emitConsentedEvent(
+  name: string,
+  params: Record<string, unknown>,
+): void {
+  try {
+    const id = configuredMeasurementId();
+    if (!isGa4MeasurementId(id) || isGaCollectionDisabled(id) || isSteam()) {
+      return;
+    }
+    const allowed = analyticsLoadAllowed({
+      measurementId: id,
+      analytics: readConsentRecord()?.analytics ?? null,
+      kidsExcluded: noteKidsFlowVisit({
+        pathname: window.location.pathname,
+        referrer: document.referrer,
+        storage: sessionStorage,
+      }),
+    });
+    if (!allowed || loadedId !== id) return;
+    const gtagFn = pageWindow().gtag;
+    if (gtagFn === undefined) return;
+    gtagFn("event", name, { ...params, send_to: id });
+  } catch {
+    // analytics must never break the caller
+  }
+}
+
 setGaWithdrawalHooks({
   beforeCookieDelete: () => {
     const id = configuredMeasurementId();
