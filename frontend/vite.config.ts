@@ -335,6 +335,14 @@ function getBuildOptions({
           __dirname,
           "src/guide/improve-accuracy.html",
         ),
+        "guide/1-minute-typing-test": path.resolve(
+          __dirname,
+          "src/guide/1-minute-typing-test.html",
+        ),
+        "guide/typing-test-for-jobs": path.resolve(
+          __dirname,
+          "src/guide/typing-test-for-jobs.html",
+        ),
         "guide/typing-for-kids": path.resolve(
           __dirname,
           "src/guide/typing-for-kids.html",
