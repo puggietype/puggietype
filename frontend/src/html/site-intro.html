@@ -1,40 +1,41 @@
 <!--
   crawlable intro and guide links, readable without js. SiteIntro.tsx moves it
-  below #app (under the footer), so it never sits near or shifts the test.
-  Until then it is parked below the fold.
+  into #app, between the test page and the footer; the test page keeps the
+  first screen, so the intro starts below the fold and never shifts the test.
+  Until then it sits in normal flow below the first screen (the app shell is
+  fixed over it), so there is no jump when the app adopts it.
 -->
 <style>
   #siteIntro {
     max-width: 48rem;
-    padding-block: 2rem 3rem;
+    padding-block: 1rem 2rem;
     font-family: var(--ui-font, Lexend, sans-serif);
-    font-size: 0.75rem;
-    line-height: 1.6;
-    color: var(--sub-color);
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--text-color);
   }
   #siteIntro.preload {
-    position: absolute;
-    top: 100vh;
-    left: 2rem;
-    right: 2rem;
+    margin: 100vh 2rem 0;
   }
   #siteIntro h1 {
     margin: 0 0 1rem;
-    font-size: 1rem;
-    font-weight: normal;
-    color: var(--sub-color);
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-color);
   }
   #siteIntro h2 {
-    margin: 0 0 0.5rem;
-    font-size: 0.875rem;
-    font-weight: normal;
-    color: var(--sub-color);
+    margin: 0 0 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-color);
   }
   #siteIntro p {
-    margin: 0 0 0.75rem;
+    margin: 0 0 1rem;
   }
   #siteIntro a {
-    color: var(--sub-color);
+    color: var(--main-color);
     text-decoration: underline;
   }
   #siteIntro a:hover {
@@ -43,7 +44,8 @@
   #siteIntro nav {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem 1rem;
+    gap: 0.5rem 1.25rem;
+    margin-top: 1.5rem;
   }
 </style>
 <section id="siteIntro" class="preload" aria-labelledby="siteIntroHeading">

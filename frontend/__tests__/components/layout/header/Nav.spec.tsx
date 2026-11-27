@@ -101,7 +101,7 @@ describe("Nav", () => {
     const expected: [string, string, string][] = [
       ["test", "solo", "/"],
       ["race", "multiplayer", "/race"],
-      ["about", "guides", "/guide/about"],
+      ["guides", "guides", "/guide/"],
       ["settings", "settings", "/settings"],
     ];
     for (const [navItem, label, href] of expected) {
@@ -114,11 +114,37 @@ describe("Nav", () => {
       expect(el.querySelector("i.fa-fw")).not.toBeNull();
     }
     expect(item(container, "race").dataset["testid"]).toBe("nav-race");
-    // crawlable href is the canonical page, in-app clicks keep the /about route
-    expect(item(container, "about").dataset["appPath"]).toBe("/about");
-    expect(item(container, "about").hasAttribute("router-link")).toBe(true);
-    expect(item(container, "about").hasAttribute("target")).toBe(false);
     expect(item(container, "test").hasAttribute("data-app-path")).toBe(false);
+  });
+
+  it("guides: plain same-tab link to the static guides index", () => {
+    // /guide/ is a static page, not an app route: no router, full page load
+    for (const backend of [false, true]) {
+      standalone.value = !backend;
+      const { container, unmount } = render(() => <Nav />);
+      expect(container.querySelector('[data-nav-item="about"]')).toBe(null);
+      const el = item(container, "guides");
+      expect(el.getAttribute("href")).toBe("/guide/");
+      expect(el.hasAttribute("router-link")).toBe(false);
+      expect(el.hasAttribute("data-app-path")).toBe(false);
+      expect(el.hasAttribute("target")).toBe(false);
+      expect(el.hasAttribute("rel")).toBe(false);
+      expect(el.querySelector("i.fa-book.fa-fw")).not.toBeNull();
+      unmount();
+    }
+  });
+
+  it("steam: guides keeps the in-app about page (no static pages there)", () => {
+    vi.stubGlobal("__PLATFORM__", "steam");
+    const { container } = render(() => <Nav />);
+    expect(container.querySelector('[data-nav-item="guides"]')).toBe(null);
+    const el = item(container, "about");
+    expect(el.getAttribute("href")).toBe("/guide/about");
+    expect(el.dataset["appPath"]).toBe("/about");
+    expect(el.hasAttribute("router-link")).toBe(true);
+    expect(el.hasAttribute("target")).toBe(false);
+    expect(visibleLabels(el).large).toBe("guides");
+    expect(el.querySelector("i.fa-book")).not.toBeNull();
   });
 
   it("never hides a label on small screens; short labels below 849px", () => {
@@ -126,7 +152,7 @@ describe("Nav", () => {
       ["test", "solo", "solo"],
       ["race", "multi", "multiplayer"],
       ["leaderboards-soon", "ranks", "leaderboard"],
-      ["about", "guides", "guides"],
+      ["guides", "guides", "guides"],
       ["settings", "settings", "settings"],
     ];
     const { container } = render(() => <Nav />);

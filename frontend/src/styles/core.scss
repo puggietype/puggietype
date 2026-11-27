@@ -67,7 +67,8 @@
 
 #app {
   min-height: 100vh;
-  grid-template-rows: [top-start] auto [content-start] 1fr [content-end] auto [top-end];
+  // header + page (App.tsx), then the intro (test page only) and the footer
+  grid-template-rows: 1fr auto;
   overflow: hidden;
   row-gap: 2rem;
   padding-top: 2rem;
