@@ -480,6 +480,8 @@ const KNOWN_ANALYTICS_PATHS = new Set([
   "/guide/typing-test-math",
   "/guide/improve-accuracy",
   "/guide/teaching-kids-to-type",
+  "/guide/1-minute-typing-test",
+  "/guide/typing-test-for-jobs",
 ]);
 
 /**

@@ -36,6 +36,8 @@ describe("static routing", () => {
     "/guide/typing-test-math",
     "/guide/improve-accuracy",
     "/guide/teaching-kids-to-type",
+    "/guide/1-minute-typing-test",
+    "/guide/typing-test-for-jobs",
     "/contact",
     "/creators",
   ];
