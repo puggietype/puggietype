@@ -1,0 +1,34 @@
+// PuggieType content depot (TEMPLATE, placeholders only).
+//
+// There is no App ID yet. __PUGGIE_STEAM_DEPOT_CONTENT_ID__ is a
+// placeholder, not a real depot id. Nothing may be uploaded until
+// Lead and Jake give an explicit go after real IDs exist.
+//
+// Root is desktop/out/ as staged by scripts/package.mjs. Only app/ and
+// legal/ ship; scripts/depot-allowlist.mjs enforces that (no helper, no
+// steam_api redistributables, no app id file: on hold, see README.md).
+"DepotBuild"
+{
+	"DepotID" "__PUGGIE_STEAM_DEPOT_CONTENT_ID__"
+	"ContentRoot" "../../out/"
+	"FileMapping"
+	{
+		"LocalPath" "app/*"
+		"DepotPath" "app"
+		"Recursive" "1"
+	}
+	"FileMapping"
+	{
+		"LocalPath" "legal/*"
+		"DepotPath" "legal"
+		"Recursive" "0"
+	}
+	// debug symbols and OS junk
+	"FileExclusion" "*.pdb"
+	"FileExclusion" ".DS_Store"
+	"FileExclusion" "._*"
+	"FileExclusion" "Thumbs.db"
+	"FileExclusion" "desktop.ini"
+	"FileExclusion" "*.log"
+	"FileExclusion" "*.tmp"
+}

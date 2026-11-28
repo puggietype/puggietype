@@ -44,10 +44,19 @@ In `frontend/`: `npm run build` (web) or `npm run build:steam`.
   `platform`. The client only accepts `welcome.protocol` in its supported range;
   otherwise, or on the server's `upgrade_required` (close 4003), it stops
   reconnecting and tells the user to update (Steam or reload).
-- Later: offline solo polish, Steam Deck input, packaging/depots.
+- Later: offline solo polish, Steam Deck input, installers, real depot uploads.
 - M3: Steam OpenID sign-in and server-side entitlement checks.
 - Cross-play: web and steam share the same core and ws protocol; the server
   accepts a protocol range and a hello without `protocol` counts as 1.
+
+## Depot scaffolding (not an upload)
+
+- SteamPipe templates live in `desktop/steam/` (`app_build`, `depot_content`, `depot_dlc` `.vdf.template`) with placeholder ids only. There is no App ID yet and no steamcmd step in this milestone; nothing is uploaded until Lead and Jake give an explicit go after real IDs exist.
+- `app_build` has `Preview "1"` and an empty `SetLive`, so a build could not go live by itself.
+- Content depot: only the staged `out/app/` and `out/legal/`. DLC depot: only the Supporter Pack art licence and image art from `assets/supporter/`. `desktop/scripts/depot-allowlist.mjs` enforces both, on the staged tree and on the templates' mappings.
+- The PR #37 ticket helper and `steam_api` redistributables are on hold and rejected by the allowlist. Legal re-reviews depot contents and any future redistributable before a real upload.
+- `npm run package -- --dev` still stages without uploading; `npm run package` without `--dev` still tags and remains release-cutter only.
+- The hard rule above stands: no Steamworks SDK.
 
 ## M3: Steam sign-in and ownership (draft, HOLD for Legal review)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Stage the desktop app for packaging (no installer/Steam depot yet):
+// Stage the desktop app for packaging (no installer or upload yet):
 //   out/app/package.json, src/, web/ (the PLATFORM=steam build)
 //   out/app/web/legal/  -> served as app://puggietype/legal/ (About links)
 //   out/legal/          -> the same files next to the app, for the depot root
@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { LEGAL_FILES } from "../src/shell.mjs";
+import { assertDepotAllowlist } from "./depot-allowlist.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const desktopDir = path.resolve(here, "..");
@@ -190,6 +191,14 @@ export function stagePackage({
   for (const f of LEGAL_FILES) {
     if (!fs.existsSync(path.join(app, "web", "legal", f)))
       throw new Error(`not staged: ${f}`);
+  }
+  // out/ is the content depot root: never leave a tree that fails the
+  // depot allowlist (held helper/SDK files, strays outside app/ and legal/).
+  try {
+    assertDepotAllowlist({ depot: "content", root: outDir });
+  } catch (err) {
+    fs.rmSync(outDir, { recursive: true, force: true });
+    throw err;
   }
   return { app, legal: path.join(outDir, "legal") };
 }

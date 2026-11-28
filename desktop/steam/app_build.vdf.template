@@ -1,0 +1,25 @@
+// PuggieType SteamPipe app build script (TEMPLATE, placeholders only).
+//
+// There is no App ID yet. __PUGGIE_STEAM_APP_ID__ and the depot ids below
+// are placeholders, not real Steam ids. Nothing may be uploaded until
+// Lead and Jake give an explicit go after real IDs exist, and Legal has
+// re-reviewed the depot contents (see README.md).
+//
+// scripts/render-steam-vdf.mjs renders this into steam/build/ (gitignored);
+// all paths here are relative to that folder.
+"AppBuild"
+{
+	"AppID" "__PUGGIE_STEAM_APP_ID__"
+	"Desc" "PuggieType desktop (template, not for upload)"
+	// Preview: scan and report only, upload nothing. Turning it off needs
+	// the same explicit go from Lead and Jake.
+	"Preview" "1"
+	// Empty on purpose: a build must never go live on any branch by itself.
+	"SetLive" ""
+	"BuildOutput" "output/"
+	"Depots"
+	{
+		"__PUGGIE_STEAM_DEPOT_CONTENT_ID__" "depot_content.vdf"
+		"__PUGGIE_STEAM_DEPOT_DLC_ID__" "depot_dlc.vdf"
+	}
+}
