@@ -340,8 +340,11 @@ export async function refreshVerification(): Promise<boolean> {
       idToken: await sdk.getUserIdToken(user, true),
     });
     if (!me.ok) return false;
-    setSignedIn(me.user);
-    return me.user.emailVerified;
+    // trust the just-reloaded Firebase user so the notice clears even if
+    // GET /v1/me still returns the stale DB flag
+    const emailVerified = me.user.emailVerified || user.emailVerified;
+    setSignedIn({ ...me.user, emailVerified });
+    return emailVerified;
   } catch {
     return false;
   }
