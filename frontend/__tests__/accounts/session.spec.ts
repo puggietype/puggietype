@@ -686,12 +686,40 @@ describe("accounts email verification and password reset", () => {
       true,
     );
     expect(getAccountUser()).toEqual(user);
+  });
 
+  it("refresh trusts a verified Firebase user over a stale getMe", async () => {
+    sdk.getFreshUser.mockResolvedValue({ uid: "u1", emailVerified: true });
+    api.getMe.mockResolvedValue({
+      ok: true,
+      user: { ...user, displayName: "Stale Pug", emailVerified: false },
+    });
+    expect(await refreshVerification()).toBe(true);
+    expect(getAccountUser()).toEqual({
+      ...user,
+      displayName: "Stale Pug",
+      emailVerified: true,
+    });
+  });
+
+  it("refresh stays unverified when Firebase and getMe both say so", async () => {
+    sdk.getFreshUser.mockResolvedValue(unverified);
     api.getMe.mockResolvedValue({
       ok: true,
       user: { ...user, emailVerified: false },
     });
     expect(await refreshVerification()).toBe(false);
+    expect(getAccountUser()?.emailVerified).toBe(false);
+  });
+
+  it("refresh is false and sets no user when getMe fails", async () => {
+    setAccountUser(null);
+    sdk.getFreshUser.mockResolvedValue({ uid: "u1", emailVerified: true });
+    for (const status of [0, 503]) {
+      api.getMe.mockResolvedValue({ ok: false, status, code: "", message: "" });
+      expect(await refreshVerification()).toBe(false);
+      expect(getAccountUser()).toBeNull();
+    }
   });
 
   it("password reset reads the same whether or not the account exists", async () => {
