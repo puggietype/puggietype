@@ -12,6 +12,8 @@ type BaseProps = {
   children?: JSXElement;
   balloon?: BalloonProps;
   "router-link"?: true;
+  /** plain link in the same tab (full page load), anchors only */
+  sameTarget?: true;
   onClick?: (e: MouseEvent) => void;
   type?: HTMLButtonElement["type"];
   onMouseEnter?: (e: MouseEvent) => void;
@@ -33,7 +35,6 @@ type BaseProps = {
 export type ButtonProps = BaseProps & {
   type?: "button" | "submit" | "reset";
   href?: never;
-  sameTarget?: true;
   disabled?: boolean;
   danger?: boolean;
 };
@@ -132,12 +133,16 @@ export function Button(props: ButtonProps | AnchorProps): JSXElement {
         class={getClasses()}
         href={props.href}
         target={
-          props["router-link"] || props.href?.startsWith("#")
+          props["router-link"] ||
+          props.sameTarget ||
+          props.href?.startsWith("#")
             ? undefined
             : "_blank"
         }
         rel={
-          props["router-link"] || props.href?.startsWith("#")
+          props["router-link"] ||
+          props.sameTarget ||
+          props.href?.startsWith("#")
             ? undefined
             : "noreferrer noopener"
         }

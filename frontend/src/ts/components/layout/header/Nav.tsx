@@ -75,6 +75,8 @@ function NavLink(props: {
   testId?: string;
   /** shorter visible label below md (849px) */
   shortLabel?: string;
+  /** static page outside the app: plain same-tab link, no router */
+  fullPageLoad?: boolean;
   onClick?: () => void;
   onMouseEnter?: () => void;
 }): JSXElement {
@@ -83,7 +85,9 @@ function NavLink(props: {
     <Button
       variant="text"
       fa={{ icon: props.icon, fixedWidth: true }}
-      router-link
+      {...(props.fullPageLoad === true
+        ? { sameTarget: true as const }
+        : { "router-link": true as const })}
       href={props.href}
       ariaCurrent={isActive() ? "page" : undefined}
       class={cn(
@@ -204,16 +208,32 @@ export function Nav(): JSXElement {
           }}
         />
       </Show>
-      {/* /about 301s to /guide/about on a full load: crawlers get the canonical
-          href, in-app clicks keep the about page */}
-      <NavLink
-        href="/guide/about"
-        appPath="/about"
-        icon="fa-info"
-        label="guides"
-        navItem="about"
-        page="about"
-      />
+      {/* web: the static guides index (not an app route, so a full page
+          load). steam serves extensionless paths as the spa, so there it
+          keeps the in-app about page; /about 301s to /guide/about on a full
+          load, so crawlers of that href still get the canonical page */}
+      <Show
+        when={typeof __PLATFORM__ !== "undefined" && __PLATFORM__ === "steam"}
+        fallback={
+          <NavLink
+            href="/guide/"
+            icon="fa-book"
+            label="guides"
+            navItem="guides"
+            page="about"
+            fullPageLoad
+          />
+        }
+      >
+        <NavLink
+          href="/guide/about"
+          appPath="/about"
+          icon="fa-book"
+          label="guides"
+          navItem="about"
+          page="about"
+        />
+      </Show>
       <NavLink
         href="/settings"
         icon="fa-cog"
