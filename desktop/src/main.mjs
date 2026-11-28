@@ -12,6 +12,7 @@ import {
   session,
   shell,
 } from "electron";
+import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
@@ -22,6 +23,9 @@ import {
   APP_SCHEME,
   KeyValueStore,
   SecureTokenStore,
+  runTicketHelper,
+  steamSdkEnabled,
+  ticketHelperName,
   buildCsp,
   cspInputsFromHeaders,
   isPermissionAllowed,
@@ -285,6 +289,32 @@ app.whenReady().then(() => {
   ipcMain.on("steam:enabled", (event) => {
     event.returnValue = steamEnabled;
   });
+  // optional Steamworks ticket helper (PUGGIE_STEAM_SDK=1, off by default)
+  const ticketEnabled = steamEnabled && steamSdkEnabled(process.env);
+  ipcMain.on("steam:ticket:enabled", (event) => {
+    event.returnValue = ticketEnabled;
+  });
+  if (ticketEnabled) {
+    const helper = app.isPackaged
+      ? path.join(
+          process.resourcesPath,
+          "steam-ticket-helper",
+          ticketHelperName(process.platform),
+        )
+      : path.resolve(
+          here,
+          "../../tools/steam-ticket-helper",
+          ticketHelperName(process.platform),
+        );
+    ipcMain.handle("steam:ticket", async (event) => {
+      if (!isInternalUrl(event.senderFrame?.url ?? "")) return null;
+      const ticket = await runTicketHelper(helper, {
+        spawn,
+        exists: (f) => fs.existsSync(f),
+      });
+      return ticket === null ? null : { ticket };
+    });
+  }
   if (steamEnabled) {
     // session token in OS secure storage only (safeStorage); the smoke run
     // keeps it in memory so it never touches the real keychain

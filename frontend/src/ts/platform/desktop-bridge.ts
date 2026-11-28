@@ -27,6 +27,11 @@ export type DesktopBridge = {
      */
     signIn: () => Promise<SteamBridgeSignInResult>;
     /**
+     * Optional Steamworks ticket helper (PUGGIE_STEAM_SDK=1): a one-time
+     * hex Web API ticket, or null on any failure. Never stored or logged.
+     */
+    ticket?: () => Promise<{ ticket: string } | null>;
+    /**
      * Session token (server FEATURE_STEAM_SESSION), kept by the shell in
      * the OS secure storage (Electron safeStorage) only. `set` returns false
      * when there is no secure storage; then nothing is kept. Older shells

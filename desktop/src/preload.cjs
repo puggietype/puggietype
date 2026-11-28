@@ -3,6 +3,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 const steamEnabled = ipcRenderer.sendSync("steam:enabled") === true;
+const ticketEnabled =
+  steamEnabled && ipcRenderer.sendSync("steam:ticket:enabled") === true;
 
 contextBridge.exposeInMainWorld("puggieDesktop", {
   version: 1,
@@ -11,6 +13,10 @@ contextBridge.exposeInMainWorld("puggieDesktop", {
     ? {
         steam: {
           signIn: () => ipcRenderer.invoke("steam:signin"),
+          // optional Steamworks helper (PUGGIE_STEAM_SDK=1): { ticket } | null
+          ...(ticketEnabled
+            ? { ticket: () => ipcRenderer.invoke("steam:ticket") }
+            : {}),
           // session token, kept in OS secure storage by the main process
           session: {
             get: () => {

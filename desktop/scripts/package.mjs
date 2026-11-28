@@ -115,6 +115,38 @@ export function tagSteamBuild({ cwd, tag, commit, remote = "origin" }) {
   git(cwd, ["push", remote, `refs/tags/${tag}`]);
 }
 
+// Legal helper ruling 2026-11-04 (4): the proprietary ticket helper and the
+// steam_api redistributables ship only as separate files in the Steam depot,
+// never inside the app (asar), the GPL source tarball or the web build.
+export const STEAM_HELPER_FILE_RX =
+  /(^|\/)(steam-ticket-helper(\.exe)?|(lib)?steam_api(64)?\.(dll|so|dylib|lib)|steam_appid\.txt)$/i;
+
+// Checks exactly three places, named: the staged app folder (what goes into
+// the asar), the web build inside it, and out/legal (the licence files next
+// to the app, QA PKG-HELPER-SCOPE). The future Steam depot step adds
+// resources/steam-ticket-helper/ and the steam_api redistributable AFTER
+// staging, as separate depot files outside these folders, so they are
+// deliberately outside this check.
+// TODO(depot step): when the Steam depot step lands, add a depot allowlist
+// test: the depot may hold the staged app, legal/, and exactly
+// resources/steam-ticket-helper/steam-ticket-helper[.exe] plus the
+// steam_api redistributables the SDK Access Agreement allows, nothing else.
+export function assertNoSteamHelper({ appDir, webDir, legalDir }) {
+  for (const [label, dir] of [
+    ["app", appDir],
+    ["web build", webDir],
+    ["legal", legalDir],
+  ]) {
+    for (const f of fs.readdirSync(dir, { recursive: true })) {
+      if (STEAM_HELPER_FILE_RX.test(String(f).split(path.sep).join("/"))) {
+        throw new Error(
+          `Steam helper file must not be packaged (${label}): ${f}`,
+        );
+      }
+    }
+  }
+}
+
 function electronDistDir() {
   return path.join(desktopDir, "node_modules", "electron", "dist");
 }
@@ -191,6 +223,11 @@ export function stagePackage({
     if (!fs.existsSync(path.join(app, "web", "legal", f)))
       throw new Error(`not staged: ${f}`);
   }
+  assertNoSteamHelper({
+    appDir: app,
+    webDir: path.join(app, "web"),
+    legalDir: path.join(outDir, "legal"),
+  });
   return { app, legal: path.join(outDir, "legal") };
 }
 
